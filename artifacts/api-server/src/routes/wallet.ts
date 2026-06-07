@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, walletsTable, transactionsTable, usersTable } from "@workspace/db";
-import { eq, desc, count, sql } from "drizzle-orm";
+import { eq, desc, count, sql, and, ilike, or } from "drizzle-orm";
 import { requireAuth, requireAdmin, type AuthRequest } from "../middlewares/auth";
 import { CreditWalletBody, DebitWalletBody, GetMyTransactionsQueryParams, GetUserWalletParams } from "@workspace/api-zod";
 
@@ -179,6 +179,87 @@ router.get("/wallet/user/:userId", requireAdmin, async (req: AuthRequest, res): 
     return;
   }
   res.json({ id: wallet.id, userId: wallet.userId, balance: parseFloat(wallet.balance) });
+});
+
+router.get("/admin/transactions", requireAdmin, async (_req, res): Promise<void> => {
+  const req = _req as AuthRequest;
+  const page = parseInt(String(req.query.page ?? "1"));
+  const limit = 25;
+  const offset = (page - 1) * limit;
+  const typeFilter = req.query.type as string | undefined;
+  const search = req.query.search as string | undefined;
+
+  // Build where clause joining transactions → wallets → users
+  const rows = await db
+    .select({
+      tx: transactionsTable,
+      user: {
+        id: usersTable.id,
+        username: usersTable.username,
+        email: usersTable.email,
+      },
+    })
+    .from(transactionsTable)
+    .leftJoin(walletsTable, eq(walletsTable.id, transactionsTable.walletId))
+    .leftJoin(usersTable, eq(usersTable.id, walletsTable.userId))
+    .where(
+      and(
+        typeFilter ? eq(transactionsTable.type as any, typeFilter) : undefined,
+        search
+          ? or(
+              ilike(usersTable.username, `%${search}%`),
+              ilike(usersTable.email, `%${search}%`),
+              ilike(transactionsTable.description, `%${search}%`)
+            )
+          : undefined
+      )
+    )
+    .orderBy(desc(transactionsTable.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  const [totalResult] = await db
+    .select({ count: count() })
+    .from(transactionsTable)
+    .leftJoin(walletsTable, eq(walletsTable.id, transactionsTable.walletId))
+    .leftJoin(usersTable, eq(usersTable.id, walletsTable.userId))
+    .where(
+      and(
+        typeFilter ? eq(transactionsTable.type as any, typeFilter) : undefined,
+        search
+          ? or(
+              ilike(usersTable.username, `%${search}%`),
+              ilike(usersTable.email, `%${search}%`),
+              ilike(transactionsTable.description, `%${search}%`)
+            )
+          : undefined
+      )
+    );
+
+  // Quick summary counts (unfiltered)
+  const [deposits] = await db.select({ count: count() }).from(transactionsTable).where(eq(transactionsTable.type as any, "credit"));
+  const [withdrawals] = await db.select({ count: count() }).from(transactionsTable).where(eq(transactionsTable.type as any, "debit"));
+  const [betsPlaced] = await db.select({ count: count() }).from(transactionsTable).where(eq(transactionsTable.type as any, "bet_placed"));
+
+  res.json({
+    transactions: rows.map((r) => ({
+      id: r.tx.id,
+      walletId: r.tx.walletId,
+      amount: parseFloat(r.tx.amount),
+      type: r.tx.type,
+      description: r.tx.description,
+      createdAt: r.tx.createdAt,
+      user: r.user,
+    })),
+    total: totalResult.count,
+    page,
+    limit,
+    summary: {
+      deposits: deposits.count,
+      withdrawals: withdrawals.count,
+      betsPlaced: betsPlaced.count,
+    },
+  });
 });
 
 export default router;
