@@ -1,22 +1,27 @@
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useGetMyWallet, useGetMyTransactions } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Wallet as WalletIcon, ArrowDownRight, ArrowUpRight, History as HistoryIcon, Plus, Minus, Ticket } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Wallet as WalletIcon, ArrowDownRight, ArrowUpRight, History as HistoryIcon,
+  Plus, Minus, Ticket, Clock, CheckCircle2, XCircle, Banknote,
+} from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 
-async function postWalletAction(path: string, token: string | null, amount: number) {
+async function postWalletAction(path: string, token: string | null, body: object) {
   const res = await fetch(path, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ amount }),
+    body: JSON.stringify(body),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Request failed");
@@ -25,28 +30,69 @@ async function postWalletAction(path: string, token: string | null, amount: numb
 
 const QUICK_AMOUNTS = [50, 100, 250, 500];
 
+interface Withdrawal {
+  id: number;
+  amount: number;
+  bankDetails: string;
+  status: "pending" | "approved" | "rejected" | "paid";
+  adminNote: string | null;
+  createdAt: string;
+}
+
+const STATUS_CONFIG = {
+  pending:  { label: "Pending",  cls: "bg-amber-500/15 text-amber-500 border-amber-500/30",        Icon: Clock },
+  approved: { label: "Approved", cls: "bg-blue-500/15 text-blue-500 border-blue-500/30",           Icon: CheckCircle2 },
+  rejected: { label: "Rejected", cls: "bg-destructive/15 text-destructive border-destructive/30",  Icon: XCircle },
+  paid:     { label: "Paid",     cls: "bg-primary/15 text-primary border-primary/30",              Icon: Banknote },
+};
+
+function StatusBadge({ status }: { status: Withdrawal["status"] }) {
+  const cfg = STATUS_CONFIG[status];
+  const Icon = cfg.Icon;
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${cfg.cls}`}>
+      <Icon className="w-3 h-3" /> {cfg.label}
+    </span>
+  );
+}
+
 export default function Wallet() {
   const { data: wallet, isLoading: isWalletLoading } = useGetMyWallet();
   const { data: transactionsData, isLoading: isTransactionsLoading } = useGetMyTransactions();
+  const { token } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
   const [depositAmount, setDepositAmount] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [bankDetails, setBankDetails] = useState("");
   const [isDepositing, setIsDepositing] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [activeTab, setActiveTab] = useState<"deposit" | "withdraw" | "voucher">("deposit");
   const [voucherCode, setVoucherCode] = useState("");
   const [isRedeeming, setIsRedeeming] = useState(false);
-  const { toast } = useToast();
-  const { token } = useAuth();
-  const queryClient = useQueryClient();
 
   const transactions = transactionsData?.transactions || [];
+
+  // Withdrawal history
+  const { data: withdrawals = [], isLoading: isWithdrawalsLoading } = useQuery<Withdrawal[]>({
+    queryKey: ["/api/wallet/withdrawals"],
+    queryFn: async () => {
+      const res = await fetch("/api/wallet/withdrawals", {
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      return data;
+    },
+  });
 
   const handleDeposit = async () => {
     const amount = parseFloat(depositAmount);
     if (!amount || amount <= 0) return;
     setIsDepositing(true);
     try {
-      await postWalletAction("/api/wallet/deposit", token, amount);
+      await postWalletAction("/api/wallet/deposit", token, { amount });
       toast({ title: "Deposit successful", description: `$${amount.toFixed(2)} added to your wallet.` });
       setDepositAmount("");
       queryClient.invalidateQueries({ queryKey: ["/api/wallet"] });
@@ -58,16 +104,35 @@ export default function Wallet() {
     }
   };
 
+  const handleWithdrawRequest = async () => {
+    const amount = parseFloat(withdrawAmount);
+    if (!amount || amount <= 0) return;
+    if (!bankDetails.trim()) {
+      toast({ title: "Bank details required", description: "Enter your bank or payment details.", variant: "destructive" });
+      return;
+    }
+    setIsWithdrawing(true);
+    try {
+      await postWalletAction("/api/wallet/withdrawal-request", token, { amount, bankDetails });
+      toast({ title: "Withdrawal requested", description: `$${amount.toFixed(2)} withdrawal submitted for review.` });
+      setWithdrawAmount("");
+      setBankDetails("");
+      queryClient.invalidateQueries({ queryKey: ["/api/wallet"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/wallet/withdrawals"] });
+    } catch (e: any) {
+      toast({ title: "Request failed", description: e.message, variant: "destructive" });
+    } finally {
+      setIsWithdrawing(false);
+    }
+  };
+
   const handleRedeemVoucher = async () => {
     if (!voucherCode.trim()) return;
     setIsRedeeming(true);
     try {
       const res = await fetch("/api/wallet/redeem-voucher", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ code: voucherCode.trim() }),
       });
       const data = await res.json();
@@ -80,23 +145,6 @@ export default function Wallet() {
       toast({ title: "Redemption failed", description: e.message, variant: "destructive" });
     } finally {
       setIsRedeeming(false);
-    }
-  };
-
-  const handleWithdraw = async () => {
-    const amount = parseFloat(withdrawAmount);
-    if (!amount || amount <= 0) return;
-    setIsWithdrawing(true);
-    try {
-      await postWalletAction("/api/wallet/withdraw", token, amount);
-      toast({ title: "Withdrawal successful", description: `$${amount.toFixed(2)} withdrawn from your wallet.` });
-      setWithdrawAmount("");
-      queryClient.invalidateQueries({ queryKey: ["/api/wallet"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/wallet/transactions"] });
-    } catch (e: any) {
-      toast({ title: "Withdrawal failed", description: e.message, variant: "destructive" });
-    } finally {
-      setIsWithdrawing(false);
     }
   };
 
@@ -125,36 +173,25 @@ export default function Wallet() {
         </Card>
       )}
 
+      {/* Action Tabs */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex gap-2">
             <button
               onClick={() => setActiveTab("deposit")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                activeTab === "deposit"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-accent/50 text-muted-foreground hover:bg-accent"
-              }`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${activeTab === "deposit" ? "bg-primary text-primary-foreground" : "bg-accent/50 text-muted-foreground hover:bg-accent"}`}
             >
               <Plus className="w-4 h-4" /> Deposit
             </button>
             <button
               onClick={() => setActiveTab("withdraw")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                activeTab === "withdraw"
-                  ? "bg-destructive text-destructive-foreground"
-                  : "bg-accent/50 text-muted-foreground hover:bg-accent"
-              }`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${activeTab === "withdraw" ? "bg-destructive text-destructive-foreground" : "bg-accent/50 text-muted-foreground hover:bg-accent"}`}
             >
               <Minus className="w-4 h-4" /> Withdraw
             </button>
             <button
               onClick={() => setActiveTab("voucher")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                activeTab === "voucher"
-                  ? "bg-amber-500 text-white"
-                  : "bg-accent/50 text-muted-foreground hover:bg-accent"
-              }`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${activeTab === "voucher" ? "bg-amber-500 text-white" : "bg-accent/50 text-muted-foreground hover:bg-accent"}`}
             >
               <Ticket className="w-4 h-4" /> Voucher
             </button>
@@ -162,34 +199,32 @@ export default function Wallet() {
         </CardHeader>
         <CardContent className="space-y-4">
           {activeTab === "voucher" ? (
-            <>
-              <div className="flex flex-col items-center gap-4 py-4">
-                <div className="w-16 h-16 rounded-full bg-amber-500/15 flex items-center justify-center">
-                  <Ticket className="w-8 h-8 text-amber-500" />
-                </div>
-                <div className="text-center">
-                  <p className="font-semibold mb-1">Redeem a Voucher</p>
-                  <p className="text-sm text-muted-foreground">Enter your 12-character voucher code to credit your wallet instantly</p>
-                </div>
-                <div className="flex gap-3 w-full max-w-sm">
-                  <Input
-                    placeholder="XXXX-XXXX-XXXX"
-                    value={voucherCode}
-                    onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
-                    onKeyDown={(e) => e.key === "Enter" && handleRedeemVoucher()}
-                    className="font-mono tracking-widest text-center uppercase"
-                    maxLength={20}
-                  />
-                  <Button
-                    onClick={handleRedeemVoucher}
-                    disabled={isRedeeming || !voucherCode.trim()}
-                    className="bg-amber-500 hover:bg-amber-600 text-white px-6"
-                  >
-                    {isRedeeming ? "..." : "Redeem"}
-                  </Button>
-                </div>
+            <div className="flex flex-col items-center gap-4 py-4">
+              <div className="w-16 h-16 rounded-full bg-amber-500/15 flex items-center justify-center">
+                <Ticket className="w-8 h-8 text-amber-500" />
               </div>
-            </>
+              <div className="text-center">
+                <p className="font-semibold mb-1">Redeem a Voucher</p>
+                <p className="text-sm text-muted-foreground">Enter your 12-character voucher code to credit your wallet instantly</p>
+              </div>
+              <div className="flex gap-3 w-full max-w-sm">
+                <Input
+                  placeholder="XXXX-XXXX-XXXX"
+                  value={voucherCode}
+                  onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => e.key === "Enter" && handleRedeemVoucher()}
+                  className="font-mono tracking-widest text-center uppercase"
+                  maxLength={20}
+                />
+                <Button
+                  onClick={handleRedeemVoucher}
+                  disabled={isRedeeming || !voucherCode.trim()}
+                  className="bg-amber-500 hover:bg-amber-600 text-white px-6"
+                >
+                  {isRedeeming ? "..." : "Redeem"}
+                </Button>
+              </div>
+            </div>
           ) : activeTab === "deposit" ? (
             <>
               <div className="flex gap-2 flex-wrap">
@@ -205,9 +240,7 @@ export default function Wallet() {
               </div>
               <div className="flex gap-3">
                 <Input
-                  type="number"
-                  min="1"
-                  max="10000"
+                  type="number" min="1" max="10000"
                   placeholder="Enter amount"
                   value={depositAmount}
                   onChange={(e) => setDepositAmount(e.target.value)}
@@ -220,43 +253,111 @@ export default function Wallet() {
               <p className="text-xs text-muted-foreground">Simulated deposit. Max $10,000 per transaction.</p>
             </>
           ) : (
-            <>
+            <div className="space-y-4">
+              <div className="flex gap-2 flex-wrap">
+                {QUICK_AMOUNTS.map((amt) => (
+                  <button
+                    key={amt}
+                    onClick={() => setWithdrawAmount(String(amt))}
+                    className="px-3 py-1.5 rounded-md border border-border text-sm font-medium hover:bg-destructive/10 hover:border-destructive/40 transition-colors"
+                  >
+                    ${amt}
+                  </button>
+                ))}
+              </div>
               <div className="flex gap-3">
                 <Input
-                  type="number"
-                  min="1"
+                  type="number" min="1"
                   placeholder="Enter amount"
                   value={withdrawAmount}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
                   className="text-lg font-semibold"
                 />
-                <Button
-                  variant="destructive"
-                  onClick={handleWithdraw}
-                  disabled={isWithdrawing || !withdrawAmount}
-                  className="px-8"
-                >
-                  {isWithdrawing ? "Processing..." : "Withdraw"}
-                </Button>
               </div>
-              <p className="text-xs text-muted-foreground">Simulated withdrawal. Must not exceed your balance.</p>
-            </>
+              <div>
+                <Label htmlFor="bankDetails" className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5 block">
+                  Bank / Payment Details
+                </Label>
+                <Textarea
+                  id="bankDetails"
+                  placeholder="e.g. Bank name, account number, account holder name — or your payment method details"
+                  value={bankDetails}
+                  onChange={(e) => setBankDetails(e.target.value)}
+                  rows={3}
+                  className="resize-none"
+                />
+              </div>
+              <Button
+                variant="destructive"
+                onClick={handleWithdrawRequest}
+                disabled={isWithdrawing || !withdrawAmount || !bankDetails.trim()}
+                className="w-full"
+              >
+                {isWithdrawing ? "Submitting..." : "Request Withdrawal"}
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Your balance is reserved immediately. An admin will review and process your request.
+              </p>
+            </div>
           )}
         </CardContent>
       </Card>
 
+      {/* Withdrawal History */}
+      <div>
+        <div className="flex items-center gap-2 mb-5">
+          <Banknote className="w-5 h-5 text-primary" />
+          <h2 className="text-2xl font-bold tracking-tight">My Withdrawals</h2>
+        </div>
+        {isWithdrawalsLoading ? (
+          <div className="space-y-3">{[1, 2].map((i) => <div key={i} className="h-20 bg-accent/50 rounded-lg animate-pulse" />)}</div>
+        ) : withdrawals.length === 0 ? (
+          <div className="py-10 text-center border border-dashed border-border rounded-xl">
+            <p className="text-muted-foreground">No withdrawal requests yet.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {withdrawals.map((w) => (
+              <div key={w.id} className="flex items-center justify-between p-4 rounded-xl border border-border bg-card">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-bold text-lg">${w.amount.toFixed(2)}</span>
+                    <StatusBadge status={w.status} />
+                  </div>
+                  <p className="text-xs text-muted-foreground line-clamp-1">{w.bankDetails}</p>
+                  <p className="text-xs text-muted-foreground">{format(new Date(w.createdAt), "PPP p")}</p>
+                  {w.status === "rejected" && w.adminNote && (
+                    <p className="text-xs text-destructive mt-1">Reason: {w.adminNote}</p>
+                  )}
+                  {w.status === "rejected" && (
+                    <p className="text-xs text-primary mt-1 font-medium">✓ Amount refunded to your wallet</p>
+                  )}
+                </div>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  w.status === "paid" ? "bg-primary/20 text-primary" :
+                  w.status === "approved" ? "bg-blue-500/20 text-blue-500" :
+                  w.status === "rejected" ? "bg-destructive/20 text-destructive" :
+                  "bg-amber-500/20 text-amber-500"
+                }`}>
+                  {w.status === "paid" ? <Banknote className="w-5 h-5" /> :
+                   w.status === "approved" ? <CheckCircle2 className="w-5 h-5" /> :
+                   w.status === "rejected" ? <XCircle className="w-5 h-5" /> :
+                   <Clock className="w-5 h-5" />}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Transaction History */}
       <div className="mt-4">
         <div className="flex items-center gap-2 mb-6">
           <HistoryIcon className="w-5 h-5 text-primary" />
           <h2 className="text-2xl font-bold tracking-tight">Transaction History</h2>
         </div>
-
         {isTransactionsLoading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 bg-accent/50 rounded-lg animate-pulse" />
-            ))}
-          </div>
+          <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-16 bg-accent/50 rounded-lg animate-pulse" />)}</div>
         ) : transactions.length === 0 ? (
           <div className="py-12 text-center border border-dashed border-border rounded-xl">
             <p className="text-muted-foreground">No transactions yet. Make your first deposit!</p>
@@ -264,18 +365,11 @@ export default function Wallet() {
         ) : (
           <div className="space-y-3">
             {transactions.map((tx) => {
-              const isCredit = ["credit", "bet_won", "bet_refund"].includes(tx.type);
+              const isCredit = ["credit", "bet_won", "bet_refund", "voucher_redeem"].includes(tx.type);
               return (
-                <div
-                  key={tx.id}
-                  className="flex items-center justify-between p-4 rounded-lg border border-border bg-card hover:bg-accent/20 transition-colors"
-                >
+                <div key={tx.id} className="flex items-center justify-between p-4 rounded-lg border border-border bg-card hover:bg-accent/20 transition-colors">
                   <div className="flex items-center gap-4">
-                    <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        isCredit ? "bg-primary/20 text-primary" : "bg-destructive/20 text-destructive"
-                      }`}
-                    >
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isCredit ? "bg-primary/20 text-primary" : "bg-destructive/20 text-destructive"}`}>
                       {isCredit ? <ArrowDownRight className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
                     </div>
                     <div>

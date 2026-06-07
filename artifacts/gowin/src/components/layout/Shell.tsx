@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
-import { Activity, LayoutDashboard, History, Wallet, Trophy, LogOut, Users, Settings, X, Plus, Trash2, ArrowLeftRight, Ticket, UserCircle, AlertTriangle } from "lucide-react";
+import { Activity, LayoutDashboard, History, Wallet, Trophy, LogOut, Users, Settings, X, Plus, Trash2, ArrowLeftRight, Ticket, UserCircle, AlertTriangle, Banknote } from "lucide-react";
 
 export function Shell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
@@ -74,6 +74,9 @@ export function Shell({ children }: { children: ReactNode }) {
                 </Link>
                 <Link href="/admin/vouchers" className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${location === '/admin/vouchers' ? 'bg-primary/10 text-primary' : 'hover:bg-accent hover:text-accent-foreground text-muted-foreground'}`}>
                   <Ticket className="w-4 h-4" /> Vouchers
+                </Link>
+                <Link href="/admin/withdrawals" className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${location === '/admin/withdrawals' ? 'bg-primary/10 text-primary' : 'hover:bg-accent hover:text-accent-foreground text-muted-foreground'}`}>
+                  <Banknote className="w-4 h-4" /> Withdrawals
                 </Link>
               </>
             )}
