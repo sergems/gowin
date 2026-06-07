@@ -61,6 +61,15 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
       });
       return;
     }
+
+    if (!(user as any).phoneNumber) {
+      toast({
+        title: "Phone number required",
+        description: "Go to your Profile and add a mobile number before placing bets.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     if (selections.length === 0 || stake <= 0) return;
 

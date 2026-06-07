@@ -8,6 +8,7 @@ import settleRouter from "./settle";
 import betsRouter from "./bets";
 import adminRouter from "./admin";
 import vouchersRouter from "./vouchers";
+import profileRouter from "./profile";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(settleRouter);
 router.use(betsRouter);
 router.use(adminRouter);
 router.use(vouchersRouter);
+router.use(profileRouter);
 
 export default router;

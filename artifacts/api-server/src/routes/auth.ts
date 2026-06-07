@@ -83,7 +83,16 @@ router.get("/auth/me", requireAuth, async (req: AuthRequest, res): Promise<void>
     res.status(401).json({ error: "User not found" });
     return;
   }
-  res.json({ id: user.id, username: user.username, email: user.email, role: user.role, createdAt: user.createdAt });
+  res.json({
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    role: user.role,
+    firstName: user.firstName ?? null,
+    lastName: user.lastName ?? null,
+    phoneNumber: user.phoneNumber ?? null,
+    createdAt: user.createdAt,
+  });
 });
 
 export default router;

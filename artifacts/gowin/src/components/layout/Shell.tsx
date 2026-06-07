@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
-import { Activity, LayoutDashboard, History, Wallet, Trophy, LogOut, Users, Settings, X, Plus, Trash2, ArrowLeftRight, Ticket } from "lucide-react";
+import { Activity, LayoutDashboard, History, Wallet, Trophy, LogOut, Users, Settings, X, Plus, Trash2, ArrowLeftRight, Ticket, UserCircle, AlertTriangle } from "lucide-react";
 
 export function Shell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
@@ -42,6 +42,12 @@ export function Shell({ children }: { children: ReactNode }) {
                 </Link>
                 <Link href="/wallet" className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${location.startsWith('/wallet') ? 'bg-primary/10 text-primary' : 'hover:bg-accent hover:text-accent-foreground text-muted-foreground'}`}>
                   <Wallet className="w-4 h-4" /> Wallet
+                </Link>
+                <Link href="/profile" className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${location.startsWith('/profile') ? 'bg-primary/10 text-primary' : 'hover:bg-accent hover:text-accent-foreground text-muted-foreground'}`}>
+                  <UserCircle className="w-4 h-4" /> Profile
+                  {!(user as any).phoneNumber && (
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500 ml-auto" />
+                  )}
                 </Link>
               </>
             )}
@@ -128,6 +134,17 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
         
         <ScrollArea className="flex-1 p-4">
+          {user && !(user as any).phoneNumber && (
+            <Link href="/profile">
+              <div className="flex items-start gap-2 p-3 rounded-lg border border-amber-500/40 bg-amber-500/10 mb-4 cursor-pointer hover:bg-amber-500/15 transition-colors">
+                <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-amber-500">Phone required to bet</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Tap to complete your profile</p>
+                </div>
+              </div>
+            </Link>
+          )}
           {selections.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-4 mt-20">
               <div className="w-16 h-16 rounded-full bg-accent flex items-center justify-center">

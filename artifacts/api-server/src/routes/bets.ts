@@ -20,6 +20,12 @@ router.post("/bets", requireAuth, async (req: AuthRequest, res): Promise<void> =
   }
   const { stake, selections } = parsed.data;
 
+  const [userRecord] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
+  if (!userRecord?.phoneNumber) {
+    res.status(403).json({ error: "You must set your phone number in your profile before placing bets." });
+    return;
+  }
+
   const [wallet] = await db.select().from(walletsTable).where(eq(walletsTable.userId, req.userId!)).limit(1);
   if (!wallet || parseFloat(wallet.balance) < stake) {
     res.status(400).json({ error: "Insufficient wallet balance" });

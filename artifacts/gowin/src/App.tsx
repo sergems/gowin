@@ -15,6 +15,7 @@ import SportsHub from "@/pages/sports";
 import FixtureDetail from "@/pages/fixture-detail";
 import History from "@/pages/history";
 import Wallet from "@/pages/wallet";
+import Profile from "@/pages/profile";
 
 // Admin Pages
 import AdminDashboard from "@/pages/admin/dashboard";
@@ -55,6 +56,7 @@ function Router() {
         <Route path="/fixtures/:id" component={FixtureDetail} />
         <Route path="/history" component={() => <ProtectedRoute component={History} />} />
         <Route path="/wallet" component={() => <ProtectedRoute component={Wallet} />} />
+        <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
         
         <Route path="/admin" component={() => <ProtectedRoute component={AdminDashboard} adminOnly />} />
         <Route path="/admin/users" component={() => <ProtectedRoute component={AdminUsers} adminOnly />} />
