@@ -1,0 +1,293 @@
+Sports Betting Platform (GoWin)
+
+Build a full-stack sports betting platform prototype using modern best practices.
+
+Technology Stack
+
+Frontend:
+
+React
+TypeScript
+Vite
+TailwindCSS
+React Router
+TanStack Query
+
+Backend:
+
+Node.js
+NestJS
+Prisma ORM
+PostgreSQL
+
+Authentication:
+
+JWT Authentication
+Password hashing with bcrypt
+
+Database:
+
+PostgreSQL
+
+Deployment:
+
+Frontend and backend in the same project
+Environment variable support
+Project Goal
+
+Create a sportsbook platform prototype that supports:
+
+User registration and login
+User wallets
+Sports fixtures
+Live odds
+Bet slip
+Single bets
+Accumulator bets
+Bet settlement
+User betting history
+Admin dashboard
+
+No payment gateways are required initially.
+
+Wallets will be funded manually through the admin dashboard.
+
+User Roles
+User
+
+Users can:
+
+Register
+Login
+View profile
+View wallet balance
+View sports fixtures
+View odds
+Add selections to bet slip
+Place bets
+View betting history
+View settled bets
+Admin
+
+Admins can:
+
+Login
+View all users
+Credit wallets
+Debit wallets
+View all bets
+Settle bets manually
+Manage sports and fixtures
+View statistics
+Database Design
+
+Create Prisma models for:
+
+Users
+id
+username
+email
+passwordHash
+role
+createdAt
+Wallets
+id
+userId
+balance
+Transactions
+id
+walletId
+amount
+type
+description
+createdAt
+Sports
+id
+name
+Leagues
+id
+sportId
+name
+Teams
+id
+name
+logo
+Fixtures
+id
+leagueId
+homeTeamId
+awayTeamId
+startTime
+status
+scoreHome
+scoreAway
+Markets
+id
+fixtureId
+marketType
+Odds
+id
+marketId
+selection
+oddsValue
+Bets
+id
+userId
+stake
+totalOdds
+potentialWin
+status
+createdAt
+BetSelections
+id
+betId
+fixtureId
+market
+selection
+odds
+Authentication
+
+Implement:
+
+Register
+Login
+Logout
+JWT authentication
+Protected routes
+Role-based access control
+Sportsbook Features
+
+Create pages:
+
+Home Page
+
+Display:
+
+Featured fixtures
+Popular events
+Live events
+Sports Page
+
+Display:
+
+Sports list
+Leagues
+Fixtures
+Fixture Details
+
+Display:
+
+Teams
+Start time
+Available markets
+Odds
+Bet Slip
+
+Allow:
+
+Add selection
+Remove selection
+Calculate total odds
+Enter stake
+Calculate potential winnings
+Betting History
+
+Display:
+
+Pending bets
+Won bets
+Lost bets
+Bet details
+Wallet System
+
+Create wallet functionality.
+
+Users should have:
+
+Current balance
+Transaction history
+
+Admin should be able to:
+
+Credit wallets
+Debit wallets
+
+No payment integration yet.
+
+Bet Engine
+
+When placing a bet:
+
+Store current odds
+Calculate total odds
+Calculate potential payout
+Deduct stake from wallet
+
+Support:
+
+Single bets
+Multi-bets (accumulators)
+Settlement Engine
+
+Create settlement service.
+
+Admin can:
+
+Mark fixture result
+Settle bets
+
+Bet statuses:
+
+Pending
+Won
+Lost
+Void
+
+When a bet wins:
+
+Credit wallet automatically
+Admin Dashboard
+
+Create dashboard showing:
+
+Total users
+Total bets
+Pending bets
+Won bets
+Lost bets
+Total turnover
+
+Admin pages:
+
+User Management
+Wallet Management
+Fixtures Management
+Bet Management
+API Integration Ready
+
+Create services prepared for integration with external sports APIs.
+
+Add placeholder services:
+
+Fixtures Sync Service
+Odds Sync Service
+Results Sync Service
+
+These should be designed so an external API can easily be connected later.
+
+UI Requirements
+
+Design should resemble a modern sportsbook.
+
+Include:
+
+Dark theme
+Responsive mobile layout
+Sidebar navigation
+Top navigation
+Betting slip panel
+Dashboard cards
+Tables for bets
+Fixture cards
+
+Use a professional sportsbook appearance similar to major betting platforms.

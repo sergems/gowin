@@ -3,20 +3,31 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: GoWin Sports Betting Platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: users
+    description: User management
+  - name: wallet
+    description: Wallet operations
+  - name: sports
+    description: Sports, leagues, fixtures
+  - name: bets
+    description: Bet placement and history
+  - name: admin
+    description: Admin operations
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +35,1328 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ── Auth ──────────────────────────────────────────────────────────────────
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Email or username already taken
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login and get JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Users ─────────────────────────────────────────────────────────────────
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users, admin]
+      summary: List all users (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserListResponse"
+
+  /users/{id}:
+    get:
+      operationId: getUser
+      tags: [users, admin]
+      summary: Get user by ID (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Wallet ────────────────────────────────────────────────────────────────
+  /wallet:
+    get:
+      operationId: getMyWallet
+      tags: [wallet]
+      summary: Get current user wallet
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Wallet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Wallet"
+
+  /wallet/transactions:
+    get:
+      operationId: getMyTransactions
+      tags: [wallet]
+      summary: Get current user transaction history
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Transactions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionListResponse"
+
+  /wallet/credit:
+    post:
+      operationId: creditWallet
+      tags: [wallet, admin]
+      summary: Credit a user wallet (admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WalletAdjustInput"
+      responses:
+        "200":
+          description: Updated wallet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Wallet"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /wallet/debit:
+    post:
+      operationId: debitWallet
+      tags: [wallet, admin]
+      summary: Debit a user wallet (admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WalletAdjustInput"
+      responses:
+        "200":
+          description: Updated wallet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Wallet"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /wallet/user/{userId}:
+    get:
+      operationId: getUserWallet
+      tags: [wallet, admin]
+      summary: Get wallet for a specific user (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Wallet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Wallet"
+
+  # ── Sports ────────────────────────────────────────────────────────────────
+  /sports:
+    get:
+      operationId: listSports
+      tags: [sports]
+      summary: List all sports
+      responses:
+        "200":
+          description: Sports list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Sport"
+    post:
+      operationId: createSport
+      tags: [sports, admin]
+      summary: Create a sport (admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SportInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sport"
+
+  /leagues:
+    get:
+      operationId: listLeagues
+      tags: [sports]
+      summary: List leagues, optionally filtered by sport
+      parameters:
+        - name: sportId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Leagues
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/League"
+    post:
+      operationId: createLeague
+      tags: [sports, admin]
+      summary: Create a league (admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeagueInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/League"
+
+  /teams:
+    get:
+      operationId: listTeams
+      tags: [sports]
+      summary: List teams
+      responses:
+        "200":
+          description: Teams
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Team"
+    post:
+      operationId: createTeam
+      tags: [sports, admin]
+      summary: Create a team (admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeamInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+
+  /fixtures:
+    get:
+      operationId: listFixtures
+      tags: [sports]
+      summary: List fixtures
+      parameters:
+        - name: leagueId
+          in: query
+          schema:
+            type: integer
+        - name: sportId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [upcoming, live, finished]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Fixtures
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FixtureListResponse"
+    post:
+      operationId: createFixture
+      tags: [sports, admin]
+      summary: Create a fixture (admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FixtureInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Fixture"
+
+  /fixtures/{id}:
+    get:
+      operationId: getFixture
+      tags: [sports]
+      summary: Get fixture with markets and odds
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Fixture detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FixtureDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateFixture
+      tags: [sports, admin]
+      summary: Update fixture (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FixtureUpdate"
+      responses:
+        "200":
+          description: Updated fixture
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Fixture"
+
+  /fixtures/{id}/settle:
+    post:
+      operationId: settleFixture
+      tags: [sports, admin]
+      summary: Settle all bets for a fixture (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettleFixtureInput"
+      responses:
+        "200":
+          description: Settlement result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettleResult"
+
+  # ── Markets / Odds ────────────────────────────────────────────────────────
+  /markets:
+    post:
+      operationId: createMarket
+      tags: [sports, admin]
+      summary: Create a market for a fixture (admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarketInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Market"
+
+  /odds/{id}:
+    patch:
+      operationId: updateOdds
+      tags: [sports, admin]
+      summary: Update odds value (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OddsUpdate"
+      responses:
+        "200":
+          description: Updated odds
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Odds"
+
+  # ── Bets ──────────────────────────────────────────────────────────────────
+  /bets:
+    post:
+      operationId: placeBet
+      tags: [bets]
+      summary: Place a single or accumulator bet
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BetInput"
+      responses:
+        "201":
+          description: Bet placed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bet"
+        "400":
+          description: Insufficient funds or validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    get:
+      operationId: listAllBets
+      tags: [bets, admin]
+      summary: List all bets (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, won, lost, void]
+        - name: userId
+          in: query
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Bets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BetListResponse"
+
+  /bets/my:
+    get:
+      operationId: getMyBets
+      tags: [bets]
+      summary: Get current user's bets
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, won, lost, void]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: My bets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BetListResponse"
+
+  /bets/{id}:
+    get:
+      operationId: getBet
+      tags: [bets]
+      summary: Get bet details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Bet detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BetDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /bets/{id}/void:
+    patch:
+      operationId: voidBet
+      tags: [bets, admin]
+      summary: Void a bet (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Voided bet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bet"
+
+  # ── Admin Stats ───────────────────────────────────────────────────────────
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [admin]
+      summary: Get platform statistics (admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+
+  /admin/recent-bets:
+    get:
+      operationId: getRecentBets
+      tags: [admin]
+      summary: Get most recent bets across all users (admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Recent bets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Bet"
+
+  /admin/top-fixtures:
+    get:
+      operationId: getTopFixtures
+      tags: [admin]
+      summary: Get fixtures with most betting activity (admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Top fixtures
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FixtureBetSummary"
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    # ── Auth ──────────────────────────────────────────────────────────────
+    RegisterInput:
+      type: object
+      required: [username, email, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      required: [token, user]
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+
+    # ── User ──────────────────────────────────────────────────────────────
+    User:
+      type: object
+      required: [id, username, email, role, createdAt]
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [user, admin]
+        createdAt:
+          type: string
+          format: date-time
+
+    UserDetail:
+      type: object
+      required: [id, username, email, role, createdAt, wallet]
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [user, admin]
+        createdAt:
+          type: string
+          format: date-time
+        wallet:
+          $ref: "#/components/schemas/Wallet"
+
+    UserListResponse:
+      type: object
+      required: [users, total, page, limit]
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserDetail"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    # ── Wallet ────────────────────────────────────────────────────────────
+    Wallet:
+      type: object
+      required: [id, userId, balance]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        balance:
+          type: number
+          format: double
+
+    Transaction:
+      type: object
+      required: [id, walletId, amount, type, description, createdAt]
+      properties:
+        id:
+          type: integer
+        walletId:
+          type: integer
+        amount:
+          type: number
+          format: double
+        type:
+          type: string
+          enum: [credit, debit, bet_placed, bet_won, bet_refund]
+        description:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    TransactionListResponse:
+      type: object
+      required: [transactions, total, page, limit]
+      properties:
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transaction"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    WalletAdjustInput:
+      type: object
+      required: [userId, amount, description]
+      properties:
+        userId:
+          type: integer
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+        description:
+          type: string
+
+    # ── Sports ────────────────────────────────────────────────────────────
+    Sport:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        icon:
+          type: ["string", "null"]
+
+    SportInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        icon:
+          type: string
+
+    League:
+      type: object
+      required: [id, sportId, name]
+      properties:
+        id:
+          type: integer
+        sportId:
+          type: integer
+        name:
+          type: string
+        sport:
+          $ref: "#/components/schemas/Sport"
+
+    LeagueInput:
+      type: object
+      required: [sportId, name]
+      properties:
+        sportId:
+          type: integer
+        name:
+          type: string
+
+    Team:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        logo:
+          type: ["string", "null"]
+
+    TeamInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        logo:
+          type: string
+
+    Fixture:
+      type: object
+      required: [id, leagueId, homeTeamId, awayTeamId, startTime, status]
+      properties:
+        id:
+          type: integer
+        leagueId:
+          type: integer
+        homeTeamId:
+          type: integer
+        awayTeamId:
+          type: integer
+        startTime:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [upcoming, live, finished, cancelled]
+        scoreHome:
+          type: ["integer", "null"]
+        scoreAway:
+          type: ["integer", "null"]
+        league:
+          $ref: "#/components/schemas/League"
+        homeTeam:
+          $ref: "#/components/schemas/Team"
+        awayTeam:
+          $ref: "#/components/schemas/Team"
+
+    FixtureDetail:
+      type: object
+      required: [id, leagueId, homeTeamId, awayTeamId, startTime, status, markets]
+      properties:
+        id:
+          type: integer
+        leagueId:
+          type: integer
+        homeTeamId:
+          type: integer
+        awayTeamId:
+          type: integer
+        startTime:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [upcoming, live, finished, cancelled]
+        scoreHome:
+          type: ["integer", "null"]
+        scoreAway:
+          type: ["integer", "null"]
+        league:
+          $ref: "#/components/schemas/League"
+        homeTeam:
+          $ref: "#/components/schemas/Team"
+        awayTeam:
+          $ref: "#/components/schemas/Team"
+        markets:
+          type: array
+          items:
+            $ref: "#/components/schemas/Market"
+
+    FixtureListResponse:
+      type: object
+      required: [fixtures, total, page, limit]
+      properties:
+        fixtures:
+          type: array
+          items:
+            $ref: "#/components/schemas/Fixture"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    FixtureInput:
+      type: object
+      required: [leagueId, homeTeamId, awayTeamId, startTime]
+      properties:
+        leagueId:
+          type: integer
+        homeTeamId:
+          type: integer
+        awayTeamId:
+          type: integer
+        startTime:
+          type: string
+          format: date-time
+
+    FixtureUpdate:
       type: object
       properties:
         status:
           type: string
-      required:
-        - status
+          enum: [upcoming, live, finished, cancelled]
+        scoreHome:
+          type: integer
+        scoreAway:
+          type: integer
+        startTime:
+          type: string
+          format: date-time
 
+    SettleFixtureInput:
+      type: object
+      required: [scoreHome, scoreAway]
+      properties:
+        scoreHome:
+          type: integer
+        scoreAway:
+          type: integer
+
+    SettleResult:
+      type: object
+      required: [betsSettled, betsWon, betsLost, totalPayout]
+      properties:
+        betsSettled:
+          type: integer
+        betsWon:
+          type: integer
+        betsLost:
+          type: integer
+        totalPayout:
+          type: number
+          format: double
+
+    FixtureBetSummary:
+      type: object
+      required: [fixture, totalBets, totalStake]
+      properties:
+        fixture:
+          $ref: "#/components/schemas/Fixture"
+        totalBets:
+          type: integer
+        totalStake:
+          type: number
+          format: double
+
+    # ── Markets & Odds ────────────────────────────────────────────────────
+    Odds:
+      type: object
+      required: [id, marketId, selection, oddsValue]
+      properties:
+        id:
+          type: integer
+        marketId:
+          type: integer
+        selection:
+          type: string
+        oddsValue:
+          type: number
+          format: double
+
+    Market:
+      type: object
+      required: [id, fixtureId, marketType, odds]
+      properties:
+        id:
+          type: integer
+        fixtureId:
+          type: integer
+        marketType:
+          type: string
+        odds:
+          type: array
+          items:
+            $ref: "#/components/schemas/Odds"
+
+    MarketInput:
+      type: object
+      required: [fixtureId, marketType, selections]
+      properties:
+        fixtureId:
+          type: integer
+        marketType:
+          type: string
+        selections:
+          type: array
+          items:
+            $ref: "#/components/schemas/OddsInput"
+
+    OddsInput:
+      type: object
+      required: [selection, oddsValue]
+      properties:
+        selection:
+          type: string
+        oddsValue:
+          type: number
+          format: double
+
+    OddsUpdate:
+      type: object
+      required: [oddsValue]
+      properties:
+        oddsValue:
+          type: number
+          format: double
+
+    # ── Bets ──────────────────────────────────────────────────────────────
+    BetSelectionInput:
+      type: object
+      required: [oddsId, fixtureId, market, selection, odds]
+      properties:
+        oddsId:
+          type: integer
+        fixtureId:
+          type: integer
+        market:
+          type: string
+        selection:
+          type: string
+        odds:
+          type: number
+          format: double
+
+    BetInput:
+      type: object
+      required: [stake, selections]
+      properties:
+        stake:
+          type: number
+          format: double
+          minimum: 0.01
+        selections:
+          type: array
+          items:
+            $ref: "#/components/schemas/BetSelectionInput"
+          minItems: 1
+
+    BetSelection:
+      type: object
+      required: [id, betId, fixtureId, market, selection, odds]
+      properties:
+        id:
+          type: integer
+        betId:
+          type: integer
+        fixtureId:
+          type: integer
+        market:
+          type: string
+        selection:
+          type: string
+        odds:
+          type: number
+          format: double
+        fixture:
+          $ref: "#/components/schemas/Fixture"
+
+    Bet:
+      type: object
+      required: [id, userId, stake, totalOdds, potentialWin, status, createdAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        stake:
+          type: number
+          format: double
+        totalOdds:
+          type: number
+          format: double
+        potentialWin:
+          type: number
+          format: double
+        status:
+          type: string
+          enum: [pending, won, lost, void]
+        createdAt:
+          type: string
+          format: date-time
+        user:
+          $ref: "#/components/schemas/User"
+
+    BetDetail:
+      type: object
+      required: [id, userId, stake, totalOdds, potentialWin, status, createdAt, selections]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        stake:
+          type: number
+          format: double
+        totalOdds:
+          type: number
+          format: double
+        potentialWin:
+          type: number
+          format: double
+        status:
+          type: string
+          enum: [pending, won, lost, void]
+        createdAt:
+          type: string
+          format: date-time
+        user:
+          $ref: "#/components/schemas/User"
+        selections:
+          type: array
+          items:
+            $ref: "#/components/schemas/BetSelection"
+
+    BetListResponse:
+      type: object
+      required: [bets, total, page, limit]
+      properties:
+        bets:
+          type: array
+          items:
+            $ref: "#/components/schemas/Bet"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    # ── Admin ─────────────────────────────────────────────────────────────
+    AdminStats:
+      type: object
+      required:
+        - totalUsers
+        - totalBets
+        - pendingBets
+        - wonBets
+        - lostBets
+        - voidBets
+        - totalTurnover
+        - totalPayout
+        - totalActiveFixtures
+        - totalLiveFixtures
+      properties:
+        totalUsers:
+          type: integer
+        totalBets:
+          type: integer
+        pendingBets:
+          type: integer
+        wonBets:
+          type: integer
+        lostBets:
+          type: integer
+        voidBets:
+          type: integer
+        totalTurnover:
+          type: number
+          format: double
+        totalPayout:
+          type: number
+          format: double
+        totalActiveFixtures:
+          type: integer
+        totalLiveFixtures:
+          type: integer
