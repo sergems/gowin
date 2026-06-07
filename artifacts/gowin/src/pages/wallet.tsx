@@ -4,7 +4,7 @@ import { useGetMyWallet, useGetMyTransactions } from "@workspace/api-client-reac
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Wallet as WalletIcon, ArrowDownRight, ArrowUpRight, History as HistoryIcon, Plus, Minus } from "lucide-react";
+import { Wallet as WalletIcon, ArrowDownRight, ArrowUpRight, History as HistoryIcon, Plus, Minus, Ticket } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -32,7 +32,9 @@ export default function Wallet() {
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [isDepositing, setIsDepositing] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
-  const [activeTab, setActiveTab] = useState<"deposit" | "withdraw">("deposit");
+  const [activeTab, setActiveTab] = useState<"deposit" | "withdraw" | "voucher">("deposit");
+  const [voucherCode, setVoucherCode] = useState("");
+  const [isRedeeming, setIsRedeeming] = useState(false);
   const { toast } = useToast();
   const { token } = useAuth();
   const queryClient = useQueryClient();
@@ -53,6 +55,31 @@ export default function Wallet() {
       toast({ title: "Deposit failed", description: e.message, variant: "destructive" });
     } finally {
       setIsDepositing(false);
+    }
+  };
+
+  const handleRedeemVoucher = async () => {
+    if (!voucherCode.trim()) return;
+    setIsRedeeming(true);
+    try {
+      const res = await fetch("/api/wallet/redeem-voucher", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ code: voucherCode.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Redemption failed");
+      toast({ title: "Voucher redeemed!", description: `$${data.amount.toFixed(2)} added to your wallet.` });
+      setVoucherCode("");
+      queryClient.invalidateQueries({ queryKey: ["/api/wallet"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/wallet/transactions"] });
+    } catch (e: any) {
+      toast({ title: "Redemption failed", description: e.message, variant: "destructive" });
+    } finally {
+      setIsRedeeming(false);
     }
   };
 
@@ -121,10 +148,49 @@ export default function Wallet() {
             >
               <Minus className="w-4 h-4" /> Withdraw
             </button>
+            <button
+              onClick={() => setActiveTab("voucher")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                activeTab === "voucher"
+                  ? "bg-amber-500 text-white"
+                  : "bg-accent/50 text-muted-foreground hover:bg-accent"
+              }`}
+            >
+              <Ticket className="w-4 h-4" /> Voucher
+            </button>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {activeTab === "deposit" ? (
+          {activeTab === "voucher" ? (
+            <>
+              <div className="flex flex-col items-center gap-4 py-4">
+                <div className="w-16 h-16 rounded-full bg-amber-500/15 flex items-center justify-center">
+                  <Ticket className="w-8 h-8 text-amber-500" />
+                </div>
+                <div className="text-center">
+                  <p className="font-semibold mb-1">Redeem a Voucher</p>
+                  <p className="text-sm text-muted-foreground">Enter your 12-character voucher code to credit your wallet instantly</p>
+                </div>
+                <div className="flex gap-3 w-full max-w-sm">
+                  <Input
+                    placeholder="XXXX-XXXX-XXXX"
+                    value={voucherCode}
+                    onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => e.key === "Enter" && handleRedeemVoucher()}
+                    className="font-mono tracking-widest text-center uppercase"
+                    maxLength={20}
+                  />
+                  <Button
+                    onClick={handleRedeemVoucher}
+                    disabled={isRedeeming || !voucherCode.trim()}
+                    className="bg-amber-500 hover:bg-amber-600 text-white px-6"
+                  >
+                    {isRedeeming ? "..." : "Redeem"}
+                  </Button>
+                </div>
+              </div>
+            </>
+          ) : activeTab === "deposit" ? (
             <>
               <div className="flex gap-2 flex-wrap">
                 {QUICK_AMOUNTS.map((amt) => (

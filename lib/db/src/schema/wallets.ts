@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, numeric, timestamp, text, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, numeric, timestamp, text, pgEnum, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -9,6 +9,7 @@ export const transactionTypeEnum = pgEnum("transaction_type", [
   "bet_placed",
   "bet_won",
   "bet_refund",
+  "voucher_redeem",
 ]);
 
 export const walletsTable = pgTable("wallets", {
@@ -25,6 +26,20 @@ export const transactionsTable = pgTable("transactions", {
   description: text("description").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const vouchersTable = pgTable("vouchers", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  value: numeric("value", { precision: 10, scale: 2 }).notNull(),
+  isRedeemed: boolean("is_redeemed").notNull().default(false),
+  redeemedBy: integer("redeemed_by").references(() => usersTable.id, { onDelete: "set null" }),
+  redeemedAt: timestamp("redeemed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const insertVoucherSchema = createInsertSchema(vouchersTable).omit({ id: true, createdAt: true });
+export type InsertVoucher = z.infer<typeof insertVoucherSchema>;
+export type Voucher = typeof vouchersTable.$inferSelect;
 
 export const insertWalletSchema = createInsertSchema(walletsTable).omit({ id: true });
 export type InsertWallet = z.infer<typeof insertWalletSchema>;
