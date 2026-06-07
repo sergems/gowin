@@ -7,15 +7,17 @@ const router = Router();
 
 // ── User: request a withdrawal ──────────────────────────────────────────────
 router.post("/wallet/withdrawal-request", requireAuth, async (req: AuthRequest, res): Promise<void> => {
-  const { amount, bankDetails } = req.body;
+  const { amount } = req.body;
   const parsedAmount = parseFloat(amount);
 
   if (!parsedAmount || parsedAmount <= 0) {
     res.status(400).json({ error: "Invalid withdrawal amount" });
     return;
   }
-  if (!bankDetails || typeof bankDetails !== "string" || !bankDetails.trim()) {
-    res.status(400).json({ error: "Bank/payment details are required" });
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
+  if (!user?.phoneNumber) {
+    res.status(403).json({ error: "You must set your phone number in your profile before requesting a withdrawal." });
     return;
   }
 
@@ -40,7 +42,7 @@ router.post("/wallet/withdrawal-request", requireAuth, async (req: AuthRequest, 
     .values({
       userId: req.userId!,
       amount: parsedAmount.toFixed(2),
-      bankDetails: bankDetails.trim(),
+      bankDetails: user.phoneNumber,
       status: "pending",
     })
     .returning();

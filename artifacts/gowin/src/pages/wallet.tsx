@@ -4,11 +4,9 @@ import { useGetMyWallet, useGetMyTransactions } from "@workspace/api-client-reac
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Wallet as WalletIcon, ArrowDownRight, ArrowUpRight, History as HistoryIcon,
-  Plus, Minus, Ticket, Clock, CheckCircle2, XCircle, Banknote,
+  Plus, Minus, Ticket, Clock, CheckCircle2, XCircle, Banknote, Phone, AlertTriangle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -59,13 +57,12 @@ function StatusBadge({ status }: { status: Withdrawal["status"] }) {
 export default function Wallet() {
   const { data: wallet, isLoading: isWalletLoading } = useGetMyWallet();
   const { data: transactionsData, isLoading: isTransactionsLoading } = useGetMyTransactions();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const [depositAmount, setDepositAmount] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [bankDetails, setBankDetails] = useState("");
   const [isDepositing, setIsDepositing] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [activeTab, setActiveTab] = useState<"deposit" | "withdraw" | "voucher">("deposit");
@@ -107,16 +104,11 @@ export default function Wallet() {
   const handleWithdrawRequest = async () => {
     const amount = parseFloat(withdrawAmount);
     if (!amount || amount <= 0) return;
-    if (!bankDetails.trim()) {
-      toast({ title: "Bank details required", description: "Enter your bank or payment details.", variant: "destructive" });
-      return;
-    }
     setIsWithdrawing(true);
     try {
-      await postWalletAction("/api/wallet/withdrawal-request", token, { amount, bankDetails });
+      await postWalletAction("/api/wallet/withdrawal-request", token, { amount });
       toast({ title: "Withdrawal requested", description: `$${amount.toFixed(2)} withdrawal submitted for review.` });
       setWithdrawAmount("");
-      setBankDetails("");
       queryClient.invalidateQueries({ queryKey: ["/api/wallet"] });
       queryClient.invalidateQueries({ queryKey: ["/api/wallet/withdrawals"] });
     } catch (e: any) {
@@ -254,6 +246,23 @@ export default function Wallet() {
             </>
           ) : (
             <div className="space-y-4">
+              {/* Payment destination */}
+              <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-accent/30">
+                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                  <Phone className="w-4 h-4 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">Payment will be sent to</p>
+                  <p className="font-semibold">
+                    {(user as any)?.phoneNumber ?? (
+                      <span className="text-amber-500 text-sm flex items-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5" /> No phone number set — go to Profile first
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
               <div className="flex gap-2 flex-wrap">
                 {QUICK_AMOUNTS.map((amt) => (
                   <button
@@ -272,25 +281,13 @@ export default function Wallet() {
                   value={withdrawAmount}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
                   className="text-lg font-semibold"
-                />
-              </div>
-              <div>
-                <Label htmlFor="bankDetails" className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5 block">
-                  Bank / Payment Details
-                </Label>
-                <Textarea
-                  id="bankDetails"
-                  placeholder="e.g. Bank name, account number, account holder name — or your payment method details"
-                  value={bankDetails}
-                  onChange={(e) => setBankDetails(e.target.value)}
-                  rows={3}
-                  className="resize-none"
+                  disabled={!(user as any)?.phoneNumber}
                 />
               </div>
               <Button
                 variant="destructive"
                 onClick={handleWithdrawRequest}
-                disabled={isWithdrawing || !withdrawAmount || !bankDetails.trim()}
+                disabled={isWithdrawing || !withdrawAmount || !(user as any)?.phoneNumber}
                 className="w-full"
               >
                 {isWithdrawing ? "Submitting..." : "Request Withdrawal"}
