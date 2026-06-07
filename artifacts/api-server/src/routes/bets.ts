@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, betsTable, betSelectionsTable, walletsTable, transactionsTable, oddsTable, fixturesTable, usersTable } from "@workspace/db";
+import { db, betsTable, betSelectionsTable, walletsTable, transactionsTable, oddsTable, fixturesTable, usersTable, teamsTable } from "@workspace/db";
 import { eq, desc, and, count, inArray, sql } from "drizzle-orm";
 import { requireAuth, requireAdmin, type AuthRequest } from "../middlewares/auth";
 import {
@@ -98,8 +98,44 @@ router.get("/bets/my", requireAuth, async (req: AuthRequest, res): Promise<void>
   const [user] = await db.select({ id: usersTable.id, username: usersTable.username, email: usersTable.email, role: usersTable.role, createdAt: usersTable.createdAt })
     .from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
 
+  // Enrich each bet with its selections and fixture/team info
+  const betIds = bets.map((b) => b.id);
+  const allSelections = betIds.length > 0
+    ? await db.select().from(betSelectionsTable).where(inArray(betSelectionsTable.betId, betIds))
+    : [];
+
+  const fixtureIds = [...new Set(allSelections.map((s) => s.fixtureId))];
+  const allFixtures = fixtureIds.length > 0
+    ? await db.select().from(fixturesTable).where(inArray(fixturesTable.id, fixtureIds))
+    : [];
+
+  const teamIds = [...new Set([...allFixtures.map((f) => f.homeTeamId), ...allFixtures.map((f) => f.awayTeamId)])];
+  const allTeams = teamIds.length > 0
+    ? await db.select().from(teamsTable).where(inArray(teamsTable.id, teamIds))
+    : [];
+
+  const teamMap = Object.fromEntries(allTeams.map((t) => [t.id, t]));
+  const fixtureMap = Object.fromEntries(allFixtures.map((f) => [f.id, {
+    ...f,
+    homeTeam: teamMap[f.homeTeamId] || null,
+    awayTeam: teamMap[f.awayTeamId] || null,
+  }]));
+  const selectionsByBet: Record<number, any[]> = {};
+  for (const s of allSelections) {
+    if (!selectionsByBet[s.betId]) selectionsByBet[s.betId] = [];
+    selectionsByBet[s.betId].push({
+      id: s.id,
+      betId: s.betId,
+      fixtureId: s.fixtureId,
+      market: s.market,
+      selection: s.selection,
+      odds: parseFloat(s.odds),
+      fixture: fixtureMap[s.fixtureId] || null,
+    });
+  }
+
   res.json({
-    bets: bets.map((b) => formatBet(b, user)),
+    bets: bets.map((b) => ({ ...formatBet(b, user), selections: selectionsByBet[b.id] || [] })),
     total: totalResult.count,
     page,
     limit,
