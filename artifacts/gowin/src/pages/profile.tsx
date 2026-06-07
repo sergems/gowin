@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { User, Phone, Lock, CheckCircle, AlertTriangle } from "lucide-react";
+import { User, Phone, Lock, CheckCircle, AlertTriangle, Hash } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface ProfileData {
   id: number;
+  publicId: number | null;
   username: string;
   email: string;
   role: string;
@@ -43,6 +44,18 @@ async function patchProfile(token: string | null, body: object): Promise<Profile
   return data;
 }
 
+function LockedField({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
+  return (
+    <div>
+      <Label className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5 block">{label}</Label>
+      <div className="relative">
+        <Input value={value} disabled className="opacity-70 pr-10" />
+        <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+      </div>
+    </div>
+  );
+}
+
 export default function Profile() {
   const { token } = useAuth();
   const { toast } = useToast();
@@ -71,8 +84,8 @@ export default function Profile() {
     setIsSaving(true);
     try {
       const updates: Record<string, string> = {};
-      if (firstName !== (profile.firstName ?? "")) updates.firstName = firstName;
-      if (lastName !== (profile.lastName ?? "")) updates.lastName = lastName;
+      if (!profile.firstName && firstName.trim()) updates.firstName = firstName.trim();
+      if (!profile.lastName && lastName.trim()) updates.lastName = lastName.trim();
       if (!profile.phoneNumber && phoneNumber.trim()) updates.phoneNumber = phoneNumber.trim();
 
       if (Object.keys(updates).length === 0) {
@@ -97,12 +110,14 @@ export default function Profile() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        {[1, 2, 3].map((i) => <div key={i} className="h-24 bg-accent/40 rounded-xl animate-pulse" />)}
+      <div className="space-y-4 max-w-2xl">
+        {[1, 2, 3].map((i) => <div key={i} className="h-40 bg-accent/40 rounded-xl animate-pulse" />)}
       </div>
     );
   }
 
+  const firstNameLocked = !!profile?.firstName;
+  const lastNameLocked = !!profile?.lastName;
   const phoneLocked = !!profile?.phoneNumber;
   const profileComplete = !!(profile?.firstName && profile?.lastName && profile?.phoneNumber);
 
@@ -113,72 +128,111 @@ export default function Profile() {
         <p className="text-muted-foreground">Manage your account details</p>
       </div>
 
-      {!profile?.phoneNumber && (
+      {!phoneLocked && (
         <div className="flex items-start gap-3 p-4 rounded-xl border border-amber-500/40 bg-amber-500/10">
           <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
           <div>
-            <p className="font-semibold text-amber-500">Phone number required to place bets</p>
+            <p className="font-semibold text-amber-500">Complete your profile to place bets</p>
             <p className="text-sm text-muted-foreground mt-0.5">
-              You must add a mobile number before you can place any bets. This can only be set once — contact support if you need to change it.
+              Your name and phone number are required before you can place any bets. These can only be set once — contact support if you need to change them.
             </p>
           </div>
         </div>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="w-5 h-5" /> Account Info
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5 block">Username</Label>
-              <Input value={profile?.username ?? ""} disabled className="opacity-60" />
+      {/* ID Card */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="pt-5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-black text-lg">
+              {(profile?.firstName || profile?.username || "?").charAt(0).toUpperCase()}
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5 block">Email</Label>
-              <Input value={profile?.email ?? ""} disabled className="opacity-60" />
+              <p className="font-bold text-lg leading-tight">
+                {profile?.firstName && profile?.lastName
+                  ? `${profile.firstName} ${profile.lastName}`
+                  : profile?.username}
+              </p>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono mt-0.5">
+                <Hash className="w-3 h-3" />
+                <span>{profile?.publicId ?? "—"}</span>
+              </div>
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="firstName" className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5 block">First Name</Label>
-              <Input
-                id="firstName"
-                placeholder="John"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="lastName" className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5 block">Last Name</Label>
-              <Input
-                id="lastName"
-                placeholder="Doe"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-              />
-            </div>
-          </div>
-          <div>
-            <Label className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5 block">Role</Label>
-            <Badge variant={profile?.role === "admin" ? "default" : "secondary"} className="capitalize">
+            <Badge variant={profile?.role === "admin" ? "default" : "secondary"} className="capitalize ml-auto">
               {profile?.role}
             </Badge>
           </div>
         </CardContent>
       </Card>
 
+      {/* Account Info */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <User className="w-4 h-4" /> Account Info
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <LockedField label="Email" value={profile?.email ?? ""} />
+            <div>
+              <Label className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5 block">User ID</Label>
+              <div className="relative">
+                <Input value={profile?.publicId?.toString() ?? "—"} disabled className="opacity-70 font-mono pr-10" />
+                <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {firstNameLocked ? (
+              <LockedField label="First Name" value={profile?.firstName ?? ""} />
+            ) : (
+              <div>
+                <Label htmlFor="firstName" className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5 block">
+                  First Name
+                </Label>
+                <Input
+                  id="firstName"
+                  placeholder="John"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                />
+              </div>
+            )}
+            {lastNameLocked ? (
+              <LockedField label="Last Name" value={profile?.lastName ?? ""} />
+            ) : (
+              <div>
+                <Label htmlFor="lastName" className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5 block">
+                  Last Name
+                </Label>
+                <Input
+                  id="lastName"
+                  placeholder="Doe"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+          {(firstNameLocked || lastNameLocked) && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <Lock className="w-3 h-3 shrink-0" />
+              Name is locked. Contact support if you need to change it.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Phone */}
       <Card className={!phoneLocked ? "border-amber-500/40" : "border-primary/20"}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Phone className="w-5 h-5" />
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Phone className="w-4 h-4" />
             Mobile Number
             {phoneLocked && (
               <span className="flex items-center gap-1 text-xs font-normal text-muted-foreground ml-auto">
-                <Lock className="w-3 h-3" /> Locked — contact support to change
+                <Lock className="w-3 h-3" /> Contact support to change
               </span>
             )}
           </CardTitle>
@@ -190,7 +244,7 @@ export default function Profile() {
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
               disabled={phoneLocked}
-              className={phoneLocked ? "opacity-60 pr-10" : ""}
+              className={phoneLocked ? "opacity-70 pr-10" : ""}
             />
             {phoneLocked && (
               <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
@@ -205,16 +259,24 @@ export default function Profile() {
         </CardContent>
       </Card>
 
-      <div className="flex items-center gap-3">
-        <Button onClick={handleSave} disabled={isSaving} className="px-8">
-          {isSaving ? "Saving..." : "Save Changes"}
-        </Button>
-        {profileComplete && (
-          <span className="flex items-center gap-1.5 text-sm text-primary">
-            <CheckCircle className="w-4 h-4" /> Profile complete
-          </span>
-        )}
-      </div>
+      {(!firstNameLocked || !lastNameLocked || !phoneLocked) && (
+        <div className="flex items-center gap-3">
+          <Button onClick={handleSave} disabled={isSaving} className="px-8">
+            {isSaving ? "Saving..." : "Save Changes"}
+          </Button>
+          {profileComplete && (
+            <span className="flex items-center gap-1.5 text-sm text-primary">
+              <CheckCircle className="w-4 h-4" /> Profile complete
+            </span>
+          )}
+        </div>
+      )}
+
+      {profileComplete && (
+        <div className="flex items-center gap-2 text-sm text-primary">
+          <CheckCircle className="w-4 h-4" /> Profile complete — you're all set to place bets
+        </div>
+      )}
     </div>
   );
 }

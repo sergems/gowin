@@ -8,6 +8,7 @@ const router = Router();
 function safeUser(u: typeof usersTable.$inferSelect) {
   return {
     id: u.id,
+    publicId: u.publicId,
     username: u.username,
     email: u.email,
     role: u.role,
@@ -38,12 +39,20 @@ router.patch("/profile", requireAuth, async (req: AuthRequest, res): Promise<voi
   const updates: Partial<typeof usersTable.$inferInsert> = {};
 
   if (typeof firstName === "string") {
+    if (user.firstName !== null) {
+      res.status(403).json({ error: "First name can only be set once. Contact support to change it." });
+      return;
+    }
     const trimmed = firstName.trim();
     if (!trimmed) { res.status(400).json({ error: "First name cannot be empty" }); return; }
     updates.firstName = trimmed;
   }
 
   if (typeof lastName === "string") {
+    if (user.lastName !== null) {
+      res.status(403).json({ error: "Last name can only be set once. Contact support to change it." });
+      return;
+    }
     const trimmed = lastName.trim();
     if (!trimmed) { res.status(400).json({ error: "Last name cannot be empty" }); return; }
     updates.lastName = trimmed;

@@ -82,12 +82,16 @@ export function Shell({ children }: { children: ReactNode }) {
         {user ? (
           <div className="p-4 border-t border-border">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
-                {user.username.charAt(0).toUpperCase()}
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold shrink-0">
+                {((user as any).firstName || user.username).charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 overflow-hidden">
-                <p className="text-sm font-medium truncate">{user.username}</p>
-                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                <p className="text-sm font-semibold truncate">
+                  {(user as any).firstName && (user as any).lastName
+                    ? `${(user as any).firstName} ${(user as any).lastName}`
+                    : user.username}
+                </p>
+                <p className="text-xs text-muted-foreground font-mono">ID: {(user as any).publicId ?? "—"}</p>
               </div>
             </div>
             <Button variant="outline" className="w-full justify-start text-muted-foreground" onClick={handleLogout}>
@@ -109,7 +113,18 @@ export function Shell({ children }: { children: ReactNode }) {
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="h-14 border-b border-border bg-card/50 backdrop-blur flex items-center justify-between px-6 shrink-0 z-10">
-          <div className="flex-1" />
+          <div className="flex-1">
+            {user && (
+              <span className="text-sm text-muted-foreground">
+                Welcome,{" "}
+                <span className="font-semibold text-foreground">
+                  {(user as any).firstName && (user as any).lastName
+                    ? `${(user as any).firstName} ${(user as any).lastName}`
+                    : user.username}
+                </span>
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-4">
             {user && wallet && (
               <div className="flex items-center gap-2 bg-accent/50 px-3 py-1.5 rounded-full border border-border">
