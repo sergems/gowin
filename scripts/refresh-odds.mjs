@@ -21,13 +21,13 @@ const { rows: keyRows } = await db.query(
 const API_KEY = keyRows[0]?.value;
 if (!API_KEY) { console.error("No API key in settings"); process.exit(1); }
 
-// ── Load all upcoming fixtures within next 14 days ───────────────────────────
+// ── Load all upcoming fixtures within next 30 days ───────────────────────────
 const { rows: fixtures } = await db.query(`
   SELECT id, external_id
   FROM fixtures
   WHERE status = 'upcoming'
     AND external_id IS NOT NULL
-    AND start_time <= NOW() + INTERVAL '14 days'
+    AND start_time <= NOW() + INTERVAL '30 days'
   ORDER BY start_time ASC
 `);
 
