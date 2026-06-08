@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBetSlip } from "@/contexts/BetSlipContext";
@@ -7,111 +7,167 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
-import { Activity, LayoutDashboard, History, Wallet, Trophy, LogOut, Users, Settings, X, Plus, Trash2, ArrowLeftRight, Ticket, UserCircle, AlertTriangle, Banknote, SlidersHorizontal } from "lucide-react";
+import { Activity, LayoutDashboard, History, Wallet, Trophy, LogOut, Users, Settings, X, Trash2, ArrowLeftRight, Ticket, UserCircle, AlertTriangle, Banknote, SlidersHorizontal, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 export function Shell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const { data: wallet } = useGetMyWallet({ query: { enabled: !!user } });
   const [location] = useLocation();
   const { selections, stake, setStake, removeSelection, totalOdds, potentialWin, placeBet, isPlacing } = useBetSlip();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const handleLogout = () => {
     logout();
   };
 
+  const navLinks = [
+    { href: "/", icon: Activity, label: "Home", match: (l: string) => l === "/" },
+    { href: "/sports", icon: Trophy, label: "Sports", match: (l: string) => l.startsWith("/sports") },
+    ...(user ? [
+      { href: "/history", icon: History, label: "My Bets", match: (l: string) => l.startsWith("/history") },
+      { href: "/wallet", icon: Wallet, label: "Wallet", match: (l: string) => l.startsWith("/wallet") },
+      { href: "/profile", icon: UserCircle, label: "Profile", match: (l: string) => l.startsWith("/profile"), badge: !(user as any).phoneNumber ? "warn" : undefined },
+    ] : []),
+  ];
+
+  const adminLinks = user?.role === "admin" ? [
+    { href: "/admin", icon: LayoutDashboard, label: "Dashboard", match: (l: string) => l === "/admin" },
+    { href: "/admin/users", icon: Users, label: "Users", match: (l: string) => l === "/admin/users" },
+    { href: "/admin/fixtures", icon: Activity, label: "Fixtures", match: (l: string) => l === "/admin/fixtures" },
+    { href: "/admin/bets", icon: Settings, label: "Bets", match: (l: string) => l === "/admin/bets" },
+    { href: "/admin/transactions", icon: ArrowLeftRight, label: "Transactions", match: (l: string) => l === "/admin/transactions" },
+    { href: "/admin/vouchers", icon: Ticket, label: "Vouchers", match: (l: string) => l === "/admin/vouchers" },
+    { href: "/admin/withdrawals", icon: Banknote, label: "Withdrawals", match: (l: string) => l === "/admin/withdrawals" },
+    { href: "/admin/settings", icon: SlidersHorizontal, label: "Settings", match: (l: string) => l === "/admin/settings" },
+  ] : [];
+
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground dark">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-border bg-card flex flex-col">
-        <div className="p-4 flex items-center gap-2">
-          <Trophy className="w-6 h-6 text-primary" />
-          <span className="font-bold text-xl tracking-tight">GoWin</span>
+      <aside
+        className={`${sidebarOpen ? "w-64" : "w-14"} border-r border-border bg-card flex flex-col shrink-0 transition-all duration-200`}
+      >
+        {/* Logo + Toggle */}
+        <div className={`h-14 flex items-center border-b border-border shrink-0 ${sidebarOpen ? "px-4 gap-2" : "justify-center"}`}>
+          {sidebarOpen && (
+            <>
+              <Trophy className="w-5 h-5 text-primary shrink-0" />
+              <span className="font-bold text-xl tracking-tight flex-1">GoWin</span>
+            </>
+          )}
+          <button
+            onClick={() => setSidebarOpen((v) => !v)}
+            className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-accent"
+            title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+          >
+            {sidebarOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
+          </button>
         </div>
-        <ScrollArea className="flex-1 py-4">
-          <nav className="space-y-1 px-2">
-            <Link href="/" className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${location === '/' ? 'bg-primary/10 text-primary' : 'hover:bg-accent hover:text-accent-foreground text-muted-foreground'}`}>
-              <Activity className="w-4 h-4" /> Home
-            </Link>
-            <Link href="/sports" className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${location.startsWith('/sports') ? 'bg-primary/10 text-primary' : 'hover:bg-accent hover:text-accent-foreground text-muted-foreground'}`}>
-              <Trophy className="w-4 h-4" /> Sports
-            </Link>
-            {user && (
-              <>
-                <Link href="/history" className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${location.startsWith('/history') ? 'bg-primary/10 text-primary' : 'hover:bg-accent hover:text-accent-foreground text-muted-foreground'}`}>
-                  <History className="w-4 h-4" /> My Bets
-                </Link>
-                <Link href="/wallet" className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${location.startsWith('/wallet') ? 'bg-primary/10 text-primary' : 'hover:bg-accent hover:text-accent-foreground text-muted-foreground'}`}>
-                  <Wallet className="w-4 h-4" /> Wallet
-                </Link>
-                <Link href="/profile" className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${location.startsWith('/profile') ? 'bg-primary/10 text-primary' : 'hover:bg-accent hover:text-accent-foreground text-muted-foreground'}`}>
-                  <UserCircle className="w-4 h-4" /> Profile
-                  {!(user as any).phoneNumber && (
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500 ml-auto" />
+
+        <ScrollArea className="flex-1 py-3">
+          <nav className={`space-y-1 ${sidebarOpen ? "px-2" : "px-1"}`}>
+            {navLinks.map(({ href, icon: Icon, label, match, badge }) => {
+              const active = match(location);
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  title={!sidebarOpen ? label : undefined}
+                  className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                    ${sidebarOpen ? "px-3 py-2" : "px-0 py-2 justify-center"}
+                    ${active ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  {sidebarOpen && <span className="flex-1">{label}</span>}
+                  {sidebarOpen && badge === "warn" && (
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                  )}
+                  {!sidebarOpen && badge === "warn" && (
+                    <span className="absolute w-1.5 h-1.5 rounded-full bg-amber-500 top-1 right-1" />
                   )}
                 </Link>
-              </>
-            )}
-            
-            {user?.role === "admin" && (
+              );
+            })}
+
+            {adminLinks.length > 0 && (
               <>
-                <div className="pt-4 pb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Admin
-                </div>
-                <Link href="/admin" className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${location === '/admin' ? 'bg-primary/10 text-primary' : 'hover:bg-accent hover:text-accent-foreground text-muted-foreground'}`}>
-                  <LayoutDashboard className="w-4 h-4" /> Dashboard
-                </Link>
-                <Link href="/admin/users" className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${location === '/admin/users' ? 'bg-primary/10 text-primary' : 'hover:bg-accent hover:text-accent-foreground text-muted-foreground'}`}>
-                  <Users className="w-4 h-4" /> Users
-                </Link>
-                <Link href="/admin/fixtures" className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${location === '/admin/fixtures' ? 'bg-primary/10 text-primary' : 'hover:bg-accent hover:text-accent-foreground text-muted-foreground'}`}>
-                  <Activity className="w-4 h-4" /> Fixtures
-                </Link>
-                <Link href="/admin/bets" className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${location === '/admin/bets' ? 'bg-primary/10 text-primary' : 'hover:bg-accent hover:text-accent-foreground text-muted-foreground'}`}>
-                  <Settings className="w-4 h-4" /> Bets
-                </Link>
-                <Link href="/admin/transactions" className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${location === '/admin/transactions' ? 'bg-primary/10 text-primary' : 'hover:bg-accent hover:text-accent-foreground text-muted-foreground'}`}>
-                  <ArrowLeftRight className="w-4 h-4" /> Transactions
-                </Link>
-                <Link href="/admin/vouchers" className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${location === '/admin/vouchers' ? 'bg-primary/10 text-primary' : 'hover:bg-accent hover:text-accent-foreground text-muted-foreground'}`}>
-                  <Ticket className="w-4 h-4" /> Vouchers
-                </Link>
-                <Link href="/admin/withdrawals" className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${location === '/admin/withdrawals' ? 'bg-primary/10 text-primary' : 'hover:bg-accent hover:text-accent-foreground text-muted-foreground'}`}>
-                  <Banknote className="w-4 h-4" /> Withdrawals
-                </Link>
-                <Link href="/admin/settings" className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${location === '/admin/settings' ? 'bg-primary/10 text-primary' : 'hover:bg-accent hover:text-accent-foreground text-muted-foreground'}`}>
-                  <SlidersHorizontal className="w-4 h-4" /> Settings
-                </Link>
+                {sidebarOpen && (
+                  <div className="pt-4 pb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Admin
+                  </div>
+                )}
+                {!sidebarOpen && <div className="my-2 mx-1 border-t border-border" />}
+                {adminLinks.map(({ href, icon: Icon, label, match }) => {
+                  const active = match(location);
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      title={!sidebarOpen ? label : undefined}
+                      className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                        ${sidebarOpen ? "px-3 py-2" : "px-0 py-2 justify-center"}
+                        ${active ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}
+                    >
+                      <Icon className="w-4 h-4 shrink-0" />
+                      {sidebarOpen && label}
+                    </Link>
+                  );
+                })}
               </>
             )}
           </nav>
         </ScrollArea>
+
+        {/* User footer */}
         {user ? (
-          <div className="p-4 border-t border-border">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold shrink-0">
-                {((user as any).firstName || user.username).charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1 overflow-hidden">
-                <p className="text-sm font-semibold truncate">
-                  {(user as any).firstName && (user as any).lastName
-                    ? `${(user as any).firstName} ${(user as any).lastName}`
-                    : user.username}
-                </p>
-                <p className="text-xs text-muted-foreground font-mono">ID: {(user as any).publicId ?? "—"}</p>
-              </div>
-            </div>
-            <Button variant="outline" className="w-full justify-start text-muted-foreground" onClick={handleLogout}>
-              <LogOut className="w-4 h-4 mr-2" /> Logout
-            </Button>
+          <div className={`border-t border-border ${sidebarOpen ? "p-4" : "p-2"}`}>
+            {sidebarOpen ? (
+              <>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold shrink-0">
+                    {((user as any).firstName || user.username).charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    <p className="text-sm font-semibold truncate">
+                      {(user as any).firstName && (user as any).lastName
+                        ? `${(user as any).firstName} ${(user as any).lastName}`
+                        : user.username}
+                    </p>
+                    <p className="text-xs text-muted-foreground font-mono">ID: {(user as any).publicId ?? "—"}</p>
+                  </div>
+                </div>
+                <Button variant="outline" className="w-full justify-start text-muted-foreground" onClick={handleLogout}>
+                  <LogOut className="w-4 h-4 mr-2" /> Logout
+                </Button>
+              </>
+            ) : (
+              <button
+                onClick={handleLogout}
+                title="Logout"
+                className="w-full flex justify-center text-muted-foreground hover:text-destructive transition-colors p-2 rounded-md hover:bg-accent"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
           </div>
         ) : (
-          <div className="p-4 border-t border-border space-y-2">
-            <Link href="/login" className="flex">
-              <Button variant="outline" className="w-full">Login</Button>
-            </Link>
-            <Link href="/register" className="flex">
-              <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90">Register</Button>
-            </Link>
+          <div className={`border-t border-border ${sidebarOpen ? "p-4 space-y-2" : "p-2 space-y-2"}`}>
+            {sidebarOpen ? (
+              <>
+                <Link href="/login" className="flex">
+                  <Button variant="outline" className="w-full">Login</Button>
+                </Link>
+                <Link href="/register" className="flex">
+                  <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90">Register</Button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/login" title="Login" className="flex justify-center text-muted-foreground hover:text-foreground p-2 rounded-md hover:bg-accent transition-colors">
+                  <UserCircle className="w-4 h-4" />
+                </Link>
+              </>
+            )}
           </div>
         )}
       </aside>
@@ -153,7 +209,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <span className="font-bold">Bet Slip</span>
           <span className="ml-2 bg-primary/20 text-primary text-xs px-2 py-0.5 rounded-full">{selections.length}</span>
         </div>
-        
+
         <ScrollArea className="flex-1 p-4">
           {user && !(user as any).phoneNumber && (
             <Link href="/profile">
@@ -177,7 +233,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <div className="space-y-3">
               {selections.map((sel) => (
                 <div key={sel.oddsId} className="bg-accent/40 border border-border rounded-lg p-3 relative group">
-                  <button 
+                  <button
                     onClick={() => removeSelection(sel.oddsId)}
                     className="absolute top-2 right-2 text-muted-foreground hover:text-destructive transition-colors"
                   >
@@ -204,10 +260,10 @@ export function Shell({ children }: { children: ReactNode }) {
               </div>
               <div className="flex justify-between items-center text-sm pt-2">
                 <span className="text-muted-foreground">Stake ($)</span>
-                <Input 
-                  type="number" 
-                  min="0.01" 
-                  step="0.01" 
+                <Input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
                   className="w-24 h-8 text-right font-medium"
                   value={stake || ""}
                   onChange={(e) => setStake(parseFloat(e.target.value) || 0)}
@@ -219,7 +275,7 @@ export function Shell({ children }: { children: ReactNode }) {
                 <span className="font-bold text-primary">${potentialWin.toFixed(2)}</span>
               </div>
             </div>
-            <Button 
+            <Button
               className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold h-12"
               onClick={placeBet}
               disabled={isPlacing || stake <= 0 || !user}
