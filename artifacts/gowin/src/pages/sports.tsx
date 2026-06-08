@@ -7,6 +7,37 @@ import { format } from "date-fns";
 import { ChevronDown, ChevronRight, Globe, CalendarDays, Shield } from "lucide-react";
 import { useBetSlip } from "@/contexts/BetSlipContext";
 
+// ── GMT+2 helpers ─────────────────────────────────────────────────────────────
+const GMT2_OFFSET_MS = 2 * 60 * 60 * 1000;
+
+function toGMT2(date: Date): Date {
+  return new Date(date.getTime() + GMT2_OFFSET_MS);
+}
+
+function gmt2DateKey(date: Date): string {
+  return toGMT2(date).toISOString().slice(0, 10);
+}
+
+function formatGMT2Time(date: Date): string {
+  const d = toGMT2(date);
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const mm = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+function formatGMT2DateHeader(dateKey: string): string {
+  const d = new Date(dateKey + "T12:00:00Z");
+  return format(d, "EEEE, d MMMM yyyy");
+}
+
+function dateLabel(dateKey: string): string {
+  const today = gmt2DateKey(new Date());
+  const tomorrow = gmt2DateKey(new Date(Date.now() + 24 * 60 * 60 * 1000));
+  if (dateKey === today) return "Today";
+  if (dateKey === tomorrow) return "Tomorrow";
+  return formatGMT2DateHeader(dateKey);
+}
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface LeagueEntry {
@@ -251,7 +282,7 @@ function FixtureCard({ fixture }: { fixture: any }) {
               ) : (
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
                   <CalendarDays className="w-3 h-3" />
-                  {format(new Date(fixture.startTime), "d MMM, HH:mm")}
+                  {formatGMT2Time(new Date(fixture.startTime))}
                 </span>
               )}
             </div>
@@ -471,13 +502,38 @@ export default function FootballPage() {
                   : "Select a league from the sidebar to browse fixtures."}
               </p>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-              {fixtures.map((fixture) => (
-                <FixtureCard key={fixture.id} fixture={fixture} />
-              ))}
-            </div>
-          )}
+          ) : (() => {
+            // Group fixtures by GMT+2 date
+            const groups = new Map<string, typeof fixtures>();
+            for (const f of fixtures) {
+              const key = gmt2DateKey(new Date(f.startTime));
+              if (!groups.has(key)) groups.set(key, []);
+              groups.get(key)!.push(f);
+            }
+            return (
+              <div className="space-y-6">
+                {[...groups.entries()].map(([dateKey, dayFixtures]) => (
+                  <div key={dateKey}>
+                    {/* Date divider */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="flex items-center gap-2">
+                        <CalendarDays className="w-4 h-4 text-primary" />
+                        <span className="font-bold text-sm">{dateLabel(dateKey)}</span>
+                      </div>
+                      <div className="flex-1 h-px bg-border/60" />
+                      <span className="text-xs text-muted-foreground shrink-0">{dayFixtures.length} match{dayFixtures.length !== 1 ? "es" : ""}</span>
+                    </div>
+                    {/* Cards grid */}
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                      {dayFixtures.map((fixture) => (
+                        <FixtureCard key={fixture.id} fixture={fixture} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Pagination hint */}
           {!selectedLeagueId && fixtures.length === 20 && (

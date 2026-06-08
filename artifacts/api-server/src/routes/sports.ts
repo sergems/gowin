@@ -207,8 +207,7 @@ router.get("/fixtures", async (req, res): Promise<void> => {
     .leftJoin(leaguesTable, eq(leaguesTable.id, fixturesTable.leagueId))
     .where(conditions.length > 0 ? and(...conditions) : undefined);
 
-  const sortOrder = dateStr ? asc(fixturesTable.startTime) : desc(fixturesTable.startTime);
-  const rows = await (filteredQuery as any).orderBy(sortOrder).limit(limit).offset(offset);
+  const rows = await (filteredQuery as any).orderBy(asc(fixturesTable.startTime)).limit(limit).offset(offset);
 
   // Fetch team names for all fixtures
   const homeIds = [...new Set(rows.map((r: any) => r.homeTeamId))];
