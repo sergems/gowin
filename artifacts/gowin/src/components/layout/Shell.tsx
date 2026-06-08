@@ -57,6 +57,18 @@ export function Shell({ children }: { children: ReactNode }) {
     navigate(`/sports?leagueId=${id}&leagueName=${encodeURIComponent(name)}`);
   };
 
+  const COUNTRY_PRIORITY = ["England", "Spain", "Germany", "Italy", "France", "Netherlands", "Portugal", "Turkey", "DR Congo"];
+
+  const sortedCountries = (countries: CountryEntry[]) => {
+    const priorityMap = new Map(COUNTRY_PRIORITY.map((n, i) => [n, i]));
+    return [...countries].sort((a, b) => {
+      const ai = priorityMap.has(a.name) ? priorityMap.get(a.name)! : COUNTRY_PRIORITY.length;
+      const bi = priorityMap.has(b.name) ? priorityMap.get(b.name)! : COUNTRY_PRIORITY.length;
+      if (ai !== bi) return ai - bi;
+      return a.name.localeCompare(b.name);
+    });
+  };
+
   const handleLogout = () => {
     logout();
   };
@@ -215,7 +227,7 @@ export function Shell({ children }: { children: ReactNode }) {
                         )}
 
                         {/* Countries */}
-                        {footballData.countries.map((country) => (
+                        {sortedCountries(footballData.countries).map((country) => (
                           <div key={country.name}>
                             <button
                               onClick={() => toggleCountry(country.name)}
