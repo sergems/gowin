@@ -415,7 +415,7 @@ export function Shell({ children }: { children: ReactNode }) {
               </span>
             )}
           </div>
-          <p className="hidden md:block flex-[5] text-center text-xs text-muted-foreground/70 leading-snug px-2">
+          <p className={`flex-[5] text-center text-xs text-muted-foreground/70 leading-snug px-2 ${user ? "hidden" : "hidden md:block"}`}>
             GOWIN SPORTSBOOK est un opérateur de paris agréé. GOWIN encourage le jeu responsable. Le jeu est interdit aux moins de 18 ans. Avertissement : le jeu peut engendrer une dépendance et être dangereux s'il n'est pas contrôlé et pratiqué avec modération. Les gagnants savent s'arrêter.
           </p>
           <div className="flex items-center gap-4 flex-1 justify-end">
@@ -432,6 +432,14 @@ export function Shell({ children }: { children: ReactNode }) {
             {children}
           </div>
         </ScrollArea>
+
+        {user && (
+          <footer className="shrink-0 border-t border-border bg-card/50 px-6 py-2">
+            <p className="text-[10px] text-muted-foreground/60 text-center leading-snug">
+              GOWIN SPORTSBOOK est un opérateur de paris agréé. GOWIN encourage le jeu responsable. Le jeu est interdit aux moins de 18 ans. Avertissement : le jeu peut engendrer une dépendance et être dangereux s'il n'est pas contrôlé et pratiqué avec modération. Les gagnants savent s'arrêter.
+            </p>
+          </footer>
+        )}
       </main>
 
       {/* Bet Slip */}
