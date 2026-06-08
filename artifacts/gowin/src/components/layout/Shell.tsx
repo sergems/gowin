@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
-import { Activity, LayoutDashboard, History, Wallet, Trophy, LogOut, Users, Settings, X, ArrowLeftRight, Ticket, UserCircle, AlertTriangle, Banknote, SlidersHorizontal, PanelLeftClose, PanelLeftOpen, ChevronDown, ChevronRight, Globe, Shield } from "lucide-react";
+import { Activity, LayoutDashboard, History, Wallet, Trophy, LogOut, Users, Settings, X, ArrowLeftRight, Ticket, UserCircle, AlertTriangle, Banknote, SlidersHorizontal, PanelLeftClose, PanelLeftOpen, ChevronDown, ChevronRight, Globe, Shield, CheckCircle2 } from "lucide-react";
 
 interface LeagueEntry { id: number; name: string; logo: string | null; fixtureCount: number; }
 interface CountryEntry { name: string; logo: string | null; leagues: LeagueEntry[]; }
@@ -256,6 +256,20 @@ export function Shell({ children }: { children: ReactNode }) {
                   </div>
                 )}
               </>
+            )}
+
+            {/* Results */}
+            {!isAdmin && (
+              <Link
+                href="/results"
+                title={!sidebarOpen ? "Results" : undefined}
+                className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                  ${sidebarOpen ? "px-3 py-2" : "px-0 py-2 justify-center"}
+                  ${location.startsWith("/results") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}
+              >
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                {sidebarOpen && <span className="flex-1">Results</span>}
+              </Link>
             )}
 
             {/* My Bets */}

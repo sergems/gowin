@@ -248,7 +248,10 @@ export default function Home() {
     );
   }
 
-  const fixtures: FixtureWithMarkets[] = (data?.fixtures as FixtureWithMarkets[]) || [];
+  const now = new Date();
+  const fixtures: FixtureWithMarkets[] = ((data?.fixtures as FixtureWithMarkets[]) || []).filter(
+    (f) => new Date(f.startTime) > now,
+  );
 
   if (fixtures.length === 0) {
     return (

@@ -14,6 +14,7 @@ import Home from "@/pages/home";
 import SportsHub from "@/pages/sports";
 import FixtureDetail from "@/pages/fixture-detail";
 import History from "@/pages/history";
+import Results from "@/pages/results";
 import Wallet from "@/pages/wallet";
 import Profile from "@/pages/profile";
 
@@ -56,6 +57,7 @@ function Router() {
         <Route path="/sports" component={SportsHub} />
         <Route path="/sports/:sportId" component={SportsHub} />
         <Route path="/fixtures/:id" component={FixtureDetail} />
+        <Route path="/results" component={Results} />
         <Route path="/history" component={() => <ProtectedRoute component={History} />} />
         <Route path="/wallet" component={() => <ProtectedRoute component={Wallet} />} />
         <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />

@@ -8,35 +8,18 @@ import { ChevronDown, CalendarDays, Shield, Trophy } from "lucide-react";
 import { useBetSlip } from "@/contexts/BetSlipContext";
 import { sortOdds } from "@/lib/sortOdds";
 
-// ── GMT+2 helpers ─────────────────────────────────────────────────────────────
-const GMT2_OFFSET_MS = 2 * 60 * 60 * 1000;
+// ── Date helpers ──────────────────────────────────────────────────────────────
 
-function toGMT2(date: Date): Date {
-  return new Date(date.getTime() + GMT2_OFFSET_MS);
+function dateKey(date: Date): string {
+  return format(date, "yyyy-MM-dd");
 }
 
-function gmt2DateKey(date: Date): string {
-  return toGMT2(date).toISOString().slice(0, 10);
-}
-
-function formatGMT2Time(date: Date): string {
-  const d = toGMT2(date);
-  const hh = String(d.getUTCHours()).padStart(2, "0");
-  const mm = String(d.getUTCMinutes()).padStart(2, "0");
-  return `${hh}:${mm}`;
-}
-
-function formatGMT2DateHeader(dateKey: string): string {
-  const d = new Date(dateKey + "T12:00:00Z");
-  return format(d, "EEEE, d MMMM yyyy");
-}
-
-function dateLabel(dateKey: string): string {
-  const today = gmt2DateKey(new Date());
-  const tomorrow = gmt2DateKey(new Date(Date.now() + 24 * 60 * 60 * 1000));
-  if (dateKey === today) return "Today";
-  if (dateKey === tomorrow) return "Tomorrow";
-  return formatGMT2DateHeader(dateKey);
+function dateLabel(key: string): string {
+  const today = dateKey(new Date());
+  const tomorrow = dateKey(new Date(Date.now() + 24 * 60 * 60 * 1000));
+  if (key === today) return "Today";
+  if (key === tomorrow) return "Tomorrow";
+  return format(new Date(key + "T12:00:00Z"), "EEEE, d MMMM yyyy");
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -138,7 +121,7 @@ function FixtureCard({ fixture }: { fixture: any }) {
               ) : (
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
                   <CalendarDays className="w-3 h-3" />
-                  {formatGMT2Time(new Date(fixture.startTime))}
+                  {format(new Date(fixture.startTime), "HH:mm")}
                 </span>
               )}
             </div>
@@ -245,7 +228,10 @@ export default function FootballPage() {
     { query: { queryKey: ["fixtures", "sports", selectedLeagueId] } },
   );
 
-  const fixtures = fixturesData?.fixtures ?? [];
+  const now = new Date();
+  const fixtures = (fixturesData?.fixtures ?? []).filter(
+    (f) => new Date(f.startTime) > now,
+  );
 
   return (
     <div className="space-y-6">
@@ -283,7 +269,7 @@ export default function FootballPage() {
       ) : (() => {
         const groups = new Map<string, typeof fixtures>();
         for (const f of fixtures) {
-          const key = gmt2DateKey(new Date(f.startTime));
+          const key = dateKey(new Date(f.startTime));
           if (!groups.has(key)) groups.set(key, []);
           groups.get(key)!.push(f);
         }
