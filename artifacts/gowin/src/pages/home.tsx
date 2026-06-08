@@ -3,7 +3,7 @@ import { useListFixtures } from "@workspace/api-client-react";
 import type { ListFixturesParams, Fixture } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { Trophy, CalendarDays, Globe, ChevronDown, Shield } from "lucide-react";
-import { format, startOfDay, endOfMonth, addMonths, isToday, isTomorrow } from "date-fns";
+import { format, startOfDay, endOfMonth, addMonths, isToday, isTomorrow, subHours } from "date-fns";
 import { useBetSlip } from "@/contexts/BetSlipContext";
 import { sortOdds } from "@/lib/sortOdds";
 
@@ -116,7 +116,7 @@ function FixtureCard({ fixture }: { fixture: FixtureWithMarkets }) {
             </div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
               <CalendarDays className="w-3 h-3" />
-              {format(new Date(fixture.startTime), "HH:mm")}
+              {format(subHours(new Date(fixture.startTime), 2), "HH:mm")}
             </div>
           </div>
 

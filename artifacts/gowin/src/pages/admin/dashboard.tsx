@@ -1,7 +1,7 @@
 import { useGetAdminStats, useGetRecentBets, useGetTopFixtures } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Activity, Trophy, DollarSign, ListTodo } from "lucide-react";
-import { format } from "date-fns";
+import { format, subHours } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 
 export default function AdminDashboard() {
@@ -140,7 +140,7 @@ export default function AdminDashboard() {
                       </div>
                       <div className="text-xs text-muted-foreground mt-1 flex gap-2">
                         <span className="uppercase text-[10px] bg-background px-1.5 py-0.5 rounded">{item.fixture.status}</span>
-                        <span>{format(new Date(item.fixture.startTime), "MMM d, HH:mm")}</span>
+                        <span>{format(subHours(new Date(item.fixture.startTime), 2), "MMM d, HH:mm")}</span>
                       </div>
                     </div>
                     <div className="text-right">
