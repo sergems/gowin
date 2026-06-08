@@ -226,13 +226,13 @@ function dateDayLabel(date: Date): string {
 export default function Home() {
   const today = startOfDay(new Date());
   const dateFrom = format(today, "yyyy-MM-dd");
-  // Fetch through end of next month
-  const dateTo = format(endOfMonth(addMonths(today, 1)), "yyyy-MM-dd");
+  // Today only — show all of today's remaining games
+  const dateTo = dateFrom;
   // Only fetch fixtures that haven't kicked off yet
   const startAfter = new Date().toISOString();
 
   const { data, isLoading } = useListFixtures(
-    { status: "upcoming", limit: 20, dateFrom, dateTo, startAfter, withMarkets: true } as ListFixturesParams,
+    { status: "upcoming", limit: 200, dateFrom, dateTo, startAfter, withMarkets: true } as ListFixturesParams,
     { query: { queryKey: ["fixtures", "range", dateFrom, dateTo, "upcoming", "withMarkets"] } },
   );
 
