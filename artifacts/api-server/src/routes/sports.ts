@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, sportsTable, leaguesTable, teamsTable, fixturesTable, marketsTable, oddsTable } from "@workspace/db";
-import { eq, and, desc, count, sql, inArray } from "drizzle-orm";
+import { eq, and, desc, count, sql, inArray, gte, lte, asc } from "drizzle-orm";
 import { requireAdmin, type AuthRequest } from "../middlewares/auth";
 import {
   ListLeaguesQueryParams,
@@ -158,10 +158,18 @@ router.get("/fixtures", async (req, res): Promise<void> => {
   const leagueId = qp.success ? qp.data.leagueId : undefined;
   const status = qp.success ? qp.data.status : undefined;
 
+  const dateStr = req.query.date as string | undefined;
+
   const conditions = [];
   if (leagueId) conditions.push(eq(fixturesTable.leagueId, leagueId));
   if (status) conditions.push(eq(fixturesTable.status, status as any));
   if (sportId) conditions.push(eq(leaguesTable.sportId, sportId));
+  if (dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const dayStart = new Date(dateStr + "T00:00:00.000Z");
+    const dayEnd = new Date(dateStr + "T23:59:59.999Z");
+    conditions.push(gte(fixturesTable.startTime, dayStart));
+    conditions.push(lte(fixturesTable.startTime, dayEnd));
+  }
 
   const homeTeams = db.$with("home_teams").as(db.select().from(teamsTable));
   const awayTeams = db.$with("away_teams").as(db.select().from(teamsTable));
@@ -198,7 +206,8 @@ router.get("/fixtures", async (req, res): Promise<void> => {
     .leftJoin(leaguesTable, eq(leaguesTable.id, fixturesTable.leagueId))
     .where(conditions.length > 0 ? and(...conditions) : undefined);
 
-  const rows = await (filteredQuery as any).orderBy(desc(fixturesTable.startTime)).limit(limit).offset(offset);
+  const sortOrder = dateStr ? asc(fixturesTable.startTime) : desc(fixturesTable.startTime);
+  const rows = await (filteredQuery as any).orderBy(sortOrder).limit(limit).offset(offset);
 
   // Fetch team names for all fixtures
   const homeIds = [...new Set(rows.map((r: any) => r.homeTeamId))];
