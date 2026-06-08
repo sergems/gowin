@@ -159,6 +159,8 @@ router.get("/fixtures", async (req, res): Promise<void> => {
   const status = qp.success ? qp.data.status : undefined;
 
   const dateStr = req.query.date as string | undefined;
+  const dateFromStr = req.query.dateFrom as string | undefined;
+  const dateToStr = req.query.dateTo as string | undefined;
   const withMarkets = req.query.withMarkets === "true";
 
   const conditions = [];
@@ -170,6 +172,13 @@ router.get("/fixtures", async (req, res): Promise<void> => {
     const dayEnd = new Date(dateStr + "T23:59:59.999Z");
     conditions.push(gte(fixturesTable.startTime, dayStart));
     conditions.push(lte(fixturesTable.startTime, dayEnd));
+  } else {
+    if (dateFromStr && /^\d{4}-\d{2}-\d{2}$/.test(dateFromStr)) {
+      conditions.push(gte(fixturesTable.startTime, new Date(dateFromStr + "T00:00:00.000Z")));
+    }
+    if (dateToStr && /^\d{4}-\d{2}-\d{2}$/.test(dateToStr)) {
+      conditions.push(lte(fixturesTable.startTime, new Date(dateToStr + "T23:59:59.999Z")));
+    }
   }
 
   const homeTeams = db.$with("home_teams").as(db.select().from(teamsTable));

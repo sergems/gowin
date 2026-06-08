@@ -3,7 +3,7 @@ import { useListFixtures } from "@workspace/api-client-react";
 import type { ListFixturesParams, Fixture } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { Trophy, CalendarDays, Globe, ChevronDown, Shield } from "lucide-react";
-import { format } from "date-fns";
+import { format, startOfDay, endOfMonth, addMonths, isToday, isTomorrow } from "date-fns";
 import { useBetSlip } from "@/contexts/BetSlipContext";
 import { sortOdds } from "@/lib/sortOdds";
 
@@ -102,10 +102,8 @@ function FixtureCard({ fixture }: { fixture: FixtureWithMarkets }) {
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/30 transition-all">
-      {/* Top: team info — links to fixture detail */}
       <Link href={`/fixtures/${fixture.id}`}>
         <div className="p-4 cursor-pointer hover:bg-accent/20 transition-colors">
-          {/* League + time */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-1.5 min-w-0">
               <Logo src={fixture.league?.logo} alt={fixture.league?.name ?? ""} size={14} fallback={<Trophy className="w-3.5 h-3.5 text-muted-foreground shrink-0" />} />
@@ -122,7 +120,6 @@ function FixtureCard({ fixture }: { fixture: FixtureWithMarkets }) {
             </div>
           </div>
 
-          {/* Teams */}
           <div className="flex items-center gap-3">
             <div className="flex-1 flex items-center gap-2 min-w-0">
               <Logo src={fixture.homeTeam?.logo} alt={fixture.homeTeam?.name ?? ""} size={28} />
@@ -139,10 +136,8 @@ function FixtureCard({ fixture }: { fixture: FixtureWithMarkets }) {
         </div>
       </Link>
 
-      {/* Bottom: odds + markets toggle */}
       {markets.length > 0 && (
         <div className="border-t border-border/50">
-          {/* Expanded: market tab strip */}
           {expanded && markets.length > 1 && (
             <div className="flex overflow-x-auto scrollbar-none border-b border-border/40 bg-accent/10">
               {markets.map((m, i) => (
@@ -161,7 +156,6 @@ function FixtureCard({ fixture }: { fixture: FixtureWithMarkets }) {
             </div>
           )}
 
-          {/* Odds row */}
           {activeMarket && (
             <div className="px-3 pt-3 pb-1" onClick={(e) => e.preventDefault()}>
               {!expanded && (
@@ -185,7 +179,6 @@ function FixtureCard({ fixture }: { fixture: FixtureWithMarkets }) {
             </div>
           )}
 
-          {/* Footer: popular markets / collapse */}
           <button
             onClick={handleToggle}
             className="w-full flex items-center justify-between px-3 py-2 text-xs text-muted-foreground hover:text-primary transition-colors"
@@ -220,13 +213,25 @@ function LeagueSection({ leagueName, fixtures }: { leagueName: string; fixtures:
   );
 }
 
+function dateDayKey(date: Date): string {
+  return format(date, "yyyy-MM-dd");
+}
+
+function dateDayLabel(date: Date): string {
+  if (isToday(date)) return `Today · ${format(date, "EEEE, d MMMM yyyy")}`;
+  if (isTomorrow(date)) return `Tomorrow · ${format(date, "EEEE, d MMMM yyyy")}`;
+  return format(date, "EEEE, d MMMM yyyy");
+}
+
 export default function Home() {
-  const today = new Date();
-  const dateStr = today.toISOString().split("T")[0];
+  const today = startOfDay(new Date());
+  const dateFrom = format(today, "yyyy-MM-dd");
+  // Fetch through end of next month
+  const dateTo = format(endOfMonth(addMonths(today, 1)), "yyyy-MM-dd");
 
   const { data, isLoading } = useListFixtures(
-    { status: "upcoming", limit: 16, date: dateStr, withMarkets: true } as ListFixturesParams,
-    { query: { queryKey: ["fixtures", "today", dateStr, "upcoming", "withMarkets"] } },
+    { status: "upcoming", limit: 500, dateFrom, dateTo, withMarkets: true } as ListFixturesParams,
+    { query: { queryKey: ["fixtures", "range", dateFrom, dateTo, "upcoming", "withMarkets"] } },
   );
 
   if (isLoading) {
@@ -249,22 +254,31 @@ export default function Home() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-black tracking-tight mb-1">Today's Matches</h1>
-          <p className="text-sm text-muted-foreground">{format(today, "EEEE, MMMM d, yyyy")}</p>
+          <h1 className="text-2xl font-black tracking-tight mb-1">Upcoming Matches</h1>
+          <p className="text-sm text-muted-foreground">{format(today, "MMMM yyyy")}</p>
         </div>
         <div className="py-14 text-center border border-dashed border-border rounded-xl">
           <Trophy className="w-9 h-9 text-muted-foreground/40 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground font-medium">No upcoming matches today.</p>
+          <p className="text-sm text-muted-foreground font-medium">No upcoming matches found.</p>
           <p className="text-xs text-muted-foreground/60 mt-1">Check back later or browse other fixtures.</p>
         </div>
       </div>
     );
   }
 
+  // Group fixtures by date day, then by league within each day
   type LeagueGroup = { leagueName: string; priorityIndex: number; fixtures: FixtureWithMarkets[] };
-  const leagueMap = new Map<number, LeagueGroup>();
+  type DayGroup = { dateKey: string; date: Date; leagueGroups: LeagueGroup[] };
+
+  const dayMap = new Map<string, { date: Date; leagueMap: Map<number, LeagueGroup> }>();
 
   for (const fixture of fixtures) {
+    const d = new Date(fixture.startTime);
+    const key = dateDayKey(d);
+    if (!dayMap.has(key)) {
+      dayMap.set(key, { date: d, leagueMap: new Map() });
+    }
+    const { leagueMap } = dayMap.get(key)!;
     const leagueId = fixture.leagueId ?? 0;
     const leagueName = fixture.league?.name ?? "Other";
     if (!leagueMap.has(leagueId)) {
@@ -273,45 +287,41 @@ export default function Home() {
     leagueMap.get(leagueId)!.fixtures.push(fixture);
   }
 
-  const priorityGroups = Array.from(leagueMap.values())
-    .filter((g) => g.priorityIndex < PRIORITY_LEAGUES.length)
-    .sort((a, b) => a.priorityIndex - b.priorityIndex);
-
-  const otherGroups = Array.from(leagueMap.values())
-    .filter((g) => g.priorityIndex === PRIORITY_LEAGUES.length)
-    .sort((a, b) => a.leagueName.localeCompare(b.leagueName));
+  const dayGroups: DayGroup[] = Array.from(dayMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([dateKey, { date, leagueMap }]) => {
+      const leagues = Array.from(leagueMap.values());
+      const priority = leagues.filter((g) => g.priorityIndex < PRIORITY_LEAGUES.length).sort((a, b) => a.priorityIndex - b.priorityIndex);
+      const others = leagues.filter((g) => g.priorityIndex === PRIORITY_LEAGUES.length).sort((a, b) => a.leagueName.localeCompare(b.leagueName));
+      return { dateKey, date, leagueGroups: [...priority, ...others] };
+    });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-black tracking-tight mb-1">Today's Matches</h1>
+        <h1 className="text-2xl font-black tracking-tight mb-1">Upcoming Matches</h1>
         <p className="text-sm text-muted-foreground">
-          {format(today, "EEEE, MMMM d, yyyy")} · {data?.total ?? fixtures.length} upcoming
+          {data?.total ?? fixtures.length} upcoming · {format(today, "MMMM")}–{format(addMonths(today, 1), "MMMM yyyy")}
         </p>
       </div>
 
-      {priorityGroups.length > 0 && (
-        <div className="space-y-5">
-          {priorityGroups.map((g) => (
-            <LeagueSection key={g.leagueName} leagueName={g.leagueName} fixtures={g.fixtures} />
-          ))}
-        </div>
-      )}
-
-      {otherGroups.length > 0 && (
-        <div className="space-y-5">
-          {priorityGroups.length > 0 && (
-            <div className="flex items-center gap-3">
-              <div className="h-px flex-1 bg-border" />
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">More Today</span>
-              <div className="h-px flex-1 bg-border" />
+      {dayGroups.map(({ dateKey, date, leagueGroups }) => (
+        <div key={dateKey} className="space-y-5">
+          {/* Date header */}
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <div className="flex items-center gap-1.5 shrink-0">
+              <CalendarDays className="w-3.5 h-3.5 text-primary" />
+              <span className="text-sm font-bold text-foreground">{dateDayLabel(date)}</span>
             </div>
-          )}
-          {otherGroups.map((g) => (
-            <LeagueSection key={g.leagueName} leagueName={g.leagueName} fixtures={g.fixtures} />
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
+          {leagueGroups.map((g) => (
+            <LeagueSection key={`${dateKey}-${g.leagueName}`} leagueName={g.leagueName} fixtures={g.fixtures} />
           ))}
         </div>
-      )}
+      ))}
     </div>
   );
 }
