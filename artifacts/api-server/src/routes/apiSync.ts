@@ -41,12 +41,30 @@ function parseScore(result: string): { home: number | null; away: number | null 
   return { home: null, away: null };
 }
 
-// Upsert helpers using raw SQL ON CONFLICT
-async function upsertLeague(sportId: number, name: string, externalId: string): Promise<number> {
+interface CountryInfo {
+  name: string;
+  logo: string | null;
+  iso2: string | null;
+}
+
+async function upsertLeague(
+  sportId: number,
+  name: string,
+  externalId: string,
+  countryKey: string,
+  countryName: string,
+  countryLogo: string | null,
+  leagueLogo: string | null,
+): Promise<number> {
   const result = await db.execute(sql`
-    INSERT INTO leagues (sport_id, name, external_id)
-    VALUES (${sportId}, ${name}, ${externalId})
-    ON CONFLICT (external_id) DO UPDATE SET name = EXCLUDED.name
+    INSERT INTO leagues (sport_id, name, external_id, country_key, country_name, country_logo, league_logo)
+    VALUES (${sportId}, ${name}, ${externalId}, ${countryKey}, ${countryName}, ${countryLogo}, ${leagueLogo})
+    ON CONFLICT (external_id) DO UPDATE SET
+      name = EXCLUDED.name,
+      country_key = EXCLUDED.country_key,
+      country_name = EXCLUDED.country_name,
+      country_logo = EXCLUDED.country_logo,
+      league_logo = EXCLUDED.league_logo
     RETURNING id
   `);
   return (result.rows[0] as any).id as number;
@@ -97,14 +115,32 @@ router.post("/admin/sync-fixtures", requireAdmin, async (_req, res): Promise<voi
 
   await setSetting("sync_status", "syncing");
 
-  // Fetch fixtures for next 14 days
+  // 1. Fetch country list (for logo + ISO2 enrichment)
+  const countryMap = new Map<string, CountryInfo>();
+  try {
+    const cResp = await fetch(
+      `https://apiv2.allsportsapi.com/football/?met=Countries&APIkey=${apiKey}`,
+      { signal: AbortSignal.timeout(15000) },
+    );
+    const cData = await cResp.json();
+    if (cData?.success === 1 && Array.isArray(cData.result)) {
+      for (const c of cData.result) {
+        countryMap.set(String(c.country_key), {
+          name: c.country_name,
+          logo: c.country_logo ?? null,
+          iso2: c.country_iso2 ?? null,
+        });
+      }
+    }
+  } catch {
+    // non-fatal — country logos will be null
+  }
+
+  // 2. Fetch fixtures for next 14 days
   const today = new Date();
   const future = new Date(today);
   future.setDate(future.getDate() + 14);
-
-  const fromDate = dateStr(today);
-  const toDate = dateStr(future);
-  const url = `https://apiv2.allsportsapi.com/football/?met=Fixtures&APIkey=${apiKey}&from=${fromDate}&to=${toDate}`;
+  const url = `https://apiv2.allsportsapi.com/football/?met=Fixtures&APIkey=${apiKey}&from=${dateStr(today)}&to=${dateStr(future)}`;
 
   let apiData: any;
   try {
@@ -143,17 +179,29 @@ router.post("/admin/sync-fixtures", requireAdmin, async (_req, res): Promise<voi
       const awayExtId = String(event.away_team_key);
       const fixtureExtId = String(event.event_key);
 
-      // Upsert league, home team, away team
-      const leagueId = await upsertLeague(footballSport.id, event.league_name ?? "Unknown League", leagueExtId);
+      // Country info is directly in the fixture event
+      const countryKeyStr = String(event.event_country_key ?? "");
+      const countryInfo = countryMap.get(countryKeyStr);
+      const countryName = event.country_name ?? countryInfo?.name ?? "Unknown";
+      const countryLogo = event.country_logo ?? countryInfo?.logo ?? null;
+      const leagueLogo = event.league_logo ?? null;
+
+      const leagueId = await upsertLeague(
+        footballSport.id,
+        event.league_name ?? "Unknown League",
+        leagueExtId,
+        countryKeyStr,
+        countryName,
+        countryLogo,
+        leagueLogo,
+      );
       const homeTeamId = await upsertTeam(event.event_home_team, event.home_team_logo ?? null, homeExtId);
       const awayTeamId = await upsertTeam(event.event_away_team, event.away_team_logo ?? null, awayExtId);
 
-      // Parse start time and status
       const startTime = new Date(`${event.event_date}T${event.event_time ?? "00:00"}:00`);
       const status = mapStatus(event.event_status ?? "");
       const score = parseScore(event.event_final_result ?? "");
 
-      // Check if fixture already exists
       const [existing] = await db
         .select({ id: fixturesTable.id })
         .from(fixturesTable)
@@ -161,46 +209,28 @@ router.post("/admin/sync-fixtures", requireAdmin, async (_req, res): Promise<voi
         .limit(1);
 
       if (existing) {
-        // Update status, score, and start time
         await db
           .update(fixturesTable)
           .set({ status, scoreHome: score.home, scoreAway: score.away, startTime })
           .where(eq(fixturesTable.id, existing.id));
         updated++;
       } else {
-        // Insert new fixture
         const [fixture] = await db
           .insert(fixturesTable)
-          .values({
-            leagueId,
-            homeTeamId,
-            awayTeamId,
-            startTime,
-            status,
-            scoreHome: score.home,
-            scoreAway: score.away,
-            externalId: fixtureExtId,
-          })
+          .values({ leagueId, homeTeamId, awayTeamId, startTime, status, scoreHome: score.home, scoreAway: score.away, externalId: fixtureExtId })
           .returning();
 
-        // Create 1X2 market with realistic odds for upcoming fixtures
         if (status === "upcoming") {
-          const [market] = await db
-            .insert(marketsTable)
-            .values({ fixtureId: fixture.id, marketType: "1X2" })
-            .returning();
-
+          const [market] = await db.insert(marketsTable).values({ fixtureId: fixture.id, marketType: "1X2" }).returning();
           const homeOdds = (1.4 + Math.random() * 3.5).toFixed(2);
           const drawOdds = (2.8 + Math.random() * 1.2).toFixed(2);
           const awayOdds = (1.4 + Math.random() * 3.5).toFixed(2);
-
           await db.insert(oddsTable).values([
             { marketId: market.id, selection: "Home", oddsValue: homeOdds },
             { marketId: market.id, selection: "Draw", oddsValue: drawOdds },
             { marketId: market.id, selection: "Away", oddsValue: awayOdds },
           ]);
         }
-
         imported++;
       }
     } catch (err: any) {
@@ -213,14 +243,7 @@ router.post("/admin/sync-fixtures", requireAdmin, async (_req, res): Promise<voi
   await setSetting("sync_status", "idle");
   await setSetting("sync_summary", `${imported} imported, ${updated} updated, ${errors.length} errors out of ${events.length} total`);
 
-  res.json({
-    ok: true,
-    imported,
-    updated,
-    total: events.length,
-    errors: errors.slice(0, 10),
-    lastSync: timestamp,
-  });
+  res.json({ ok: true, imported, updated, total: events.length, errors: errors.slice(0, 10), lastSync: timestamp });
 });
 
 export default router;

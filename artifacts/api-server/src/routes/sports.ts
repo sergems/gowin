@@ -21,6 +21,70 @@ import {
 
 const router = Router();
 
+// ── Football / Countries grouped ─────────────────────────────────────────────
+const INTERNATIONAL_COUNTRY_NAMES = new Set([
+  "world", "international", "europe", "africa", "asia",
+  "south america", "north america", "oceania", "concacaf",
+  "uefa", "caf", "afc", "conmebol", "ofc", "fifa",
+  "arab world", "caribbean", "central america",
+]);
+
+function isInternational(countryName: string | null): boolean {
+  if (!countryName) return true;
+  const lower = countryName.toLowerCase();
+  return INTERNATIONAL_COUNTRY_NAMES.has(lower) ||
+    lower.includes("international") ||
+    lower.includes("world") ||
+    lower.includes("uefa") ||
+    lower.includes("caf ") ||
+    lower.includes("conmebol") ||
+    lower.includes("concacaf");
+}
+
+router.get("/football/countries", async (_req, res): Promise<void> => {
+  const rows = await db.execute(sql`
+    SELECT
+      l.id,
+      l.name,
+      l.league_logo,
+      l.country_name,
+      l.country_logo,
+      l.country_key,
+      COUNT(f.id) AS fixture_count
+    FROM leagues l
+    LEFT JOIN fixtures f ON f.league_id = l.id AND f.status = 'upcoming'
+    GROUP BY l.id, l.name, l.league_logo, l.country_name, l.country_logo, l.country_key
+    HAVING COUNT(f.id) > 0
+    ORDER BY l.country_name ASC, l.name ASC
+  `);
+
+  const international: any[] = [];
+  const countriesMap = new Map<string, { name: string; logo: string | null; leagues: any[] }>();
+
+  for (const row of rows.rows as any[]) {
+    const league = {
+      id: row.id,
+      name: row.name,
+      logo: row.league_logo,
+      fixtureCount: Number(row.fixture_count),
+    };
+
+    if (isInternational(row.country_name)) {
+      international.push({ ...league, groupName: row.country_name ?? "International" });
+    } else {
+      const key = row.country_name ?? "Other";
+      if (!countriesMap.has(key)) {
+        countriesMap.set(key, { name: key, logo: row.country_logo, leagues: [] });
+      }
+      countriesMap.get(key)!.leagues.push(league);
+    }
+  }
+
+  const countries = Array.from(countriesMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+
+  res.json({ international, countries });
+});
+
 // ── Sports ──────────────────────────────────────────────────────────────────
 router.get("/sports", async (_req, res): Promise<void> => {
   const sports = await db.select().from(sportsTable);
@@ -113,6 +177,9 @@ router.get("/fixtures", async (req, res): Promise<void> => {
       scoreHome: fixturesTable.scoreHome,
       scoreAway: fixturesTable.scoreAway,
       leagueName: leaguesTable.name,
+      leagueLogo: leaguesTable.leagueLogo,
+      countryName: leaguesTable.countryName,
+      countryLogo: leaguesTable.countryLogo,
       leagueSportId: leaguesTable.sportId,
       sportName: sportsTable.name,
       sportIcon: sportsTable.icon,
@@ -151,7 +218,15 @@ router.get("/fixtures", async (req, res): Promise<void> => {
     status: row.status,
     scoreHome: row.scoreHome,
     scoreAway: row.scoreAway,
-    league: { id: row.leagueId, sportId: row.leagueSportId, name: row.leagueName, sport: { id: row.leagueSportId, name: row.sportName, icon: row.sportIcon } },
+    league: {
+      id: row.leagueId,
+      sportId: row.leagueSportId,
+      name: row.leagueName,
+      logo: row.leagueLogo ?? null,
+      countryName: row.countryName ?? null,
+      countryLogo: row.countryLogo ?? null,
+      sport: { id: row.leagueSportId, name: row.sportName, icon: row.sportIcon },
+    },
     homeTeam: teamMap[row.homeTeamId] || { id: row.homeTeamId, name: "Unknown", logo: null },
     awayTeam: teamMap[row.awayTeamId] || { id: row.awayTeamId, name: "Unknown", logo: null },
   }));

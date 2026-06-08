@@ -25,6 +25,10 @@ export const leaguesTable = pgTable("leagues", {
   sportId: integer("sport_id").notNull().references(() => sportsTable.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   externalId: text("external_id").unique(),
+  countryName: text("country_name"),
+  countryKey: text("country_key"),
+  countryLogo: text("country_logo"),
+  leagueLogo: text("league_logo"),
 });
 
 export const teamsTable = pgTable("teams", {
