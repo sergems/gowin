@@ -1,9 +1,11 @@
 import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useListFixtures } from "@workspace/api-client-react";
+import type { ListFixturesParams } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { ChevronDown, ChevronRight, Globe, CalendarDays, Shield } from "lucide-react";
+import { useBetSlip } from "@/contexts/BetSlipContext";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -25,6 +27,9 @@ interface FootballCountriesData {
   international: LeagueEntry[];
   countries: CountryEntry[];
 }
+
+type OddRow = { id: number; marketId: number; selection: string; oddsValue: number };
+type MarketWithOdds = { id: number; fixtureId: number; marketType: string; odds: OddRow[] };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -161,82 +166,164 @@ function CountrySection({
   );
 }
 
+// ── Odds button ───────────────────────────────────────────────────────────────
+
+function OddsButton({
+  oddsId, fixtureId, market, selection, oddsValue, fixtureName,
+}: {
+  oddsId: number;
+  fixtureId: number;
+  market: string;
+  selection: string;
+  oddsValue: number;
+  fixtureName: string;
+}) {
+  const { selections, addSelection, removeSelection } = useBetSlip();
+  const selected = selections.some((s) => s.oddsId === oddsId);
+
+  return (
+    <button
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (selected) {
+          removeSelection(oddsId);
+        } else {
+          addSelection({ oddsId, fixtureId, market, selection, odds: oddsValue, fixtureName, marketName: market });
+        }
+      }}
+      className={`flex flex-col items-center justify-center px-3 py-2 rounded-lg text-xs font-semibold border transition-colors flex-1 min-w-0 ${
+        selected
+          ? "bg-primary text-primary-foreground border-primary"
+          : "bg-background border-border hover:border-primary hover:text-primary text-foreground"
+      }`}
+    >
+      <span className="text-[10px] font-normal text-muted-foreground leading-none mb-0.5 truncate w-full text-center">
+        {selection}
+      </span>
+      <span>{oddsValue.toFixed(2)}</span>
+    </button>
+  );
+}
+
 // ── Fixture card ──────────────────────────────────────────────────────────────
 
 function FixtureCard({ fixture }: { fixture: any }) {
   const isLive = fixture.status === "live";
   const isFinished = fixture.status === "finished";
   const showScore = isLive || isFinished;
+  const markets: MarketWithOdds[] = (fixture as any).markets ?? [];
+  const [activeMarketIdx, setActiveMarketIdx] = useState(0);
+  const activeMarket = markets[activeMarketIdx] ?? null;
+  const fixtureName = `${fixture.homeTeam?.name ?? "Home"} vs ${fixture.awayTeam?.name ?? "Away"}`;
 
   return (
-    <Link href={`/fixtures/${fixture.id}`}>
-      <div className="bg-card border border-border rounded-xl p-4 hover:bg-accent/30 hover:border-primary/30 transition-all cursor-pointer group">
-        {/* League header */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <Logo
-              src={fixture.league?.countryLogo}
-              alt={fixture.league?.countryName ?? ""}
-              size={14}
-              fallback={<span className="text-xs">🏳️</span>}
-            />
-            <Logo src={fixture.league?.logo} alt={fixture.league?.name ?? ""} size={14} />
-            <span className="text-xs text-muted-foreground truncate">{fixture.league?.name}</span>
+    <div className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/30 transition-all group">
+      <Link href={`/fixtures/${fixture.id}`}>
+        <div className="p-4 cursor-pointer hover:bg-accent/20 transition-colors">
+          {/* League header */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Logo src={fixture.league?.countryLogo} alt={fixture.league?.countryName ?? ""} size={14} fallback={<span className="text-xs">🏳️</span>} />
+              <Logo src={fixture.league?.logo} alt={fixture.league?.name ?? ""} size={14} />
+              <span className="text-xs text-muted-foreground truncate">{fixture.league?.name}</span>
+            </div>
+            <div className="shrink-0">
+              {isLive ? (
+                <span className="flex items-center gap-1 text-xs font-semibold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />LIVE
+                </span>
+              ) : isFinished ? (
+                <span className="text-xs text-muted-foreground">FT</span>
+              ) : (
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <CalendarDays className="w-3 h-3" />
+                  {format(new Date(fixture.startTime), "d MMM, HH:mm")}
+                </span>
+              )}
+            </div>
           </div>
-          <div className="shrink-0">
-            {isLive ? (
-              <span className="flex items-center gap-1 text-xs font-semibold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                LIVE
-              </span>
-            ) : isFinished ? (
-              <span className="text-xs text-muted-foreground">FT</span>
-            ) : (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <CalendarDays className="w-3 h-3" />
-                {format(new Date(fixture.startTime), "d MMM, HH:mm")}
-              </span>
-            )}
+
+          {/* Teams */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 flex items-center gap-2 min-w-0">
+              <Logo src={fixture.homeTeam?.logo} alt={fixture.homeTeam?.name ?? ""} size={28} />
+              <span className="font-semibold text-sm truncate">{fixture.homeTeam?.name}</span>
+            </div>
+            <div className="shrink-0">
+              {showScore ? (
+                <div className="flex items-center gap-2 text-lg font-black">
+                  <span>{fixture.scoreHome ?? 0}</span>
+                  <span className="text-muted-foreground text-xs font-normal">:</span>
+                  <span>{fixture.scoreAway ?? 0}</span>
+                </div>
+              ) : (
+                <div className="px-2.5 py-1 rounded-lg bg-accent/50 text-xs font-bold text-muted-foreground">VS</div>
+              )}
+            </div>
+            <div className="flex-1 flex items-center justify-end gap-2 min-w-0">
+              <span className="font-semibold text-sm truncate text-right">{fixture.awayTeam?.name}</span>
+              <Logo src={fixture.awayTeam?.logo} alt={fixture.awayTeam?.name ?? ""} size={28} />
+            </div>
           </div>
         </div>
+      </Link>
 
-        {/* Teams */}
-        <div className="flex items-center gap-3">
-          {/* Home team */}
-          <div className="flex-1 flex items-center gap-2 min-w-0">
-            <Logo src={fixture.homeTeam?.logo} alt={fixture.homeTeam?.name ?? ""} size={32} />
-            <span className="font-semibold text-sm truncate">{fixture.homeTeam?.name}</span>
-          </div>
+      {/* Markets section */}
+      {markets.length > 0 ? (
+        <div className="border-t border-border/50" onClick={(e) => e.preventDefault()}>
+          {/* Market tabs */}
+          {markets.length > 1 && (
+            <div className="flex overflow-x-auto scrollbar-none border-b border-border/40 bg-accent/10">
+              {markets.map((m, i) => (
+                <button
+                  key={m.id}
+                  onClick={() => setActiveMarketIdx(i)}
+                  className={`shrink-0 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap transition-colors border-b-2 -mb-px ${
+                    i === activeMarketIdx
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {m.marketType}
+                </button>
+              ))}
+            </div>
+          )}
 
-          {/* Score / vs */}
-          <div className="shrink-0 flex flex-col items-center">
-            {showScore ? (
-              <div className="flex items-center gap-2 text-xl font-black">
-                <span>{fixture.scoreHome ?? 0}</span>
-                <span className="text-muted-foreground text-sm font-normal">:</span>
-                <span>{fixture.scoreAway ?? 0}</span>
+          {/* Active market odds */}
+          {activeMarket && (
+            <div className="p-3">
+              {markets.length === 1 && (
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                  {activeMarket.marketType}
+                </p>
+              )}
+              <div className="flex gap-2">
+                {activeMarket.odds.map((odd) => (
+                  <OddsButton
+                    key={odd.id}
+                    oddsId={odd.id}
+                    fixtureId={fixture.id}
+                    market={activeMarket.marketType}
+                    selection={odd.selection}
+                    oddsValue={odd.oddsValue}
+                    fixtureName={fixtureName}
+                  />
+                ))}
               </div>
-            ) : (
-              <div className="px-3 py-1 rounded-lg bg-accent/50 text-xs font-bold text-muted-foreground">
-                VS
-              </div>
-            )}
-          </div>
-
-          {/* Away team */}
-          <div className="flex-1 flex items-center justify-end gap-2 min-w-0">
-            <span className="font-semibold text-sm truncate text-right">{fixture.awayTeam?.name}</span>
-            <Logo src={fixture.awayTeam?.logo} alt={fixture.awayTeam?.name ?? ""} size={32} />
-          </div>
+            </div>
+          )}
         </div>
-
-        {/* Bet CTA */}
-        <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">1 market available</span>
-          <span className="text-xs font-semibold text-primary group-hover:underline">Bet Now →</span>
+      ) : (
+        <div className="border-t border-border/50 px-4 py-2.5 flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">No markets available</span>
+          <Link href={`/fixtures/${fixture.id}`}>
+            <span className="text-xs font-semibold text-primary group-hover:underline">View →</span>
+          </Link>
         </div>
-      </div>
-    </Link>
+      )}
+    </div>
   );
 }
 
@@ -254,9 +341,9 @@ export default function FootballPage() {
   });
 
   const { data: fixturesData, isLoading: isLoadingFixtures } = useListFixtures(
-    selectedLeagueId
-      ? { leagueId: selectedLeagueId, status: "upcoming", limit: 50 }
-      : { status: "upcoming", limit: 20 },
+    (selectedLeagueId
+      ? { leagueId: selectedLeagueId, status: "upcoming", limit: 50, withMarkets: true }
+      : { status: "upcoming", limit: 20, withMarkets: true }) as ListFixturesParams,
   );
 
   const fixtures = fixturesData?.fixtures ?? [];
