@@ -1,4 +1,9 @@
 import { pgTable, serial, text, integer, timestamp, pgEnum } from "drizzle-orm/pg-core";
+export const settingsTable = pgTable("settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -19,12 +24,14 @@ export const leaguesTable = pgTable("leagues", {
   id: serial("id").primaryKey(),
   sportId: integer("sport_id").notNull().references(() => sportsTable.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
+  externalId: text("external_id").unique(),
 });
 
 export const teamsTable = pgTable("teams", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   logo: text("logo"),
+  externalId: text("external_id").unique(),
 });
 
 export const fixturesTable = pgTable("fixtures", {
@@ -36,6 +43,7 @@ export const fixturesTable = pgTable("fixtures", {
   status: fixtureStatusEnum("status").notNull().default("upcoming"),
   scoreHome: integer("score_home"),
   scoreAway: integer("score_away"),
+  externalId: text("external_id").unique(),
 });
 
 export const marketsTable = pgTable("markets", {

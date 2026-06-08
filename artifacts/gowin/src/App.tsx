@@ -25,6 +25,7 @@ import AdminBets from "@/pages/admin/bets";
 import AdminTransactions from "@/pages/admin/transactions";
 import AdminVouchers from "@/pages/admin/vouchers";
 import AdminWithdrawals from "@/pages/admin/withdrawals";
+import AdminSettings from "@/pages/admin/settings";
 
 const queryClient = new QueryClient();
 
@@ -66,6 +67,7 @@ function Router() {
         <Route path="/admin/transactions" component={() => <ProtectedRoute component={AdminTransactions} adminOnly />} />
         <Route path="/admin/vouchers" component={() => <ProtectedRoute component={AdminVouchers} adminOnly />} />
         <Route path="/admin/withdrawals" component={() => <ProtectedRoute component={AdminWithdrawals} adminOnly />} />
+        <Route path="/admin/settings" component={() => <ProtectedRoute component={AdminSettings} adminOnly />} />
         
         <Route component={NotFound} />
       </Switch>

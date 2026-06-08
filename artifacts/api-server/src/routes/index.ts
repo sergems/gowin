@@ -10,6 +10,7 @@ import adminRouter from "./admin";
 import vouchersRouter from "./vouchers";
 import profileRouter from "./profile";
 import withdrawalsRouter from "./withdrawals";
+import apiSyncRouter from "./apiSync";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(adminRouter);
 router.use(vouchersRouter);
 router.use(profileRouter);
 router.use(withdrawalsRouter);
+router.use(apiSyncRouter);
 
 export default router;
