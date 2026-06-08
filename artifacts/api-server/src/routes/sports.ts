@@ -188,6 +188,7 @@ router.get("/fixtures", async (req, res): Promise<void> => {
   const dateStr = req.query.date as string | undefined;
   const dateFromStr = req.query.dateFrom as string | undefined;
   const dateToStr = req.query.dateTo as string | undefined;
+  const startAfterStr = req.query.startAfter as string | undefined;
   const withMarkets = req.query.withMarkets === "true";
 
   const conditions = [];
@@ -205,6 +206,12 @@ router.get("/fixtures", async (req, res): Promise<void> => {
     }
     if (dateToStr && /^\d{4}-\d{2}-\d{2}$/.test(dateToStr)) {
       conditions.push(lte(fixturesTable.startTime, new Date(dateToStr + "T23:59:59.999Z")));
+    }
+    if (startAfterStr) {
+      const startAfterDate = new Date(startAfterStr);
+      if (!isNaN(startAfterDate.getTime())) {
+        conditions.push(gte(fixturesTable.startTime, startAfterDate));
+      }
     }
   }
 

@@ -228,9 +228,11 @@ export default function Home() {
   const dateFrom = format(today, "yyyy-MM-dd");
   // Fetch through end of next month
   const dateTo = format(endOfMonth(addMonths(today, 1)), "yyyy-MM-dd");
+  // Only fetch fixtures that haven't kicked off yet
+  const startAfter = new Date().toISOString();
 
   const { data, isLoading } = useListFixtures(
-    { status: "upcoming", limit: 20, dateFrom, dateTo, withMarkets: true } as ListFixturesParams,
+    { status: "upcoming", limit: 20, dateFrom, dateTo, startAfter, withMarkets: true } as ListFixturesParams,
     { query: { queryKey: ["fixtures", "range", dateFrom, dateTo, "upcoming", "withMarkets"] } },
   );
 
@@ -248,10 +250,7 @@ export default function Home() {
     );
   }
 
-  const now = new Date();
-  const fixtures: FixtureWithMarkets[] = ((data?.fixtures as FixtureWithMarkets[]) || []).filter(
-    (f) => new Date(f.startTime) > now,
-  );
+  const fixtures: FixtureWithMarkets[] = (data?.fixtures as FixtureWithMarkets[]) || [];
 
   if (fixtures.length === 0) {
     return (
