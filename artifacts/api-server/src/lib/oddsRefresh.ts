@@ -3,7 +3,7 @@ import { eq, and, sql, lte } from "drizzle-orm";
 import { logger } from "./logger";
 
 const CONCURRENCY = 8;
-const REFRESH_WINDOW_DAYS = 30;
+const REFRESH_WINDOW_DAYS = 60;
 
 async function getSetting(key: string): Promise<string | null> {
   const [row] = await db.select().from(settingsTable).where(eq(settingsTable.key, key)).limit(1);

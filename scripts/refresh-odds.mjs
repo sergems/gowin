@@ -27,7 +27,7 @@ const { rows: fixtures } = await db.query(`
   FROM fixtures
   WHERE status = 'upcoming'
     AND external_id IS NOT NULL
-    AND start_time <= NOW() + INTERVAL '30 days'
+    AND start_time <= NOW() + INTERVAL '60 days'
   ORDER BY start_time ASC
 `);
 
