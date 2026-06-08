@@ -56,6 +56,7 @@ interface CountryEntry {
 }
 
 interface FootballCountriesData {
+  featured: LeagueEntry[];
   international: LeagueEntry[];
   countries: CountryEntry[];
 }
@@ -102,6 +103,55 @@ function FlagLogo({ src, alt, size = 20 }: { src: string | null | undefined; alt
 }
 
 // ── Sidebar sections ──────────────────────────────────────────────────────────
+
+function UEFASection({
+  leagues,
+  selectedLeagueId,
+  onSelect,
+}: {
+  leagues: LeagueEntry[];
+  selectedLeagueId: number | null;
+  onSelect: (id: number, name: string) => void;
+}) {
+  const [open, setOpen] = useState(true);
+
+  if (leagues.length === 0) return null;
+
+  return (
+    <div className="border-b border-border/50">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-accent/40 transition-colors text-left"
+      >
+        <span className="text-base leading-none shrink-0">🏅</span>
+        <span className="flex-1 text-sm font-semibold">UEFA Competitions</span>
+        {open ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
+      </button>
+
+      {open && (
+        <div className="pb-1">
+          {leagues.map((league) => (
+            <button
+              key={league.id}
+              onClick={() => onSelect(league.id, league.name)}
+              className={`w-full flex items-center gap-2 px-4 py-2 text-left transition-colors text-sm ${
+                selectedLeagueId === league.id
+                  ? "bg-primary/10 text-primary font-medium"
+                  : "text-muted-foreground hover:bg-accent/30 hover:text-foreground"
+              }`}
+            >
+              <Logo src={league.logo} alt={league.name} size={18} />
+              <span className="flex-1 truncate text-xs">{league.name}</span>
+              {league.fixtureCount > 0 && (
+                <span className="text-xs text-muted-foreground/60 shrink-0">{league.fixtureCount}</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function InternationalSection({
   leagues,
@@ -443,6 +493,11 @@ export default function FootballPage() {
             </div>
           ) : (
             <>
+              <UEFASection
+                leagues={countriesData?.featured ?? []}
+                selectedLeagueId={selectedLeagueId}
+                onSelect={handleLeagueSelect}
+              />
               <InternationalSection
                 leagues={countriesData?.international ?? []}
                 selectedLeagueId={selectedLeagueId}

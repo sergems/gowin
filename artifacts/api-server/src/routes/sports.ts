@@ -27,6 +27,7 @@ const INTERNATIONAL_COUNTRY_NAMES = new Set([
   "south america", "north america", "oceania", "concacaf",
   "uefa", "caf", "afc", "conmebol", "ofc", "fifa",
   "arab world", "caribbean", "central america",
+  "intl", "eurocups", "worldcup",
 ]);
 
 function isInternational(countryName: string | null): boolean {
@@ -41,22 +42,48 @@ function isInternational(countryName: string | null): boolean {
     lower.includes("concacaf");
 }
 
+const UEFA_FEATURED_EXTERNAL_IDS = ['3', '4', '683', '1'];
+
 router.get("/football/countries", async (_req, res): Promise<void> => {
-  const rows = await db.execute(sql`
-    SELECT
-      l.id,
-      l.name,
-      l.league_logo,
-      l.country_name,
-      l.country_logo,
-      l.country_key,
-      COUNT(f.id) AS fixture_count
-    FROM leagues l
-    LEFT JOIN fixtures f ON f.league_id = l.id AND f.status = 'upcoming'
-    GROUP BY l.id, l.name, l.league_logo, l.country_name, l.country_logo, l.country_key
-    HAVING COUNT(f.id) > 0
-    ORDER BY l.country_name ASC, l.name ASC
-  `);
+  const [rows, featuredRows] = await Promise.all([
+    db.execute(sql`
+      SELECT
+        l.id,
+        l.name,
+        l.league_logo,
+        l.country_name,
+        l.country_logo,
+        l.country_key,
+        COUNT(f.id) AS fixture_count
+      FROM leagues l
+      LEFT JOIN fixtures f ON f.league_id = l.id AND f.status = 'upcoming'
+      WHERE l.external_id NOT IN ('3', '4', '683', '1')
+      GROUP BY l.id, l.name, l.league_logo, l.country_name, l.country_logo, l.country_key
+      HAVING COUNT(f.id) > 0
+      ORDER BY l.country_name ASC, l.name ASC
+    `),
+    db.execute(sql`
+      SELECT
+        l.id,
+        l.name,
+        l.league_logo,
+        l.external_id,
+        COUNT(f.id) AS fixture_count
+      FROM leagues l
+      LEFT JOIN fixtures f ON f.league_id = l.id AND f.status = 'upcoming'
+      WHERE l.external_id IN ('3', '4', '683', '1')
+      GROUP BY l.id, l.name, l.league_logo, l.external_id
+      ORDER BY ARRAY_POSITION(ARRAY['3','4','683','1'], l.external_id)
+    `),
+  ]);
+
+  const featured = (featuredRows.rows as any[]).map((row) => ({
+    id: row.id,
+    name: row.name,
+    logo: row.league_logo,
+    externalId: row.external_id,
+    fixtureCount: Number(row.fixture_count),
+  }));
 
   const international: any[] = [];
   const countriesMap = new Map<string, { name: string; logo: string | null; leagues: any[] }>();
@@ -82,7 +109,7 @@ router.get("/football/countries", async (_req, res): Promise<void> => {
 
   const countries = Array.from(countriesMap.values()).sort((a, b) => a.name.localeCompare(b.name));
 
-  res.json({ international, countries });
+  res.json({ featured, international, countries });
 });
 
 // ── Sports ──────────────────────────────────────────────────────────────────
