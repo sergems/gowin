@@ -57,7 +57,7 @@ export function Shell({ children }: { children: ReactNode }) {
     navigate(`/sports?leagueId=${id}&leagueName=${encodeURIComponent(name)}`);
   };
 
-  const COUNTRY_PRIORITY = ["England", "Spain", "Germany", "Italy", "France", "Netherlands", "Portugal", "Turkey", "DR Congo"];
+  const COUNTRY_PRIORITY = ["England", "Spain", "Germany", "Italy", "France", "Netherlands", "Portugal", "Turkey", "Congo DR"];
 
   const sortedCountries = (countries: CountryEntry[]) => {
     const priorityMap = new Map(COUNTRY_PRIORITY.map((n, i) => [n, i]));
