@@ -241,53 +241,80 @@ async function insertAllMarkets(fixtureId: number, real: any | null, seed: numbe
     { marketId: mHT.id, selection: "Away", oddsValue: htA.toFixed(2) },
   ]);
 
-  // ── 13. Win Either Half ───────────────────────────────────────────────────
-  const [mWEH] = await db.insert(marketsTable).values({ fixtureId, marketType: "Win Either Half" }).returning();
+  // ── 13. Home Win Either Half ─────────────────────────────────────────────
+  const [mHWEH] = await db.insert(marketsTable).values({ fixtureId, marketType: "Home Win Either Half" }).returning();
+  const hWehYes = Math.max(1.10, rawH * 0.80);
   await db.insert(oddsTable).values([
-    { marketId: mWEH.id, selection: "Yes", oddsValue: (1.20 + s * 0.30).toFixed(2) },
-    { marketId: mWEH.id, selection: "No",  oddsValue: (3.50 + s * 1.00).toFixed(2) },
+    { marketId: mHWEH.id, selection: "Yes", oddsValue: hWehYes.toFixed(2) },
+    { marketId: mHWEH.id, selection: "No",  oddsValue: Math.max(1.10, (1 / (1 - 1 / hWehYes)) * mg).toFixed(2) },
   ]);
 
-  // ── 14. Correct Score (top 10 most common scores) ────────────────────────
+  // ── 14. Away Win Either Half ─────────────────────────────────────────────
+  const [mAWEH] = await db.insert(marketsTable).values({ fixtureId, marketType: "Away Win Either Half" }).returning();
+  const aWehYes = Math.max(1.10, rawA * 0.80);
+  await db.insert(oddsTable).values([
+    { marketId: mAWEH.id, selection: "Yes", oddsValue: aWehYes.toFixed(2) },
+    { marketId: mAWEH.id, selection: "No",  oddsValue: Math.max(1.10, (1 / (1 - 1 / aWehYes)) * mg).toFixed(2) },
+  ]);
+
+  // ── 15. Correct Score (top 10 most common scores) ────────────────────────
   const scores = [
     ["1-0", 6.5], ["2-0", 8.0], ["2-1", 7.5], ["1-1", 5.5], ["0-0", 9.0],
     ["3-0", 14.0], ["3-1", 13.0], ["0-1", 8.5], ["0-2", 10.0], ["1-2", 9.5],
   ];
   const [mCS] = await db.insert(marketsTable).values({ fixtureId, marketType: "Correct Score" }).returning();
-  const csRows = scores.map(([sc, base]) => ({
+  await db.insert(oddsTable).values(scores.map(([sc, base]) => ({
     marketId: mCS.id,
     selection: String(sc),
     oddsValue: (Number(base) * (0.85 + s * 0.30)).toFixed(2),
-  }));
-  await db.insert(oddsTable).values(csRows);
+  })));
 
-  // ── 15. Over/Under Corners ────────────────────────────────────────────────
-  const [mCorner] = await db.insert(marketsTable).values({ fixtureId, marketType: "Over/Under Corners" }).returning();
-  await db.insert(oddsTable).values([
-    { marketId: mCorner.id, selection: "Over 9.5",  oddsValue: (1.75 + s * 0.30).toFixed(2) },
-    { marketId: mCorner.id, selection: "Under 9.5", oddsValue: (1.95 + (1 - s) * 0.30).toFixed(2) },
-  ]);
+  // ── 16. HT Total Goals ────────────────────────────────────────────────────
+  for (const [line, over, under] of [
+    ["0.5", 1.55 + s * 0.20, 2.30 + (1 - s) * 0.40],
+    ["1.5", 2.50 + s * 0.50, 1.45 + (1 - s) * 0.20],
+    ["2.5", 5.50 + s * 1.50, 1.12 + (1 - s) * 0.08],
+  ] as [string, number, number][]) {
+    const [mHTG] = await db.insert(marketsTable).values({ fixtureId, marketType: `HT Total Goals ${line}` }).returning();
+    await db.insert(oddsTable).values([
+      { marketId: mHTG.id, selection: `Over ${line}`,  oddsValue: over.toFixed(2) },
+      { marketId: mHTG.id, selection: `Under ${line}`, oddsValue: under.toFixed(2) },
+    ]);
+  }
 
-  // ── 16. Over/Under Yellow Cards ───────────────────────────────────────────
+  // ── 17. Over/Under Corners (6 lines) ─────────────────────────────────────
+  for (const [line, oBase, uBase] of [
+    ["7.5",  1.25 + s * 0.20, 3.40 + (1 - s) * 0.50],
+    ["8.5",  1.45 + s * 0.20, 2.55 + (1 - s) * 0.40],
+    ["9.5",  1.75 + s * 0.30, 1.95 + (1 - s) * 0.30],
+    ["10.5", 2.20 + s * 0.30, 1.60 + (1 - s) * 0.25],
+    ["11.5", 3.00 + s * 0.50, 1.35 + (1 - s) * 0.20],
+    ["12.5", 4.20 + s * 0.80, 1.18 + (1 - s) * 0.12],
+  ] as [string, number, number][]) {
+    const [mC] = await db.insert(marketsTable).values({ fixtureId, marketType: `Over/Under Corners ${line}` }).returning();
+    await db.insert(oddsTable).values([
+      { marketId: mC.id, selection: `Over ${line}`,  oddsValue: oBase.toFixed(2) },
+      { marketId: mC.id, selection: `Under ${line}`, oddsValue: uBase.toFixed(2) },
+    ]);
+  }
+
+  // ── 18. Over/Under Yellow Cards ───────────────────────────────────────────
   const [mCards] = await db.insert(marketsTable).values({ fixtureId, marketType: "Over/Under Yellow Cards" }).returning();
   await db.insert(oddsTable).values([
     { marketId: mCards.id, selection: "Over 3.5",  oddsValue: (1.80 + s * 0.25).toFixed(2) },
     { marketId: mCards.id, selection: "Under 3.5", oddsValue: (1.90 + (1 - s) * 0.25).toFixed(2) },
   ]);
 
-  // ── 17. Half-Time / Full-Time ─────────────────────────────────────────────
+  // ── 19. Half-Time / Full-Time ─────────────────────────────────────────────
   const [mHTFT] = await db.insert(marketsTable).values({ fixtureId, marketType: "Half-Time/Full-Time" }).returning();
-  const htftCombos = [
-    ["Home/Home", Math.max(1.01, rawH * 1.10).toFixed(2)],
-    ["Home/Draw", (rawH * 2.8 + s).toFixed(2)],
-    ["Draw/Home", (rawH * 1.5 + s).toFixed(2)],
-    ["Draw/Draw", (rawD * 1.1 + s * 0.5).toFixed(2)],
-    ["Draw/Away", (rawA * 1.5 + s).toFixed(2)],
-    ["Away/Away", Math.max(1.01, rawA * 1.10).toFixed(2)],
-  ];
-  await db.insert(oddsTable).values(htftCombos.map(([sel, val]) => ({
-    marketId: mHTFT.id, selection: sel, oddsValue: String(val),
-  })));
+  await db.insert(oddsTable).values([
+    { marketId: mHTFT.id, selection: "Home/Home", oddsValue: Math.max(1.01, rawH * 1.10).toFixed(2) },
+    { marketId: mHTFT.id, selection: "Home/Draw", oddsValue: (rawH * 2.8 + s).toFixed(2) },
+    { marketId: mHTFT.id, selection: "Draw/Home", oddsValue: (rawH * 1.5 + s).toFixed(2) },
+    { marketId: mHTFT.id, selection: "Draw/Draw", oddsValue: (rawD * 1.1 + s * 0.5).toFixed(2) },
+    { marketId: mHTFT.id, selection: "Draw/Away", oddsValue: (rawA * 1.5 + s).toFixed(2) },
+    { marketId: mHTFT.id, selection: "Away/Away", oddsValue: Math.max(1.01, rawA * 1.10).toFixed(2) },
+  ]);
 }
 
 // ── GET /admin/settings ──────────────────────────────────────────────────────

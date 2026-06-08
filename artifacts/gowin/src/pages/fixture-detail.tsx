@@ -8,18 +8,29 @@ import { Link } from "wouter";
 
 // ── Market category definitions ───────────────────────────────────────────────
 
-const CATEGORIES: { label: string; types: string[] }[] = [
+const CATEGORIES: { label: string; types: string[]; prefix?: string }[] = [
   {
     label: "Popular",
     types: ["1X2", "Double Chance", "Draw No Bet", "Both Teams To Score", "Over/Under 2.5"],
   },
   {
     label: "Goals",
-    types: ["Over/Under 0.5", "Over/Under 1.5", "Over/Under 2.5", "Over/Under 3.5", "Over/Under 4.5", "Both Teams To Score", "Win Either Half", "Correct Score"],
+    types: [
+      "Over/Under 0.5", "Over/Under 1.5", "Over/Under 2.5", "Over/Under 3.5", "Over/Under 4.5",
+      "Both Teams To Score", "Correct Score",
+    ],
   },
   {
     label: "Match",
-    types: ["1X2", "Double Chance", "Draw No Bet", "Half-Time Result", "Half-Time/Full-Time", "European Handicap"],
+    types: ["1X2", "Double Chance", "Draw No Bet", "European Handicap", "Half-Time Result", "Half-Time/Full-Time"],
+  },
+  {
+    label: "Half-Time",
+    types: ["Half-Time Result", "HT Total Goals 0.5", "HT Total Goals 1.5", "HT Total Goals 2.5", "Half-Time/Full-Time"],
+  },
+  {
+    label: "Either Half",
+    types: ["Home Win Either Half", "Away Win Either Half"],
   },
   {
     label: "Handicap",
@@ -27,7 +38,10 @@ const CATEGORIES: { label: string; types: string[] }[] = [
   },
   {
     label: "Corners",
-    types: ["Over/Under Corners"],
+    types: [
+      "Over/Under Corners 7.5", "Over/Under Corners 8.5", "Over/Under Corners 9.5",
+      "Over/Under Corners 10.5", "Over/Under Corners 11.5", "Over/Under Corners 12.5",
+    ],
   },
   {
     label: "Cards",
