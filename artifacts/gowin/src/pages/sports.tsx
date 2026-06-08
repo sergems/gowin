@@ -213,15 +213,28 @@ function FixtureCard({ fixture }: { fixture: any }) {
   const isFinished = fixture.status === "finished";
   const showScore = isLive || isFinished;
   const markets: MarketWithOdds[] = (fixture as any).markets ?? [];
+  const [expanded, setExpanded] = useState(false);
   const [activeMarketIdx, setActiveMarketIdx] = useState(0);
-  const activeMarket = markets[activeMarketIdx] ?? null;
+
+  const market1x2 = markets.find((m) => m.marketType === "1X2") ?? markets[0] ?? null;
+  const otherMarkets = markets.filter((m) => m !== market1x2);
   const fixtureName = `${fixture.homeTeam?.name ?? "Home"} vs ${fixture.awayTeam?.name ?? "Away"}`;
 
+  const activeMarket = expanded ? (markets[activeMarketIdx] ?? market1x2) : market1x2;
+
+  const handleToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setExpanded((v) => !v);
+    if (!expanded) setActiveMarketIdx(0);
+  };
+
   return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/30 transition-all group">
+    <div className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/30 transition-all">
+      {/* Top: team info — links to fixture detail */}
       <Link href={`/fixtures/${fixture.id}`}>
         <div className="p-4 cursor-pointer hover:bg-accent/20 transition-colors">
-          {/* League header */}
+          {/* League + time */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-1.5 min-w-0">
               <Logo src={fixture.league?.countryLogo} alt={fixture.league?.countryName ?? ""} size={14} fallback={<span className="text-xs">🏳️</span>} />
@@ -269,16 +282,16 @@ function FixtureCard({ fixture }: { fixture: any }) {
         </div>
       </Link>
 
-      {/* Markets section */}
-      {markets.length > 0 ? (
-        <div className="border-t border-border/50" onClick={(e) => e.preventDefault()}>
-          {/* Market tabs */}
-          {markets.length > 1 && (
+      {/* Bottom: odds + markets toggle */}
+      {markets.length > 0 && (
+        <div className="border-t border-border/50">
+          {/* Expanded: market tab strip */}
+          {expanded && markets.length > 1 && (
             <div className="flex overflow-x-auto scrollbar-none border-b border-border/40 bg-accent/10">
               {markets.map((m, i) => (
                 <button
                   key={m.id}
-                  onClick={() => setActiveMarketIdx(i)}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveMarketIdx(i); }}
                   className={`shrink-0 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap transition-colors border-b-2 -mb-px ${
                     i === activeMarketIdx
                       ? "border-primary text-primary"
@@ -291,12 +304,12 @@ function FixtureCard({ fixture }: { fixture: any }) {
             </div>
           )}
 
-          {/* Active market odds */}
+          {/* Odds row */}
           {activeMarket && (
-            <div className="p-3">
-              {markets.length === 1 && (
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                  {activeMarket.marketType}
+            <div className="px-3 pt-3 pb-1" onClick={(e) => e.preventDefault()}>
+              {!expanded && (
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                  {market1x2?.marketType ?? activeMarket.marketType}
                 </p>
               )}
               <div className="flex gap-2">
@@ -314,13 +327,25 @@ function FixtureCard({ fixture }: { fixture: any }) {
               </div>
             </div>
           )}
-        </div>
-      ) : (
-        <div className="border-t border-border/50 px-4 py-2.5 flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">No markets available</span>
-          <Link href={`/fixtures/${fixture.id}`}>
-            <span className="text-xs font-semibold text-primary group-hover:underline">View →</span>
-          </Link>
+
+          {/* Footer: more markets / collapse */}
+          <button
+            onClick={handleToggle}
+            className="w-full flex items-center justify-between px-3 py-2 text-xs text-muted-foreground hover:text-primary transition-colors"
+          >
+            {expanded ? (
+              <span className="font-medium text-primary">Hide markets ↑</span>
+            ) : (
+              <>
+                <span>
+                  {otherMarkets.length > 0
+                    ? `+${otherMarkets.length} more market${otherMarkets.length > 1 ? "s" : ""} available`
+                    : "View market"}
+                </span>
+                <ChevronDown className="w-3.5 h-3.5" />
+              </>
+            )}
+          </button>
         </div>
       )}
     </div>
