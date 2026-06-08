@@ -230,7 +230,7 @@ export default function Home() {
   const dateTo = format(endOfMonth(addMonths(today, 1)), "yyyy-MM-dd");
 
   const { data, isLoading } = useListFixtures(
-    { status: "upcoming", limit: 500, dateFrom, dateTo, withMarkets: true } as ListFixturesParams,
+    { status: "upcoming", limit: 20, dateFrom, dateTo, withMarkets: true } as ListFixturesParams,
     { query: { queryKey: ["fixtures", "range", dateFrom, dateTo, "upcoming", "withMarkets"] } },
   );
 
