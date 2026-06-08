@@ -2,88 +2,173 @@ import { useListFixtures } from "@workspace/api-client-react";
 import type { ListFixturesParams, Fixture } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
-import { Trophy, CalendarDays } from "lucide-react";
+import { Trophy, CalendarDays, Globe } from "lucide-react";
 import { format } from "date-fns";
+import { useBetSlip } from "@/contexts/BetSlipContext";
 
 const PRIORITY_LEAGUES = [
-  { label: "World Cup",                   test: (name: string) => /world cup/i.test(name) },
-  { label: "UEFA Champions League",       test: (name: string) => /champions league/i.test(name) && !/europa/i.test(name) && !/caf/i.test(name) },
-  { label: "UEFA Europa League",          test: (name: string) => /europa league/i.test(name) && !/conference/i.test(name) },
-  { label: "UEFA Europa Conference League", test: (name: string) => /conference league/i.test(name) || /europa conference/i.test(name) },
-  { label: "CAF Champions League",        test: (name: string) => /caf champions/i.test(name) },
-  { label: "English Premier League",      test: (name: string) => /premier league/i.test(name) },
-  { label: "Spanish La Liga",             test: (name: string) => /la liga/i.test(name) },
-  { label: "Bundesliga",                  test: (name: string) => /bundesliga/i.test(name) },
-  { label: "Ligue 1",                     test: (name: string) => /ligue 1/i.test(name) },
+  { label: "World Cup",                     test: (n: string) => /world cup/i.test(n) },
+  { label: "UEFA Champions League",         test: (n: string) => /champions league/i.test(n) && !/europa/i.test(n) && !/caf/i.test(n) },
+  { label: "UEFA Europa League",            test: (n: string) => /europa league/i.test(n) && !/conference/i.test(n) },
+  { label: "UEFA Europa Conference League", test: (n: string) => /conference league/i.test(n) || /europa conference/i.test(n) },
+  { label: "CAF Champions League",          test: (n: string) => /caf champions/i.test(n) },
+  { label: "English Premier League",        test: (n: string) => /premier league/i.test(n) },
+  { label: "Spanish La Liga",               test: (n: string) => /la liga/i.test(n) },
+  { label: "Bundesliga",                    test: (n: string) => /bundesliga/i.test(n) },
+  { label: "Ligue 1",                       test: (n: string) => /ligue 1/i.test(n) },
 ];
 
-function getPriorityIndex(leagueName: string): number {
+function getPriorityIndex(leagueName: string) {
   for (let i = 0; i < PRIORITY_LEAGUES.length; i++) {
     if (PRIORITY_LEAGUES[i].test(leagueName)) return i;
   }
   return PRIORITY_LEAGUES.length;
 }
 
-function FixtureCard({ fixture }: { fixture: Fixture }) {
+type OddRow = { id: number; marketId: number; selection: string; oddsValue: number };
+type MarketWithOdds = { id: number; fixtureId: number; marketType: string; odds: OddRow[] };
+type FixtureWithMarkets = Fixture & { markets?: MarketWithOdds[] };
+
+function OddsButton({
+  oddsId, fixtureId, market, selection, oddsValue, fixtureName,
+}: {
+  oddsId: number;
+  fixtureId: number;
+  market: string;
+  selection: string;
+  oddsValue: number;
+  fixtureName: string;
+}) {
+  const { selections, addSelection, removeSelection } = useBetSlip();
+  const selected = selections.some((s) => s.oddsId === oddsId);
+
+  return (
+    <button
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (selected) {
+          removeSelection(oddsId);
+        } else {
+          addSelection({
+            oddsId,
+            fixtureId,
+            market,
+            selection,
+            odds: oddsValue,
+            fixtureName,
+            marketName: market,
+          });
+        }
+      }}
+      className={`flex flex-col items-center justify-center px-2 py-1.5 rounded text-xs font-semibold border transition-colors min-w-[52px] ${
+        selected
+          ? "bg-primary text-primary-foreground border-primary"
+          : "bg-background border-border hover:border-primary hover:text-primary text-foreground"
+      }`}
+    >
+      <span className="text-[10px] font-normal text-muted-foreground leading-none mb-0.5 truncate max-w-[60px]">
+        {selection}
+      </span>
+      <span>{oddsValue.toFixed(2)}</span>
+    </button>
+  );
+}
+
+function FixtureCard({ fixture }: { fixture: FixtureWithMarkets }) {
+  const markets: MarketWithOdds[] = (fixture as any).markets ?? [];
+  const fixtureName = `${fixture.homeTeam?.name ?? "Home"} vs ${fixture.awayTeam?.name ?? "Away"}`;
+
   return (
     <Link href={`/fixtures/${fixture.id}`}>
-      <Card className="hover:bg-accent/40 transition-colors border-border bg-card cursor-pointer group">
-        <CardContent className="p-5">
-          <div className="flex items-center justify-between">
-            <div className="flex-1 text-center">
-              <div className="font-bold text-base leading-tight">{fixture.homeTeam?.name}</div>
-            </div>
-
-            <div className="px-5 flex flex-col items-center justify-center gap-1 min-w-[80px]">
-              {fixture.status === "live" || fixture.status === "finished" ? (
-                <div className="flex items-center gap-2 text-xl font-black">
-                  <span>{fixture.scoreHome ?? "-"}</span>
-                  <span className="text-muted-foreground text-sm">:</span>
-                  <span>{fixture.scoreAway ?? "-"}</span>
-                </div>
+      <Card className="hover:bg-accent/30 transition-colors border-border bg-card cursor-pointer">
+        <CardContent className="p-4">
+          {/* League + time row */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-1.5 min-w-0">
+              {fixture.league?.logo ? (
+                <img src={fixture.league.logo} alt="" className="w-4 h-4 object-contain shrink-0" />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-muted-foreground text-xs font-bold">
-                  VS
-                </div>
+                <Trophy className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
               )}
-              <div className="flex items-center text-xs text-muted-foreground">
-                {fixture.status === "live" ? (
-                  <span className="flex items-center text-primary font-semibold">
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse mr-1" /> LIVE
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1">
-                    <CalendarDays className="w-3 h-3" />
-                    {format(new Date(fixture.startTime), "HH:mm")}
-                  </span>
+              <span className="text-xs text-muted-foreground truncate">
+                {fixture.league?.countryName && (
+                  <span className="font-medium text-foreground/80">{fixture.league.countryName} · </span>
                 )}
-              </div>
+                {fixture.league?.name ?? "League"}
+              </span>
             </div>
-
-            <div className="flex-1 text-center">
-              <div className="font-bold text-base leading-tight">{fixture.awayTeam?.name}</div>
+            <div className="flex items-center text-xs text-muted-foreground ml-2 shrink-0">
+              <CalendarDays className="w-3 h-3 mr-1" />
+              {format(new Date(fixture.startTime), "HH:mm")}
             </div>
           </div>
+
+          {/* Teams row */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex-1 flex flex-col items-center gap-1">
+              {fixture.homeTeam?.logo && (
+                <img src={fixture.homeTeam.logo} alt="" className="w-7 h-7 object-contain" />
+              )}
+              <span className="text-sm font-semibold leading-tight text-center">{fixture.homeTeam?.name}</span>
+            </div>
+            <div className="px-4 shrink-0">
+              <div className="w-7 h-7 rounded-full bg-accent flex items-center justify-center text-muted-foreground text-[11px] font-bold">
+                VS
+              </div>
+            </div>
+            <div className="flex-1 flex flex-col items-center gap-1">
+              {fixture.awayTeam?.logo && (
+                <img src={fixture.awayTeam.logo} alt="" className="w-7 h-7 object-contain" />
+              )}
+              <span className="text-sm font-semibold leading-tight text-center">{fixture.awayTeam?.name}</span>
+            </div>
+          </div>
+
+          {/* Markets / odds */}
+          {markets.length > 0 && (
+            <div
+              className="space-y-2 pt-3 border-t border-border"
+              onClick={(e) => e.preventDefault()}
+            >
+              {markets.map((market) => (
+                <div key={market.id}>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                    {market.marketType}
+                  </p>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {market.odds.map((odd) => (
+                      <OddsButton
+                        key={odd.id}
+                        oddsId={odd.id}
+                        fixtureId={fixture.id}
+                        market={market.marketType}
+                        selection={odd.selection}
+                        oddsValue={odd.oddsValue}
+                        fixtureName={fixtureName}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </Link>
   );
 }
 
-function LeagueSection({ leagueName, leagueLogo, fixtures }: { leagueName: string; leagueLogo?: string | null; fixtures: Fixture[] }) {
+function LeagueSection({ leagueName, fixtures }: { leagueName: string; fixtures: FixtureWithMarkets[] }) {
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2 px-1">
-        {leagueLogo ? (
-          <img src={leagueLogo} alt={leagueName} className="w-5 h-5 object-contain" />
-        ) : (
-          <Trophy className="w-4 h-4 text-muted-foreground" />
-        )}
-        <span className="text-sm font-semibold text-foreground">{leagueName}</span>
+      <div className="flex items-center gap-2 px-0.5">
+        <Globe className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+        <span className="text-xs font-semibold uppercase tracking-wide text-foreground">{leagueName}</span>
         <span className="text-xs text-muted-foreground">({fixtures.length})</span>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        {fixtures.map(f => <FixtureCard key={f.id} fixture={f} />)}
+        {fixtures.map((f) => <FixtureCard key={f.id} fixture={f} />)}
       </div>
     </div>
   );
@@ -94,110 +179,90 @@ export default function Home() {
   const dateStr = today.toISOString().split("T")[0];
 
   const { data, isLoading } = useListFixtures(
-    { limit: 500, date: dateStr } as ListFixturesParams,
-    { query: { queryKey: ["fixtures", "today", dateStr] } },
+    { status: "upcoming", limit: 16, date: dateStr, withMarkets: true } as ListFixturesParams,
+    { query: { queryKey: ["fixtures", "today", dateStr, "upcoming", "withMarkets"] } },
   );
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-5">
         <div>
-          <div className="h-8 w-48 bg-accent/50 rounded animate-pulse mb-2" />
-          <div className="h-4 w-32 bg-accent/30 rounded animate-pulse" />
+          <div className="h-7 w-44 bg-accent/50 rounded animate-pulse mb-2" />
+          <div className="h-3.5 w-28 bg-accent/30 rounded animate-pulse" />
         </div>
-        <div className="space-y-3">
-          {[1, 2, 3].map(i => <div key={i} className="h-20 bg-accent/50 rounded-xl animate-pulse" />)}
-        </div>
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-36 bg-accent/50 rounded-xl animate-pulse" />
+        ))}
       </div>
     );
   }
 
-  const fixtures = data?.fixtures || [];
+  const fixtures: FixtureWithMarkets[] = (data?.fixtures as FixtureWithMarkets[]) || [];
 
   if (fixtures.length === 0) {
     return (
-      <div className="space-y-8">
+      <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-black tracking-tight mb-2">Today's Matches</h1>
-          <p className="text-muted-foreground">{format(today, "EEEE, MMMM d, yyyy")}</p>
+          <h1 className="text-2xl font-black tracking-tight mb-1">Today's Matches</h1>
+          <p className="text-sm text-muted-foreground">{format(today, "EEEE, MMMM d, yyyy")}</p>
         </div>
-        <div className="py-16 text-center border border-dashed border-border rounded-xl">
-          <Trophy className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
-          <p className="text-muted-foreground font-medium">No matches scheduled for today.</p>
-          <p className="text-muted-foreground/60 text-sm mt-1">Check back later or browse upcoming fixtures.</p>
+        <div className="py-14 text-center border border-dashed border-border rounded-xl">
+          <Trophy className="w-9 h-9 text-muted-foreground/40 mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground font-medium">No upcoming matches today.</p>
+          <p className="text-xs text-muted-foreground/60 mt-1">Check back later or browse other fixtures.</p>
         </div>
       </div>
     );
   }
 
-  type LeagueGroup = {
-    leagueName: string;
-    leagueLogo: string | null | undefined;
-    priorityIndex: number;
-    fixtures: Fixture[];
-  };
-
+  type LeagueGroup = { leagueName: string; priorityIndex: number; fixtures: FixtureWithMarkets[] };
   const leagueMap = new Map<number, LeagueGroup>();
 
   for (const fixture of fixtures) {
     const leagueId = fixture.leagueId ?? 0;
     const leagueName = fixture.league?.name ?? "Other";
-    const leagueLogo = fixture.league?.logo;
     if (!leagueMap.has(leagueId)) {
-      leagueMap.set(leagueId, {
-        leagueName,
-        leagueLogo,
-        priorityIndex: getPriorityIndex(leagueName),
-        fixtures: [],
-      });
+      leagueMap.set(leagueId, { leagueName, priorityIndex: getPriorityIndex(leagueName), fixtures: [] });
     }
     leagueMap.get(leagueId)!.fixtures.push(fixture);
   }
 
   const priorityGroups = Array.from(leagueMap.values())
-    .filter(g => g.priorityIndex < PRIORITY_LEAGUES.length)
+    .filter((g) => g.priorityIndex < PRIORITY_LEAGUES.length)
     .sort((a, b) => a.priorityIndex - b.priorityIndex);
 
   const otherGroups = Array.from(leagueMap.values())
-    .filter(g => g.priorityIndex === PRIORITY_LEAGUES.length)
+    .filter((g) => g.priorityIndex === PRIORITY_LEAGUES.length)
     .sort((a, b) => a.leagueName.localeCompare(b.leagueName));
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-black tracking-tight mb-2">Today's Matches</h1>
-        <p className="text-muted-foreground">{format(today, "EEEE, MMMM d, yyyy")} · {fixtures.length} match{fixtures.length !== 1 ? "es" : ""}</p>
+        <h1 className="text-2xl font-black tracking-tight mb-1">Today's Matches</h1>
+        <p className="text-sm text-muted-foreground">
+          {format(today, "EEEE, MMMM d, yyyy")} · {data?.total ?? fixtures.length} upcoming
+        </p>
       </div>
 
       {priorityGroups.length > 0 && (
-        <div className="space-y-6">
-          {priorityGroups.map(group => (
-            <LeagueSection
-              key={group.leagueName}
-              leagueName={group.leagueName}
-              leagueLogo={group.leagueLogo}
-              fixtures={group.fixtures}
-            />
+        <div className="space-y-5">
+          {priorityGroups.map((g) => (
+            <LeagueSection key={g.leagueName} leagueName={g.leagueName} fixtures={g.fixtures} />
           ))}
         </div>
       )}
 
       {otherGroups.length > 0 && (
-        <div className="space-y-6">
-          {(priorityGroups.length > 0) && (
+        <div className="space-y-5">
+          {priorityGroups.length > 0 && (
             <div className="flex items-center gap-3">
               <div className="h-px flex-1 bg-border" />
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">More Today</span>
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">More Today</span>
               <div className="h-px flex-1 bg-border" />
             </div>
           )}
-          {otherGroups.map(group => (
-            <LeagueSection
-              key={group.leagueName}
-              leagueName={group.leagueName}
-              leagueLogo={group.leagueLogo}
-              fixtures={group.fixtures}
-            />
+          {otherGroups.map((g) => (
+            <LeagueSection key={g.leagueName} leagueName={g.leagueName} fixtures={g.fixtures} />
           ))}
         </div>
       )}

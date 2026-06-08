@@ -159,6 +159,7 @@ router.get("/fixtures", async (req, res): Promise<void> => {
   const status = qp.success ? qp.data.status : undefined;
 
   const dateStr = req.query.date as string | undefined;
+  const withMarkets = req.query.withMarkets === "true";
 
   const conditions = [];
   if (leagueId) conditions.push(eq(fixturesTable.leagueId, leagueId));
@@ -240,7 +241,45 @@ router.get("/fixtures", async (req, res): Promise<void> => {
     awayTeam: teamMap[row.awayTeamId] || { id: row.awayTeamId, name: "Unknown", logo: null },
   }));
 
-  res.json({ fixtures, total: totalResult.count, page, limit });
+  if (!withMarkets) {
+    res.json({ fixtures, total: totalResult.count, page, limit });
+    return;
+  }
+
+  // Bulk-fetch markets and odds for all fixtures in two queries
+  const fixtureIds = fixtures.map((f: any) => f.id);
+  const allMarkets = fixtureIds.length > 0
+    ? await db.select().from(marketsTable).where(inArray(marketsTable.fixtureId, fixtureIds))
+    : [];
+  const marketIds = allMarkets.map((m) => m.id);
+  const allOdds = marketIds.length > 0
+    ? await db.select().from(oddsTable).where(inArray(oddsTable.marketId, marketIds))
+    : [];
+
+  const oddsMap = new Map<number, typeof allOdds>();
+  for (const odd of allOdds) {
+    if (!oddsMap.has(odd.marketId)) oddsMap.set(odd.marketId, []);
+    oddsMap.get(odd.marketId)!.push(odd);
+  }
+
+  const marketsMap = new Map<number, any[]>();
+  for (const market of allMarkets) {
+    if (!marketsMap.has(market.fixtureId)) marketsMap.set(market.fixtureId, []);
+    marketsMap.get(market.fixtureId)!.push({
+      ...market,
+      odds: (oddsMap.get(market.id) ?? []).map((o) => ({
+        ...o,
+        oddsValue: parseFloat(o.oddsValue),
+      })),
+    });
+  }
+
+  const fixturesWithMarkets = fixtures.map((f: any) => ({
+    ...f,
+    markets: marketsMap.get(f.id) ?? [],
+  }));
+
+  res.json({ fixtures: fixturesWithMarkets, total: totalResult.count, page, limit });
 });
 
 router.post("/fixtures", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
