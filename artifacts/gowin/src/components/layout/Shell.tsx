@@ -187,7 +187,7 @@ export function Shell({ children }: { children: ReactNode }) {
               </span>
             )}
           </div>
-          <p className="hidden md:block flex-[3] text-center text-[11px] text-muted-foreground/70 leading-snug px-8">
+          <p className="hidden md:block flex-[5] text-center text-xs text-muted-foreground/70 leading-snug px-2">
             GOWIN SPORTSBOOK est un opérateur de paris agréé. GOWIN encourage le jeu responsable. Le jeu est interdit aux moins de 18 ans. Avertissement : le jeu peut engendrer une dépendance et être dangereux s'il n'est pas contrôlé et pratiqué avec modération. Les gagnants savent s'arrêter.
           </p>
           <div className="flex items-center gap-4 flex-1 justify-end">
