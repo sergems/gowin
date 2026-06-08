@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict DOOAZXUtSZlSF7CyhtlxllnwQn0IVN2hdP7ldvhbPHH8qOkST51cd7N4PXKHqKo
+\restrict uvb1FzepOhnvk0JlAU6McUmVKeGTSlxdnxq1qV2zGiBZ5QIMfItrpyadxrLrSb3
 
 -- Dumped from database version 16.10
 -- Dumped by pg_dump version 16.10
@@ -453,11 +453,11 @@ CREATE TABLE public.users (
     email text NOT NULL,
     password_hash text NOT NULL,
     role public.user_role DEFAULT 'user'::public.user_role NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    public_id integer,
     first_name text,
     last_name text,
     phone_number text,
-    public_id integer
+    created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -16035,9 +16035,9 @@ COPY public.transactions (id, wallet_id, amount, type, description, created_at) 
 -- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.users (id, username, email, password_hash, role, created_at, first_name, last_name, phone_number, public_id) FROM stdin;
-1	admin	admin@gowin.com	$2b$10$qlhT3j/2P4FHOWEXGus3SO9Eim8UG9dKdyU0QglmqtIFQU61spItO	admin	2026-06-07 18:53:03.965093+00	Serge	Mugisho	+27749019134	867608
-2	testuser	user@gowin.com	$2b$10$/cAEq0Pe1hYRSwwZyiQ0buBGz2FMnybSIPDku5E/lJA3rDvOhcRAO	user	2026-06-07 18:54:16.008006+00	Selemani	Kabasele	+24399745145	353805
+COPY public.users (id, username, email, password_hash, role, public_id, first_name, last_name, phone_number, created_at) FROM stdin;
+1	admin	admin@gowin.com	$2b$10$qlhT3j/2P4FHOWEXGus3SO9Eim8UG9dKdyU0QglmqtIFQU61spItO	admin	867608	Serge	Mugisho	+27749019134	2026-06-07 18:53:03.965093+00
+2	testuser	user@gowin.com	$2b$10$/cAEq0Pe1hYRSwwZyiQ0buBGz2FMnybSIPDku5E/lJA3rDvOhcRAO	user	353805	Selemani	Kabasele	+24399745145	2026-06-07 18:54:16.008006+00
 \.
 
 
@@ -16291,6 +16291,14 @@ ALTER TABLE ONLY public.users
 
 
 --
+-- Name: users users_phone_number_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_phone_number_unique UNIQUE (phone_number);
+
+
+--
 -- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -16307,6 +16315,14 @@ ALTER TABLE ONLY public.users
 
 
 --
+-- Name: users users_public_id_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_public_id_unique UNIQUE (public_id);
+
+
+--
 -- Name: users users_username_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -16320,6 +16336,14 @@ ALTER TABLE ONLY public.users
 
 ALTER TABLE ONLY public.vouchers
     ADD CONSTRAINT vouchers_code_key UNIQUE (code);
+
+
+--
+-- Name: vouchers vouchers_code_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.vouchers
+    ADD CONSTRAINT vouchers_code_unique UNIQUE (code);
 
 
 --
@@ -16435,6 +16459,14 @@ ALTER TABLE ONLY public.vouchers
 
 
 --
+-- Name: vouchers vouchers_redeemed_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.vouchers
+    ADD CONSTRAINT vouchers_redeemed_by_users_id_fk FOREIGN KEY (redeemed_by) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
 -- Name: wallets wallets_user_id_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -16451,8 +16483,16 @@ ALTER TABLE ONLY public.withdrawals
 
 
 --
+-- Name: withdrawals withdrawals_user_id_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.withdrawals
+    ADD CONSTRAINT withdrawals_user_id_users_id_fk FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
 -- PostgreSQL database dump complete
 --
 
-\unrestrict DOOAZXUtSZlSF7CyhtlxllnwQn0IVN2hdP7ldvhbPHH8qOkST51cd7N4PXKHqKo
+\unrestrict uvb1FzepOhnvk0JlAU6McUmVKeGTSlxdnxq1qV2zGiBZ5QIMfItrpyadxrLrSb3
 
