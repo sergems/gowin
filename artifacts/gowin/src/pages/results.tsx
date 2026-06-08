@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useListFixtures } from "@workspace/api-client-react";
 import type { ListFixturesParams } from "@workspace/api-client-react";
 import { Link } from "wouter";
-import { format, subDays, subHours, startOfDay, isToday, isYesterday } from "date-fns";
+import { format, subDays, startOfDay, isToday, isYesterday } from "date-fns";
 import { CalendarDays, CheckCircle2, Shield, Globe } from "lucide-react";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

@@ -3,7 +3,7 @@ import { useSearch } from "wouter";
 import { useListFixtures } from "@workspace/api-client-react";
 import type { ListFixturesParams } from "@workspace/api-client-react";
 import { Link } from "wouter";
-import { format, subHours } from "date-fns";
+import { format } from "date-fns";
 import { ChevronDown, CalendarDays, Shield, Trophy } from "lucide-react";
 import { useBetSlip } from "@/contexts/BetSlipContext";
 import { sortOdds } from "@/lib/sortOdds";

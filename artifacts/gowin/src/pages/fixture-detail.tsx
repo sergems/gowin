@@ -4,7 +4,7 @@ import { useGetFixture } from "@workspace/api-client-react";
 import { useBetSlip } from "@/contexts/BetSlipContext";
 import { sortOdds } from "@/lib/sortOdds";
 import { Trophy, CalendarDays, Activity, ChevronLeft } from "lucide-react";
-import { format, subHours } from "date-fns";
+import { format } from "date-fns";
 import { Link } from "wouter";
 
 // ── Market category definitions ───────────────────────────────────────────────

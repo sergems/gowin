@@ -3,7 +3,7 @@ import { useListFixtures } from "@workspace/api-client-react";
 import type { ListFixturesParams, Fixture } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { Trophy, CalendarDays, Globe, ChevronDown, Shield } from "lucide-react";
-import { format, startOfDay, endOfMonth, addMonths, isToday, isTomorrow, subHours } from "date-fns";
+import { format, startOfDay, endOfMonth, addMonths, isToday, isTomorrow } from "date-fns";
 import { useBetSlip } from "@/contexts/BetSlipContext";
 import { sortOdds } from "@/lib/sortOdds";
 

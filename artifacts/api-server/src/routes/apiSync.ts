@@ -281,7 +281,7 @@ router.post("/admin/sync-fixtures", requireAdmin, async (_req, res): Promise<voi
       const homeTeamId = await upsertTeam(event.event_home_team, event.home_team_logo ?? null, homeExtId);
       const awayTeamId = await upsertTeam(event.event_away_team, event.away_team_logo ?? null, awayExtId);
 
-      const startTime = new Date(`${event.event_date}T${event.event_time ?? "00:00"}:00`);
+      const startTime = new Date(`${event.event_date}T${event.event_time ?? "00:00"}:00Z`);
       const status = mapStatus(event.event_status ?? "");
       const score = parseScore(event.event_final_result ?? "");
 
