@@ -221,14 +221,55 @@ router.post("/admin/sync-fixtures", requireAdmin, async (_req, res): Promise<voi
           .returning();
 
         if (status === "upcoming") {
-          const [market] = await db.insert(marketsTable).values({ fixtureId: fixture.id, marketType: "1X2" }).returning();
-          const homeOdds = (1.4 + Math.random() * 3.5).toFixed(2);
-          const drawOdds = (2.8 + Math.random() * 1.2).toFixed(2);
-          const awayOdds = (1.4 + Math.random() * 3.5).toFixed(2);
+          // ── 1X2 ──────────────────────────────────────────────────────────
+          const rawH = 1.4 + Math.random() * 3.5;
+          const rawD = 2.8 + Math.random() * 1.2;
+          const rawA = 1.4 + Math.random() * 3.5;
+          const homeOdds = rawH.toFixed(2);
+          const drawOdds = rawD.toFixed(2);
+          const awayOdds = rawA.toFixed(2);
+
+          const [m1x2] = await db.insert(marketsTable).values({ fixtureId: fixture.id, marketType: "1X2" }).returning();
           await db.insert(oddsTable).values([
-            { marketId: market.id, selection: "Home", oddsValue: homeOdds },
-            { marketId: market.id, selection: "Draw", oddsValue: drawOdds },
-            { marketId: market.id, selection: "Away", oddsValue: awayOdds },
+            { marketId: m1x2.id, selection: "Home", oddsValue: homeOdds },
+            { marketId: m1x2.id, selection: "Draw", oddsValue: drawOdds },
+            { marketId: m1x2.id, selection: "Away", oddsValue: awayOdds },
+          ]);
+
+          // Derive normalised probabilities from 1X2
+          const pH = 1 / rawH, pD = 1 / rawD, pA = 1 / rawA;
+          const tot = pH + pD + pA;
+          const nH = pH / tot, nD = pD / tot, nA = pA / tot;
+          const margin = 1.06;
+          const r = Math.random(); // pseudo-random flavour per fixture
+
+          // ── Double Chance ─────────────────────────────────────────────────
+          const [mDC] = await db.insert(marketsTable).values({ fixtureId: fixture.id, marketType: "Double Chance" }).returning();
+          await db.insert(oddsTable).values([
+            { marketId: mDC.id, selection: "1X", oddsValue: (1 / ((nH + nD) * margin)).toFixed(2) },
+            { marketId: mDC.id, selection: "12", oddsValue: (1 / ((nH + nA) * margin)).toFixed(2) },
+            { marketId: mDC.id, selection: "X2", oddsValue: (1 / ((nD + nA) * margin)).toFixed(2) },
+          ]);
+
+          // ── Both Teams To Score ───────────────────────────────────────────
+          const [mBTTS] = await db.insert(marketsTable).values({ fixtureId: fixture.id, marketType: "Both Teams To Score" }).returning();
+          await db.insert(oddsTable).values([
+            { marketId: mBTTS.id, selection: "Yes", oddsValue: (1.50 + r * 0.90).toFixed(2) },
+            { marketId: mBTTS.id, selection: "No",  oddsValue: (1.70 + (1 - r) * 0.70).toFixed(2) },
+          ]);
+
+          // ── Over / Under 2.5 ─────────────────────────────────────────────
+          const [mOU25] = await db.insert(marketsTable).values({ fixtureId: fixture.id, marketType: "Over/Under 2.5" }).returning();
+          await db.insert(oddsTable).values([
+            { marketId: mOU25.id, selection: "Over 2.5",  oddsValue: (1.65 + r * 0.60).toFixed(2) },
+            { marketId: mOU25.id, selection: "Under 2.5", oddsValue: (1.75 + (1 - r) * 0.50).toFixed(2) },
+          ]);
+
+          // ── Over / Under 1.5 ─────────────────────────────────────────────
+          const [mOU15] = await db.insert(marketsTable).values({ fixtureId: fixture.id, marketType: "Over/Under 1.5" }).returning();
+          await db.insert(oddsTable).values([
+            { marketId: mOU15.id, selection: "Over 1.5",  oddsValue: (1.25 + r * 0.40).toFixed(2) },
+            { marketId: mOU15.id, selection: "Under 1.5", oddsValue: (2.50 + r * 1.00).toFixed(2) },
           ]);
         }
         imported++;
