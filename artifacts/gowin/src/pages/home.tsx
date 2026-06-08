@@ -298,9 +298,6 @@ export default function Home() {
 
   return (
     <div className="space-y-8">
-      <p className="hidden md:block text-xs text-muted-foreground text-center leading-relaxed">
-        GOWIN SPORTSBOOK est un opérateur de paris agréé. GOWIN encourage le jeu responsable. Le jeu est interdit aux moins de 18 ans. Avertissement : le jeu peut engendrer une dépendance et être dangereux s'il n'est pas contrôlé et pratiqué avec modération. Les gagnants savent s'arrêter.
-      </p>
       <div>
         <h1 className="text-2xl font-black tracking-tight mb-1">Upcoming Matches</h1>
       </div>
