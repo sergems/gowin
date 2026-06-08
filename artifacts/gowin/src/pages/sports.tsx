@@ -328,7 +328,7 @@ function FixtureCard({ fixture }: { fixture: any }) {
             </div>
           )}
 
-          {/* Footer: more markets / collapse */}
+          {/* Footer: popular markets / collapse */}
           <button
             onClick={handleToggle}
             className="w-full flex items-center justify-between px-3 py-2 text-xs text-muted-foreground hover:text-primary transition-colors"
@@ -337,11 +337,7 @@ function FixtureCard({ fixture }: { fixture: any }) {
               <span className="font-medium text-primary">Hide markets ↑</span>
             ) : (
               <>
-                <span>
-                  {otherMarkets.length > 0
-                    ? `+${otherMarkets.length} more market${otherMarkets.length > 1 ? "s" : ""} available`
-                    : "View market"}
-                </span>
+                <span className="font-medium">Popular Markets</span>
                 <ChevronDown className="w-3.5 h-3.5" />
               </>
             )}
