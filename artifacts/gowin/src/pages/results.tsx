@@ -51,7 +51,7 @@ function ResultCard({ fixture }: { fixture: any }) {
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <CalendarDays className="w-3 h-3 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">{format(subHours(new Date(fixture.startTime), 2), "HH:mm")}</span>
+              <span className="text-xs text-muted-foreground">{format(new Date(fixture.startTime), "HH:mm")}</span>
               {fixture.status === "finished" && (
                 <span className="text-xs font-semibold text-muted-foreground bg-accent/50 px-1.5 py-0.5 rounded ml-1">FT</span>
               )}

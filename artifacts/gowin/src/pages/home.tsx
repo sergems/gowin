@@ -116,7 +116,7 @@ function FixtureCard({ fixture }: { fixture: FixtureWithMarkets }) {
             </div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
               <CalendarDays className="w-3 h-3" />
-              {format(subHours(new Date(fixture.startTime), 2), "HH:mm")}
+              {format(new Date(fixture.startTime), "HH:mm")}
             </div>
           </div>
 

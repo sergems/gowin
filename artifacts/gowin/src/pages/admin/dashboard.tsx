@@ -140,7 +140,7 @@ export default function AdminDashboard() {
                       </div>
                       <div className="text-xs text-muted-foreground mt-1 flex gap-2">
                         <span className="uppercase text-[10px] bg-background px-1.5 py-0.5 rounded">{item.fixture.status}</span>
-                        <span>{format(subHours(new Date(item.fixture.startTime), 2), "MMM d, HH:mm")}</span>
+                        <span>{format(new Date(item.fixture.startTime), "MMM d, HH:mm")}</span>
                       </div>
                     </div>
                     <div className="text-right">

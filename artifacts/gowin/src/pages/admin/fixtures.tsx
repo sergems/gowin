@@ -192,7 +192,7 @@ export default function AdminFixtures() {
                       {fixture.homeTeam?.name} vs {fixture.awayTeam?.name}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {format(subHours(new Date(fixture.startTime), 2), "MMM d, HH:mm")}
+                      {format(new Date(fixture.startTime), "MMM d, HH:mm")}
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={`uppercase ${fixture.status === 'live' ? 'border-primary text-primary' : ''}`}>

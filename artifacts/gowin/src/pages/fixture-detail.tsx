@@ -220,7 +220,7 @@ export default function FixtureDetail() {
               ) : (
                 <span className="flex items-center gap-1.5 text-muted-foreground">
                   <CalendarDays className="w-4 h-4" />
-                  {format(subHours(new Date(fixture.startTime), 2), "EEE d MMM · HH:mm")}
+                  {format(new Date(fixture.startTime), "EEE d MMM · HH:mm")}
                 </span>
               )}
             </div>
