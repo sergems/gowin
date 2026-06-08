@@ -5,6 +5,7 @@ import { Link } from "wouter";
 import { Trophy, CalendarDays, Globe, ChevronDown, Shield } from "lucide-react";
 import { format } from "date-fns";
 import { useBetSlip } from "@/contexts/BetSlipContext";
+import { sortOdds } from "@/lib/sortOdds";
 
 const PRIORITY_LEAGUES = [
   { label: "World Cup",                     test: (n: string) => /world cup/i.test(n) },
@@ -169,7 +170,7 @@ function FixtureCard({ fixture }: { fixture: FixtureWithMarkets }) {
                 </p>
               )}
               <div className="flex gap-2">
-                {activeMarket.odds.map((odd) => (
+                {sortOdds(activeMarket.odds, activeMarket.marketType).map((odd) => (
                   <OddsButton
                     key={odd.id}
                     oddsId={odd.id}

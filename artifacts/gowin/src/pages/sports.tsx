@@ -6,6 +6,7 @@ import { Link } from "wouter";
 import { format } from "date-fns";
 import { ChevronDown, ChevronRight, Globe, CalendarDays, Shield } from "lucide-react";
 import { useBetSlip } from "@/contexts/BetSlipContext";
+import { sortOdds } from "@/lib/sortOdds";
 
 // ── GMT+2 helpers ─────────────────────────────────────────────────────────────
 const GMT2_OFFSET_MS = 2 * 60 * 60 * 1000;
@@ -344,7 +345,7 @@ function FixtureCard({ fixture }: { fixture: any }) {
                 </p>
               )}
               <div className="flex gap-2">
-                {activeMarket.odds.map((odd) => (
+                {sortOdds(activeMarket.odds, activeMarket.marketType).map((odd) => (
                   <OddsButton
                     key={odd.id}
                     oddsId={odd.id}

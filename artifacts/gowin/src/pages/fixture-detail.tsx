@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useRoute } from "wouter";
 import { useGetFixture } from "@workspace/api-client-react";
 import { useBetSlip } from "@/contexts/BetSlipContext";
+import { sortOdds } from "@/lib/sortOdds";
 import { Trophy, CalendarDays, Activity, ChevronLeft } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
@@ -95,7 +96,7 @@ function MarketCard({ market, fixtureId, fixtureName, disabled }: {
   fixtureName: string;
   disabled?: boolean;
 }) {
-  const odds: any[] = market.odds ?? [];
+  const odds: any[] = sortOdds(market.odds ?? [], market.marketType);
   const isWide = odds.length >= 3 && odds.length <= 4;
   const isGrid2 = odds.length === 2;
 
