@@ -1,5 +1,6 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBetSlip } from "@/contexts/BetSlipContext";
 import { useGetMyWallet } from "@workspace/api-client-react";
@@ -7,14 +8,54 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
-import { Activity, LayoutDashboard, History, Wallet, Trophy, LogOut, Users, Settings, X, Trash2, ArrowLeftRight, Ticket, UserCircle, AlertTriangle, Banknote, SlidersHorizontal, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Activity, LayoutDashboard, History, Wallet, Trophy, LogOut, Users, Settings, X, ArrowLeftRight, Ticket, UserCircle, AlertTriangle, Banknote, SlidersHorizontal, PanelLeftClose, PanelLeftOpen, ChevronDown, ChevronRight, Globe, Shield } from "lucide-react";
+
+interface LeagueEntry { id: number; name: string; logo: string | null; fixtureCount: number; }
+interface CountryEntry { name: string; logo: string | null; leagues: LeagueEntry[]; }
+interface FootballData { featured: LeagueEntry[]; international: LeagueEntry[]; countries: CountryEntry[]; }
+
+function LeagueLogo({ src, alt }: { src: string | null | undefined; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) return <Shield className="w-3.5 h-3.5 text-muted-foreground shrink-0" />;
+  return <img src={src} alt={alt} width={14} height={14} className="object-contain shrink-0 w-3.5 h-3.5" onError={() => setFailed(true)} />;
+}
+
+function FlagImg({ src, alt }: { src: string | null | undefined; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) return <span className="text-xs shrink-0">🏳️</span>;
+  return <img src={src} alt={alt} width={16} height={11} className="object-cover rounded-sm shrink-0 w-4" style={{ height: 11 }} onError={() => setFailed(true)} />;
+}
 
 export function Shell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const { data: wallet } = useGetMyWallet({ query: { enabled: !!user } });
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const { selections, stake, setStake, removeSelection, totalOdds, potentialWin, placeBet, isPlacing } = useBetSlip();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sportsOpen, setSportsOpen] = useState(false);
+  const [openCountries, setOpenCountries] = useState<Set<string>>(new Set());
+  const [intlOpen, setIntlOpen] = useState(false);
+
+  const isAdmin = user?.role === "admin";
+
+  const { data: footballData } = useQuery<FootballData>({
+    queryKey: ["football-countries"],
+    queryFn: () => fetch("/api/football/countries").then((r) => r.json()),
+    enabled: sportsOpen && !isAdmin,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const toggleCountry = (name: string) => {
+    setOpenCountries((prev) => {
+      const next = new Set(prev);
+      next.has(name) ? next.delete(name) : next.add(name);
+      return next;
+    });
+  };
+
+  const selectLeague = (id: number, name: string) => {
+    navigate(`/sports?leagueId=${id}&leagueName=${encodeURIComponent(name)}`);
+  };
 
   const handleLogout = () => {
     logout();
@@ -66,29 +107,190 @@ export function Shell({ children }: { children: ReactNode }) {
 
         <ScrollArea className="flex-1 py-3">
           <nav className={`space-y-1 ${sidebarOpen ? "px-2" : "px-1"}`}>
-            {navLinks.map(({ href, icon: Icon, label, match, badge }) => {
-              const active = match(location);
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  title={!sidebarOpen ? label : undefined}
-                  className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
-                    ${sidebarOpen ? "px-3 py-2" : "px-0 py-2 justify-center"}
-                    ${active ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}
-                >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  {sidebarOpen && <span className="flex-1">{label}</span>}
-                  {sidebarOpen && badge === "warn" && (
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                  )}
-                  {!sidebarOpen && badge === "warn" && (
-                    <span className="absolute w-1.5 h-1.5 rounded-full bg-amber-500 top-1 right-1" />
-                  )}
-                </Link>
-              );
-            })}
 
+            {/* Home */}
+            <Link
+              href="/"
+              title={!sidebarOpen ? "Home" : undefined}
+              className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                ${sidebarOpen ? "px-3 py-2" : "px-0 py-2 justify-center"}
+                ${location === "/" ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}
+            >
+              <Activity className="w-4 h-4 shrink-0" />
+              {sidebarOpen && <span className="flex-1">Home</span>}
+            </Link>
+
+            {/* Sports — toggle for non-admin, plain link for admin */}
+            {isAdmin ? (
+              <Link
+                href="/sports"
+                title={!sidebarOpen ? "Sports" : undefined}
+                className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                  ${sidebarOpen ? "px-3 py-2" : "px-0 py-2 justify-center"}
+                  ${location.startsWith("/sports") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}
+              >
+                <Trophy className="w-4 h-4 shrink-0" />
+                {sidebarOpen && <span className="flex-1">Sports</span>}
+              </Link>
+            ) : (
+              <>
+                <button
+                  title={!sidebarOpen ? "Sports" : undefined}
+                  onClick={() => {
+                    if (!sidebarOpen) setSidebarOpen(true);
+                    setSportsOpen((v) => !v);
+                  }}
+                  className={`w-full flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                    ${sidebarOpen ? "px-3 py-2" : "px-0 py-2 justify-center"}
+                    ${location.startsWith("/sports") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}
+                >
+                  <Trophy className="w-4 h-4 shrink-0" />
+                  {sidebarOpen && <span className="flex-1 text-left">Sports</span>}
+                  {sidebarOpen && (sportsOpen
+                    ? <ChevronDown className="w-3.5 h-3.5 shrink-0" />
+                    : <ChevronRight className="w-3.5 h-3.5 shrink-0" />)}
+                </button>
+
+                {/* Football submenu */}
+                {sidebarOpen && sportsOpen && (
+                  <div className="ml-1 border-l border-border/50 pl-1 max-h-[50vh] overflow-y-auto space-y-0.5 pb-1">
+                    {/* All Fixtures */}
+                    <button
+                      onClick={() => navigate("/sports")}
+                      className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-xs transition-colors
+                        ${location === "/sports" && !location.includes("leagueId") ? "text-primary font-medium" : "text-muted-foreground hover:bg-accent/30 hover:text-foreground"}`}
+                    >
+                      <Globe className="w-3 h-3 shrink-0" />
+                      <span className="flex-1 text-left">All Fixtures</span>
+                    </button>
+
+                    {!footballData ? (
+                      <div className="px-3 py-2 text-xs text-muted-foreground/60">Loading…</div>
+                    ) : (
+                      <>
+                        {/* UEFA */}
+                        {footballData.featured.length > 0 && (
+                          <div>
+                            <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                              🏅 UEFA Competitions
+                            </div>
+                            {footballData.featured.map((lg) => (
+                              <button
+                                key={lg.id}
+                                onClick={() => selectLeague(lg.id, lg.name)}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-accent/30 hover:text-foreground transition-colors"
+                              >
+                                <LeagueLogo src={lg.logo} alt={lg.name} />
+                                <span className="flex-1 text-left truncate">{lg.name}</span>
+                                {lg.fixtureCount > 0 && <span className="text-[10px] text-muted-foreground/50 shrink-0">{lg.fixtureCount}</span>}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* International */}
+                        {footballData.international.length > 0 && (
+                          <div>
+                            <button
+                              onClick={() => setIntlOpen((v) => !v)}
+                              className="w-full flex items-center gap-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                            >
+                              <Globe className="w-3 h-3 shrink-0" />
+                              <span className="flex-1 text-left">International</span>
+                              <span className="mr-1">{footballData.international.length}</span>
+                              {intlOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                            </button>
+                            {intlOpen && footballData.international.map((lg) => (
+                              <button
+                                key={lg.id}
+                                onClick={() => selectLeague(lg.id, lg.name)}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-accent/30 hover:text-foreground transition-colors"
+                              >
+                                <LeagueLogo src={lg.logo} alt={lg.name} />
+                                <span className="flex-1 text-left truncate">{lg.name}</span>
+                                <span className="text-[10px] text-muted-foreground/50 shrink-0">{lg.fixtureCount}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Countries */}
+                        {footballData.countries.map((country) => (
+                          <div key={country.name}>
+                            <button
+                              onClick={() => toggleCountry(country.name)}
+                              className="w-full flex items-center gap-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                            >
+                              <FlagImg src={country.logo} alt={country.name} />
+                              <span className="flex-1 text-left truncate normal-case text-xs font-medium">{country.name}</span>
+                              <span className="mr-1 text-[10px]">{country.leagues.length}</span>
+                              {openCountries.has(country.name) ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                            </button>
+                            {openCountries.has(country.name) && country.leagues.map((lg) => (
+                              <button
+                                key={lg.id}
+                                onClick={() => selectLeague(lg.id, lg.name)}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-accent/30 hover:text-foreground transition-colors"
+                              >
+                                <LeagueLogo src={lg.logo} alt={lg.name} />
+                                <span className="flex-1 text-left truncate">{lg.name}</span>
+                                <span className="text-[10px] text-muted-foreground/50 shrink-0">{lg.fixtureCount}</span>
+                              </button>
+                            ))}
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* My Bets */}
+            {user && (
+              <Link
+                href="/history"
+                title={!sidebarOpen ? "My Bets" : undefined}
+                className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                  ${sidebarOpen ? "px-3 py-2" : "px-0 py-2 justify-center"}
+                  ${location.startsWith("/history") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}
+              >
+                <History className="w-4 h-4 shrink-0" />
+                {sidebarOpen && <span className="flex-1">My Bets</span>}
+              </Link>
+            )}
+
+            {/* Wallet */}
+            {user && (
+              <Link
+                href="/wallet"
+                title={!sidebarOpen ? "Wallet" : undefined}
+                className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                  ${sidebarOpen ? "px-3 py-2" : "px-0 py-2 justify-center"}
+                  ${location.startsWith("/wallet") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}
+              >
+                <Wallet className="w-4 h-4 shrink-0" />
+                {sidebarOpen && <span className="flex-1">Wallet</span>}
+              </Link>
+            )}
+
+            {/* Profile */}
+            {user && (
+              <Link
+                href="/profile"
+                title={!sidebarOpen ? "Profile" : undefined}
+                className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                  ${sidebarOpen ? "px-3 py-2" : "px-0 py-2 justify-center"}
+                  ${location.startsWith("/profile") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}
+              >
+                <UserCircle className="w-4 h-4 shrink-0" />
+                {sidebarOpen && <span className="flex-1">Profile</span>}
+                {sidebarOpen && !(user as any).phoneNumber && <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />}
+                {!sidebarOpen && !(user as any).phoneNumber && <span className="absolute w-1.5 h-1.5 rounded-full bg-amber-500 top-1 right-1" />}
+              </Link>
+            )}
+
+            {/* Admin section */}
             {adminLinks.length > 0 && (
               <>
                 {sidebarOpen && (

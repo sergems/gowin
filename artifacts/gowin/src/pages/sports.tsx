@@ -1,10 +1,10 @@
-import { useState, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useSearch } from "wouter";
 import { useListFixtures } from "@workspace/api-client-react";
 import type { ListFixturesParams } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
-import { ChevronDown, ChevronRight, Globe, CalendarDays, Shield } from "lucide-react";
+import { ChevronDown, CalendarDays, Shield, Trophy } from "lucide-react";
 import { useBetSlip } from "@/contexts/BetSlipContext";
 import { sortOdds } from "@/lib/sortOdds";
 
@@ -39,36 +39,11 @@ function dateLabel(dateKey: string): string {
   return formatGMT2DateHeader(dateKey);
 }
 
-// ── Types ────────────────────────────────────────────────────────────────────
-
-interface LeagueEntry {
-  id: number;
-  name: string;
-  logo: string | null;
-  fixtureCount: number;
-  groupName?: string;
-}
-
-interface CountryEntry {
-  name: string;
-  logo: string | null;
-  leagues: LeagueEntry[];
-}
-
-interface FootballCountriesData {
-  featured: LeagueEntry[];
-  international: LeagueEntry[];
-  countries: CountryEntry[];
-}
-
-type OddRow = { id: number; marketId: number; selection: string; oddsValue: number };
-type MarketWithOdds = { id: number; fixtureId: number; marketType: string; odds: OddRow[] };
-
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function Logo({ src, alt, size = 24, fallback }: { src: string | null | undefined; alt: string; size?: number; fallback?: React.ReactNode }) {
+function Logo({ src, alt, size = 24 }: { src: string | null | undefined; alt: string; size?: number }) {
   const [failed, setFailed] = useState(false);
-  if (!src || failed) return <>{fallback ?? <Shield className="text-muted-foreground" style={{ width: size, height: size }} />}</>;
+  if (!src || failed) return <Shield className="text-muted-foreground shrink-0" style={{ width: size, height: size }} />;
   return (
     <img
       src={src}
@@ -79,172 +54,6 @@ function Logo({ src, alt, size = 24, fallback }: { src: string | null | undefine
       style={{ width: size, height: size }}
       onError={() => setFailed(true)}
     />
-  );
-}
-
-function FlagLogo({ src, alt, size = 20 }: { src: string | null | undefined; alt: string; size?: number }) {
-  const [failed, setFailed] = useState(false);
-  if (!src || failed) {
-    return (
-      <span className="shrink-0 text-base leading-none" style={{ fontSize: size * 0.9 }}>🏳️</span>
-    );
-  }
-  return (
-    <img
-      src={src}
-      alt={alt}
-      width={size}
-      height={size}
-      className="object-cover rounded-sm shrink-0"
-      style={{ width: size, height: Math.round(size * 0.67) }}
-      onError={() => setFailed(true)}
-    />
-  );
-}
-
-// ── Sidebar sections ──────────────────────────────────────────────────────────
-
-function UEFASection({
-  leagues,
-  selectedLeagueId,
-  onSelect,
-}: {
-  leagues: LeagueEntry[];
-  selectedLeagueId: number | null;
-  onSelect: (id: number, name: string) => void;
-}) {
-  const [open, setOpen] = useState(true);
-
-  if (leagues.length === 0) return null;
-
-  return (
-    <div className="border-b border-border/50">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-accent/40 transition-colors text-left"
-      >
-        <span className="text-base leading-none shrink-0">🏅</span>
-        <span className="flex-1 text-sm font-semibold">UEFA Competitions</span>
-        {open ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
-      </button>
-
-      {open && (
-        <div className="pb-1">
-          {leagues.map((league) => (
-            <button
-              key={league.id}
-              onClick={() => onSelect(league.id, league.name)}
-              className={`w-full flex items-center gap-2 px-4 py-2 text-left transition-colors text-sm ${
-                selectedLeagueId === league.id
-                  ? "bg-primary/10 text-primary font-medium"
-                  : "text-muted-foreground hover:bg-accent/30 hover:text-foreground"
-              }`}
-            >
-              <Logo src={league.logo} alt={league.name} size={18} />
-              <span className="flex-1 truncate text-xs">{league.name}</span>
-              {league.fixtureCount > 0 && (
-                <span className="text-xs text-muted-foreground/60 shrink-0">{league.fixtureCount}</span>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function InternationalSection({
-  leagues,
-  selectedLeagueId,
-  onSelect,
-}: {
-  leagues: LeagueEntry[];
-  selectedLeagueId: number | null;
-  onSelect: (id: number, name: string) => void;
-}) {
-  const [open, setOpen] = useState(true);
-
-  if (leagues.length === 0) return null;
-
-  return (
-    <div className="border-b border-border/50">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-accent/40 transition-colors text-left"
-      >
-        <Globe className="w-4 h-4 text-primary shrink-0" />
-        <span className="flex-1 text-sm font-semibold">International</span>
-        <span className="text-xs text-muted-foreground">{leagues.length}</span>
-        {open ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
-      </button>
-
-      {open && (
-        <div className="pb-1">
-          {leagues.map((league) => (
-            <button
-              key={league.id}
-              onClick={() => onSelect(league.id, league.name)}
-              className={`w-full flex items-center gap-2 px-4 py-2 text-left transition-colors text-sm ${
-                selectedLeagueId === league.id
-                  ? "bg-primary/10 text-primary font-medium"
-                  : "text-muted-foreground hover:bg-accent/30 hover:text-foreground"
-              }`}
-            >
-              <Logo src={league.logo} alt={league.name} size={18} />
-              <span className="flex-1 truncate text-xs">{league.name}</span>
-              <span className="text-xs text-muted-foreground/60 shrink-0">{league.fixtureCount}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CountrySection({
-  country,
-  selectedLeagueId,
-  onSelect,
-}: {
-  country: CountryEntry;
-  selectedLeagueId: number | null;
-  onSelect: (id: number, name: string) => void;
-}) {
-  const isActive = country.leagues.some((l) => l.id === selectedLeagueId);
-  const [open, setOpen] = useState(isActive);
-
-  return (
-    <div className="border-b border-border/50">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-accent/40 transition-colors text-left"
-      >
-        <FlagLogo src={country.logo} alt={country.name} size={20} />
-        <span className="flex-1 text-sm font-medium truncate">{country.name}</span>
-        <span className="text-xs text-muted-foreground">{country.leagues.length}</span>
-        {open ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
-      </button>
-
-      {open && (
-        <div className="pb-1">
-          {country.leagues.map((league) => (
-            <button
-              key={league.id}
-              onClick={() => onSelect(league.id, league.name)}
-              className={`w-full flex items-center gap-2 px-4 py-2 text-left transition-colors ${
-                selectedLeagueId === league.id
-                  ? "bg-primary/10 text-primary font-medium"
-                  : "text-muted-foreground hover:bg-accent/30 hover:text-foreground"
-              }`}
-            >
-              <Logo src={league.logo} alt={league.name} size={18} />
-              <span className="flex-1 truncate text-xs">{league.name}</span>
-              <span className="text-xs text-muted-foreground/60 shrink-0">{league.fixtureCount}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -294,14 +103,12 @@ function FixtureCard({ fixture }: { fixture: any }) {
   const isLive = fixture.status === "live";
   const isFinished = fixture.status === "finished";
   const showScore = isLive || isFinished;
-  const markets: MarketWithOdds[] = (fixture as any).markets ?? [];
+  const markets: any[] = fixture.markets ?? [];
   const [expanded, setExpanded] = useState(false);
   const [activeMarketIdx, setActiveMarketIdx] = useState(0);
 
   const market1x2 = markets.find((m) => m.marketType === "1X2") ?? markets[0] ?? null;
-  const otherMarkets = markets.filter((m) => m !== market1x2);
   const fixtureName = `${fixture.homeTeam?.name ?? "Home"} vs ${fixture.awayTeam?.name ?? "Away"}`;
-
   const activeMarket = expanded ? (markets[activeMarketIdx] ?? market1x2) : market1x2;
 
   const handleToggle = (e: React.MouseEvent) => {
@@ -313,13 +120,11 @@ function FixtureCard({ fixture }: { fixture: any }) {
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/30 transition-all">
-      {/* Top: team info — links to fixture detail */}
       <Link href={`/fixtures/${fixture.id}`}>
         <div className="p-4 cursor-pointer hover:bg-accent/20 transition-colors">
-          {/* League + time */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-1.5 min-w-0">
-              <Logo src={fixture.league?.countryLogo} alt={fixture.league?.countryName ?? ""} size={14} fallback={<span className="text-xs">🏳️</span>} />
+              <Logo src={fixture.league?.countryLogo} alt={fixture.league?.countryName ?? ""} size={14} />
               <Logo src={fixture.league?.logo} alt={fixture.league?.name ?? ""} size={14} />
               <span className="text-xs text-muted-foreground truncate">{fixture.league?.name}</span>
             </div>
@@ -339,7 +144,6 @@ function FixtureCard({ fixture }: { fixture: any }) {
             </div>
           </div>
 
-          {/* Teams */}
           <div className="flex items-center gap-3">
             <div className="flex-1 flex items-center gap-2 min-w-0">
               <Logo src={fixture.homeTeam?.logo} alt={fixture.homeTeam?.name ?? ""} size={28} />
@@ -364,10 +168,8 @@ function FixtureCard({ fixture }: { fixture: any }) {
         </div>
       </Link>
 
-      {/* Bottom: odds + markets toggle */}
       {markets.length > 0 && (
         <div className="border-t border-border/50">
-          {/* Expanded: market tab strip */}
           {expanded && markets.length > 1 && (
             <div className="flex overflow-x-auto scrollbar-none border-b border-border/40 bg-accent/10">
               {markets.map((m, i) => (
@@ -386,7 +188,6 @@ function FixtureCard({ fixture }: { fixture: any }) {
             </div>
           )}
 
-          {/* Odds row */}
           {activeMarket && (
             <div className="px-3 pt-3 pb-1" onClick={(e) => e.preventDefault()}>
               {!expanded && (
@@ -395,7 +196,7 @@ function FixtureCard({ fixture }: { fixture: any }) {
                 </p>
               )}
               <div className="flex gap-2">
-                {sortOdds(activeMarket.odds, activeMarket.marketType).map((odd) => (
+                {sortOdds(activeMarket.odds, activeMarket.marketType).map((odd: any) => (
                   <OddsButton
                     key={odd.id}
                     oddsId={odd.id}
@@ -410,7 +211,6 @@ function FixtureCard({ fixture }: { fixture: any }) {
             </div>
           )}
 
-          {/* Footer: popular markets / collapse */}
           <button
             onClick={handleToggle}
             className="w-full flex items-center justify-between px-3 py-2 text-xs text-muted-foreground hover:text-primary transition-colors"
@@ -433,172 +233,90 @@ function FixtureCard({ fixture }: { fixture: any }) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function FootballPage() {
-  const [selectedLeagueId, setSelectedLeagueId] = useState<number | null>(null);
-  const [selectedLeagueName, setSelectedLeagueName] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const search = useSearch();
+  const params = new URLSearchParams(search);
+  const selectedLeagueId = params.get("leagueId") ? Number(params.get("leagueId")) : null;
+  const selectedLeagueName = params.get("leagueName") ? decodeURIComponent(params.get("leagueName")!) : null;
 
-  const { data: countriesData, isLoading: isLoadingCountries } = useQuery<FootballCountriesData>({
-    queryKey: ["football-countries"],
-    queryFn: () => fetch("/api/football/countries").then((r) => r.json()),
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const { data: fixturesData, isLoading: isLoadingFixtures } = useListFixtures(
+  const { data: fixturesData, isLoading } = useListFixtures(
     (selectedLeagueId
       ? { leagueId: selectedLeagueId, status: "upcoming", limit: 50, withMarkets: true }
       : { status: "upcoming", limit: 20, withMarkets: true }) as ListFixturesParams,
+    { query: { queryKey: ["fixtures", "sports", selectedLeagueId] } },
   );
 
   const fixtures = fixturesData?.fixtures ?? [];
 
-  const handleLeagueSelect = useCallback((id: number, name: string) => {
-    setSelectedLeagueId(id);
-    setSelectedLeagueName(name);
-    setSidebarOpen(false);
-  }, []);
-
-  const totalCountries = countriesData?.countries.length ?? 0;
-  const totalLeagues = (countriesData?.international.length ?? 0) + (countriesData?.countries.reduce((s, c) => s + c.leagues.length, 0) ?? 0);
-
   return (
-    <div className="flex flex-col lg:flex-row gap-0 -mx-4 lg:-mx-6 min-h-[calc(100vh-80px)]">
-      {/* ── Sidebar ── */}
-      <aside className="lg:w-72 xl:w-80 shrink-0 border-r border-border bg-card/40">
-        {/* Sidebar header */}
-        <div className="sticky top-0 z-10 bg-card border-b border-border px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="font-bold text-base flex items-center gap-2">⚽ Football</h1>
-              {!isLoadingCountries && (
-                <p className="text-xs text-muted-foreground">{totalCountries} countries · {totalLeagues} leagues</p>
-              )}
-            </div>
-            {/* Mobile toggle */}
-            <button
-              className="lg:hidden text-sm text-primary font-medium"
-              onClick={() => setSidebarOpen((v) => !v)}
-            >
-              {sidebarOpen ? "Close" : "Browse"}
-            </button>
-          </div>
-        </div>
-
-        {/* Sidebar content */}
-        <div className={`overflow-y-auto lg:block ${sidebarOpen ? "block" : "hidden"} lg:max-h-[calc(100vh-130px)] max-h-72`}>
-          {isLoadingCountries ? (
-            <div className="space-y-1 p-3">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="h-9 rounded-lg bg-accent/40 animate-pulse" />
-              ))}
-            </div>
-          ) : (
-            <>
-              <UEFASection
-                leagues={countriesData?.featured ?? []}
-                selectedLeagueId={selectedLeagueId}
-                onSelect={handleLeagueSelect}
-              />
-              <InternationalSection
-                leagues={countriesData?.international ?? []}
-                selectedLeagueId={selectedLeagueId}
-                onSelect={handleLeagueSelect}
-              />
-              {countriesData?.countries.map((country) => (
-                <CountrySection
-                  key={country.name}
-                  country={country}
-                  selectedLeagueId={selectedLeagueId}
-                  onSelect={handleLeagueSelect}
-                />
-              ))}
-            </>
-          )}
-        </div>
-      </aside>
-
-      {/* ── Main area ── */}
-      <main className="flex-1 overflow-y-auto">
-        {/* Header bar */}
-        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border px-4 lg:px-6 py-3 flex items-center gap-3">
-          {selectedLeagueId && selectedLeagueName ? (
-            <>
-              <button
-                onClick={() => { setSelectedLeagueId(null); setSelectedLeagueName(null); }}
-                className="text-muted-foreground hover:text-foreground text-sm"
-              >
-                ← Back
-              </button>
-              <span className="text-muted-foreground">/</span>
-              <h2 className="font-bold text-sm truncate">{selectedLeagueName}</h2>
-              <span className="ml-auto text-xs text-muted-foreground">{fixturesData?.total ?? 0} fixtures</span>
-            </>
-          ) : (
-            <>
-              <h2 className="font-bold text-sm">All Upcoming Fixtures</h2>
-              <span className="ml-auto text-xs text-muted-foreground">Select a league from the sidebar</span>
-            </>
-          )}
-        </div>
-
-        {/* Fixtures */}
-        <div className="p-4 lg:p-6">
-          {isLoadingFixtures ? (
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-36 rounded-xl bg-accent/40 animate-pulse" />
-              ))}
-            </div>
-          ) : fixtures.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-center">
-              <span className="text-5xl mb-4">⚽</span>
-              <p className="font-bold text-lg mb-1">No upcoming fixtures</p>
-              <p className="text-muted-foreground text-sm">
-                {selectedLeagueId
-                  ? "No scheduled matches for this league in the next 14 days."
-                  : "Select a league from the sidebar to browse fixtures."}
-              </p>
-            </div>
-          ) : (() => {
-            // Group fixtures by GMT+2 date
-            const groups = new Map<string, typeof fixtures>();
-            for (const f of fixtures) {
-              const key = gmt2DateKey(new Date(f.startTime));
-              if (!groups.has(key)) groups.set(key, []);
-              groups.get(key)!.push(f);
-            }
-            return (
-              <div className="space-y-6">
-                {[...groups.entries()].map(([dateKey, dayFixtures]) => (
-                  <div key={dateKey}>
-                    {/* Date divider */}
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="flex items-center gap-2">
-                        <CalendarDays className="w-4 h-4 text-primary" />
-                        <span className="font-bold text-sm">{dateLabel(dateKey)}</span>
-                      </div>
-                      <div className="flex-1 h-px bg-border/60" />
-                      <span className="text-xs text-muted-foreground shrink-0">{dayFixtures.length} match{dayFixtures.length !== 1 ? "es" : ""}</span>
-                    </div>
-                    {/* Cards grid */}
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                      {dayFixtures.map((fixture) => (
-                        <FixtureCard key={fixture.id} fixture={fixture} />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
-
-          {/* Pagination hint */}
-          {!selectedLeagueId && fixtures.length === 20 && (
-            <p className="text-center text-xs text-muted-foreground mt-6">
-              Showing 20 fixtures — select a specific league to see all matches.
+    <div className="space-y-6">
+      {/* Page header */}
+      <div className="flex items-center gap-3">
+        <div>
+          <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
+            ⚽ {selectedLeagueName ?? "All Fixtures"}
+          </h1>
+          {selectedLeagueName && (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {fixturesData?.total ?? 0} upcoming matches
             </p>
           )}
         </div>
-      </main>
+      </div>
+
+      {/* Fixtures */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-36 rounded-xl bg-accent/40 animate-pulse" />
+          ))}
+        </div>
+      ) : fixtures.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <Trophy className="w-12 h-12 text-muted-foreground/30 mb-4" />
+          <p className="font-bold text-lg mb-1">No upcoming fixtures</p>
+          <p className="text-muted-foreground text-sm">
+            {selectedLeagueId
+              ? "No scheduled matches for this league."
+              : "Select a league from the sidebar to browse fixtures."}
+          </p>
+        </div>
+      ) : (() => {
+        const groups = new Map<string, typeof fixtures>();
+        for (const f of fixtures) {
+          const key = gmt2DateKey(new Date(f.startTime));
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key)!.push(f);
+        }
+        return (
+          <div className="space-y-6">
+            {[...groups.entries()].map(([dateKey, dayFixtures]) => (
+              <div key={dateKey}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex items-center gap-2">
+                    <CalendarDays className="w-4 h-4 text-primary" />
+                    <span className="font-bold text-sm">{dateLabel(dateKey)}</span>
+                  </div>
+                  <div className="flex-1 h-px bg-border/60" />
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {dayFixtures.length} match{dayFixtures.length !== 1 ? "es" : ""}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                  {dayFixtures.map((fixture) => (
+                    <FixtureCard key={fixture.id} fixture={fixture} />
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {!selectedLeagueId && fixtures.length === 20 && (
+              <p className="text-center text-xs text-muted-foreground mt-6">
+                Showing 20 fixtures — select a specific league from the sidebar to see all matches.
+              </p>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
