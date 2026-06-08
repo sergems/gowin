@@ -1,8 +1,8 @@
+import { useState } from "react";
 import { useListFixtures } from "@workspace/api-client-react";
 import type { ListFixturesParams, Fixture } from "@workspace/api-client-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
-import { Trophy, CalendarDays, Globe } from "lucide-react";
+import { Trophy, CalendarDays, Globe, ChevronDown, Shield } from "lucide-react";
 import { format } from "date-fns";
 import { useBetSlip } from "@/contexts/BetSlipContext";
 
@@ -29,6 +29,22 @@ type OddRow = { id: number; marketId: number; selection: string; oddsValue: numb
 type MarketWithOdds = { id: number; fixtureId: number; marketType: string; odds: OddRow[] };
 type FixtureWithMarkets = Fixture & { markets?: MarketWithOdds[] };
 
+function Logo({ src, alt, size = 24, fallback }: { src: string | null | undefined; alt: string; size?: number; fallback?: React.ReactNode }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) return <>{fallback ?? <Shield className="text-muted-foreground" style={{ width: size, height: size }} />}</>;
+  return (
+    <img
+      src={src}
+      alt={alt}
+      width={size}
+      height={size}
+      className="object-contain shrink-0"
+      style={{ width: size, height: size }}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 function OddsButton({
   oddsId, fixtureId, market, selection, oddsValue, fixtureName,
 }: {
@@ -50,24 +66,16 @@ function OddsButton({
         if (selected) {
           removeSelection(oddsId);
         } else {
-          addSelection({
-            oddsId,
-            fixtureId,
-            market,
-            selection,
-            odds: oddsValue,
-            fixtureName,
-            marketName: market,
-          });
+          addSelection({ oddsId, fixtureId, market, selection, odds: oddsValue, fixtureName, marketName: market });
         }
       }}
-      className={`flex flex-col items-center justify-center px-2 py-1.5 rounded text-xs font-semibold border transition-colors min-w-[52px] ${
+      className={`flex flex-col items-center justify-center px-3 py-2 rounded-lg text-xs font-semibold border transition-colors flex-1 min-w-0 ${
         selected
           ? "bg-primary text-primary-foreground border-primary"
           : "bg-background border-border hover:border-primary hover:text-primary text-foreground"
       }`}
     >
-      <span className="text-[10px] font-normal text-muted-foreground leading-none mb-0.5 truncate max-w-[60px]">
+      <span className="text-[10px] font-normal text-muted-foreground leading-none mb-0.5 truncate w-full text-center">
         {selection}
       </span>
       <span>{oddsValue.toFixed(2)}</span>
@@ -77,20 +85,29 @@ function OddsButton({
 
 function FixtureCard({ fixture }: { fixture: FixtureWithMarkets }) {
   const markets: MarketWithOdds[] = (fixture as any).markets ?? [];
+  const [expanded, setExpanded] = useState(false);
+  const [activeMarketIdx, setActiveMarketIdx] = useState(0);
+
+  const market1x2 = markets.find((m) => m.marketType === "1X2") ?? markets[0] ?? null;
   const fixtureName = `${fixture.homeTeam?.name ?? "Home"} vs ${fixture.awayTeam?.name ?? "Away"}`;
+  const activeMarket = expanded ? (markets[activeMarketIdx] ?? market1x2) : market1x2;
+
+  const handleToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setExpanded((v) => !v);
+    if (!expanded) setActiveMarketIdx(0);
+  };
 
   return (
-    <Link href={`/fixtures/${fixture.id}`}>
-      <Card className="hover:bg-accent/30 transition-colors border-border bg-card cursor-pointer">
-        <CardContent className="p-4">
-          {/* League + time row */}
+    <div className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/30 transition-all">
+      {/* Top: team info — links to fixture detail */}
+      <Link href={`/fixtures/${fixture.id}`}>
+        <div className="p-4 cursor-pointer hover:bg-accent/20 transition-colors">
+          {/* League + time */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-1.5 min-w-0">
-              {fixture.league?.logo ? (
-                <img src={fixture.league.logo} alt="" className="w-4 h-4 object-contain shrink-0" />
-              ) : (
-                <Trophy className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-              )}
+              <Logo src={fixture.league?.logo} alt={fixture.league?.name ?? ""} size={14} fallback={<Trophy className="w-3.5 h-3.5 text-muted-foreground shrink-0" />} />
               <span className="text-xs text-muted-foreground truncate">
                 {fixture.league?.countryName && (
                   <span className="font-medium text-foreground/80">{fixture.league.countryName} · </span>
@@ -98,64 +115,92 @@ function FixtureCard({ fixture }: { fixture: FixtureWithMarkets }) {
                 {fixture.league?.name ?? "League"}
               </span>
             </div>
-            <div className="flex items-center text-xs text-muted-foreground ml-2 shrink-0">
-              <CalendarDays className="w-3 h-3 mr-1" />
+            <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+              <CalendarDays className="w-3 h-3" />
               {format(new Date(fixture.startTime), "HH:mm")}
             </div>
           </div>
 
-          {/* Teams row */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex-1 flex flex-col items-center gap-1">
-              {fixture.homeTeam?.logo && (
-                <img src={fixture.homeTeam.logo} alt="" className="w-7 h-7 object-contain" />
-              )}
-              <span className="text-sm font-semibold leading-tight text-center">{fixture.homeTeam?.name}</span>
+          {/* Teams */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 flex items-center gap-2 min-w-0">
+              <Logo src={fixture.homeTeam?.logo} alt={fixture.homeTeam?.name ?? ""} size={28} />
+              <span className="font-semibold text-sm truncate">{fixture.homeTeam?.name}</span>
             </div>
-            <div className="px-4 shrink-0">
-              <div className="w-7 h-7 rounded-full bg-accent flex items-center justify-center text-muted-foreground text-[11px] font-bold">
-                VS
-              </div>
+            <div className="shrink-0">
+              <div className="px-2.5 py-1 rounded-lg bg-accent/50 text-xs font-bold text-muted-foreground">VS</div>
             </div>
-            <div className="flex-1 flex flex-col items-center gap-1">
-              {fixture.awayTeam?.logo && (
-                <img src={fixture.awayTeam.logo} alt="" className="w-7 h-7 object-contain" />
-              )}
-              <span className="text-sm font-semibold leading-tight text-center">{fixture.awayTeam?.name}</span>
+            <div className="flex-1 flex items-center justify-end gap-2 min-w-0">
+              <span className="font-semibold text-sm truncate text-right">{fixture.awayTeam?.name}</span>
+              <Logo src={fixture.awayTeam?.logo} alt={fixture.awayTeam?.name ?? ""} size={28} />
             </div>
           </div>
+        </div>
+      </Link>
 
-          {/* Markets / odds */}
-          {markets.length > 0 && (
-            <div
-              className="space-y-2 pt-3 border-t border-border"
-              onClick={(e) => e.preventDefault()}
-            >
-              {markets.map((market) => (
-                <div key={market.id}>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                    {market.marketType}
-                  </p>
-                  <div className="flex gap-1.5 flex-wrap">
-                    {market.odds.map((odd) => (
-                      <OddsButton
-                        key={odd.id}
-                        oddsId={odd.id}
-                        fixtureId={fixture.id}
-                        market={market.marketType}
-                        selection={odd.selection}
-                        oddsValue={odd.oddsValue}
-                        fixtureName={fixtureName}
-                      />
-                    ))}
-                  </div>
-                </div>
+      {/* Bottom: odds + markets toggle */}
+      {markets.length > 0 && (
+        <div className="border-t border-border/50">
+          {/* Expanded: market tab strip */}
+          {expanded && markets.length > 1 && (
+            <div className="flex overflow-x-auto scrollbar-none border-b border-border/40 bg-accent/10">
+              {markets.map((m, i) => (
+                <button
+                  key={m.id}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveMarketIdx(i); }}
+                  className={`shrink-0 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap transition-colors border-b-2 -mb-px ${
+                    i === activeMarketIdx
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {m.marketType}
+                </button>
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
-    </Link>
+
+          {/* Odds row */}
+          {activeMarket && (
+            <div className="px-3 pt-3 pb-1" onClick={(e) => e.preventDefault()}>
+              {!expanded && (
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                  {market1x2?.marketType ?? activeMarket.marketType}
+                </p>
+              )}
+              <div className="flex gap-2">
+                {activeMarket.odds.map((odd) => (
+                  <OddsButton
+                    key={odd.id}
+                    oddsId={odd.id}
+                    fixtureId={fixture.id}
+                    market={activeMarket.marketType}
+                    selection={odd.selection}
+                    oddsValue={odd.oddsValue}
+                    fixtureName={fixtureName}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Footer: popular markets / collapse */}
+          <button
+            onClick={handleToggle}
+            className="w-full flex items-center justify-between px-3 py-2 text-xs text-muted-foreground hover:text-primary transition-colors"
+          >
+            {expanded ? (
+              <span className="font-medium text-primary">Hide markets ↑</span>
+            ) : (
+              <>
+                <span className="font-medium">Popular Markets</span>
+                <ChevronDown className="w-3.5 h-3.5" />
+              </>
+            )}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
