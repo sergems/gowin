@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useGetMyBets } from "@workspace/api-client-react";
-import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronDown, ChevronUp, Trophy, Clock } from "lucide-react";
+import { ChevronDown, ChevronUp, Trophy, Clock, CheckCircle2, XCircle, HelpCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -12,6 +11,71 @@ const STATUS_STYLES: Record<string, string> = {
   lost:    "bg-destructive/20 text-destructive border-destructive/30",
   void:    "bg-muted/40 text-muted-foreground border-border",
 };
+
+type SelectionOutcome = "won" | "lost" | "pending" | "unknown";
+
+function getSelectionOutcome(sel: any): SelectionOutcome {
+  const fixture = sel.fixture;
+  if (!fixture) return "unknown";
+  if (fixture.status === "cancelled") return "unknown";
+  if (
+    fixture.status !== "finished" ||
+    fixture.scoreHome === null ||
+    fixture.scoreHome === undefined ||
+    fixture.scoreAway === null ||
+    fixture.scoreAway === undefined
+  ) {
+    return "pending";
+  }
+
+  const scoreHome: number = fixture.scoreHome;
+  const scoreAway: number = fixture.scoreAway;
+  const total = scoreHome + scoreAway;
+  const market: string = sel.market ?? "";
+  const selection: string = sel.selection ?? "";
+
+  if (market === "1X2" || market === "Match Result") {
+    const result =
+      scoreHome > scoreAway ? "Home" : scoreAway > scoreHome ? "Away" : "Draw";
+    return selection === result ? "won" : "lost";
+  }
+
+  if (market === "Double Chance") {
+    const homeWin = scoreHome > scoreAway;
+    const awayWin = scoreAway > scoreHome;
+    const draw = scoreHome === scoreAway;
+    let win = false;
+    if (selection === "1X") win = homeWin || draw;
+    else if (selection === "X2") win = awayWin || draw;
+    else if (selection === "12") win = homeWin || awayWin;
+    return win ? "won" : "lost";
+  }
+
+  if (market === "Both Teams To Score") {
+    const bothScored = scoreHome > 0 && scoreAway > 0;
+    if (selection === "Yes") return bothScored ? "won" : "lost";
+    if (selection === "No") return !bothScored ? "won" : "lost";
+  }
+
+  const ouMatch = market.match(/^Over\/Under (\d+(?:\.\d+)?)$/);
+  if (ouMatch) {
+    const line = parseFloat(ouMatch[1]!);
+    if (selection.startsWith("Over")) return total > line ? "won" : "lost";
+    if (selection.startsWith("Under")) return total < line ? "won" : "lost";
+  }
+
+  return "unknown";
+}
+
+function SelectionOutcomeIcon({ outcome }: { outcome: SelectionOutcome }) {
+  if (outcome === "won")
+    return <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />;
+  if (outcome === "lost")
+    return <XCircle className="w-5 h-5 text-destructive shrink-0" />;
+  if (outcome === "pending")
+    return <Clock className="w-5 h-5 text-yellow-400/70 shrink-0" />;
+  return <HelpCircle className="w-5 h-5 text-muted-foreground/40 shrink-0" />;
+}
 
 export default function History() {
   const [activeTab, setActiveTab] = useState<"pending" | "won" | "lost" | "void">("pending");
@@ -66,13 +130,12 @@ export default function History() {
                   key={bet.id}
                   className="rounded-xl border border-border bg-card overflow-hidden"
                 >
-                  {/* ── Collapsed header (always visible) ── */}
+                  {/* Collapsed header */}
                   <button
                     onClick={() => toggle(bet.id)}
                     className="w-full flex items-center justify-between p-4 hover:bg-accent/20 transition-colors text-left"
                   >
                     <div className="flex items-center gap-4">
-                      {/* Status pill */}
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${STATUS_STYLES[bet.status]}`}>
                         {bet.status.toUpperCase()}
                       </span>
@@ -108,7 +171,7 @@ export default function History() {
                     </div>
                   </button>
 
-                  {/* ── Expanded body ── */}
+                  {/* Expanded body */}
                   <AnimatePresence initial={false}>
                     {isOpen && (
                       <motion.div
@@ -120,26 +183,54 @@ export default function History() {
                         className="overflow-hidden"
                       >
                         <div className="border-t border-border/60">
-                          {/* Selections */}
                           {bet.selections && bet.selections.length > 0 ? (
                             <div className="divide-y divide-border/40">
-                              {bet.selections.map((sel: any) => (
-                                <div key={sel.id} className="flex items-center justify-between px-5 py-3.5 hover:bg-accent/10 transition-colors">
-                                  <div className="space-y-0.5">
-                                    <div className="font-semibold text-sm">{sel.selection}</div>
-                                    <div className="text-sm text-muted-foreground">
-                                      {sel.fixture?.homeTeam?.name ?? "—"} vs {sel.fixture?.awayTeam?.name ?? "—"}
+                              {bet.selections.map((sel: any) => {
+                                const outcome = getSelectionOutcome(sel);
+                                const score =
+                                  sel.fixture?.status === "finished" &&
+                                  sel.fixture?.scoreHome !== null &&
+                                  sel.fixture?.scoreAway !== null
+                                    ? `${sel.fixture.scoreHome} – ${sel.fixture.scoreAway}`
+                                    : null;
+
+                                return (
+                                  <div
+                                    key={sel.id}
+                                    className={`flex items-center justify-between px-5 py-3.5 transition-colors ${
+                                      outcome === "won"
+                                        ? "bg-emerald-500/5"
+                                        : outcome === "lost"
+                                        ? "bg-destructive/5"
+                                        : "hover:bg-accent/10"
+                                    }`}
+                                  >
+                                    <div className="flex items-start gap-3 min-w-0">
+                                      <SelectionOutcomeIcon outcome={outcome} />
+                                      <div className="space-y-0.5 min-w-0">
+                                        <div className="font-semibold text-sm">{sel.selection}</div>
+                                        <div className="text-sm text-muted-foreground truncate">
+                                          {sel.fixture?.homeTeam?.name ?? "—"} vs {sel.fixture?.awayTeam?.name ?? "—"}
+                                        </div>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span className="text-xs uppercase tracking-wider text-muted-foreground/70">
+                                            {sel.market?.replace(/_/g, " ")}
+                                          </span>
+                                          {score && (
+                                            <span className="text-xs font-mono font-bold text-muted-foreground border border-border/60 rounded px-1.5 py-0.5">
+                                              {score}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
                                     </div>
-                                    <div className="text-xs uppercase tracking-wider text-muted-foreground/70">
-                                      {sel.market?.replace(/_/g, " ")}
+                                    <div className="text-right ml-4 shrink-0">
+                                      <div className="text-xs text-muted-foreground mb-0.5">Odds</div>
+                                      <div className="font-bold text-primary">{Number(sel.odds).toFixed(2)}</div>
                                     </div>
                                   </div>
-                                  <div className="text-right ml-4 shrink-0">
-                                    <div className="text-xs text-muted-foreground mb-0.5">Odds</div>
-                                    <div className="font-bold text-primary">{Number(sel.odds).toFixed(2)}</div>
-                                  </div>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           ) : (
                             <div className="px-5 py-4 text-sm text-muted-foreground">No selections found.</div>

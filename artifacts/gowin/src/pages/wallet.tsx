@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Wallet as WalletIcon, ArrowDownRight, ArrowUpRight, History as HistoryIcon,
-  Plus, Minus, Ticket, Clock, CheckCircle2, XCircle, Banknote, Phone, AlertTriangle,
+  Minus, Ticket, Clock, CheckCircle2, XCircle, Banknote, Phone, AlertTriangle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -61,17 +61,14 @@ export default function Wallet() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [depositAmount, setDepositAmount] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [isDepositing, setIsDepositing] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
-  const [activeTab, setActiveTab] = useState<"deposit" | "withdraw" | "voucher">("deposit");
+  const [activeTab, setActiveTab] = useState<"voucher" | "withdraw">("voucher");
   const [voucherCode, setVoucherCode] = useState("");
   const [isRedeeming, setIsRedeeming] = useState(false);
 
   const transactions = transactionsData?.transactions || [];
 
-  // Withdrawal history
   const { data: withdrawals = [], isLoading: isWithdrawalsLoading } = useQuery<Withdrawal[]>({
     queryKey: ["/api/wallet/withdrawals"],
     queryFn: async () => {
@@ -83,23 +80,6 @@ export default function Wallet() {
       return data;
     },
   });
-
-  const handleDeposit = async () => {
-    const amount = parseFloat(depositAmount);
-    if (!amount || amount <= 0) return;
-    setIsDepositing(true);
-    try {
-      await postWalletAction("/api/wallet/deposit", token, { amount });
-      toast({ title: "Deposit successful", description: `$${amount.toFixed(2)} added to your wallet.` });
-      setDepositAmount("");
-      queryClient.invalidateQueries({ queryKey: ["/api/wallet"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/wallet/transactions"] });
-    } catch (e: any) {
-      toast({ title: "Deposit failed", description: e.message, variant: "destructive" });
-    } finally {
-      setIsDepositing(false);
-    }
-  };
 
   const handleWithdrawRequest = async () => {
     const amount = parseFloat(withdrawAmount);
@@ -170,22 +150,16 @@ export default function Wallet() {
         <CardHeader className="pb-3">
           <div className="flex gap-2">
             <button
-              onClick={() => setActiveTab("deposit")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${activeTab === "deposit" ? "bg-primary text-primary-foreground" : "bg-accent/50 text-muted-foreground hover:bg-accent"}`}
+              onClick={() => setActiveTab("voucher")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${activeTab === "voucher" ? "bg-amber-500 text-white" : "bg-accent/50 text-muted-foreground hover:bg-accent"}`}
             >
-              <Plus className="w-4 h-4" /> Deposit
+              <Ticket className="w-4 h-4" /> Deposit Voucher
             </button>
             <button
               onClick={() => setActiveTab("withdraw")}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${activeTab === "withdraw" ? "bg-destructive text-destructive-foreground" : "bg-accent/50 text-muted-foreground hover:bg-accent"}`}
             >
               <Minus className="w-4 h-4" /> Withdraw
-            </button>
-            <button
-              onClick={() => setActiveTab("voucher")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${activeTab === "voucher" ? "bg-amber-500 text-white" : "bg-accent/50 text-muted-foreground hover:bg-accent"}`}
-            >
-              <Ticket className="w-4 h-4" /> Voucher
             </button>
           </div>
         </CardHeader>
@@ -196,7 +170,7 @@ export default function Wallet() {
                 <Ticket className="w-8 h-8 text-amber-500" />
               </div>
               <div className="text-center">
-                <p className="font-semibold mb-1">Redeem a Voucher</p>
+                <p className="font-semibold mb-1">Redeem a Deposit Voucher</p>
                 <p className="text-sm text-muted-foreground">Enter your 12-character voucher code to credit your wallet instantly</p>
               </div>
               <div className="flex gap-3 w-full max-w-sm">
@@ -217,33 +191,6 @@ export default function Wallet() {
                 </Button>
               </div>
             </div>
-          ) : activeTab === "deposit" ? (
-            <>
-              <div className="flex gap-2 flex-wrap">
-                {QUICK_AMOUNTS.map((amt) => (
-                  <button
-                    key={amt}
-                    onClick={() => setDepositAmount(String(amt))}
-                    className="px-3 py-1.5 rounded-md border border-border text-sm font-medium hover:bg-primary/10 hover:border-primary/40 transition-colors"
-                  >
-                    +${amt}
-                  </button>
-                ))}
-              </div>
-              <div className="flex gap-3">
-                <Input
-                  type="number" min="1" max="10000"
-                  placeholder="Enter amount"
-                  value={depositAmount}
-                  onChange={(e) => setDepositAmount(e.target.value)}
-                  className="text-lg font-semibold"
-                />
-                <Button onClick={handleDeposit} disabled={isDepositing || !depositAmount} className="px-8">
-                  {isDepositing ? "Processing..." : "Deposit"}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">Simulated deposit. Max $10,000 per transaction.</p>
-            </>
           ) : (
             <div className="space-y-4">
               {/* Payment destination */}
@@ -357,7 +304,7 @@ export default function Wallet() {
           <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-16 bg-accent/50 rounded-lg animate-pulse" />)}</div>
         ) : transactions.length === 0 ? (
           <div className="py-12 text-center border border-dashed border-border rounded-xl">
-            <p className="text-muted-foreground">No transactions yet. Make your first deposit!</p>
+            <p className="text-muted-foreground">No transactions yet. Redeem a voucher to get started!</p>
           </div>
         ) : (
           <div className="space-y-3">
