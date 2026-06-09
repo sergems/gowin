@@ -37,7 +37,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const [location, navigate] = useLocation();
   const { selections, stake, setStake, removeSelection, totalOdds, potentialWin, placeBet, isPlacing } = useBetSlip();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [betSlipOpen, setBetSlipOpen] = useState(false);
+  const [betSlipOpen, setBetSlipOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 768);
   const [sportsOpen, setSportsOpen] = useState(false);
   const [openCountries, setOpenCountries] = useState<Set<string>>(new Set());
   const [intlOpen, setIntlOpen] = useState(false);
@@ -49,7 +49,7 @@ export function Shell({ children }: { children: ReactNode }) {
     if (prevSelectionsLen.current === 0 && selections.length > 0) {
       setBetSlipOpen(true);
     }
-    if (selections.length === 0) {
+    if (prevSelectionsLen.current > 0 && selections.length === 0) {
       setBetSlipOpen(false);
     }
     prevSelectionsLen.current = selections.length;
