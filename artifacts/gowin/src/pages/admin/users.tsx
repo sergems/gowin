@@ -208,19 +208,19 @@ export default function AdminUsers() {
       </div>
 
       <Card className="border-border bg-card">
-        <CardContent className="p-0">
-          <Table>
+        <CardContent className="p-0 overflow-x-auto">
+          <Table className="min-w-[900px]">
             <TableHeader className="bg-accent/10">
               <TableRow>
-                <TableHead>ID</TableHead>
+                <TableHead className="w-12">ID</TableHead>
                 <TableHead>Username</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Joined</TableHead>
-                <TableHead className="text-right">Balance</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="w-20">Role</TableHead>
+                <TableHead className="w-20">Status</TableHead>
+                <TableHead className="w-28">Joined</TableHead>
+                <TableHead className="text-right w-24">Balance</TableHead>
+                <TableHead className="text-right w-56">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -237,16 +237,16 @@ export default function AdminUsers() {
                   const isSelf = user.id === (currentUser as any)?.id;
                   return (
                     <TableRow key={user.id} className={user.disabled ? "opacity-60" : ""}>
-                      <TableCell className="font-medium">#{user.id}</TableCell>
-                      <TableCell className="font-medium">{user.username}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">#{user.id}</TableCell>
+                      <TableCell className="font-semibold">{user.username}</TableCell>
                       <TableCell className="text-muted-foreground text-sm">
                         {[user.firstName, user.lastName].filter(Boolean).join(" ") || "—"}
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{user.email}</TableCell>
                       <TableCell>
                         <Badge
                           variant={user.role === "admin" ? "default" : "outline"}
-                          className={user.role === "admin" ? "bg-primary" : ""}
+                          className={user.role === "admin" ? "bg-primary text-xs" : "text-xs"}
                         >
                           {user.role}
                         </Badge>
@@ -258,84 +258,71 @@ export default function AdminUsers() {
                           <Badge variant="outline" className="text-xs text-green-600 border-green-600/40">Active</Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
+                      <TableCell className="text-muted-foreground text-xs">
                         {format(new Date(user.createdAt), "MMM d, yyyy")}
                       </TableCell>
-                      <TableCell className="text-right font-bold">
+                      <TableCell className="text-right font-bold text-sm">
                         ${user.wallet?.balance.toFixed(2) ?? "0.00"}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {/* Edit */}
+                        <div className="flex items-center justify-end gap-1">
                           <Button
-                            variant="outline"
-                            size="sm"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
                             onClick={() => openEditDialog(user)}
-                            title="Edit user details"
+                            title="Edit user"
                           >
-                            <Pencil className="w-4 h-4" />
-                            <span className="ml-1.5 hidden sm:inline">Edit</span>
+                            <Pencil className="w-3.5 h-3.5" />
                           </Button>
 
-                          {/* Block / Unblock */}
                           <Button
-                            variant="outline"
-                            size="sm"
+                            variant="ghost"
+                            size="icon"
+                            className={`h-8 w-8 ${user.disabled ? "text-green-600 hover:text-green-600 hover:bg-green-600/10" : "text-destructive hover:text-destructive hover:bg-destructive/10"}`}
                             onClick={() => handleDisableToggle(user)}
                             disabled={disableLoadingId === user.id || isSelf}
                             title={isSelf ? "Cannot disable your own account" : user.disabled ? "Unblock account" : "Block account"}
-                            className={
-                              user.disabled
-                                ? "hover:bg-green-600/10 hover:border-green-600/50 hover:text-green-600"
-                                : "hover:bg-destructive/10 hover:border-destructive/50 hover:text-destructive"
-                            }
                           >
                             {disableLoadingId === user.id ? (
-                              <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                              <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
                             ) : user.disabled ? (
-                              <CheckCircle2 className="w-4 h-4" />
+                              <CheckCircle2 className="w-3.5 h-3.5" />
                             ) : (
-                              <Ban className="w-4 h-4" />
+                              <Ban className="w-3.5 h-3.5" />
                             )}
-                            <span className="ml-1.5 hidden sm:inline">
-                              {user.disabled ? "Unblock" : "Block"}
-                            </span>
                           </Button>
 
-                          {/* Role toggle */}
                           <Button
-                            variant="outline"
-                            size="sm"
+                            variant="ghost"
+                            size="icon"
+                            className={`h-8 w-8 ${user.role === "admin" ? "text-destructive hover:text-destructive hover:bg-destructive/10" : "text-primary hover:text-primary hover:bg-primary/10"}`}
                             onClick={() => handleRoleToggle(user)}
                             disabled={roleLoadingId === user.id || isSelf}
                             title={isSelf ? "Cannot change your own role" : user.role === "admin" ? "Remove admin" : "Make admin"}
-                            className={
-                              user.role === "admin"
-                                ? "hover:bg-destructive/10 hover:border-destructive/50 hover:text-destructive"
-                                : "hover:bg-primary/10 hover:border-primary/50 hover:text-primary"
-                            }
                           >
                             {roleLoadingId === user.id ? (
-                              <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                              <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
                             ) : user.role === "admin" ? (
-                              <ShieldOff className="w-4 h-4" />
+                              <ShieldOff className="w-3.5 h-3.5" />
                             ) : (
-                              <ShieldCheck className="w-4 h-4" />
+                              <ShieldCheck className="w-3.5 h-3.5" />
                             )}
-                            <span className="ml-1.5 hidden sm:inline">
-                              {user.role === "admin" ? "Revoke" : "Make Admin"}
-                            </span>
                           </Button>
 
-                          {/* Credit / Debit */}
-                          <Button variant="outline" size="sm" onClick={() => openWalletDialog(user, "credit")}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs px-2 text-green-600 border-green-600/40 hover:bg-green-600/10"
+                            onClick={() => openWalletDialog(user, "credit")}
+                          >
                             Credit
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
+                            className="h-7 text-xs px-2 text-destructive border-destructive/40 hover:bg-destructive/10"
                             onClick={() => openWalletDialog(user, "debit")}
-                            className="hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
                           >
                             Debit
                           </Button>

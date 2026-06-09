@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import {
   Activity, LayoutDashboard, History, Wallet, Trophy, LogOut, Users, Settings, X,
   ArrowLeftRight, Ticket, UserCircle, AlertTriangle, Banknote, SlidersHorizontal,
-  PanelLeftClose, PanelLeftOpen, ChevronDown, ChevronRight, Globe, Shield, CheckCircle2,
+  PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, ChevronDown, ChevronRight, Globe, Shield, CheckCircle2,
   Home, Menu,
 } from "lucide-react";
 
@@ -37,11 +37,23 @@ export function Shell({ children }: { children: ReactNode }) {
   const [location, navigate] = useLocation();
   const { selections, stake, setStake, removeSelection, totalOdds, potentialWin, placeBet, isPlacing } = useBetSlip();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [betSlipOpen, setBetSlipOpen] = useState(false);
   const [sportsOpen, setSportsOpen] = useState(false);
   const [openCountries, setOpenCountries] = useState<Set<string>>(new Set());
   const [intlOpen, setIntlOpen] = useState(false);
   const [mobileBetSlipOpen, setMobileBetSlipOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  const prevSelectionsLen = useRef(0);
+  useEffect(() => {
+    if (prevSelectionsLen.current === 0 && selections.length > 0) {
+      setBetSlipOpen(true);
+    }
+    if (selections.length === 0) {
+      setBetSlipOpen(false);
+    }
+    prevSelectionsLen.current = selections.length;
+  }, [selections.length]);
 
   const isAdmin = user?.role === "admin";
 
@@ -77,7 +89,7 @@ export function Shell({ children }: { children: ReactNode }) {
     });
   };
 
-  const handleLogout = () => { logout(); setMobileSidebarOpen(false); };
+  const handleLogout = () => { logout(); setMobileSidebarOpen(false); navigate("/login"); };
 
   const adminLinks = user?.role === "admin" ? [
     { href: "/admin",              icon: LayoutDashboard, label: "Dashboard",    match: (l: string) => l === "/admin" },
@@ -320,10 +332,15 @@ export function Shell({ children }: { children: ReactNode }) {
   }
 
   // ── Bet slip content (shared desktop + mobile drawer) ─────────────────────
-  function BetSlipBody({ onClose }: { onClose?: () => void }) {
+  function BetSlipBody({ onClose, onToggle }: { onClose?: () => void; onToggle?: () => void }) {
     return (
       <>
         <div className="h-14 border-b border-border flex items-center px-4 shrink-0 bg-accent/30">
+          {onToggle && (
+            <button onClick={onToggle} className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-accent mr-2" title="Collapse bet slip">
+              <PanelRightClose className="w-5 h-5" />
+            </button>
+          )}
           <span className="font-bold">Bet Slip</span>
           <span className="ml-2 bg-primary/20 text-primary text-xs px-2 py-0.5 rounded-full">{selections.length}</span>
           {onClose && (
@@ -486,6 +503,20 @@ export function Shell({ children }: { children: ReactNode }) {
                 <span className="font-semibold text-sm">${wallet.balance.toFixed(2)}</span>
               </div>
             )}
+            {!betSlipOpen && (
+              <button
+                onClick={() => setBetSlipOpen(true)}
+                className="hidden md:flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-md hover:bg-accent relative"
+                title="Open bet slip"
+              >
+                <PanelRightOpen className="w-5 h-5" />
+                {selections.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center leading-none">
+                    {selections.length > 9 ? "9+" : selections.length}
+                  </span>
+                )}
+              </button>
+            )}
           </div>
         </header>
 
@@ -505,9 +536,11 @@ export function Shell({ children }: { children: ReactNode }) {
       </main>
 
       {/* ── Desktop Bet Slip ─────────────────────────────────────────────────── */}
-      <aside className="w-80 border-l border-border bg-card hidden md:flex flex-col shrink-0">
-        <BetSlipBody />
-      </aside>
+      {betSlipOpen && (
+        <aside className="w-80 border-l border-border bg-card hidden md:flex flex-col shrink-0">
+          <BetSlipBody onToggle={() => setBetSlipOpen(false)} />
+        </aside>
+      )}
 
       {/* ── Mobile Bottom Nav ────────────────────────────────────────────────── */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card md:hidden flex items-center h-14 px-1 safe-area-inset-bottom">
