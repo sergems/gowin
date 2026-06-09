@@ -1,11 +1,81 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { ChevronDown, ChevronRight, Shield, Globe, Trophy } from "lucide-react";
+import { ChevronDown, ChevronRight, Shield, Globe, Trophy, ChevronLeft } from "lucide-react";
 
 interface LeagueEntry { id: number; name: string; logo: string | null; fixtureCount: number; }
 interface CountryEntry { name: string; logo: string | null; leagues: LeagueEntry[]; }
 interface FootballData { featured: LeagueEntry[]; international: LeagueEntry[]; countries: CountryEntry[]; }
+interface SlideItem { id: number; url: string; sortOrder: number; }
+
+function BannerSlider() {
+  const { data: slides = [] } = useQuery<SlideItem[]>({
+    queryKey: ["slides"],
+    queryFn: () => fetch("/api/slides").then((r) => r.json()),
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const [current, setCurrent] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  const next = useCallback(() => setCurrent((c) => (c + 1) % slides.length), [slides.length]);
+  const prev = useCallback(() => setCurrent((c) => (c - 1 + slides.length) % slides.length), [slides.length]);
+
+  useEffect(() => {
+    if (slides.length <= 1 || paused) return;
+    const id = setInterval(next, 5000);
+    return () => clearInterval(id);
+  }, [slides.length, paused, next]);
+
+  useEffect(() => { setCurrent(0); }, [slides.length]);
+
+  if (slides.length === 0) return null;
+
+  return (
+    <div
+      className="relative w-full rounded-xl overflow-hidden select-none mb-2"
+      style={{ aspectRatio: "1035 / 200" }}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      {slides.map((slide, i) => (
+        <img
+          key={slide.id}
+          src={slide.url}
+          alt={`Banner ${i + 1}`}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${i === current ? "opacity-100" : "opacity-0"}`}
+          draggable={false}
+        />
+      ))}
+
+      {slides.length > 1 && (
+        <>
+          <button
+            onClick={prev}
+            className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full w-8 h-8 flex items-center justify-center transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={next}
+            className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full w-8 h-8 flex items-center justify-center transition-colors"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
+            {slides.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrent(i)}
+                className={`rounded-full transition-all ${i === current ? "bg-white w-4 h-1.5" : "bg-white/50 w-1.5 h-1.5"}`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 const COUNTRY_PRIORITY = ["England", "Spain", "Germany", "Italy", "France", "Netherlands", "Portugal", "Turkey", "Congo DR"];
 
@@ -129,10 +199,7 @@ export default function Home() {
 
   return (
     <div className="space-y-3 max-w-3xl">
-      <div className="mb-5">
-        <h1 className="text-2xl font-black tracking-tight mb-1">Matches</h1>
-        <p className="text-sm text-muted-foreground">Browse competitions and leagues</p>
-      </div>
+      <BannerSlider />
 
       {/* UEFA Featured Competitions */}
       {uefaLeagues.length > 0 && (

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, pgEnum, boolean } from "drizzle-orm/pg-core";
 export const settingsTable = pgTable("settings", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),
@@ -86,3 +86,11 @@ export type Market = typeof marketsTable.$inferSelect;
 export const insertOddsSchema = createInsertSchema(oddsTable).omit({ id: true });
 export type InsertOdds = z.infer<typeof insertOddsSchema>;
 export type OddsRow = typeof oddsTable.$inferSelect;
+
+export const slidesTable = pgTable("slides", {
+  id: serial("id").primaryKey(),
+  filename: text("filename").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

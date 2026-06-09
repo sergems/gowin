@@ -11,6 +11,7 @@ import vouchersRouter from "./vouchers";
 import profileRouter from "./profile";
 import withdrawalsRouter from "./withdrawals";
 import apiSyncRouter from "./apiSync";
+import slidesRouter from "./slides";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(vouchersRouter);
 router.use(profileRouter);
 router.use(withdrawalsRouter);
 router.use(apiSyncRouter);
+router.use(slidesRouter);
 
 export default router;

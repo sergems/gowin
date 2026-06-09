@@ -12,7 +12,7 @@ import {
   Activity, LayoutDashboard, History, Wallet, Trophy, LogOut, Users, Settings, X,
   ArrowLeftRight, Ticket, UserCircle, AlertTriangle, Banknote, SlidersHorizontal,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, ChevronDown, ChevronRight, Globe, Shield, CheckCircle2,
-  Home, Menu,
+  Home, Menu, Images,
 } from "lucide-react";
 
 interface LeagueEntry { id: number; name: string; logo: string | null; fixtureCount: number; }
@@ -99,6 +99,7 @@ export function Shell({ children }: { children: ReactNode }) {
     { href: "/admin/transactions", icon: ArrowLeftRight,  label: "Transactions", match: (l: string) => l === "/admin/transactions" },
     { href: "/admin/vouchers",     icon: Ticket,          label: "Vouchers",     match: (l: string) => l === "/admin/vouchers" },
     { href: "/admin/withdrawals",  icon: Banknote,        label: "Withdrawals",  match: (l: string) => l === "/admin/withdrawals" },
+    { href: "/admin/slides",       icon: Images,            label: "Slides",    match: (l: string) => l === "/admin/slides" },
     { href: "/admin/settings",     icon: SlidersHorizontal, label: "Settings",  match: (l: string) => l === "/admin/settings" },
   ] : [];
 

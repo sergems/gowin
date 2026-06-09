@@ -3,8 +3,15 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { join } from "path";
+import { mkdirSync, existsSync } from "fs";
+
+const SLIDES_DIR = join(process.cwd(), "uploads", "slides");
+if (!existsSync(SLIDES_DIR)) mkdirSync(SLIDES_DIR, { recursive: true });
 
 const app: Express = express();
+
+app.use("/slides-images", express.static(SLIDES_DIR));
 
 app.use(
   pinoHttp({
@@ -26,8 +33,8 @@ app.use(
   }),
 );
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 app.use("/api", router);
 
