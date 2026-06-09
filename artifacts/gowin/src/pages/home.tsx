@@ -34,7 +34,7 @@ function BannerSlider() {
   return (
     <div
       className="relative w-full rounded-xl overflow-hidden select-none mb-2"
-      style={{ aspectRatio: "1035 / 200" }}
+      style={{ aspectRatio: "1035 / 137" }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
@@ -198,7 +198,7 @@ export default function Home() {
   const intlFixtures = otherInternational.reduce((s, l) => s + l.fixtureCount, 0);
 
   return (
-    <div className="space-y-3 max-w-3xl">
+    <div className="space-y-3 max-w-3xl mx-auto">
       <BannerSlider />
 
       {/* UEFA Featured Competitions */}
