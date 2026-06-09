@@ -28,7 +28,17 @@ import AdminVouchers from "@/pages/admin/vouchers";
 import AdminWithdrawals from "@/pages/admin/withdrawals";
 import AdminSettings from "@/pages/admin/settings";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30 * 1000,
+      gcTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      refetchOnMount: true,
+      retry: 1,
+    },
+  },
+});
 
 // Protected Route Component
 function ProtectedRoute({ component: Component, adminOnly = false, ...rest }: any) {
