@@ -82,6 +82,11 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
+  if (user.disabled) {
+    res.status(403).json({ error: "Your account has been disabled. Please contact support." });
+    return;
+  }
+
   const token = signToken(user.id, user.role);
   res.json({
     token,

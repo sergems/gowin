@@ -1,10 +1,28 @@
 import { Router } from "express";
 import { db, usersTable, walletsTable } from "@workspace/db";
 import { eq, ilike, count, or } from "drizzle-orm";
-import { requireAdmin, type AuthRequest } from "../middlewares/auth";
+import { requireAdmin, requireAuth, type AuthRequest } from "../middlewares/auth";
 import { ListUsersQueryParams, GetUserParams } from "@workspace/api-zod";
 
 const router = Router();
+
+function formatUser(u: any, wallet?: any) {
+  return {
+    id: u.id,
+    publicId: u.publicId ?? null,
+    username: u.username,
+    email: u.email,
+    firstName: u.firstName ?? null,
+    lastName: u.lastName ?? null,
+    phoneNumber: u.phoneNumber ?? null,
+    role: u.role,
+    disabled: u.disabled ?? false,
+    createdAt: u.createdAt,
+    wallet: wallet
+      ? { id: wallet.id, userId: wallet.userId, balance: parseFloat(wallet.balance) }
+      : { id: 0, userId: u.id, balance: 0 },
+  };
+}
 
 router.get("/users", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
   const qp = ListUsersQueryParams.safeParse(req.query);
@@ -28,18 +46,12 @@ router.get("/users", requireAdmin, async (req: AuthRequest, res): Promise<void> 
   const [totalResult] = await countQuery;
   const rows = await (query as any).limit(limit).offset(offset);
 
-  const users = rows.map((row: any) => ({
-    id: row.users.id,
-    username: row.users.username,
-    email: row.users.email,
-    role: row.users.role,
-    createdAt: row.users.createdAt,
-    wallet: row.wallets
-      ? { id: row.wallets.id, userId: row.wallets.userId, balance: parseFloat(row.wallets.balance) }
-      : { id: 0, userId: row.users.id, balance: 0 },
-  }));
-
-  res.json({ users, total: totalResult.count, page, limit });
+  res.json({
+    users: rows.map((row: any) => formatUser(row.users, row.wallets)),
+    total: totalResult.count,
+    page,
+    limit,
+  });
 });
 
 router.get("/users/:id", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
@@ -61,19 +73,66 @@ router.get("/users/:id", requireAdmin, async (req: AuthRequest, res): Promise<vo
     return;
   }
 
-  const row = rows[0];
-  res.json({
-    id: row.users.id,
-    username: row.users.username,
-    email: row.users.email,
-    role: row.users.role,
-    createdAt: row.users.createdAt,
-    wallet: row.wallets
-      ? { id: row.wallets.id, userId: row.wallets.userId, balance: parseFloat(row.wallets.balance) }
-      : { id: 0, userId: row.users.id, balance: 0 },
-  });
+  const row = rows[0]!;
+  res.json(formatUser(row.users, row.wallets));
 });
 
+// ── PATCH /users/:id — edit user details ─────────────────────────────────────
+router.patch("/users/:id", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid user ID" });
+    return;
+  }
+
+  const { firstName, lastName, email, phoneNumber, username } = req.body as Record<string, string | undefined>;
+
+  const updates: Record<string, any> = {};
+  if (firstName !== undefined) updates.firstName = firstName.trim() || null;
+  if (lastName !== undefined) updates.lastName = lastName.trim() || null;
+  if (email !== undefined) {
+    const trimmed = email.trim();
+    if (!trimmed) { res.status(400).json({ error: "Email cannot be empty" }); return; }
+    updates.email = trimmed;
+  }
+  if (phoneNumber !== undefined) updates.phoneNumber = phoneNumber.trim() || null;
+  if (username !== undefined) {
+    const trimmed = username.trim();
+    if (!trimmed) { res.status(400).json({ error: "Username cannot be empty" }); return; }
+    updates.username = trimmed;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ error: "No valid fields to update" });
+    return;
+  }
+
+  try {
+    const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, id)).returning();
+    if (!updated) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    res.json(formatUser(updated));
+  } catch (err: any) {
+    if (err.code === "23505") {
+      const detail: string = err.detail ?? "";
+      if (detail.includes("email")) {
+        res.status(409).json({ error: "Email already in use" });
+      } else if (detail.includes("username")) {
+        res.status(409).json({ error: "Username already taken" });
+      } else if (detail.includes("phone")) {
+        res.status(409).json({ error: "Phone number already in use" });
+      } else {
+        res.status(409).json({ error: "Duplicate value" });
+      }
+    } else {
+      res.status(500).json({ error: "Server error" });
+    }
+  }
+});
+
+// ── PATCH /users/:id/role ─────────────────────────────────────────────────────
 router.patch("/users/:id/role", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) {
@@ -87,7 +146,6 @@ router.patch("/users/:id/role", requireAdmin, async (req: AuthRequest, res): Pro
     return;
   }
 
-  // Prevent self-demotion
   if (id === req.userId && role === "user") {
     res.status(400).json({ error: "You cannot remove your own admin role" });
     return;
@@ -97,14 +155,47 @@ router.patch("/users/:id/role", requireAdmin, async (req: AuthRequest, res): Pro
     .update(usersTable)
     .set({ role })
     .where(eq(usersTable.id, id))
-    .returning({ id: usersTable.id, username: usersTable.username, email: usersTable.email, role: usersTable.role, createdAt: usersTable.createdAt });
+    .returning();
 
   if (!updated) {
     res.status(404).json({ error: "User not found" });
     return;
   }
 
-  res.json(updated);
+  res.json(formatUser(updated));
+});
+
+// ── PATCH /users/:id/disable — block / unblock ────────────────────────────────
+router.patch("/users/:id/disable", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid user ID" });
+    return;
+  }
+
+  if (id === req.userId) {
+    res.status(400).json({ error: "You cannot disable your own account" });
+    return;
+  }
+
+  const { disabled } = req.body as { disabled: boolean };
+  if (typeof disabled !== "boolean") {
+    res.status(400).json({ error: "disabled must be a boolean" });
+    return;
+  }
+
+  const [updated] = await db
+    .update(usersTable)
+    .set({ disabled })
+    .where(eq(usersTable.id, id))
+    .returning();
+
+  if (!updated) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  res.json(formatUser(updated));
 });
 
 export default router;
