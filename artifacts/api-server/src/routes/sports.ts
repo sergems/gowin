@@ -194,6 +194,7 @@ router.get("/fixtures", async (req, res): Promise<void> => {
   const conditions = [];
   if (leagueId) conditions.push(eq(fixturesTable.leagueId, leagueId));
   if (status) conditions.push(eq(fixturesTable.status, status as any));
+  if (status === "upcoming") conditions.push(gte(fixturesTable.startTime, new Date()));
   if (sportId) conditions.push(eq(leaguesTable.sportId, sportId));
   if (dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     const dayStart = new Date(dateStr + "T00:00:00.000Z");
