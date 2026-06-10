@@ -4,7 +4,7 @@ import { useListFixtures } from "@workspace/api-client-react";
 import type { ListFixturesParams } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
-import { ChevronDown, CalendarDays, Shield, Trophy } from "lucide-react";
+import { ChevronDown, ChevronLeft, CalendarDays, Shield, Trophy } from "lucide-react";
 import { useBetSlip } from "@/contexts/BetSlipContext";
 import { sortOdds } from "@/lib/sortOdds";
 
@@ -241,6 +241,11 @@ export default function FootballPage() {
     <div className="space-y-6">
       {/* Page header */}
       <div className="flex items-center gap-3">
+        {selectedLeagueName && (
+          <button onClick={() => window.history.back()} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <ChevronLeft className="w-4 h-4" /> Back
+          </button>
+        )}
         <div>
           <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
             ⚽ {selectedLeagueName ?? "All Fixtures"}
