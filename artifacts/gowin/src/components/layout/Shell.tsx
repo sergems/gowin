@@ -336,7 +336,7 @@ export function Shell({ children }: { children: ReactNode }) {
   // ── Bet slip content (shared desktop + mobile drawer) ─────────────────────
   function BetSlipBody({ onClose, onToggle }: { onClose?: () => void; onToggle?: () => void }) {
     return (
-      <>
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
         <div className="h-14 border-b border-border flex items-center px-4 shrink-0 bg-accent/30">
           {onToggle && (
             <button onClick={onToggle} className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-accent mr-2" title="Collapse bet slip">
@@ -400,7 +400,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </ScrollArea>
 
         {selections.length > 0 && (
-          <div className="p-4 border-t border-border bg-accent/10 space-y-4">
+          <div className="p-4 border-t border-border bg-accent/10 space-y-4 shrink-0">
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Total Odds</span>
@@ -430,7 +430,7 @@ export function Shell({ children }: { children: ReactNode }) {
             </Button>
           </div>
         )}
-      </>
+      </div>
     );
   }
 
