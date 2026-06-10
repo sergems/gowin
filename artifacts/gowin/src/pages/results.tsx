@@ -2,8 +2,7 @@ import { useState } from "react";
 import { useListFixtures } from "@workspace/api-client-react";
 import type { ListFixturesParams } from "@workspace/api-client-react";
 import { Link } from "wouter";
-import { subDays, startOfDay } from "date-fns";
-import { fmtUTCTime, utcDateKey, utcDateLabel } from "@/lib/formatUTC";
+import { fmtUTCTime, utcDateLabel } from "@/lib/formatUTC";
 import { CalendarDays, CheckCircle2, Shield, Globe } from "lucide-react";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -22,14 +21,6 @@ function Logo({ src, alt, size = 24 }: { src: string | null | undefined; alt: st
       onError={() => setFailed(true)}
     />
   );
-}
-
-function dayLabel(iso: string): string {
-  return utcDateLabel(iso);
-}
-
-function dateKey(iso: string): string {
-  return utcDateKey(iso);
 }
 
 // ── Result card ───────────────────────────────────────────────────────────────
@@ -107,8 +98,10 @@ const DAY_TABS = [
 export default function ResultsPage() {
   const [selectedDaysAgo, setSelectedDaysAgo] = useState(0);
 
-  const targetDate = startOfDay(subDays(new Date(), selectedDaysAgo));
-  const dateStr = dateKey(targetDate.toISOString());
+  // Compute the target date in UTC — subtract whole days from the current UTC timestamp
+  const dateStr = new Date(Date.now() - selectedDaysAgo * 86_400_000)
+    .toISOString()
+    .slice(0, 10); // "yyyy-MM-dd" in UTC, no local-timezone shift
 
   const { data, isLoading } = useListFixtures(
     { dateFrom: dateStr, dateTo: dateStr, limit: 500 } as ListFixturesParams,
@@ -144,7 +137,7 @@ export default function ResultsPage() {
           <CheckCircle2 className="w-6 h-6 text-primary" />
           Results
         </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">{dayLabel(targetDate.toISOString())}</p>
+        <p className="text-sm text-muted-foreground mt-0.5">{utcDateLabel(dateStr)}</p>
       </div>
 
       {/* Day tabs */}
