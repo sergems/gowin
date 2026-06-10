@@ -376,7 +376,7 @@ export function Shell({ children }: { children: ReactNode }) {
   }
 
   function printBetSlip(bet: PlacedBetDetails) {
-    const win = new window.open("", "_blank", "width=480,height=700");
+    const win = window.open("", "_blank", "width=480,height=700");
     if (!win) return;
     win.document.write(`<!DOCTYPE html>
 <html>
