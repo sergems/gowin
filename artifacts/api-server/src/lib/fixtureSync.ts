@@ -71,9 +71,16 @@ export async function syncFixtureResults(): Promise<{ updated: number; errors: n
   for (const event of events) {
     try {
       const fixtureExtId = String(event.event_key);
-      const status = mapStatus(event.event_status ?? "");
       const score = parseScore(event.event_final_result ?? "");
       const startTime = new Date(`${event.event_date}T${event.event_time ?? "00:00"}:00Z`);
+      // If the API already returned a score AND the kick-off is in the past, treat as finished
+      // regardless of what event_status says (AllSports sometimes returns "" for finished matches)
+      const rawStatus = mapStatus(event.event_status ?? "");
+      const status: "upcoming" | "live" | "finished" | "cancelled" =
+        (rawStatus !== "finished" && rawStatus !== "cancelled" &&
+          score.home !== null && score.away !== null && startTime < new Date())
+          ? "finished"
+          : rawStatus;
 
       const [existing] = await db
         .select({ id: fixturesTable.id })

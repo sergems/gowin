@@ -216,6 +216,16 @@ export default function History() {
                                         <div className="text-sm text-muted-foreground truncate">
                                           {sel.fixture?.homeTeam?.name ?? "—"} vs {sel.fixture?.awayTeam?.name ?? "—"}
                                         </div>
+                                        {(sel.fixture?.league?.name || sel.fixture?.startTime) && (
+                                          <div className="text-[11px] text-muted-foreground/60 leading-tight">
+                                            {[
+                                              sel.fixture?.league?.name,
+                                              sel.fixture?.startTime
+                                                ? format(new Date(sel.fixture.startTime), "d MMM · HH:mm")
+                                                : null,
+                                            ].filter(Boolean).join("  ·  ")}
+                                          </div>
+                                        )}
                                         <div className="flex items-center gap-2 flex-wrap">
                                           <span className="text-xs uppercase tracking-wider text-muted-foreground/70">
                                             {sel.market?.replace(/_/g, " ")}
