@@ -141,9 +141,13 @@ export default function History() {
                       </span>
 
                       <div>
-                        <div className="font-semibold text-sm leading-none">
-                          Bet #{bet.id} &nbsp;·&nbsp;
-                          <span className="text-muted-foreground font-normal">{label}</span>
+                        <div className="font-semibold text-sm leading-none flex items-center gap-2 flex-wrap">
+                          <span>Bet #{bet.id} &nbsp;·&nbsp; <span className="text-muted-foreground font-normal">{label}</span></span>
+                          {bet.code && (
+                            <span className="font-mono text-xs font-bold tracking-widest bg-primary/10 text-primary border border-primary/20 rounded px-2 py-0.5">
+                              {bet.code}
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                           <Clock className="w-3 h-3" />

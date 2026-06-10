@@ -27,9 +27,21 @@ app.listen(port, (err) => {
   logger.info({ port }, "Server listening");
 });
 
-// ── Odds refresh scheduler ────────────────────────────────────────────────────
-const ODDS_REFRESH_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
+// ── Auto-settle (runs without any external API call) ──────────────────────────
+// Run immediately on startup to catch any backlog, then every 5 minutes
+async function runAutoSettle() {
+  try {
+    const result = await autoSettleFinishedFixtures();
+    if (result.settled > 0) logger.info(result, "Auto-settle finished");
+  } catch (err) {
+    logger.error({ err }, "Auto-settle failed");
+  }
+}
 
+runAutoSettle();
+setInterval(runAutoSettle, 5 * 60 * 1000);
+
+// ── Odds refresh (every 15 min, 60 s delay on first run) ─────────────────────
 async function runOddsRefresh() {
   logger.info("Scheduled odds refresh starting");
   try {
@@ -40,29 +52,26 @@ async function runOddsRefresh() {
   }
 }
 
-// First run 60 s after startup, then every 15 min
 setTimeout(() => {
   runOddsRefresh();
-  setInterval(runOddsRefresh, ODDS_REFRESH_INTERVAL_MS);
+  setInterval(runOddsRefresh, 15 * 60 * 1000);
 }, 60_000);
 
-// ── Fixture sync + auto-settle scheduler ─────────────────────────────────────
-const FIXTURE_SYNC_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
-
+// ── Fixture sync (runs every 30 min, 30 s delay on first run) ────────────────
+// Fetches scores/results from AllSports API, then settles bets immediately after
 async function runFixtureSyncAndSettle() {
   logger.info("Scheduled fixture sync starting");
   try {
     const syncResult = await syncFixtureResults();
     logger.info(syncResult, "Scheduled fixture sync finished");
-    const settleResult = await autoSettleFinishedFixtures();
-    logger.info(settleResult, "Auto-settle finished");
+    // Settle immediately after syncing so results reflect right away
+    await runAutoSettle();
   } catch (err) {
     logger.error({ err }, "Scheduled fixture sync/settle failed");
   }
 }
 
-// First run 5 min after startup, then every hour
 setTimeout(() => {
   runFixtureSyncAndSettle();
-  setInterval(runFixtureSyncAndSettle, FIXTURE_SYNC_INTERVAL_MS);
-}, 5 * 60 * 1000);
+  setInterval(runFixtureSyncAndSettle, 30 * 60 * 1000);
+}, 30_000);

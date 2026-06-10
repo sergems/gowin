@@ -8,6 +8,7 @@ export const betStatusEnum = pgEnum("bet_status", ["pending", "won", "lost", "vo
 
 export const betsTable = pgTable("bets", {
   id: serial("id").primaryKey(),
+  code: text("code").unique(),
   userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   stake: numeric("stake", { precision: 15, scale: 2 }).notNull(),
   totalOdds: numeric("total_odds", { precision: 10, scale: 4 }).notNull(),

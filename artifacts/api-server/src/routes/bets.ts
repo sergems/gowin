@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, betsTable, betSelectionsTable, walletsTable, transactionsTable, oddsTable, fixturesTable, usersTable, teamsTable } from "@workspace/db";
-import { eq, desc, and, count, inArray, sql } from "drizzle-orm";
+import { eq, desc, and, count, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin, type AuthRequest } from "../middlewares/auth";
 import {
   PlaceBetBody,
@@ -12,6 +12,23 @@ import {
 
 const router = Router();
 
+// ── Bet code generation ───────────────────────────────────────────────────────
+const CODE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+function generateCode(): string {
+  return Array.from({ length: 6 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join("");
+}
+
+async function uniqueBetCode(): Promise<string> {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const code = generateCode();
+    const [existing] = await db.select({ id: betsTable.id }).from(betsTable).where(eq(betsTable.code, code)).limit(1);
+    if (!existing) return code;
+  }
+  throw new Error("Failed to generate unique bet code");
+}
+
+// ── Place bet ─────────────────────────────────────────────────────────────────
 router.post("/bets", requireAuth, async (req: AuthRequest, res): Promise<void> => {
   const parsed = PlaceBetBody.safeParse(req.body);
   if (!parsed.success) {
@@ -34,11 +51,13 @@ router.post("/bets", requireAuth, async (req: AuthRequest, res): Promise<void> =
 
   const totalOdds = selections.reduce((acc, s) => acc * s.odds, 1);
   const potentialWin = stake * totalOdds;
+  const code = await uniqueBetCode();
 
   const newBalance = parseFloat(wallet.balance) - stake;
   await db.update(walletsTable).set({ balance: newBalance.toFixed(2) }).where(eq(walletsTable.id, wallet.id));
 
   const [bet] = await db.insert(betsTable).values({
+    code,
     userId: req.userId!,
     stake: stake.toFixed(2),
     totalOdds: totalOdds.toFixed(4),
@@ -60,24 +79,22 @@ router.post("/bets", requireAuth, async (req: AuthRequest, res): Promise<void> =
     walletId: wallet.id,
     amount: stake.toFixed(2),
     type: "bet_placed",
-    description: `Bet #${bet.id} placed`,
+    description: `Bet ${bet.code ?? "#" + bet.id} placed`,
   });
 
   const [user] = await db.select({ id: usersTable.id, username: usersTable.username, email: usersTable.email, role: usersTable.role, createdAt: usersTable.createdAt })
     .from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
 
   res.status(201).json({
-    ...bet,
-    stake: parseFloat(bet.stake),
-    totalOdds: parseFloat(bet.totalOdds),
-    potentialWin: parseFloat(bet.potentialWin),
-    user,
+    ...formatBet(bet, user),
   });
 });
 
+// ── formatBet helper ──────────────────────────────────────────────────────────
 function formatBet(bet: any, user?: any) {
   return {
     id: bet.id,
+    code: bet.code ?? null,
     userId: bet.userId,
     stake: parseFloat(bet.stake),
     totalOdds: parseFloat(bet.totalOdds),
@@ -88,6 +105,7 @@ function formatBet(bet: any, user?: any) {
   };
 }
 
+// ── My bets ───────────────────────────────────────────────────────────────────
 router.get("/bets/my", requireAuth, async (req: AuthRequest, res): Promise<void> => {
   const qp = GetMyBetsQueryParams.safeParse(req.query);
   const page = qp.success ? (qp.data.page ?? 1) : 1;
@@ -104,7 +122,6 @@ router.get("/bets/my", requireAuth, async (req: AuthRequest, res): Promise<void>
   const [user] = await db.select({ id: usersTable.id, username: usersTable.username, email: usersTable.email, role: usersTable.role, createdAt: usersTable.createdAt })
     .from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
 
-  // Enrich each bet with its selections and fixture/team info
   const betIds = bets.map((b) => b.id);
   const allSelections = betIds.length > 0
     ? await db.select().from(betSelectionsTable).where(inArray(betSelectionsTable.betId, betIds))
@@ -130,12 +147,8 @@ router.get("/bets/my", requireAuth, async (req: AuthRequest, res): Promise<void>
   for (const s of allSelections) {
     if (!selectionsByBet[s.betId]) selectionsByBet[s.betId] = [];
     selectionsByBet[s.betId].push({
-      id: s.id,
-      betId: s.betId,
-      fixtureId: s.fixtureId,
-      market: s.market,
-      selection: s.selection,
-      odds: parseFloat(s.odds),
+      id: s.id, betId: s.betId, fixtureId: s.fixtureId,
+      market: s.market, selection: s.selection, odds: parseFloat(s.odds),
       fixture: fixtureMap[s.fixtureId] || null,
     });
   }
@@ -148,6 +161,46 @@ router.get("/bets/my", requireAuth, async (req: AuthRequest, res): Promise<void>
   });
 });
 
+// ── Admin: lookup bet by code ─────────────────────────────────────────────────
+router.get("/admin/bets/lookup/:code", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+  const code = req.params.code.toUpperCase().trim();
+
+  const [bet] = await db.select().from(betsTable).where(eq(betsTable.code, code)).limit(1);
+  if (!bet) {
+    res.status(404).json({ error: "No bet found with that code" });
+    return;
+  }
+
+  const selections = await db.select().from(betSelectionsTable).where(eq(betSelectionsTable.betId, bet.id));
+  const fixtureIds = [...new Set(selections.map((s) => s.fixtureId))];
+  const fixtures = fixtureIds.length > 0
+    ? await db.select().from(fixturesTable).where(inArray(fixturesTable.id, fixtureIds))
+    : [];
+  const teamIds = [...new Set([...fixtures.map((f) => f.homeTeamId), ...fixtures.map((f) => f.awayTeamId)])];
+  const teams = teamIds.length > 0
+    ? await db.select().from(teamsTable).where(inArray(teamsTable.id, teamIds))
+    : [];
+  const teamMap = Object.fromEntries(teams.map((t) => [t.id, t]));
+  const fixtureMap = Object.fromEntries(fixtures.map((f) => [f.id, {
+    ...f,
+    homeTeam: teamMap[f.homeTeamId] || null,
+    awayTeam: teamMap[f.awayTeamId] || null,
+  }]));
+
+  const [user] = await db.select({ id: usersTable.id, username: usersTable.username, email: usersTable.email, role: usersTable.role, createdAt: usersTable.createdAt })
+    .from(usersTable).where(eq(usersTable.id, bet.userId)).limit(1);
+
+  res.json({
+    ...formatBet(bet, user),
+    selections: selections.map((s) => ({
+      id: s.id, betId: s.betId, fixtureId: s.fixtureId,
+      market: s.market, selection: s.selection, odds: parseFloat(s.odds),
+      fixture: fixtureMap[s.fixtureId] || null,
+    })),
+  });
+});
+
+// ── Admin: list all bets ──────────────────────────────────────────────────────
 router.get("/bets", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
   const qp = ListAllBetsQueryParams.safeParse(req.query);
   const page = qp.success ? (qp.data.page ?? 1) : 1;
@@ -183,6 +236,7 @@ router.get("/bets", requireAdmin, async (req: AuthRequest, res): Promise<void> =
   });
 });
 
+// ── Get single bet ────────────────────────────────────────────────────────────
 router.get("/bets/:id", requireAuth, async (req: AuthRequest, res): Promise<void> => {
   const params = GetBetParams.safeParse(req.params);
   if (!params.success) {
@@ -207,17 +261,14 @@ router.get("/bets/:id", requireAuth, async (req: AuthRequest, res): Promise<void
   res.json({
     ...formatBet(bet, user),
     selections: selections.map((s) => ({
-      id: s.id,
-      betId: s.betId,
-      fixtureId: s.fixtureId,
-      market: s.market,
-      selection: s.selection,
-      odds: parseFloat(s.odds),
+      id: s.id, betId: s.betId, fixtureId: s.fixtureId,
+      market: s.market, selection: s.selection, odds: parseFloat(s.odds),
       fixture: fixtureMap[s.fixtureId] || null,
     })),
   });
 });
 
+// ── Void bet ──────────────────────────────────────────────────────────────────
 router.patch("/bets/:id/void", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
   const params = VoidBetParams.safeParse(req.params);
   if (!params.success) {
@@ -237,7 +288,6 @@ router.patch("/bets/:id/void", requireAdmin, async (req: AuthRequest, res): Prom
 
   const [updated] = await db.update(betsTable).set({ status: "void" }).where(eq(betsTable.id, bet.id)).returning();
 
-  // Refund stake
   const [wallet] = await db.select().from(walletsTable).where(eq(walletsTable.userId, bet.userId)).limit(1);
   if (wallet) {
     const refunded = parseFloat(wallet.balance) + parseFloat(bet.stake);
@@ -246,7 +296,7 @@ router.patch("/bets/:id/void", requireAdmin, async (req: AuthRequest, res): Prom
       walletId: wallet.id,
       amount: bet.stake,
       type: "bet_refund",
-      description: `Bet #${bet.id} voided - stake refunded`,
+      description: `Bet ${bet.code ?? "#" + bet.id} voided - stake refunded`,
     });
   }
 
