@@ -114,6 +114,102 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /auth/forgot-password:
+    post:
+      operationId: forgotPassword
+      tags: [auth]
+      summary: Request a password reset OTP via email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordInput"
+      responses:
+        "200":
+          description: OTP sent (always returns success to prevent enumeration)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/verify-otp:
+    post:
+      operationId: verifyOtp
+      tags: [auth]
+      summary: Verify OTP and receive a reset token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyOtpInput"
+      responses:
+        "200":
+          description: OTP valid, reset token issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResetTokenPayload"
+        "400":
+          description: Invalid or expired OTP
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/reset-password:
+    post:
+      operationId: resetPassword
+      tags: [auth]
+      summary: Reset password using a valid reset token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordInput"
+      responses:
+        "200":
+          description: Password reset successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/change-password:
+    post:
+      operationId: changePassword
+      tags: [auth]
+      summary: Change password while logged in (required after temp password login)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordInput"
+      responses:
+        "200":
+          description: Password changed, new token issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   # ── Users ─────────────────────────────────────────────────────────────────
   /users:
     get:
@@ -167,6 +263,33 @@ paths:
                 $ref: "#/components/schemas/UserDetail"
         "404":
           description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/{id}/reset-password:
+    post:
+      operationId: adminResetPassword
+      tags: [users, admin]
+      summary: Admin generates a temporary password for a user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Temporary password generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TempPasswordPayload"
+        "404":
+          description: User not found
           content:
             application/json:
               schema:
@@ -823,6 +946,8 @@ components:
           type: string
         user:
           $ref: "#/components/schemas/User"
+        mustChangePassword:
+          type: boolean
 
     # ── User ──────────────────────────────────────────────────────────────
     User:
@@ -838,6 +963,10 @@ components:
         role:
           type: string
           enum: [user, admin]
+        disabled:
+          type: boolean
+        mustChangePassword:
+          type: boolean
         createdAt:
           type: string
           format: date-time
@@ -855,11 +984,86 @@ components:
         role:
           type: string
           enum: [user, admin]
+        disabled:
+          type: boolean
+        disabledReason:
+          type: ["string", "null"]
+        mustChangePassword:
+          type: boolean
+        loginAttempts:
+          type: integer
         createdAt:
           type: string
           format: date-time
         wallet:
           $ref: "#/components/schemas/Wallet"
+
+    # ── Password Reset ─────────────────────────────────────────────────────
+    ForgotPasswordInput:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+
+    VerifyOtpInput:
+      type: object
+      required: [email, otp]
+      properties:
+        email:
+          type: string
+          format: email
+        otp:
+          type: string
+          minLength: 6
+          maxLength: 6
+
+    ResetTokenPayload:
+      type: object
+      required: [resetToken]
+      properties:
+        resetToken:
+          type: string
+
+    ResetPasswordInput:
+      type: object
+      required: [resetToken, newPassword]
+      properties:
+        resetToken:
+          type: string
+        newPassword:
+          type: string
+          minLength: 6
+
+    ChangePasswordInput:
+      type: object
+      required: [newPassword]
+      properties:
+        newPassword:
+          type: string
+          minLength: 6
+
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+
+    TempPasswordPayload:
+      type: object
+      required: [message, tempPassword, expiresAt]
+      properties:
+        message:
+          type: string
+        tempPassword:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        emailSent:
+          type: boolean
 
     UserListResponse:
       type: object

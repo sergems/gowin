@@ -1,8 +1,11 @@
 import { Router } from "express";
+import bcrypt from "bcryptjs";
 import { db, usersTable, walletsTable } from "@workspace/db";
 import { eq, ilike, count, or } from "drizzle-orm";
 import { requireAdmin, requireAuth, type AuthRequest } from "../middlewares/auth";
 import { ListUsersQueryParams, GetUserParams } from "@workspace/api-zod";
+import { sendTempPasswordEmail } from "../lib/email";
+import { logger } from "../lib/logger";
 
 const router = Router();
 
@@ -17,11 +20,23 @@ function formatUser(u: any, wallet?: any) {
     phoneNumber: u.phoneNumber ?? null,
     role: u.role,
     disabled: u.disabled ?? false,
+    disabledReason: u.disabledReason ?? null,
+    mustChangePassword: u.mustChangePassword ?? false,
+    loginAttempts: u.loginAttempts ?? 0,
     createdAt: u.createdAt,
     wallet: wallet
       ? { id: wallet.id, userId: wallet.userId, balance: parseFloat(wallet.balance) }
       : { id: 0, userId: u.id, balance: 0 },
   };
+}
+
+function generateTempPassword(): string {
+  const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+  let result = "";
+  for (let i = 0; i < 10; i++) {
+    result += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return result;
 }
 
 router.get("/users", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
@@ -184,9 +199,17 @@ router.patch("/users/:id/disable", requireAdmin, async (req: AuthRequest, res): 
     return;
   }
 
+  const updates: Record<string, any> = { disabled };
+  if (disabled) {
+    updates.disabledReason = "admin";
+  } else {
+    updates.disabledReason = null;
+    updates.loginAttempts = 0;
+  }
+
   const [updated] = await db
     .update(usersTable)
-    .set({ disabled })
+    .set(updates)
     .where(eq(usersTable.id, id))
     .returning();
 
@@ -196,6 +219,43 @@ router.patch("/users/:id/disable", requireAdmin, async (req: AuthRequest, res): 
   }
 
   res.json(formatUser(updated));
+});
+
+// ── POST /users/:id/reset-password — admin-initiated temp password ─────────────
+router.post("/users/:id/reset-password", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid user ID" });
+    return;
+  }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1);
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  const tempPassword = generateTempPassword();
+  const tempPasswordHash = await bcrypt.hash(tempPassword, 10);
+  const tempPasswordExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+  await db.update(usersTable)
+    .set({
+      tempPasswordHash,
+      tempPasswordExpiry,
+      mustChangePassword: true,
+    })
+    .where(eq(usersTable.id, id));
+
+  const emailSent = await sendTempPasswordEmail(user.email, user.username, tempPassword);
+  logger.info({ userId: id, adminId: req.userId, emailSent }, "Admin reset user password");
+
+  res.json({
+    message: "Temporary password generated.",
+    tempPassword,
+    expiresAt: tempPasswordExpiry.toISOString(),
+    emailSent,
+  });
 });
 
 export default router;

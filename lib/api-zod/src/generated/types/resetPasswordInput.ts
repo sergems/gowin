@@ -5,10 +5,9 @@
  * GoWin Sports Betting Platform API
  * OpenAPI spec version: 0.1.0
  */
-import type { User } from './user';
 
-export interface AuthResponse {
-  token: string;
-  user: User;
-  mustChangePassword?: boolean;
+export interface ResetPasswordInput {
+  resetToken: string;
+  /** @minLength 6 */
+  newPassword: string;
 }

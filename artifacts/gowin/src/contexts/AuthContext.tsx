@@ -1,14 +1,14 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { useGetMe, login as apiLogin, register as apiRegister } from "@workspace/api-client-react";
+import { useGetMe, getGetMeQueryKey, login as apiLogin, register as apiRegister, setAuthTokenGetter } from "@workspace/api-client-react";
 import type { LoginInput, RegisterInput, User } from "@workspace/api-client-react";
-import { setAuthTokenGetter } from "@workspace/api-client-react";
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (data: LoginInput) => Promise<void>;
+  login: (data: LoginInput) => Promise<{ mustChangePassword?: boolean }>;
   register: (data: RegisterInput) => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
   token: string | null;
 }
 
@@ -16,14 +16,14 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(localStorage.getItem("gowin_token"));
-  
-  // Set custom fetch token getter
+
   useEffect(() => {
     setAuthTokenGetter(() => localStorage.getItem("gowin_token"));
   }, []);
 
   const { data: user, isLoading, refetch } = useGetMe({
     query: {
+      queryKey: getGetMeQueryKey(),
       enabled: !!token,
       retry: false,
     }
@@ -38,10 +38,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(newToken);
   };
 
-  const login = async (data: LoginInput) => {
+  const login = async (data: LoginInput): Promise<{ mustChangePassword?: boolean }> => {
     const res = await apiLogin(data);
     handleSetToken(res.token);
     await refetch();
+    return { mustChangePassword: res.mustChangePassword ?? false };
   };
 
   const register = async (data: RegisterInput) => {
@@ -54,8 +55,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     handleSetToken(null);
   };
 
+  const refreshUser = async () => {
+    await refetch();
+  };
+
   return (
-    <AuthContext.Provider value={{ user: user || null, isLoading, login, register, logout, token }}>
+    <AuthContext.Provider value={{ user: user || null, isLoading, login, register, logout, refreshUser, token }}>
       {children}
     </AuthContext.Provider>
   );

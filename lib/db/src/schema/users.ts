@@ -15,6 +15,11 @@ export const usersTable = pgTable("users", {
   lastName: text("last_name"),
   phoneNumber: text("phone_number").unique(),
   disabled: boolean("disabled").notNull().default(false),
+  disabledReason: text("disabled_reason"),
+  loginAttempts: integer("login_attempts").notNull().default(0),
+  mustChangePassword: boolean("must_change_password").notNull().default(false),
+  tempPasswordHash: text("temp_password_hash"),
+  tempPasswordExpiry: timestamp("temp_password_expiry", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

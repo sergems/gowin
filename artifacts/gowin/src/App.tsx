@@ -10,6 +10,9 @@ import NotFound from "@/pages/not-found";
 // Pages
 import Login from "@/pages/login";
 import Register from "@/pages/register";
+import ForgotPassword from "@/pages/forgot-password";
+import ResetPassword from "@/pages/reset-password";
+import ChangePassword from "@/pages/change-password";
 import Home from "@/pages/home";
 import SportsHub from "@/pages/sports";
 import FixtureDetail from "@/pages/fixture-detail";
@@ -44,17 +47,21 @@ const queryClient = new QueryClient({
 // Protected Route Component
 function ProtectedRoute({ component: Component, adminOnly = false, ...rest }: any) {
   const { user, isLoading } = useAuth();
-  
+
   if (isLoading) return <div className="h-screen w-full flex items-center justify-center bg-background"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
-  
+
   if (!user) {
     return <Login />;
   }
-  
+
+  if ((user as any).mustChangePassword) {
+    return <ChangePassword />;
+  }
+
   if (adminOnly && user.role !== "admin") {
     return <Home />;
   }
-  
+
   return <Component {...rest} />;
 }
 
@@ -65,6 +72,9 @@ function Router() {
         <Route path="/" component={Home} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
+        <Route path="/forgot-password" component={ForgotPassword} />
+        <Route path="/reset-password" component={ResetPassword} />
+        <Route path="/change-password" component={() => <ProtectedRoute component={ChangePassword} />} />
         <Route path="/sports" component={SportsHub} />
         <Route path="/sports/:sportId" component={SportsHub} />
         <Route path="/fixtures/:id" component={FixtureDetail} />
@@ -72,7 +82,7 @@ function Router() {
         <Route path="/history" component={() => <ProtectedRoute component={History} />} />
         <Route path="/wallet" component={() => <ProtectedRoute component={Wallet} />} />
         <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
-        
+
         <Route path="/admin" component={() => <ProtectedRoute component={AdminDashboard} adminOnly />} />
         <Route path="/admin/users" component={() => <ProtectedRoute component={AdminUsers} adminOnly />} />
         <Route path="/admin/fixtures" component={() => <ProtectedRoute component={AdminFixtures} adminOnly />} />
@@ -82,7 +92,7 @@ function Router() {
         <Route path="/admin/withdrawals" component={() => <ProtectedRoute component={AdminWithdrawals} adminOnly />} />
         <Route path="/admin/settings" component={() => <ProtectedRoute component={AdminSettings} adminOnly />} />
         <Route path="/admin/slides" component={() => <ProtectedRoute component={AdminSlides} adminOnly />} />
-        
+
         <Route component={NotFound} />
       </Switch>
     </Shell>

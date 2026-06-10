@@ -1,0 +1,3 @@
+- [Orval schema name collision](orval-schema-collision.md) — OpenAPI component names must not match `<operationId>Response` or orval generates duplicate exports
+- [No zod in api-server](no-zod-api-server.md) — esbuild can't resolve `zod` in api-server; use plain JS guards for request validation
+- [DB push workaround](db-push-workaround.md) — drizzle-kit push fails non-TTY; use raw psql for schema changes

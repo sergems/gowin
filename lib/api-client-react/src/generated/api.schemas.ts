@@ -39,12 +39,15 @@ export interface User {
   username: string;
   email: string;
   role: UserRole;
+  disabled?: boolean;
+  mustChangePassword?: boolean;
   createdAt: string;
 }
 
 export interface AuthResponse {
   token: string;
   user: User;
+  mustChangePassword?: boolean;
 }
 
 export type UserDetailRole = typeof UserDetailRole[keyof typeof UserDetailRole];
@@ -66,8 +69,52 @@ export interface UserDetail {
   username: string;
   email: string;
   role: UserDetailRole;
+  disabled?: boolean;
+  /** @nullable */
+  disabledReason?: string | null;
+  mustChangePassword?: boolean;
+  loginAttempts?: number;
   createdAt: string;
   wallet: Wallet;
+}
+
+export interface ForgotPasswordInput {
+  email: string;
+}
+
+export interface VerifyOtpInput {
+  email: string;
+  /**
+     * @minLength 6
+     * @maxLength 6
+     */
+  otp: string;
+}
+
+export interface ResetTokenPayload {
+  resetToken: string;
+}
+
+export interface ResetPasswordInput {
+  resetToken: string;
+  /** @minLength 6 */
+  newPassword: string;
+}
+
+export interface ChangePasswordInput {
+  /** @minLength 6 */
+  newPassword: string;
+}
+
+export interface MessageResponse {
+  message: string;
+}
+
+export interface TempPasswordPayload {
+  message: string;
+  tempPassword: string;
+  expiresAt: string;
+  emailSent?: boolean;
 }
 
 export interface UserListResponse {

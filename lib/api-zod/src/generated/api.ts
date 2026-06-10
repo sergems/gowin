@@ -47,8 +47,11 @@ export const LoginResponse = zod.object({
   "username": zod.string(),
   "email": zod.string(),
   "role": zod.enum(['user', 'admin']),
+  "disabled": zod.boolean().optional(),
+  "mustChangePassword": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
-})
+}),
+  "mustChangePassword": zod.boolean().optional()
 })
 
 
@@ -60,7 +63,82 @@ export const GetMeResponse = zod.object({
   "username": zod.string(),
   "email": zod.string(),
   "role": zod.enum(['user', 'admin']),
+  "disabled": zod.boolean().optional(),
+  "mustChangePassword": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Request a password reset OTP via email
+ */
+export const ForgotPasswordBody = zod.object({
+  "email": zod.string().email()
+})
+
+export const ForgotPasswordResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Verify OTP and receive a reset token
+ */
+export const verifyOtpBodyOtpMin = 6;
+export const verifyOtpBodyOtpMax = 6;
+
+
+
+export const VerifyOtpBody = zod.object({
+  "email": zod.string().email(),
+  "otp": zod.string().min(verifyOtpBodyOtpMin).max(verifyOtpBodyOtpMax)
+})
+
+export const VerifyOtpResponse = zod.object({
+  "resetToken": zod.string()
+})
+
+
+/**
+ * @summary Reset password using a valid reset token
+ */
+export const resetPasswordBodyNewPasswordMin = 6;
+
+
+
+export const ResetPasswordBody = zod.object({
+  "resetToken": zod.string(),
+  "newPassword": zod.string().min(resetPasswordBodyNewPasswordMin)
+})
+
+export const ResetPasswordResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Change password while logged in (required after temp password login)
+ */
+export const changePasswordBodyNewPasswordMin = 6;
+
+
+
+export const ChangePasswordBody = zod.object({
+  "newPassword": zod.string().min(changePasswordBodyNewPasswordMin)
+})
+
+export const ChangePasswordResponse = zod.object({
+  "token": zod.string(),
+  "user": zod.object({
+  "id": zod.number(),
+  "username": zod.string(),
+  "email": zod.string(),
+  "role": zod.enum(['user', 'admin']),
+  "disabled": zod.boolean().optional(),
+  "mustChangePassword": zod.boolean().optional(),
+  "createdAt": zod.coerce.date()
+}),
+  "mustChangePassword": zod.boolean().optional()
 })
 
 
@@ -82,6 +160,10 @@ export const ListUsersResponse = zod.object({
   "username": zod.string(),
   "email": zod.string(),
   "role": zod.enum(['user', 'admin']),
+  "disabled": zod.boolean().optional(),
+  "disabledReason": zod.string().nullish(),
+  "mustChangePassword": zod.boolean().optional(),
+  "loginAttempts": zod.number().optional(),
   "createdAt": zod.coerce.date(),
   "wallet": zod.object({
   "id": zod.number(),
@@ -107,12 +189,31 @@ export const GetUserResponse = zod.object({
   "username": zod.string(),
   "email": zod.string(),
   "role": zod.enum(['user', 'admin']),
+  "disabled": zod.boolean().optional(),
+  "disabledReason": zod.string().nullish(),
+  "mustChangePassword": zod.boolean().optional(),
+  "loginAttempts": zod.number().optional(),
   "createdAt": zod.coerce.date(),
   "wallet": zod.object({
   "id": zod.number(),
   "userId": zod.number(),
   "balance": zod.number()
 })
+})
+
+
+/**
+ * @summary Admin generates a temporary password for a user
+ */
+export const AdminResetPasswordParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const AdminResetPasswordResponse = zod.object({
+  "message": zod.string(),
+  "tempPassword": zod.string(),
+  "expiresAt": zod.coerce.date(),
+  "emailSent": zod.boolean().optional()
 })
 
 
@@ -532,6 +633,8 @@ export const ListAllBetsResponse = zod.object({
   "username": zod.string(),
   "email": zod.string(),
   "role": zod.enum(['user', 'admin']),
+  "disabled": zod.boolean().optional(),
+  "mustChangePassword": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 }).optional()
 })),
@@ -567,6 +670,8 @@ export const GetMyBetsResponse = zod.object({
   "username": zod.string(),
   "email": zod.string(),
   "role": zod.enum(['user', 'admin']),
+  "disabled": zod.boolean().optional(),
+  "mustChangePassword": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 }).optional()
 })),
@@ -596,6 +701,8 @@ export const GetBetResponse = zod.object({
   "username": zod.string(),
   "email": zod.string(),
   "role": zod.enum(['user', 'admin']),
+  "disabled": zod.boolean().optional(),
+  "mustChangePassword": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 }).optional(),
   "selections": zod.array(zod.object({
@@ -659,6 +766,8 @@ export const VoidBetResponse = zod.object({
   "username": zod.string(),
   "email": zod.string(),
   "role": zod.enum(['user', 'admin']),
+  "disabled": zod.boolean().optional(),
+  "mustChangePassword": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 }).optional()
 })
@@ -697,6 +806,8 @@ export const GetRecentBetsResponseItem = zod.object({
   "username": zod.string(),
   "email": zod.string(),
   "role": zod.enum(['user', 'admin']),
+  "disabled": zod.boolean().optional(),
+  "mustChangePassword": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 }).optional()
 })

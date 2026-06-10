@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
-import { ShieldCheck, ShieldOff, Pencil, Ban, CheckCircle2 } from "lucide-react";
+import { ShieldCheck, ShieldOff, Pencil, Ban, CheckCircle2, KeyRound, Copy, Check } from "lucide-react";
 
 // ── API helpers ────────────────────────────────────────────────────────────────
 async function patchUserRole(userId: number, role: string, token: string | null) {
@@ -51,6 +51,16 @@ async function patchUserDetails(
   return data;
 }
 
+async function postAdminResetPassword(userId: number, token: string | null) {
+  const res = await fetch(`/api/users/${userId}/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to reset password");
+  return data as { tempPassword: string; expiresAt: string; emailSent: boolean };
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface AdminUser {
   id: number;
@@ -61,6 +71,8 @@ interface AdminUser {
   phoneNumber: string | null;
   role: string;
   disabled: boolean;
+  disabledReason?: string | null;
+  loginAttempts?: number;
   createdAt: string;
   wallet?: { balance: number };
 }
@@ -87,6 +99,13 @@ export default function AdminUsers() {
   const [editForm, setEditForm] = useState({ firstName: "", lastName: "", email: "", phoneNumber: "", username: "" });
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
+
+  // Reset password dialog
+  const [resetUser, setResetUser] = useState<AdminUser | null>(null);
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetResult, setResetResult] = useState<{ tempPassword: string; expiresAt: string; emailSent: boolean } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   // Per-row loading states
   const [roleLoadingId, setRoleLoadingId] = useState<number | null>(null);
@@ -199,6 +218,36 @@ export default function AdminUsers() {
     }
   };
 
+  // ── Admin reset password ──────────────────────────────────────────────────
+  const openResetDialog = (user: AdminUser) => {
+    setResetUser(user);
+    setResetResult(null);
+    setCopied(false);
+    setIsResetDialogOpen(true);
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetUser) return;
+    setResetLoading(true);
+    try {
+      const result = await postAdminResetPassword(resetUser.id, token);
+      setResetResult(result);
+      queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
+    } catch (err: any) {
+      toast({ title: "Reset failed", description: err.message, variant: "destructive" });
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const handleCopyPassword = () => {
+    if (resetResult?.tempPassword) {
+      navigator.clipboard.writeText(resetResult.tempPassword);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
@@ -209,7 +258,7 @@ export default function AdminUsers() {
 
       <Card className="border-border bg-card">
         <CardContent className="p-0 overflow-x-auto">
-          <Table className="min-w-[900px]">
+          <Table className="min-w-[960px]">
             <TableHeader className="bg-accent/10">
               <TableRow>
                 <TableHead className="w-12">ID</TableHead>
@@ -217,10 +266,10 @@ export default function AdminUsers() {
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead className="w-20">Role</TableHead>
-                <TableHead className="w-20">Status</TableHead>
+                <TableHead className="w-28">Status</TableHead>
                 <TableHead className="w-28">Joined</TableHead>
                 <TableHead className="text-right w-24">Balance</TableHead>
-                <TableHead className="text-right w-56">Actions</TableHead>
+                <TableHead className="text-right w-64">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -235,6 +284,8 @@ export default function AdminUsers() {
               ) : (
                 users.map((user) => {
                   const isSelf = user.id === (currentUser as any)?.id;
+                  const isSystemLocked = user.disabled && user.disabledReason === "system";
+                  const isAdminDisabled = user.disabled && user.disabledReason === "admin";
                   return (
                     <TableRow key={user.id} className={user.disabled ? "opacity-60" : ""}>
                       <TableCell className="font-mono text-xs text-muted-foreground">#{user.id}</TableCell>
@@ -252,7 +303,9 @@ export default function AdminUsers() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {user.disabled ? (
+                        {isSystemLocked ? (
+                          <Badge variant="destructive" className="text-xs">Locked</Badge>
+                        ) : isAdminDisabled ? (
                           <Badge variant="destructive" className="text-xs">Blocked</Badge>
                         ) : (
                           <Badge variant="outline" className="text-xs text-green-600 border-green-600/40">Active</Badge>
@@ -274,6 +327,16 @@ export default function AdminUsers() {
                             title="Edit user"
                           >
                             <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-amber-500 hover:text-amber-500 hover:bg-amber-500/10"
+                            onClick={() => openResetDialog(user)}
+                            title="Reset password"
+                          >
+                            <KeyRound className="w-3.5 h-3.5" />
                           </Button>
 
                           <Button
@@ -397,6 +460,69 @@ export default function AdminUsers() {
                 {editLoading ? "Saving…" : "Save Changes"}
               </Button>
             </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Admin Reset Password Dialog ───────────────────────────────────────── */}
+      <Dialog open={isResetDialogOpen} onOpenChange={(open) => { setIsResetDialogOpen(open); if (!open) { setResetResult(null); setCopied(false); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="w-4 h-4 text-amber-500" />
+              Reset Password — {resetUser?.username}
+            </DialogTitle>
+          </DialogHeader>
+          {resetResult ? (
+            <div className="space-y-4 pt-2">
+              <p className="text-sm text-muted-foreground">
+                A temporary password has been generated. It is valid for <strong>1 hour</strong>.
+                {resetResult.emailSent
+                  ? " An email has been sent to the user."
+                  : " Email delivery is not configured — share this password with the user directly."}
+              </p>
+              <div className="space-y-2">
+                <Label>Temporary Password</Label>
+                <div className="flex gap-2">
+                  <Input
+                    readOnly
+                    value={resetResult.tempPassword}
+                    className="font-mono text-lg tracking-widest text-center"
+                  />
+                  <Button variant="outline" size="icon" onClick={handleCopyPassword} title="Copy password">
+                    {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Expires: {format(new Date(resetResult.expiresAt), "MMM d, yyyy 'at' h:mm a")}
+              </p>
+              <p className="text-xs text-amber-600 bg-amber-500/10 border border-amber-500/20 rounded-md p-2">
+                The user will be required to set a new password immediately after logging in with this temporary password.
+              </p>
+              <Button className="w-full" onClick={() => { setIsResetDialogOpen(false); setResetResult(null); }}>
+                Done
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4 pt-2">
+              <p className="text-sm text-muted-foreground">
+                This will generate a temporary password for <strong>{resetUser?.username}</strong> valid for 1 hour.
+                They will be required to set a new password after logging in.
+              </p>
+              <div className="p-3 bg-accent/20 rounded-md border border-border text-sm">
+                <span className="text-muted-foreground">Email: </span>
+                <span className="font-medium">{resetUser?.email}</span>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => setIsResetDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button className="flex-1 bg-amber-500 hover:bg-amber-600 text-white" onClick={handleResetPassword} disabled={resetLoading}>
+                  {resetLoading ? "Generating…" : "Generate Password"}
+                </Button>
+              </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>

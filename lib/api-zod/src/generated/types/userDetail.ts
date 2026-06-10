@@ -13,6 +13,11 @@ export interface UserDetail {
   username: string;
   email: string;
   role: UserDetailRole;
+  disabled?: boolean;
+  /** @nullable */
+  disabledReason?: string | null;
+  mustChangePassword?: boolean;
+  loginAttempts?: number;
   createdAt: Date;
   wallet: Wallet;
 }
