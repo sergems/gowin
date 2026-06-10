@@ -7,6 +7,8 @@ import { useAuth } from "./AuthContext";
 interface BetSlipItem extends BetSelectionInput {
   fixtureName: string;
   marketName: string;
+  competitionName?: string;
+  startTime?: string;
 }
 
 interface BetSlipContextType {

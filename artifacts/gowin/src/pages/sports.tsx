@@ -43,7 +43,7 @@ function Logo({ src, alt, size = 24 }: { src: string | null | undefined; alt: st
 // ── Odds button ───────────────────────────────────────────────────────────────
 
 function OddsButton({
-  oddsId, fixtureId, market, selection, oddsValue, fixtureName,
+  oddsId, fixtureId, market, selection, oddsValue, fixtureName, competitionName, startTime,
 }: {
   oddsId: number;
   fixtureId: number;
@@ -51,6 +51,8 @@ function OddsButton({
   selection: string;
   oddsValue: number;
   fixtureName: string;
+  competitionName?: string;
+  startTime?: string;
 }) {
   const { selections, addSelection, removeSelection } = useBetSlip();
   const selected = selections.some((s) => s.oddsId === oddsId);
@@ -63,7 +65,7 @@ function OddsButton({
         if (selected) {
           removeSelection(oddsId);
         } else {
-          addSelection({ oddsId, fixtureId, market, selection, odds: oddsValue, fixtureName, marketName: market });
+          addSelection({ oddsId, fixtureId, market, selection, odds: oddsValue, fixtureName, marketName: market, competitionName, startTime });
         }
       }}
       className={`flex flex-col items-center justify-center px-3 py-2 rounded-lg text-xs font-semibold border transition-colors flex-1 min-w-0 ${
@@ -188,6 +190,8 @@ function FixtureCard({ fixture }: { fixture: any }) {
                     selection={odd.selection}
                     oddsValue={odd.oddsValue}
                     fixtureName={fixtureName}
+                    competitionName={fixture.league?.name}
+                    startTime={fixture.startTime}
                   />
                 ))}
               </div>

@@ -1,4 +1,5 @@
 import { ReactNode, useState, useEffect, useRef } from "react";
+import { format } from "date-fns";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
@@ -379,7 +380,15 @@ export function Shell({ children }: { children: ReactNode }) {
                     <X className="w-4 h-4" />
                   </button>
                   <p className="text-xs text-muted-foreground mb-1 pr-6">{sel.fixtureName}</p>
-                  <p className="font-medium text-sm mb-1">{sel.selection}</p>
+                  <p className="font-semibold text-sm leading-tight">{sel.selection}</p>
+                  {(sel.competitionName || sel.startTime) && (
+                    <p className="text-[11px] text-muted-foreground/70 mt-0.5 mb-1 leading-tight">
+                      {[
+                        sel.competitionName,
+                        sel.startTime ? format(new Date(sel.startTime), "d MMM · HH:mm") : null,
+                      ].filter(Boolean).join("  ·  ")}
+                    </p>
+                  )}
                   <div className="flex items-center justify-between mt-2">
                     <span className="text-xs bg-background/50 px-2 py-1 rounded text-muted-foreground">{sel.marketName}</span>
                     <span className="font-bold text-primary">{sel.odds.toFixed(2)}</span>

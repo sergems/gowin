@@ -53,7 +53,7 @@ const CATEGORIES: { label: string; types: string[]; prefix?: string }[] = [
 // ── Odds button ────────────────────────────────────────────────────────────────
 
 function OddsButton({
-  oddsId, fixtureId, market, selection, oddsValue, fixtureName, disabled,
+  oddsId, fixtureId, market, selection, oddsValue, fixtureName, competitionName, startTime, disabled,
 }: {
   oddsId: number;
   fixtureId: number;
@@ -61,6 +61,8 @@ function OddsButton({
   selection: string;
   oddsValue: number;
   fixtureName: string;
+  competitionName?: string;
+  startTime?: string;
   disabled?: boolean;
 }) {
   const { selections, addSelection, removeSelection } = useBetSlip();
@@ -70,7 +72,7 @@ function OddsButton({
     <button
       onClick={() => {
         if (selected) removeSelection(oddsId);
-        else addSelection({ oddsId, fixtureId, market, selection, odds: oddsValue, fixtureName, marketName: market });
+        else addSelection({ oddsId, fixtureId, market, selection, odds: oddsValue, fixtureName, marketName: market, competitionName, startTime });
       }}
       disabled={disabled}
       className={`flex items-center justify-between px-4 py-3 rounded-lg border text-sm font-medium transition-all w-full
@@ -90,10 +92,12 @@ function OddsButton({
 
 // ── Market card ────────────────────────────────────────────────────────────────
 
-function MarketCard({ market, fixtureId, fixtureName, disabled }: {
+function MarketCard({ market, fixtureId, fixtureName, competitionName, startTime, disabled }: {
   market: any;
   fixtureId: number;
   fixtureName: string;
+  competitionName?: string;
+  startTime?: string;
   disabled?: boolean;
 }) {
   const odds: any[] = sortOdds(market.odds ?? [], market.marketType);
@@ -118,6 +122,8 @@ function MarketCard({ market, fixtureId, fixtureName, disabled }: {
             selection={odd.selection}
             oddsValue={parseFloat(odd.oddsValue ?? odd.odds_value ?? odd.oddsvalue ?? "0")}
             fixtureName={fixtureName}
+            competitionName={competitionName}
+            startTime={startTime}
             disabled={disabled}
           />
         ))}
@@ -294,6 +300,8 @@ export default function FixtureDetail() {
                   market={market}
                   fixtureId={fixture.id}
                   fixtureName={fixtureName}
+                  competitionName={(fixture as any).league?.name}
+                  startTime={fixture.startTime}
                   disabled={isFinished}
                 />
               ))}
