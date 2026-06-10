@@ -27,8 +27,8 @@ interface FootballData { featured: LeagueEntry[]; international: LeagueEntry[]; 
 
 function LeagueLogo({ src, alt }: { src: string | null | undefined; alt: string }) {
   const [failed, setFailed] = useState(false);
-  if (!src || failed) return <Shield className="w-3.5 h-3.5 text-muted-foreground shrink-0" />;
-  return <img src={src} alt={alt} width={14} height={14} className="object-contain shrink-0 w-3.5 h-3.5 rounded-sm bg-white p-[1px]" onError={() => setFailed(true)} />;
+  if (!src || failed) return <Shield className="w-4 h-4 text-muted-foreground shrink-0" />;
+  return <img src={src} alt={alt} width={20} height={20} className="object-contain shrink-0 w-5 h-5 rounded bg-white p-0.5" onError={() => setFailed(true)} />;
 }
 
 function FlagImg({ src, alt }: { src: string | null | undefined; alt: string }) {
