@@ -26,6 +26,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryKey: getGetMeQueryKey(),
       enabled: !!token,
       retry: false,
+      staleTime: 5 * 60 * 1000,
+      gcTime: 7 * 24 * 60 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
     }
   });
 

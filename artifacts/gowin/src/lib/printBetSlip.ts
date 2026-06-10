@@ -24,8 +24,8 @@ export function printBetSlip(bet: PrintBetData) {
   const fmtOdds = (v: number | string) => Number(v).toFixed(2);
   const fmtMoney = (v: number | string) =>
     Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const fmtDate = (s: string) => {
-    try { return new Date(s).toLocaleString(); } catch { return s; }
+  const fmtDate = (s: string | Date) => {
+    try { return new Date(s).toLocaleString(); } catch { return String(s); }
   };
   const fmtShort = (s?: string) => {
     if (!s) return "";

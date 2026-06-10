@@ -18,10 +18,11 @@ import {
   Activity, LayoutDashboard, History, Wallet, Trophy, LogOut, Users, Settings, X,
   ArrowLeftRight, Ticket, UserCircle, AlertTriangle, Banknote, SlidersHorizontal,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, ChevronDown, ChevronRight, Globe, Shield, CheckCircle2,
-  Home, Menu, Images, BookMarked, Download, Printer, Copy, Check, Upload,
+  Home, Menu, Images, Printer,
 } from "lucide-react";
 import type { PlacedBetDetails } from "@/contexts/BetSlipContext";
 import { printBetSlip } from "@/lib/printBetSlip";
+import { BetSlipBody } from "./BetSlipBody";
 
 interface LeagueEntry { id: number; name: string; logo: string | null; fixtureCount: number; }
 interface CountryEntry { name: string; logo: string | null; leagues: LeagueEntry[]; }
@@ -43,7 +44,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const { data: wallet } = useGetMyWallet({ query: { enabled: !!user } });
   const [location, navigate] = useLocation();
-  const { selections, stake, setStake, removeSelection, totalOdds, potentialWin, isMaxWinCapped, placeBet, isPlacing, bookBet, isBooking, loadBooking, lastPlacedBet, clearLastPlacedBet } = useBetSlip();
+  const { selections, stake, lastPlacedBet, clearLastPlacedBet } = useBetSlip();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [betSlipOpen, setBetSlipOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 768);
   const [sportsOpen, setSportsOpen] = useState(false);
@@ -52,13 +53,6 @@ export function Shell({ children }: { children: ReactNode }) {
   const [mobileBetSlipOpen, setMobileBetSlipOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
-  const [bookingCode, setBookingCode] = useState<string | null>(null);
-  const [loadCodeInput, setLoadCodeInput] = useState("");
-  const [loadCodeError, setLoadCodeError] = useState("");
-  const [isLoadingCode, setIsLoadingCode] = useState(false);
-  const [copiedCode, setCopiedCode] = useState(false);
-  const [showLoadInput, setShowLoadInput] = useState(false);
-  const [stakeInput, setStakeInput] = useState("");
 
   const prevSelectionsLen = useRef(0);
   useEffect(() => {
@@ -67,7 +61,6 @@ export function Shell({ children }: { children: ReactNode }) {
     }
     if (prevSelectionsLen.current > 0 && selections.length === 0) {
       setBetSlipOpen(false);
-      setStakeInput("");
     }
     prevSelectionsLen.current = selections.length;
   }, [selections.length]);
@@ -346,230 +339,6 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
         )}
       </>
-    );
-  }
-
-  // ── Bet slip content (shared desktop + mobile drawer) ─────────────────────
-  async function handleBookBet() {
-    const code = await bookBet();
-    if (code) setBookingCode(code);
-  }
-
-  async function handleLoadCode() {
-    if (!loadCodeInput.trim()) return;
-    setLoadCodeError("");
-    setIsLoadingCode(true);
-    try {
-      await loadBooking(loadCodeInput.trim());
-      setLoadCodeInput("");
-      setShowLoadInput(false);
-      setLoadCodeError("");
-    } catch (err: any) {
-      setLoadCodeError(err.message || "Code not found");
-    } finally {
-      setIsLoadingCode(false);
-    }
-  }
-
-  function copyBookingCode(code: string) {
-    navigator.clipboard.writeText(code).then(() => {
-      setCopiedCode(true);
-      setTimeout(() => setCopiedCode(false), 2000);
-    });
-  }
-
-  function BetSlipBody({ onClose, onToggle }: { onClose?: () => void; onToggle?: () => void }) {
-    return (
-      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-        {/* Header */}
-        <div className="h-14 border-b border-border flex items-center px-4 shrink-0 bg-accent/30">
-          {onToggle && (
-            <button onClick={onToggle} className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-accent mr-2" title="Collapse bet slip">
-              <PanelRightClose className="w-5 h-5" />
-            </button>
-          )}
-          <span className="font-bold">Bet Slip</span>
-          <span className="ml-2 bg-primary/20 text-primary text-xs px-2 py-0.5 rounded-full">{selections.length}</span>
-          <div className="ml-auto flex items-center gap-1">
-            <button
-              onClick={() => setShowLoadInput(v => !v)}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-accent"
-              title="Load a booked bet"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">Load</span>
-            </button>
-            {onClose && (
-              <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors p-1">
-                <X className="w-5 h-5" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Load Bet panel */}
-        {showLoadInput && (
-          <div className="px-4 pt-3 pb-2 border-b border-border bg-accent/10">
-            <p className="text-xs font-medium mb-2">Load Booked Bet</p>
-            <div className="flex gap-2">
-              <Input
-                className="h-8 text-xs font-mono uppercase"
-                placeholder="Enter booking code"
-                value={loadCodeInput}
-                onChange={e => { setLoadCodeInput(e.target.value.toUpperCase()); setLoadCodeError(""); }}
-                onKeyDown={e => e.key === "Enter" && handleLoadCode()}
-              />
-              <Button size="sm" className="h-8 px-3 shrink-0" onClick={handleLoadCode} disabled={isLoadingCode || !loadCodeInput.trim()}>
-                {isLoadingCode ? "..." : "Load"}
-              </Button>
-            </div>
-            {loadCodeError && <p className="text-xs text-destructive mt-1">{loadCodeError}</p>}
-          </div>
-        )}
-
-        {/* Selections */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-4
-          [&::-webkit-scrollbar]:w-1.5
-          [&::-webkit-scrollbar-track]:bg-transparent
-          [&::-webkit-scrollbar-thumb]:rounded-full
-          [&::-webkit-scrollbar-thumb]:bg-yellow-400/70
-          [&::-webkit-scrollbar-thumb:hover]:bg-yellow-400">
-          {user && !(user as any).phoneNumber && (
-            <Link href="/profile" onClick={onClose}>
-              <div className="flex items-start gap-2 p-3 rounded-lg border border-amber-500/40 bg-amber-500/10 mb-4 cursor-pointer hover:bg-amber-500/15 transition-colors">
-                <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-xs font-semibold text-amber-500">Phone required to bet</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Tap to complete your profile</p>
-                </div>
-              </div>
-            </Link>
-          )}
-          {selections.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-4 mt-20">
-              <div className="w-16 h-16 rounded-full bg-accent flex items-center justify-center">
-                <Trophy className="w-8 h-8 opacity-50" />
-              </div>
-              <p className="text-sm">Your bet slip is empty</p>
-              <button
-                onClick={() => setShowLoadInput(true)}
-                className="text-xs text-primary hover:underline flex items-center gap-1"
-              >
-                <Upload className="w-3 h-3" /> Load a booked bet
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {selections.map((sel) => (
-                <div key={sel.oddsId} className="bg-accent/40 border border-border rounded-lg p-3 relative group">
-                  <button onClick={() => removeSelection(sel.oddsId)}
-                    className="absolute top-2 right-2 text-muted-foreground hover:text-destructive transition-colors">
-                    <X className="w-4 h-4" />
-                  </button>
-                  <p className="text-xs text-muted-foreground mb-1 pr-6">{sel.fixtureName}</p>
-                  <p className="font-semibold text-sm leading-tight">{sel.selection}</p>
-                  {(sel.competitionName || sel.startTime) && (
-                    <p className="text-[11px] text-muted-foreground/70 mt-0.5 mb-1 leading-tight">
-                      {[
-                        sel.competitionName,
-                        sel.startTime ? format(new Date(sel.startTime), "d MMM · HH:mm") : null,
-                      ].filter(Boolean).join("  ·  ")}
-                    </p>
-                  )}
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs bg-background/50 px-2 py-1 rounded text-muted-foreground">{sel.marketName}</span>
-                    <span className="font-bold text-primary">{sel.odds.toFixed(2)}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        {selections.length > 0 && (
-          <div className="p-4 border-t border-border bg-accent/10 space-y-3 shrink-0">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Total Odds</span>
-                <span className="font-bold">{totalOdds.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center text-sm pt-2">
-                <span className="text-muted-foreground">Stake ($)</span>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  className="w-24 h-8 text-right font-medium"
-                  value={stakeInput}
-                  placeholder="0.00"
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    if (raw === "" || /^\d*\.?\d*$/.test(raw)) {
-                      setStakeInput(raw);
-                      const parsed = parseFloat(raw);
-                      setStake(!isNaN(parsed) ? parsed : 0);
-                    }
-                  }}
-                  onBlur={() => {
-                    if (stakeInput && !isNaN(parseFloat(stakeInput))) {
-                      setStakeInput(parseFloat(stakeInput).toFixed(2));
-                    }
-                  }}
-                />
-              </div>
-              <Separator className="my-2" />
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Potential Win</span>
-                <span className="font-bold text-primary">${potentialWin.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </div>
-              {isMaxWinCapped && (
-                <p className="text-[11px] text-amber-400 mt-1 text-right">Max win capped at $1,000,000</p>
-              )}
-            </div>
-            <Button
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold h-11"
-              onClick={() => placeBet()}
-              disabled={isPlacing || stake <= 0 || !user}
-            >
-              {isPlacing ? "Placing Bet..." : !user ? "Login to Bet" : "Place Bet"}
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full h-9 text-sm"
-              onClick={handleBookBet}
-              disabled={isBooking}
-            >
-              <BookMarked className="w-4 h-4 mr-2" />
-              {isBooking ? "Booking..." : "Book Bet"}
-            </Button>
-          </div>
-        )}
-
-        {/* Booking code modal */}
-        {bookingCode && (
-          <div className="absolute inset-0 bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center p-6 z-10 rounded-lg">
-            <div className="bg-card border border-border rounded-xl p-6 w-full max-w-xs text-center space-y-4">
-              <BookMarked className="w-10 h-10 text-primary mx-auto" />
-              <div>
-                <p className="font-bold text-lg">Bet Booked!</p>
-                <p className="text-xs text-muted-foreground mt-1">Share this code so others can load your selections</p>
-              </div>
-              <div className="bg-accent rounded-lg px-4 py-3 font-mono text-2xl font-bold tracking-widest select-all">
-                {bookingCode}
-              </div>
-              <button
-                onClick={() => copyBookingCode(bookingCode)}
-                className="flex items-center gap-2 mx-auto text-sm text-primary hover:underline"
-              >
-                {copiedCode ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                {copiedCode ? "Copied!" : "Copy code"}
-              </button>
-              <p className="text-[11px] text-muted-foreground">Valid for 30 days</p>
-              <Button className="w-full" onClick={() => setBookingCode(null)}>Done</Button>
-            </div>
-          </div>
-        )}
-      </div>
     );
   }
 
