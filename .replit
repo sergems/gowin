@@ -71,7 +71,6 @@ externalPort = 3000
 [userenv]
 
 [userenv.shared]
-JWT_SECRET = "34a768eb4dfed055cc69a245baaa58f7bbb13004e809498b393b735ae690441306a8f393e23b155169d95ab635077375"
 
 [nix]
 channel = "stable-25_05"
