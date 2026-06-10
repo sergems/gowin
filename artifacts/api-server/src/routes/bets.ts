@@ -49,8 +49,10 @@ router.post("/bets", requireAuth, async (req: AuthRequest, res): Promise<void> =
     return;
   }
 
+  const MAX_WIN = 1_000_000;
   const totalOdds = selections.reduce((acc, s) => acc * s.odds, 1);
-  const potentialWin = stake * totalOdds;
+  const rawPotentialWin = stake * totalOdds;
+  const potentialWin = Math.min(rawPotentialWin, MAX_WIN);
   const code = await uniqueBetCode();
 
   const newBalance = parseFloat(wallet.balance) - stake;

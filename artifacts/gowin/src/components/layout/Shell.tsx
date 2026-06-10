@@ -41,7 +41,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const { data: wallet } = useGetMyWallet({ query: { enabled: !!user } });
   const [location, navigate] = useLocation();
-  const { selections, stake, setStake, removeSelection, totalOdds, potentialWin, placeBet, isPlacing } = useBetSlip();
+  const { selections, stake, setStake, removeSelection, totalOdds, potentialWin, isMaxWinCapped, placeBet, isPlacing } = useBetSlip();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [betSlipOpen, setBetSlipOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 768);
   const [sportsOpen, setSportsOpen] = useState(false);
@@ -429,8 +429,11 @@ export function Shell({ children }: { children: ReactNode }) {
               <Separator className="my-2" />
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Potential Win</span>
-                <span className="font-bold text-primary">${potentialWin.toFixed(2)}</span>
+                <span className="font-bold text-primary">${potentialWin.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
+              {isMaxWinCapped && (
+                <p className="text-[11px] text-amber-400 mt-1 text-right">Max win capped at $1,000,000</p>
+              )}
             </div>
             <Button
               className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold h-12"

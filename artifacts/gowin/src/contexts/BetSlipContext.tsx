@@ -20,6 +20,7 @@ interface BetSlipContextType {
   setStake: (amount: number) => void;
   totalOdds: number;
   potentialWin: number;
+  isMaxWinCapped: boolean;
   placeBet: () => Promise<void>;
   isPlacing: boolean;
 }
@@ -51,8 +52,11 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
     setStake(0);
   };
 
+  const MAX_WIN = 1_000_000;
   const totalOdds = selections.reduce((acc, curr) => acc * curr.odds, 1);
-  const potentialWin = stake * totalOdds;
+  const rawPotentialWin = stake * totalOdds;
+  const potentialWin = Math.min(rawPotentialWin, MAX_WIN);
+  const isMaxWinCapped = rawPotentialWin > MAX_WIN;
 
   const placeBet = async () => {
     if (!user) {
@@ -109,6 +113,7 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
       setStake,
       totalOdds: selections.length > 0 ? totalOdds : 0,
       potentialWin: selections.length > 0 ? potentialWin : 0,
+      isMaxWinCapped: selections.length > 0 ? isMaxWinCapped : false,
       placeBet,
       isPlacing: placeBetMutation.isPending
     }}>
