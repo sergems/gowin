@@ -52,7 +52,8 @@ router.get("/users", requireAdmin, async (req: AuthRequest, res): Promise<void> 
   if (search) {
     const condition = or(
       ilike(usersTable.username, `%${search}%`),
-      ilike(usersTable.email, `%${search}%`)
+      ilike(usersTable.email, `%${search}%`),
+      ilike(usersTable.phoneNumber, `%${search}%`)
     );
     query = query.where(condition) as typeof query;
     countQuery = countQuery.where(condition) as typeof countQuery;

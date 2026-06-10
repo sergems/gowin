@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useListUsers, useCreditWallet, useDebitWallet, getListUsersQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
-import { ShieldCheck, ShieldOff, Pencil, Ban, CheckCircle2, KeyRound, Copy, Check } from "lucide-react";
+import { ShieldCheck, ShieldOff, Pencil, Ban, CheckCircle2, KeyRound, Copy, Check, Search, X as XIcon } from "lucide-react";
 
 // ── API helpers ────────────────────────────────────────────────────────────────
 async function patchUserRole(userId: number, role: string, token: string | null) {
@@ -79,7 +79,24 @@ interface AdminUser {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function AdminUsers() {
-  const { data, isLoading } = useListUsers();
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSearchChange = (val: string) => {
+    setSearchInput(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setSearch(val.trim()), 350);
+  };
+
+  const clearSearch = () => {
+    setSearchInput("");
+    setSearch("");
+  };
+
+  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current); }, []);
+
+  const { data, isLoading } = useListUsers(search ? { search } : undefined);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { token, user: currentUser } = useAuth();
@@ -254,6 +271,31 @@ export default function AdminUsers() {
       <div>
         <h1 className="text-3xl font-black tracking-tight mb-2">User Management</h1>
         <p className="text-muted-foreground">Manage users, wallet balances, roles, and account access</p>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          <Input
+            placeholder="Search by email, phone or username…"
+            value={searchInput}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="pl-9 pr-9"
+          />
+          {searchInput && (
+            <button
+              onClick={clearSearch}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <XIcon className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        {search && (
+          <p className="text-sm text-muted-foreground">
+            {isLoading ? "Searching…" : `${(data as any)?.total ?? 0} result${(data as any)?.total === 1 ? "" : "s"}`}
+          </p>
+        )}
       </div>
 
       <Card className="border-border bg-card">
