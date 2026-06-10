@@ -12,6 +12,7 @@ import profileRouter from "./profile";
 import withdrawalsRouter from "./withdrawals";
 import apiSyncRouter from "./apiSync";
 import slidesRouter from "./slides";
+import betBookingsRouter from "./betBookings";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(profileRouter);
 router.use(withdrawalsRouter);
 router.use(apiSyncRouter);
 router.use(slidesRouter);
+router.use(betBookingsRouter);
 
 export default router;

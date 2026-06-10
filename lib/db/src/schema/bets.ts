@@ -26,6 +26,14 @@ export const betSelectionsTable = pgTable("bet_selections", {
   odds: numeric("odds", { precision: 10, scale: 4 }).notNull(),
 });
 
+export const betBookingsTable = pgTable("bet_bookings", {
+  id: serial("id").primaryKey(),
+  code: text("code").unique().notNull(),
+  selections: text("selections").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
+
 export const insertBetSchema = createInsertSchema(betsTable).omit({ id: true, createdAt: true });
 export type InsertBet = z.infer<typeof insertBetSchema>;
 export type Bet = typeof betsTable.$inferSelect;
