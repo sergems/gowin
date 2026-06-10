@@ -200,11 +200,9 @@ export default function FixtureDetail() {
   return (
     <div className="space-y-5 pb-8">
       {/* Back link */}
-      <Link href="/sports">
-        <span className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
-          <ChevronLeft className="w-4 h-4" /> Back to Football
-        </span>
-      </Link>
+      <button onClick={() => window.history.back()} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <ChevronLeft className="w-4 h-4" /> Back
+      </button>
 
       {/* Hero card */}
       <div className="relative bg-card border border-border rounded-2xl overflow-hidden">
