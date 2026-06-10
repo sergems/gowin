@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSearch } from "wouter";
 import { useListFixtures } from "@workspace/api-client-react";
 import type { ListFixturesParams } from "@workspace/api-client-react";
@@ -217,10 +217,15 @@ export default function FootballPage() {
     (selectedLeagueId
       ? { leagueId: selectedLeagueId, status: "upcoming", limit: 50, withMarkets: true }
       : { status: "upcoming", limit: 20, withMarkets: true }) as ListFixturesParams,
-    { query: { queryKey: ["fixtures", "sports", selectedLeagueId] } },
+    { query: { queryKey: ["fixtures", "sports", selectedLeagueId], refetchInterval: 60 * 1000 } },
   );
 
-  const now = new Date();
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60 * 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const fixtures = (fixturesData?.fixtures ?? []).filter(
     (f) => new Date(f.startTime) > now,
   );
