@@ -21,6 +21,7 @@ import {
   Home, Menu, Images, BookMarked, Download, Printer, Copy, Check, Upload,
 } from "lucide-react";
 import type { PlacedBetDetails } from "@/contexts/BetSlipContext";
+import { printBetSlip } from "@/lib/printBetSlip";
 
 interface LeagueEntry { id: number; name: string; logo: string | null; fixtureCount: number; }
 interface CountryEntry { name: string; logo: string | null; leagues: LeagueEntry[]; }
@@ -57,6 +58,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const [isLoadingCode, setIsLoadingCode] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [showLoadInput, setShowLoadInput] = useState(false);
+  const [stakeInput, setStakeInput] = useState("");
 
   const prevSelectionsLen = useRef(0);
   useEffect(() => {
@@ -65,6 +67,7 @@ export function Shell({ children }: { children: ReactNode }) {
     }
     if (prevSelectionsLen.current > 0 && selections.length === 0) {
       setBetSlipOpen(false);
+      setStakeInput("");
     }
     prevSelectionsLen.current = selections.length;
   }, [selections.length]);
@@ -375,70 +378,6 @@ export function Shell({ children }: { children: ReactNode }) {
     });
   }
 
-  function printBetSlip(bet: PlacedBetDetails) {
-    const win = window.open("", "_blank", "width=480,height=700");
-    if (!win) return;
-    win.document.write(`<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8"/>
-  <title>GoWin Bet Slip — ${bet.code}</title>
-  <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family: Arial, sans-serif; color: #111; background: #fff; padding: 24px; font-size: 13px; }
-    .header { text-align:center; margin-bottom:20px; border-bottom:2px solid #111; padding-bottom:14px; }
-    .header h1 { font-size:22px; font-weight:900; letter-spacing:2px; }
-    .header p { font-size:11px; color:#555; margin-top:4px; }
-    .code-box { text-align:center; margin:14px 0; padding:10px; border:2px dashed #111; border-radius:6px; }
-    .code-box span { font-size:24px; font-weight:bold; letter-spacing:6px; font-family:monospace; }
-    .section-title { font-size:11px; text-transform:uppercase; letter-spacing:1px; color:#777; margin:16px 0 8px; }
-    .selection { border:1px solid #ddd; border-radius:6px; padding:10px 12px; margin-bottom:8px; }
-    .sel-fixture { font-size:11px; color:#777; margin-bottom:2px; }
-    .sel-pick { font-weight:700; font-size:13px; }
-    .sel-meta { font-size:11px; color:#999; margin-top:2px; }
-    .sel-odds { font-weight:bold; font-size:14px; color:#1a1a1a; float:right; margin-top:-30px; }
-    .totals { border-top:2px solid #111; margin-top:16px; padding-top:12px; }
-    .row { display:flex; justify-content:space-between; margin-bottom:6px; font-size:13px; }
-    .row.big { font-size:16px; font-weight:bold; margin-top:8px; border-top:1px solid #ddd; padding-top:8px; }
-    .footer { text-align:center; margin-top:24px; font-size:10px; color:#aaa; border-top:1px solid #eee; padding-top:12px; }
-    @media print { body { padding:12px; } }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>🏆 GoWin</h1>
-    <p>Sports Betting — Official Bet Slip</p>
-  </div>
-  <div class="code-box">
-    <div style="font-size:11px;color:#777;margin-bottom:4px;">BET CODE</div>
-    <span>${bet.code || "—"}</span>
-  </div>
-  <div style="font-size:11px;color:#777;text-align:center;margin-bottom:4px;">
-    Placed: ${new Date(bet.placedAt).toLocaleString()}
-  </div>
-  <div class="section-title">Selections (${bet.selections.length})</div>
-  ${bet.selections.map(s => `
-    <div class="selection">
-      <div class="sel-fixture">${s.fixtureName}</div>
-      <div class="sel-pick">${s.selection}</div>
-      <div class="sel-meta">${[s.competitionName, s.startTime ? new Date(s.startTime).toLocaleDateString() : null].filter(Boolean).join(" · ")}</div>
-      <div style="text-align:right;font-weight:bold;font-size:14px;margin-top:4px;">${s.odds.toFixed(2)}</div>
-    </div>
-  `).join("")}
-  <div class="totals">
-    <div class="row"><span>Total Odds</span><span>${bet.totalOdds.toFixed(2)}</span></div>
-    <div class="row"><span>Stake</span><span>$${bet.stake.toFixed(2)}</span></div>
-    <div class="row big"><span>Potential Win</span><span>$${bet.potentialWin.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
-  </div>
-  <div class="footer">
-    Please gamble responsibly. GoWin · Max win $1,000,000
-  </div>
-  <script>window.onload=function(){window.print();};</script>
-</body>
-</html>`);
-    win.document.close();
-  }
-
   function BetSlipBody({ onClose, onToggle }: { onClose?: () => void; onToggle?: () => void }) {
     return (
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
@@ -558,10 +497,24 @@ export function Shell({ children }: { children: ReactNode }) {
               <div className="flex justify-between items-center text-sm pt-2">
                 <span className="text-muted-foreground">Stake ($)</span>
                 <Input
-                  type="number" min="0.01" step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   className="w-24 h-8 text-right font-medium"
-                  value={stake || ""}
-                  onChange={(e) => setStake(parseFloat(e.target.value) || 0)}
+                  value={stakeInput}
+                  placeholder="0.00"
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === "" || /^\d*\.?\d*$/.test(raw)) {
+                      setStakeInput(raw);
+                      const parsed = parseFloat(raw);
+                      setStake(!isNaN(parsed) ? parsed : 0);
+                    }
+                  }}
+                  onBlur={() => {
+                    if (stakeInput && !isNaN(parseFloat(stakeInput))) {
+                      setStakeInput(parseFloat(stakeInput).toFixed(2));
+                    }
+                  }}
                 />
               </div>
               <Separator className="my-2" />

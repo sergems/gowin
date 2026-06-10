@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useGetMyBets } from "@workspace/api-client-react";
 import { format } from "date-fns";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronDown, ChevronUp, Trophy, Clock, CheckCircle2, XCircle, HelpCircle } from "lucide-react";
+import { ChevronDown, ChevronUp, Trophy, Clock, CheckCircle2, XCircle, HelpCircle, Printer } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { printBetSlip, historyBetToPrintData } from "@/lib/printBetSlip";
 
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
@@ -262,13 +263,23 @@ export default function History() {
                                 <div className="font-bold">{Number(bet.totalOdds).toFixed(2)}</div>
                               </div>
                             </div>
-                            <div className="text-right">
-                              <div className="text-xs text-muted-foreground mb-0.5">
-                                {bet.status === "won" ? "Won" : "Potential Win"}
+                            <div className="flex items-center gap-4">
+                              <div className="text-right">
+                                <div className="text-xs text-muted-foreground mb-0.5">
+                                  {bet.status === "won" ? "Won" : "Potential Win"}
+                                </div>
+                                <div className={`font-black text-lg ${bet.status === "won" ? "text-primary" : ""}`}>
+                                  ${Number(bet.potentialWin).toFixed(2)}
+                                </div>
                               </div>
-                              <div className={`font-black text-lg ${bet.status === "won" ? "text-primary" : ""}`}>
-                                ${Number(bet.potentialWin).toFixed(2)}
-                              </div>
+                              <button
+                                onClick={() => printBetSlip(historyBetToPrintData(bet))}
+                                title="Print bet slip"
+                                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border rounded-md px-3 py-2 hover:bg-accent transition-colors shrink-0"
+                              >
+                                <Printer className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">Print</span>
+                              </button>
                             </div>
                           </div>
                         </div>
