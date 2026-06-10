@@ -36,7 +36,7 @@ router.post("/bet-bookings", async (req: Request, res: Response): Promise<void> 
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   await db.insert(betBookingsTable).values({
     code,
-    selections: JSON.stringify(selections),
+    selections,
     expiresAt,
   });
   res.status(201).json({ code, expiresAt });
@@ -53,10 +53,8 @@ router.get("/bet-bookings/:code", async (req: Request, res: Response): Promise<v
     res.status(410).json({ error: "This booking code has expired" });
     return;
   }
-  let selections: any[];
-  try {
-    selections = JSON.parse(booking.selections);
-  } catch {
+  const selections = booking.selections as any[];
+  if (!Array.isArray(selections)) {
     res.status(500).json({ error: "Invalid booking data" });
     return;
   }

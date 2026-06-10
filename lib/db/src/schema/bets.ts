@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, numeric, text, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, numeric, text, timestamp, pgEnum, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -29,7 +29,7 @@ export const betSelectionsTable = pgTable("bet_selections", {
 export const betBookingsTable = pgTable("bet_bookings", {
   id: serial("id").primaryKey(),
   code: text("code").unique().notNull(),
-  selections: text("selections").notNull(),
+  selections: jsonb("selections").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 });
