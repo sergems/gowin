@@ -352,7 +352,12 @@ export function Shell({ children }: { children: ReactNode }) {
           )}
         </div>
 
-        <ScrollArea className="flex-1 p-4">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4
+          [&::-webkit-scrollbar]:w-1.5
+          [&::-webkit-scrollbar-track]:bg-transparent
+          [&::-webkit-scrollbar-thumb]:rounded-full
+          [&::-webkit-scrollbar-thumb]:bg-yellow-400/70
+          [&::-webkit-scrollbar-thumb:hover]:bg-yellow-400">
           {user && !(user as any).phoneNumber && (
             <Link href="/profile" onClick={onClose}>
               <div className="flex items-start gap-2 p-3 rounded-lg border border-amber-500/40 bg-amber-500/10 mb-4 cursor-pointer hover:bg-amber-500/15 transition-colors">
@@ -397,7 +402,7 @@ export function Shell({ children }: { children: ReactNode }) {
               ))}
             </div>
           )}
-        </ScrollArea>
+        </div>
 
         {selections.length > 0 && (
           <div className="p-4 border-t border-border bg-accent/10 space-y-4 shrink-0">
@@ -620,7 +625,7 @@ export function Shell({ children }: { children: ReactNode }) {
       {mobileBetSlipOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileBetSlipOpen(false)} />
-          <div className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl flex flex-col max-h-[85vh] overflow-hidden shadow-2xl">
+          <div className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl flex flex-col overflow-hidden shadow-2xl" style={{ maxHeight: '85dvh', height: '85dvh' }}>
             <BetSlipBody onClose={() => setMobileBetSlipOpen(false)} />
           </div>
         </div>
