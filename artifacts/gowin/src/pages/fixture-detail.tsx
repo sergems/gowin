@@ -238,7 +238,7 @@ export default function FixtureDetail() {
               {fixture.homeTeam?.logo && (
                 <img src={fixture.homeTeam.logo} alt="" className="w-16 h-16 object-contain" />
               )}
-              <p className="text-xl md:text-2xl font-black leading-tight">{fixture.homeTeam?.name}</p>
+              <p className="text-base md:text-2xl font-black leading-tight break-words w-full">{fixture.homeTeam?.name}</p>
             </div>
 
             <div className="shrink-0 flex flex-col items-center gap-1">
@@ -259,7 +259,7 @@ export default function FixtureDetail() {
               {fixture.awayTeam?.logo && (
                 <img src={fixture.awayTeam.logo} alt="" className="w-16 h-16 object-contain" />
               )}
-              <p className="text-xl md:text-2xl font-black leading-tight">{fixture.awayTeam?.name}</p>
+              <p className="text-base md:text-2xl font-black leading-tight break-words w-full">{fixture.awayTeam?.name}</p>
             </div>
           </div>
         </div>

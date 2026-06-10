@@ -543,11 +543,11 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <ScrollArea className="flex-1">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
           <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto pb-24 md:pb-8">
             {children}
           </div>
-        </ScrollArea>
+        </div>
 
         {user && (
           <footer className="shrink-0 border-t border-border bg-card/50 px-6 py-2 hidden md:block">
