@@ -3,6 +3,7 @@ import { logger } from "./lib/logger";
 import { refreshAllUpcomingOdds } from "./lib/oddsRefresh";
 import { syncFixtureResults } from "./lib/fixtureSync";
 import { autoSettleFinishedFixtures } from "./lib/autoSettle";
+import { autoExpireFixtures } from "./lib/fixtureExpiry";
 
 const rawPort = process.env["PORT"];
 
@@ -27,10 +28,13 @@ app.listen(port, (err) => {
   logger.info({ port }, "Server listening");
 });
 
-// ── Auto-settle (runs without any external API call) ──────────────────────────
-// Run immediately on startup to catch any backlog, then every 5 minutes
+// ── Auto-expire + auto-settle (runs without any external API call) ───────────
+// 1. Advance fixture statuses based on elapsed time (upcoming→live→finished)
+// 2. Settle any bets on fixtures now marked finished
+// Runs immediately on startup to clear any backlog, then every 5 minutes
 async function runAutoSettle() {
   try {
+    await autoExpireFixtures();
     const result = await autoSettleFinishedFixtures();
     if (result.settled > 0) logger.info(result, "Auto-settle finished");
   } catch (err) {
