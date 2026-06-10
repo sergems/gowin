@@ -240,9 +240,9 @@ export default function FootballPage() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-2">
         {selectedLeagueName && (
-          <button onClick={() => window.history.back()} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <button onClick={() => window.history.back()} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors self-start">
             <ChevronLeft className="w-4 h-4" /> Back
           </button>
         )}
