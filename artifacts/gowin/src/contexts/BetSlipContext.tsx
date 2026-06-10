@@ -53,7 +53,7 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
 
   const addSelection = (item: BetSlipItem) => {
     setSelections(prev => {
-      const filtered = prev.filter(s => s.fixtureId !== item.fixtureId || s.market !== item.market);
+      const filtered = prev.filter(s => s.fixtureId !== item.fixtureId);
       return [...filtered, item];
     });
   };
