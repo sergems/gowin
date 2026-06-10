@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useListFixtures } from "@workspace/api-client-react";
 import type { ListFixturesParams } from "@workspace/api-client-react";
 import { Link } from "wouter";
-import { subDays, startOfDay, isToday, isYesterday } from "date-fns";
-import { fmtUTCTime } from "@/lib/formatUTC";
+import { subDays, startOfDay } from "date-fns";
+import { fmtUTCTime, utcDateKey, utcDateLabel } from "@/lib/formatUTC";
 import { CalendarDays, CheckCircle2, Shield, Globe } from "lucide-react";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -24,14 +24,12 @@ function Logo({ src, alt, size = 24 }: { src: string | null | undefined; alt: st
   );
 }
 
-function dayLabel(date: Date): string {
-  if (isToday(date)) return `Today · ${format(date, "EEEE, d MMMM yyyy")}`;
-  if (isYesterday(date)) return `Yesterday · ${format(date, "EEEE, d MMMM yyyy")}`;
-  return format(date, "EEEE, d MMMM yyyy");
+function dayLabel(iso: string): string {
+  return utcDateLabel(iso);
 }
 
-function dateKey(date: Date): string {
-  return format(date, "yyyy-MM-dd");
+function dateKey(iso: string): string {
+  return utcDateKey(iso);
 }
 
 // ── Result card ───────────────────────────────────────────────────────────────
@@ -110,7 +108,7 @@ export default function ResultsPage() {
   const [selectedDaysAgo, setSelectedDaysAgo] = useState(0);
 
   const targetDate = startOfDay(subDays(new Date(), selectedDaysAgo));
-  const dateStr = dateKey(targetDate);
+  const dateStr = dateKey(targetDate.toISOString());
 
   const { data, isLoading } = useListFixtures(
     { dateFrom: dateStr, dateTo: dateStr, limit: 500 } as ListFixturesParams,
@@ -146,7 +144,7 @@ export default function ResultsPage() {
           <CheckCircle2 className="w-6 h-6 text-primary" />
           Results
         </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">{dayLabel(targetDate)}</p>
+        <p className="text-sm text-muted-foreground mt-0.5">{dayLabel(targetDate.toISOString())}</p>
       </div>
 
       {/* Day tabs */}
