@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
+import { fmtUTCDateTimeShort } from "@/lib/formatUTC";
 import { Link } from "wouter";
 import { useBetSlip } from "@/contexts/BetSlipContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -173,7 +174,7 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
                   <p className="text-[11px] text-muted-foreground/70 mt-0.5 mb-1 leading-tight">
                     {[
                       sel.competitionName,
-                      sel.startTime ? format(new Date(sel.startTime), "d MMM · HH:mm") : null,
+                      sel.startTime ? fmtUTCDateTimeShort(sel.startTime) : null,
                     ].filter(Boolean).join("  ·  ")}
                   </p>
                 )}

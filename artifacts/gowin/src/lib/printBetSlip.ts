@@ -29,7 +29,11 @@ export function printBetSlip(bet: PrintBetData) {
   };
   const fmtShort = (s?: string) => {
     if (!s) return "";
-    try { return new Date(s).toLocaleDateString("en-US", { day: "numeric", month: "short" }); } catch { return s; }
+    try {
+      const d = new Date(s);
+      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      return `${d.getUTCDate()} ${months[d.getUTCMonth()]}`;
+    } catch { return s; }
   };
 
   win.document.write(`<!DOCTYPE html>

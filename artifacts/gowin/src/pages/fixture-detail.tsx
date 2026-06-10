@@ -4,7 +4,7 @@ import { useGetFixture } from "@workspace/api-client-react";
 import { useBetSlip } from "@/contexts/BetSlipContext";
 import { sortOdds } from "@/lib/sortOdds";
 import { Trophy, CalendarDays, Activity, ChevronLeft } from "lucide-react";
-import { format } from "date-fns";
+import { fmtUTCDateTimeLong } from "@/lib/formatUTC";
 import { Link } from "wouter";
 
 // ── Market category definitions ───────────────────────────────────────────────
@@ -224,7 +224,7 @@ export default function FixtureDetail() {
               ) : (
                 <span className="flex items-center gap-1.5 text-muted-foreground">
                   <CalendarDays className="w-4 h-4" />
-                  {format(new Date(fixture.startTime), "EEE d MMM · HH:mm")}
+                  {fmtUTCDateTimeLong(fixture.startTime)}
                 </span>
               )}
             </div>

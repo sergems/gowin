@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useListFixtures } from "@workspace/api-client-react";
 import type { ListFixturesParams } from "@workspace/api-client-react";
 import { Link } from "wouter";
-import { format, subDays, startOfDay, isToday, isYesterday } from "date-fns";
+import { subDays, startOfDay, isToday, isYesterday } from "date-fns";
+import { fmtUTCTime } from "@/lib/formatUTC";
 import { CalendarDays, CheckCircle2, Shield, Globe } from "lucide-react";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -51,7 +52,7 @@ function ResultCard({ fixture }: { fixture: any }) {
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <CalendarDays className="w-3 h-3 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">{format(new Date(fixture.startTime), "HH:mm")}</span>
+              <span className="text-xs text-muted-foreground">{fmtUTCTime(fixture.startTime)}</span>
               {fixture.status === "finished" && (
                 <span className="text-xs font-semibold text-muted-foreground bg-accent/50 px-1.5 py-0.5 rounded ml-1">FT</span>
               )}

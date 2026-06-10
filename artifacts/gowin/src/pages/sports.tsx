@@ -3,24 +3,12 @@ import { useSearch } from "wouter";
 import { useListFixtures } from "@workspace/api-client-react";
 import type { ListFixturesParams } from "@workspace/api-client-react";
 import { Link } from "wouter";
-import { format } from "date-fns";
 import { ChevronDown, ChevronLeft, CalendarDays, Shield, Trophy } from "lucide-react";
+import { fmtUTCTime, utcDateKey, utcDateLabel } from "@/lib/formatUTC";
 import { useBetSlip } from "@/contexts/BetSlipContext";
 import { sortOdds } from "@/lib/sortOdds";
 
-// ── Date helpers ──────────────────────────────────────────────────────────────
-
-function dateKey(date: Date): string {
-  return format(date, "yyyy-MM-dd");
-}
-
-function dateLabel(key: string): string {
-  const today = dateKey(new Date());
-  const tomorrow = dateKey(new Date(Date.now() + 24 * 60 * 60 * 1000));
-  if (key === today) return "Today";
-  if (key === tomorrow) return "Tomorrow";
-  return format(new Date(key + "T12:00:00Z"), "EEEE, d MMMM yyyy");
-}
+// ── Date helpers (UTC-aware) ──────────────────────────────────────────────────
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -123,7 +111,7 @@ function FixtureCard({ fixture }: { fixture: any }) {
               ) : (
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
                   <CalendarDays className="w-3 h-3" />
-                  {format(new Date(fixture.startTime), "HH:mm")}
+                  {fmtUTCTime(fixture.startTime)}
                 </span>
               )}
             </div>
@@ -278,7 +266,7 @@ export default function FootballPage() {
       ) : (() => {
         const groups = new Map<string, typeof fixtures>();
         for (const f of fixtures) {
-          const key = dateKey(new Date(f.startTime));
+          const key = utcDateKey(f.startTime);
           if (!groups.has(key)) groups.set(key, []);
           groups.get(key)!.push(f);
         }
@@ -289,7 +277,7 @@ export default function FootballPage() {
                 <div className="flex items-center gap-3 mb-3">
                   <div className="flex items-center gap-2">
                     <CalendarDays className="w-4 h-4 text-primary" />
-                    <span className="font-bold text-sm">{dateLabel(dateKey)}</span>
+                    <span className="font-bold text-sm">{utcDateLabel(dateKey)}</span>
                   </div>
                   <div className="flex-1 h-px bg-border/60" />
                   <span className="text-xs text-muted-foreground shrink-0">

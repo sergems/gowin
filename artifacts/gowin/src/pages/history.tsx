@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useGetMyBets } from "@workspace/api-client-react";
 import { format } from "date-fns";
+import { fmtUTCDateTimeShort } from "@/lib/formatUTC";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChevronDown, ChevronUp, Trophy, Clock, CheckCircle2, XCircle, HelpCircle, Printer } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -222,7 +223,7 @@ export default function History() {
                                             {[
                                               sel.fixture?.league?.name,
                                               sel.fixture?.startTime
-                                                ? format(new Date(sel.fixture.startTime), "d MMM · HH:mm")
+                                                ? fmtUTCDateTimeShort(sel.fixture.startTime)
                                                 : null,
                                             ].filter(Boolean).join("  ·  ")}
                                           </div>
