@@ -96,7 +96,7 @@ function Logo({ src, alt, size = 20 }: { src: string | null | undefined; alt: st
   if (!src || failed) return <Shield className="text-muted-foreground/60 shrink-0" style={{ width: size, height: size }} />;
   return (
     <img src={src} alt={alt} width={size} height={size}
-      className="object-contain shrink-0 bg-white rounded p-0.5" style={{ width: size, height: size }}
+      className="object-contain shrink-0" style={{ width: size, height: size }}
       onError={() => setFailed(true)} />
   );
 }
