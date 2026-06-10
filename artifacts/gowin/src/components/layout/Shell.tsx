@@ -18,7 +18,7 @@ import {
   Activity, LayoutDashboard, History, Wallet, Trophy, LogOut, Users, Settings, X,
   ArrowLeftRight, Ticket, UserCircle, AlertTriangle, Banknote, SlidersHorizontal,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, ChevronDown, ChevronRight, Globe, Shield, CheckCircle2,
-  Home, Menu, Images, Printer,
+  Home, Menu, Images, Printer, Radio,
 } from "lucide-react";
 import type { PlacedBetDetails } from "@/contexts/BetSlipContext";
 import { printBetSlip } from "@/lib/printBetSlip";
@@ -66,6 +66,15 @@ export function Shell({ children }: { children: ReactNode }) {
   }, [selections.length]);
 
   const isAdmin = user?.role === "admin";
+
+  const { data: liveData } = useQuery<{ total: number }>({
+    queryKey: ["fixtures", "live-count"],
+    queryFn: () => fetch("/api/fixtures?status=live&limit=1").then((r) => r.json()),
+    enabled: !isAdmin,
+    refetchInterval: 30 * 1000,
+    staleTime: 20 * 1000,
+  });
+  const liveCount = liveData?.total ?? 0;
 
   const { data: footballData } = useQuery<FootballData>({
     queryKey: ["football-countries"],
@@ -127,6 +136,26 @@ export function Shell({ children }: { children: ReactNode }) {
               <Activity className="w-4 h-4 shrink-0" />
               {open && <span className="flex-1">Home</span>}
             </Link>
+
+            {!isAdmin && (
+              <Link href="/live" title={!open ? "Live" : undefined} onClick={onNav}
+                className={`relative flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                  ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
+                  ${location.startsWith("/live") ? "bg-red-500/10 text-red-500" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
+                <span className="relative shrink-0">
+                  <Radio className="w-4 h-4" />
+                  {liveCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  )}
+                </span>
+                {open && <span className="flex-1">Live</span>}
+                {open && liveCount > 0 && (
+                  <span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded-full">
+                    {liveCount}
+                  </span>
+                )}
+              </Link>
+            )}
 
             {isAdmin ? (
               <Link href="/sports" title={!open ? "Sports" : undefined} onClick={onNav}
