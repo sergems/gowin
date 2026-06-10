@@ -513,10 +513,12 @@ export function Shell({ children }: { children: ReactNode }) {
 
           <div className="flex items-center gap-3 flex-1 justify-end">
             {user && wallet && (
-              <div className="flex items-center gap-1.5 bg-accent/50 px-2.5 py-1 md:px-3 md:py-1.5 rounded-full border border-border">
-                <Wallet className="w-4 h-4 text-primary" />
-                <span className="font-semibold text-sm">${wallet.balance.toFixed(2)}</span>
-              </div>
+              <Link href="/wallet">
+                <div className="flex items-center gap-1.5 bg-accent/50 px-2.5 py-1 md:px-3 md:py-1.5 rounded-full border border-border hover:bg-accent transition-colors cursor-pointer">
+                  <Wallet className="w-4 h-4 text-primary" />
+                  <span className="font-semibold text-sm">${wallet.balance.toFixed(2)}</span>
+                </div>
+              </Link>
             )}
             {!betSlipOpen && (
               <button
