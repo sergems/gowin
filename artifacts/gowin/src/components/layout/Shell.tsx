@@ -10,6 +10,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Activity, LayoutDashboard, History, Wallet, Trophy, LogOut, Users, Settings, X,
   ArrowLeftRight, Ticket, UserCircle, AlertTriangle, Banknote, SlidersHorizontal,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, ChevronDown, ChevronRight, Globe, Shield, CheckCircle2,
@@ -44,6 +49,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const [intlOpen, setIntlOpen] = useState(false);
   const [mobileBetSlipOpen, setMobileBetSlipOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
   const prevSelectionsLen = useRef(0);
   useEffect(() => {
@@ -568,13 +574,6 @@ export function Shell({ children }: { children: ReactNode }) {
           <span className="text-[10px] font-medium">Home</span>
         </Link>
 
-        <Link href="/sports"
-          className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-md transition-colors
-            ${location.startsWith("/sports") ? "text-primary" : "text-muted-foreground"}`}>
-          <Trophy className="w-5 h-5" />
-          <span className="text-[10px] font-medium">Sports</span>
-        </Link>
-
         {user ? (
           <>
             <Link href="/history"
@@ -621,7 +620,37 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
           <span className="text-[10px] font-medium">Bet Slip</span>
         </button>
+
+        {/* Logout (logged-in only) */}
+        {user && (
+          <button onClick={() => setLogoutConfirmOpen(true)}
+            className="flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-md transition-colors text-muted-foreground hover:text-destructive">
+            <LogOut className="w-5 h-5" />
+            <span className="text-[10px] font-medium">Logout</span>
+          </button>
+        )}
       </nav>
+
+      {/* ── Logout Confirmation Dialog ───────────────────────────────────────── */}
+      <AlertDialog open={logoutConfirmOpen} onOpenChange={setLogoutConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Log out?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to log out of your account?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleLogout}
+            >
+              Log out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* ── Mobile Bet Slip Drawer ───────────────────────────────────────────── */}
       {mobileBetSlipOpen && (
