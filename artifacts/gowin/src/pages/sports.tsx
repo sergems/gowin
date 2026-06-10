@@ -33,7 +33,7 @@ function Logo({ src, alt, size = 24 }: { src: string | null | undefined; alt: st
       alt={alt}
       width={size}
       height={size}
-      className="object-contain shrink-0"
+      className="object-contain shrink-0 bg-white rounded p-0.5"
       style={{ width: size, height: size }}
       onError={() => setFailed(true)}
     />
