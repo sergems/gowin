@@ -199,7 +199,7 @@ const DAY_TABS = [
 ];
 
 function FinishedSection() {
-  const [selectedDaysAgo, setSelectedDaysAgo] = useState(1);
+  const [selectedDaysAgo, setSelectedDaysAgo] = useState(0);
 
   const dateStr = new Date(Date.now() - selectedDaysAgo * 86_400_000).toISOString().slice(0, 10);
 

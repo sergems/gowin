@@ -21,13 +21,31 @@ app.listen(port, (err) => {
   logger.info({ port }, "Server listening");
 });
 
-// ── Auto-expire + auto-settle (runs without any external API call) ───────────
+// ── Result sync helper ────────────────────────────────────────────────────────
+async function runSync() {
+  try {
+    const syncResult = await syncFixtureResults();
+    logger.info(syncResult, "Scheduled fixture sync finished");
+  } catch (err) {
+    logger.error({ err }, "Fixture sync failed");
+  }
+}
+
+// ── Auto-expire + auto-settle (runs every 5 min) ─────────────────────────────
 // 1. Advance fixture statuses based on elapsed time (upcoming→live→finished)
-// 2. Settle any bets on fixtures now marked finished
-// Runs immediately on startup to clear any backlog, then every 5 minutes
+// 2. If any games just became finished, immediately fetch scores from API
+// 3. Settle any bets on fixtures now marked finished
 async function runAutoSettle() {
   try {
-    await autoExpireFixtures();
+    const expired = await autoExpireFixtures();
+
+    // If any fixtures just transitioned to finished, fetch their scores immediately
+    // so results appear within 5 minutes of a match ending
+    if (expired.toFinished > 0) {
+      logger.info({ toFinished: expired.toFinished }, "Games just finished — syncing scores now");
+      await runSync();
+    }
+
     const result = await autoSettleFinishedFixtures();
     if (result.settled > 0) logger.info(result, "Auto-settle finished");
   } catch (err) {
@@ -54,15 +72,13 @@ setTimeout(() => {
   setInterval(runOddsRefresh, 15 * 60 * 1000);
 }, 60_000);
 
-// ── Fixture sync (runs every 30 min, 30 s delay on first run) ────────────────
-// Fetches scores/results from AllSports API, then settles bets immediately after
+// ── Full fixture sync every 5 min (catches any scores missed by the expire trigger) ──
+// Runs 30 s after startup (to let the server stabilise), then every 5 min
 async function runFixtureSyncAndSettle() {
   logger.info("Scheduled fixture sync starting");
   try {
-    const syncResult = await syncFixtureResults();
-    logger.info(syncResult, "Scheduled fixture sync finished");
-    // Settle immediately after syncing so results reflect right away
-    await runAutoSettle();
+    await runSync();
+    await autoSettleFinishedFixtures();
   } catch (err) {
     logger.error({ err }, "Scheduled fixture sync/settle failed");
   }
@@ -70,5 +86,5 @@ async function runFixtureSyncAndSettle() {
 
 setTimeout(() => {
   runFixtureSyncAndSettle();
-  setInterval(runFixtureSyncAndSettle, 10 * 60 * 1000);
+  setInterval(runFixtureSyncAndSettle, 5 * 60 * 1000);
 }, 30_000);

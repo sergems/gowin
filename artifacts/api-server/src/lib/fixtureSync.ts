@@ -43,10 +43,11 @@ export async function syncFixtureResults(): Promise<{ updated: number; errors: n
     return { updated: 0, errors: 0 };
   }
 
+  // API enforces a max 15-day window; use 3 days back + 7 days ahead = 10 days
   const past = new Date();
-  past.setDate(past.getDate() - 7);
+  past.setDate(past.getDate() - 3);
   const future = new Date();
-  future.setDate(future.getDate() + 14);
+  future.setDate(future.getDate() + 7);
 
   const url = `https://apiv2.allsportsapi.com/football/?met=Fixtures&APIkey=${apiKey}&from=${dateStr(past)}&to=${dateStr(future)}`;
 
