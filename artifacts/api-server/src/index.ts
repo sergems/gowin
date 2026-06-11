@@ -4,6 +4,8 @@ import { refreshAllUpcomingOdds } from "./lib/oddsRefresh";
 import { syncFixtureResults } from "./lib/fixtureSync";
 import { autoSettleFinishedFixtures } from "./lib/autoSettle";
 import { autoExpireFixtures } from "./lib/fixtureExpiry";
+import { switchDatabase } from "@workspace/db";
+import { getMetaSetting, CUSTOM_DB_KEY } from "./lib/metaDb";
 
 const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
@@ -12,13 +14,24 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, (err) => {
+app.listen(port, async (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");
     process.exit(1);
   }
 
   logger.info({ port }, "Server listening");
+
+  // Check for a saved custom DB URL and switch to it if present
+  try {
+    const customUrl = await getMetaSetting(CUSTOM_DB_KEY);
+    if (customUrl) {
+      switchDatabase(customUrl);
+      logger.info("Switched to custom database connection");
+    }
+  } catch (err) {
+    logger.warn({ err }, "Could not read custom DB setting — using default connection");
+  }
 });
 
 // ── Result sync helper ────────────────────────────────────────────────────────
@@ -32,15 +45,10 @@ async function runSync() {
 }
 
 // ── Auto-expire + auto-settle (runs every 5 min) ─────────────────────────────
-// 1. Advance fixture statuses based on elapsed time (upcoming→live→finished)
-// 2. If any games just became finished, immediately fetch scores from API
-// 3. Settle any bets on fixtures now marked finished
 async function runAutoSettle() {
   try {
     const expired = await autoExpireFixtures();
 
-    // If any fixtures just transitioned to finished, fetch their scores immediately
-    // so results appear within 5 minutes of a match ending
     if (expired.toFinished > 0) {
       logger.info({ toFinished: expired.toFinished }, "Games just finished — syncing scores now");
       await runSync();
@@ -72,8 +80,7 @@ setTimeout(() => {
   setInterval(runOddsRefresh, 15 * 60 * 1000);
 }, 60_000);
 
-// ── Full fixture sync every 5 min (catches any scores missed by the expire trigger) ──
-// Runs 30 s after startup (to let the server stabilise), then every 5 min
+// ── Full fixture sync every 5 min ─────────────────────────────────────────────
 async function runFixtureSyncAndSettle() {
   logger.info("Scheduled fixture sync starting");
   try {
