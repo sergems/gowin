@@ -3,9 +3,23 @@ import { useListFixtures } from "@workspace/api-client-react";
 import type { ListFixturesParams } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { fmtUTCTime, utcDateLabel } from "@/lib/formatUTC";
-import { CalendarDays, CheckCircle2, Shield, Globe, Radio, ChevronDown } from "lucide-react";
+import { CalendarDays, CheckCircle2, Shield, Globe, Radio, ChevronDown, Trophy } from "lucide-react";
 
 const INITIAL_SHOW = 4;
+
+// ── Importance ordering (mirrors home page) ─────────────────────────────────────
+const COUNTRY_PRIORITY = ["England", "Spain", "Germany", "Italy", "France", "Netherlands", "Portugal", "Turkey", "Congo DR"];
+
+const UEFA_MATCHERS = [
+  (n: string) => /champions league/i.test(n) && !/caf|afc/i.test(n),
+  (n: string) => /europa league/i.test(n) && !/conference/i.test(n),
+  (n: string) => /conference/i.test(n),
+  (n: string) => /super cup/i.test(n) && /uefa/i.test(n),
+];
+
+function isUEFALeague(name: string) { return UEFA_MATCHERS.some((t) => t(name)); }
+function uefaOrder(name: string) { const i = UEFA_MATCHERS.findIndex((t) => t(name)); return i === -1 ? 99 : i; }
+function isInternational(c: string | null | undefined) { return !c || c === "World" || c === "International"; }
 
 function Logo({ src, alt, size = 24 }: { src: string | null | undefined; alt: string; size?: number }) {
   const [failed, setFailed] = useState(false);
@@ -119,42 +133,70 @@ type LeagueGroup = {
   leagueId: number;
   leagueName: string;
   leagueLogo: string | null | undefined;
+  countryName: string | null | undefined;
+  countryLogo: string | null | undefined;
   fixtures: any[];
 };
 
 type CountryGroup = {
   countryName: string;
   countryLogo: string | null | undefined;
+  isUEFA?: boolean;
+  isInternational?: boolean;
   leagues: LeagueGroup[];
 };
 
 function groupByCountryLeague(fixtures: any[]): CountryGroup[] {
-  const countryMap = new Map<string, CountryGroup>();
-
+  // 1. Collect leagues
+  const leagueMap = new Map<number, LeagueGroup>();
   for (const f of fixtures) {
-    const country = f.league?.countryName ?? "International";
-    const leagueId = f.leagueId ?? 0;
-
-    if (!countryMap.has(country)) {
-      countryMap.set(country, {
-        countryName: country,
+    const lid = f.leagueId ?? 0;
+    if (!leagueMap.has(lid)) {
+      leagueMap.set(lid, {
+        leagueId: lid,
+        leagueName: f.league?.name ?? "Unknown",
+        leagueLogo: f.league?.leagueLogo,
+        countryName: f.league?.countryName,
         countryLogo: f.league?.countryLogo,
-        leagues: [],
+        fixtures: [],
       });
     }
-    const cg = countryMap.get(country)!;
-
-    let lg = cg.leagues.find((l) => l.leagueId === leagueId);
-    if (!lg) {
-      lg = { leagueId, leagueName: f.league?.name ?? "Unknown", leagueLogo: f.league?.leagueLogo, fixtures: [] };
-      cg.leagues.push(lg);
-    }
-    lg.fixtures.push(f);
+    leagueMap.get(lid)!.fixtures.push(f);
   }
 
-  const result = Array.from(countryMap.values());
-  result.sort((a, b) => a.countryName.localeCompare(b.countryName));
-  result.forEach((cg) => cg.leagues.sort((a, b) => a.leagueName.localeCompare(b.leagueName)));
+  const all = Array.from(leagueMap.values());
+
+  // 2. Split into UEFA / International / Countries
+  const uefaLeagues = all.filter((l) => isUEFALeague(l.leagueName));
+  const intlLeagues  = all.filter((l) => !isUEFALeague(l.leagueName) && isInternational(l.countryName));
+  const countryLeagues = all.filter((l) => !isUEFALeague(l.leagueName) && !isInternational(l.countryName));
+
+  uefaLeagues.sort((a, b) => uefaOrder(a.leagueName) - uefaOrder(b.leagueName));
+  intlLeagues.sort((a, b) => a.leagueName.localeCompare(b.leagueName));
+
+  // 3. Group country leagues by countryName, then sort by priority
+  const countryMap = new Map<string, CountryGroup>();
+  for (const l of countryLeagues) {
+    const cn = l.countryName ?? "Other";
+    if (!countryMap.has(cn)) {
+      countryMap.set(cn, { countryName: cn, countryLogo: l.countryLogo, leagues: [] });
+    }
+    countryMap.get(cn)!.leagues.push(l);
+  }
+  countryMap.forEach((cg) => cg.leagues.sort((a, b) => a.leagueName.localeCompare(b.leagueName)));
+
+  const priorityMap = new Map(COUNTRY_PRIORITY.map((n, i) => [n, i]));
+  const sortedCountries = Array.from(countryMap.values()).sort((a, b) => {
+    const ai = priorityMap.has(a.countryName) ? priorityMap.get(a.countryName)! : COUNTRY_PRIORITY.length;
+    const bi = priorityMap.has(b.countryName) ? priorityMap.get(b.countryName)! : COUNTRY_PRIORITY.length;
+    return ai !== bi ? ai - bi : a.countryName.localeCompare(b.countryName);
+  });
+
+  // 4. Assemble result
+  const result: CountryGroup[] = [];
+  if (uefaLeagues.length > 0)  result.push({ countryName: "UEFA Competitions", countryLogo: null, isUEFA: true, leagues: uefaLeagues });
+  if (intlLeagues.length > 0)  result.push({ countryName: "International", countryLogo: null, isInternational: true, leagues: intlLeagues });
+  result.push(...sortedCountries);
   return result;
 }
 
@@ -215,15 +257,30 @@ function CountrySection({
   const [collapsed, setCollapsed] = useState(false);
   const total = country.leagues.reduce((s, l) => s + l.fixtures.length, 0);
 
+  const isUEFA = country.isUEFA;
+  const isIntl = country.isInternational;
+
   return (
-    <div className="rounded-xl border border-border overflow-hidden">
-      {/* Country header — click to collapse */}
+    <div className={`rounded-xl border overflow-hidden ${isUEFA ? "border-primary/30" : "border-border"}`}>
+      {/* Header — click to collapse */}
       <button
         onClick={() => setCollapsed((c) => !c)}
-        className="w-full flex items-center gap-2.5 px-4 py-2.5 bg-accent/20 hover:bg-accent/30 transition-colors"
+        className={`w-full flex items-center gap-2.5 px-4 py-2.5 transition-colors ${
+          isUEFA
+            ? "bg-primary/10 hover:bg-primary/15"
+            : "bg-accent/20 hover:bg-accent/30"
+        }`}
       >
-        <FlagImg src={country.countryLogo} alt={country.countryName} />
-        <span className="text-sm font-bold flex-1 text-left">{country.countryName}</span>
+        {isUEFA ? (
+          <Trophy className="w-4 h-4 text-primary shrink-0" />
+        ) : isIntl ? (
+          <Globe className="w-4 h-4 text-muted-foreground shrink-0" />
+        ) : (
+          <FlagImg src={country.countryLogo} alt={country.countryName} />
+        )}
+        <span className={`text-sm font-bold flex-1 text-left ${isUEFA ? "text-primary" : ""}`}>
+          {isUEFA ? "⭐ " : ""}{country.countryName}
+        </span>
         <span className="text-xs text-muted-foreground tabular-nums">{total}</span>
         <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`} />
       </button>
