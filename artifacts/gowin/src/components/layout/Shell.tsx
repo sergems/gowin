@@ -103,8 +103,7 @@ export function Shell({ children }: { children: ReactNode }) {
     logout();
     setMobileSidebarOpen(false);
     setLogoutConfirmOpen(false);
-    // Defer navigation so Radix dialog close animation doesn't swallow it
-    setTimeout(() => navigate("/login"), 0);
+    setTimeout(() => navigate("/"), 0);
   };
 
   const adminLinks = user?.role === "admin" ? [
@@ -314,12 +313,12 @@ export function Shell({ children }: { children: ReactNode }) {
                     <p className="text-xs text-muted-foreground font-mono">ID: {(user as any).publicId ?? "—"}</p>
                   </div>
                 </div>
-                <Button variant="outline" className="w-full justify-start text-muted-foreground" onClick={() => setLogoutConfirmOpen(true)}>
+                <Button variant="outline" className="w-full justify-start text-muted-foreground" onClick={handleLogout}>
                   <LogOut className="w-4 h-4 mr-2" /> Logout
                 </Button>
               </>
             ) : (
-              <button onClick={() => setLogoutConfirmOpen(true)} title="Logout"
+              <button onClick={handleLogout} title="Logout"
                 className="w-full flex justify-center text-muted-foreground hover:text-destructive transition-colors p-2 rounded-md hover:bg-accent">
                 <LogOut className="w-4 h-4" />
               </button>
@@ -531,7 +530,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
         {/* Logout (logged-in only) */}
         {user && (
-          <button onClick={() => setLogoutConfirmOpen(true)}
+          <button onClick={handleLogout}
             className="flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-md transition-colors text-muted-foreground hover:text-destructive">
             <LogOut className="w-5 h-5" />
             <span className="text-[10px] font-medium">Logout</span>
