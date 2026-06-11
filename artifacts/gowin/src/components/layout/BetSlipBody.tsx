@@ -47,35 +47,40 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
     prevLen.current = selections.length;
   }, [selections.length]);
 
-  // Poll fixture data every 30s to show live scores/status on slip
-  const fixtureIdsKey = selections.map((s) => s.fixtureId).join(",");
+  // Poll fixture status every 15s to keep live scores and statuses current
+  const fixtureIdsKey = [...new Set(selections.map((s) => s.fixtureId))].sort().join(",");
   useEffect(() => {
-    if (selections.length === 0) return;
+    if (!fixtureIdsKey) return;
 
     async function fetchLiveData() {
-      const ids = [...new Set(selections.map((s) => s.fixtureId))];
-      const results = await Promise.all(
-        ids.map((id) =>
-          fetch(`/api/fixtures/${id}`)
-            .then((r) => (r.ok ? r.json() : null))
-            .catch(() => null),
-        ),
-      );
-      const map = new Map<number, FixtureLiveData>();
-      for (const f of results) {
-        if (f && f.id != null) {
-          map.set(f.id, {
-            status: f.status,
-            scoreHome: f.scoreHome ?? null,
-            scoreAway: f.scoreAway ?? null,
-          });
+      const ids = fixtureIdsKey.split(",").map(Number).filter(Boolean);
+      if (ids.length === 0) return;
+      try {
+        const results = await Promise.all(
+          ids.map((id) =>
+            fetch(`/api/fixtures/${id}`)
+              .then((r) => (r.ok ? r.json() : null))
+              .catch(() => null),
+          ),
+        );
+        const map = new Map<number, FixtureLiveData>();
+        for (const f of results) {
+          if (f?.id != null) {
+            map.set(f.id, {
+              status: f.status,
+              scoreHome: f.scoreHome ?? null,
+              scoreAway: f.scoreAway ?? null,
+            });
+          }
         }
+        setLiveData(map);
+      } catch {
+        // non-fatal — keep showing last known state
       }
-      setLiveData(map);
     }
 
     fetchLiveData();
-    const interval = setInterval(fetchLiveData, 30_000);
+    const interval = setInterval(fetchLiveData, 15_000);
     return () => clearInterval(interval);
   }, [fixtureIdsKey]);
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useGetMyBets } from "@workspace/api-client-react";
 import { format } from "date-fns";
 import { fmtUTCDateTimeShort } from "@/lib/formatUTC";
@@ -79,15 +79,67 @@ function SelectionOutcomeIcon({ outcome }: { outcome: SelectionOutcome }) {
   return <HelpCircle className="w-5 h-5 text-muted-foreground/40 shrink-0" />;
 }
 
+interface LiveFixtureData {
+  status: string;
+  scoreHome: number | null;
+  scoreAway: number | null;
+}
+
 export default function History() {
   const [activeTab, setActiveTab] = useState<"pending" | "won" | "lost" | "void">("pending");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [liveFixtures, setLiveFixtures] = useState<Map<number, LiveFixtureData>>(new Map());
 
   const { data: betsData, isLoading } = useGetMyBets({
     query: { queryKey: ["myBets", activeTab] },
   });
 
   const bets = betsData?.bets?.filter((b) => b.status === activeTab) || [];
+
+  // Collect all unique fixture IDs from pending bets
+  const pendingFixtureIds = activeTab === "pending"
+    ? [...new Set(
+        bets.flatMap((b: any) => (b.selections ?? []).map((s: any) => s.fixture?.id).filter(Boolean))
+      )]
+    : [];
+
+  const fixtureIdsKey = pendingFixtureIds.slice().sort().join(",");
+
+  // Poll live fixture status every 30s for pending bets
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (!fixtureIdsKey) {
+      setLiveFixtures(new Map());
+      return;
+    }
+
+    async function poll() {
+      const ids = fixtureIdsKey.split(",").map(Number).filter(Boolean);
+      try {
+        const results = await Promise.all(
+          ids.map((id) =>
+            fetch(`/api/fixtures/${id}`)
+              .then((r) => (r.ok ? r.json() : null))
+              .catch(() => null),
+          ),
+        );
+        const map = new Map<number, LiveFixtureData>();
+        for (const f of results) {
+          if (f?.id != null) {
+            map.set(f.id, { status: f.status, scoreHome: f.scoreHome ?? null, scoreAway: f.scoreAway ?? null });
+          }
+        }
+        setLiveFixtures(map);
+      } catch { /* non-fatal */ }
+    }
+
+    poll();
+    intervalRef.current = setInterval(poll, 30_000);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fixtureIdsKey]);
 
   const toggle = (id: number) =>
     setExpanded((prev) => {
@@ -127,10 +179,18 @@ export default function History() {
               const selCount = bet.selections?.length ?? 0;
               const label = selCount === 1 ? "Single" : `${selCount}-Fold Accumulator`;
 
+              // Check if any selection is live for this pending bet
+              const hasLiveSelection = activeTab === "pending" && (bet.selections ?? []).some((s: any) => {
+                const live = liveFixtures.get(s.fixture?.id);
+                return live?.status === "live";
+              });
+
               return (
                 <div
                   key={bet.id}
-                  className="rounded-xl border border-border bg-card overflow-hidden"
+                  className={`rounded-xl border bg-card overflow-hidden transition-colors ${
+                    hasLiveSelection ? "border-red-500/30" : "border-border"
+                  }`}
                 >
                   {/* Collapsed header */}
                   <button
@@ -148,6 +208,12 @@ export default function History() {
                           {bet.code && (
                             <span className="font-mono text-xs font-bold tracking-widest bg-primary/10 text-primary border border-primary/20 rounded px-2 py-0.5">
                               {bet.code}
+                            </span>
+                          )}
+                          {hasLiveSelection && (
+                            <span className="flex items-center gap-1 text-[10px] font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded-full">
+                              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                              LIVE
                             </span>
                           )}
                         </div>
@@ -193,10 +259,19 @@ export default function History() {
                             <div className="divide-y divide-border/40">
                               {bet.selections.map((sel: any) => {
                                 const outcome = getSelectionOutcome(sel);
+                                const fixtureId = sel.fixture?.id;
+                                const live = fixtureId ? liveFixtures.get(fixtureId) : null;
+                                const isLive = live?.status === "live";
+                                const isFinishedLive = live?.status === "finished";
+                                const hasLiveScore = live != null && (live.scoreHome != null || live.scoreAway != null);
+
+                                // Use live score if available, otherwise fall back to static fixture score
                                 const score =
-                                  sel.fixture?.status === "finished" &&
-                                  sel.fixture?.scoreHome !== null &&
-                                  sel.fixture?.scoreAway !== null
+                                  hasLiveScore
+                                    ? `${live!.scoreHome ?? 0} – ${live!.scoreAway ?? 0}`
+                                    : sel.fixture?.status === "finished" &&
+                                      sel.fixture?.scoreHome !== null &&
+                                      sel.fixture?.scoreAway !== null
                                     ? `${sel.fixture.scoreHome} – ${sel.fixture.scoreAway}`
                                     : null;
 
@@ -208,13 +283,28 @@ export default function History() {
                                         ? "bg-emerald-500/5"
                                         : outcome === "lost"
                                         ? "bg-destructive/5"
+                                        : isLive
+                                        ? "bg-red-500/5"
                                         : "hover:bg-accent/10"
                                     }`}
                                   >
                                     <div className="flex items-start gap-3 min-w-0">
                                       <SelectionOutcomeIcon outcome={outcome} />
                                       <div className="space-y-0.5 min-w-0">
-                                        <div className="font-semibold text-sm">{sel.selection}</div>
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          <span className="font-semibold text-sm">{sel.selection}</span>
+                                          {isLive && (
+                                            <span className="flex items-center gap-0.5 text-[9px] font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded leading-none">
+                                              <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
+                                              LIVE
+                                            </span>
+                                          )}
+                                          {isFinishedLive && (
+                                            <span className="text-[9px] font-bold text-muted-foreground bg-accent px-1.5 py-0.5 rounded leading-none">
+                                              FT
+                                            </span>
+                                          )}
+                                        </div>
                                         <div className="text-sm text-muted-foreground truncate">
                                           {sel.fixture?.homeTeam?.name ?? "—"} vs {sel.fixture?.awayTeam?.name ?? "—"}
                                         </div>
@@ -233,7 +323,11 @@ export default function History() {
                                             {sel.market?.replace(/_/g, " ")}
                                           </span>
                                           {score && (
-                                            <span className="text-xs font-mono font-bold text-muted-foreground border border-border/60 rounded px-1.5 py-0.5">
+                                            <span className={`text-xs font-mono font-bold border rounded px-1.5 py-0.5 ${
+                                              isLive
+                                                ? "text-red-400 border-red-500/30 bg-red-500/5"
+                                                : "text-muted-foreground border-border/60"
+                                            }`}>
                                               {score}
                                             </span>
                                           )}

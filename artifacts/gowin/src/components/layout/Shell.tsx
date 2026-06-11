@@ -19,7 +19,7 @@ import {
   Activity, LayoutDashboard, History, Wallet, Trophy, LogOut, Users, Settings, X,
   ArrowLeftRight, Ticket, UserCircle, AlertTriangle, Banknote, SlidersHorizontal,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, ChevronDown, ChevronRight, Globe, Shield, CheckCircle2,
-  Home, Menu, Images, Printer,
+  Home, Menu, Images, Printer, Clock,
 } from "lucide-react";
 import type { PlacedBetDetails } from "@/contexts/BetSlipContext";
 import { printBetSlip } from "@/lib/printBetSlip";
@@ -115,8 +115,9 @@ export function Shell({ children }: { children: ReactNode }) {
     { href: "/admin/transactions", icon: ArrowLeftRight,  label: "Transactions", match: (l: string) => l === "/admin/transactions" },
     { href: "/admin/vouchers",     icon: Ticket,          label: "Vouchers",     match: (l: string) => l === "/admin/vouchers" },
     { href: "/admin/withdrawals",  icon: Banknote,        label: "Withdrawals",  match: (l: string) => l === "/admin/withdrawals" },
-    { href: "/admin/slides",       icon: Images,            label: "Slides",    match: (l: string) => l === "/admin/slides" },
-    { href: "/admin/settings",     icon: SlidersHorizontal, label: "Settings",  match: (l: string) => l === "/admin/settings" },
+    { href: "/admin/slides",          icon: Images,            label: "Slides",          match: (l: string) => l === "/admin/slides" },
+    { href: "/admin/fixture-update",  icon: Clock,             label: "Fixture Update",  match: (l: string) => l === "/admin/fixture-update" },
+    { href: "/admin/settings",        icon: SlidersHorizontal, label: "Settings",        match: (l: string) => l === "/admin/settings" },
   ] : [];
 
   // ── Sidebar nav content (shared desktop + mobile) ────────────────────────
