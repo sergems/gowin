@@ -199,13 +199,13 @@ const DAY_TABS = [
 ];
 
 function FinishedSection() {
-  const [selectedDaysAgo, setSelectedDaysAgo] = useState(0);
+  const [selectedDaysAgo, setSelectedDaysAgo] = useState(1);
 
   const dateStr = new Date(Date.now() - selectedDaysAgo * 86_400_000).toISOString().slice(0, 10);
 
   const { data, isLoading } = useListFixtures(
     { dateFrom: dateStr, dateTo: dateStr, status: "finished", limit: 500 } as ListFixturesParams,
-    { query: { queryKey: ["results", dateStr] } },
+    { query: { queryKey: ["results", "finished", dateStr] } },
   );
 
   const fixtures = (data?.fixtures ?? [])
