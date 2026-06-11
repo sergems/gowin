@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import {
   Key, RefreshCw, CheckCircle2, AlertTriangle, Clock,
   Eye, EyeOff, Database, Plug, PlugZap, Unplug, FlaskConical,
+  Upload, FileText, Info,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -31,11 +33,11 @@ export default function AdminSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // ── API Key state ──────────────────────────────────────────────────────────
+  // ── API Key state ───────────────────────────────────────────────────────────
   const [newKey, setNewKey] = useState("");
   const [showKey, setShowKey] = useState(false);
 
-  // ── Database state ─────────────────────────────────────────────────────────
+  // ── Database connection state ───────────────────────────────────────────────
   const [dbUrl, setDbUrl] = useState("");
   const [dbUser, setDbUser] = useState("");
   const [dbPass, setDbPass] = useState("");
@@ -43,8 +45,19 @@ export default function AdminSettings() {
   const [showDbPass, setShowDbPass] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; error?: string } | null>(null);
 
-  // ── Queries ────────────────────────────────────────────────────────────────
-  const { data: settings, isLoading } = useQuery<AdminSettings>({
+  // ── SQL Import state ────────────────────────────────────────────────────────
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importSql, setImportSql] = useState<string>("");
+  const [importFileName, setImportFileName] = useState<string>("");
+  const [importTarget, setImportTarget] = useState<"current" | "custom">("current");
+  const [importUrl, setImportUrl] = useState("");
+  const [importUser, setImportUser] = useState("");
+  const [importPass, setImportPass] = useState("");
+  const [showImportPass, setShowImportPass] = useState(false);
+  const [fileLoading, setFileLoading] = useState(false);
+
+  // ── Queries ─────────────────────────────────────────────────────────────────
+  const { data: settings } = useQuery<AdminSettings>({
     queryKey: ["/api/admin/settings"],
     queryFn: async () => {
       const res = await fetch("/api/admin/settings", { headers: { Authorization: `Bearer ${token}` } });
@@ -65,7 +78,7 @@ export default function AdminSettings() {
     },
   });
 
-  // ── Mutations ──────────────────────────────────────────────────────────────
+  // ── Mutations ───────────────────────────────────────────────────────────────
   const saveKeyMutation = useMutation({
     mutationFn: async (apiKey: string) => {
       const res = await fetch("/api/admin/settings", {
@@ -96,10 +109,7 @@ export default function AdminSettings() {
       return data;
     },
     onSuccess: (data) => {
-      toast({
-        title: "Sync complete",
-        description: `${data.imported} new fixtures imported, ${data.updated} updated.`,
-      });
+      toast({ title: "Sync complete", description: `${data.imported} new fixtures imported, ${data.updated} updated.` });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/settings"] });
       queryClient.invalidateQueries({ queryKey: ["/api/fixtures"] });
     },
@@ -119,11 +129,8 @@ export default function AdminSettings() {
     },
     onSuccess: (data) => {
       setTestResult(data);
-      if (data.ok) {
-        toast({ title: "Connection successful", description: "The database responded correctly." });
-      } else {
-        toast({ title: "Connection failed", description: data.error, variant: "destructive" });
-      }
+      if (data.ok) toast({ title: "Connection successful" });
+      else toast({ title: "Connection failed", description: data.error, variant: "destructive" });
     },
     onError: (e: any) => {
       setTestResult({ ok: false, error: e.message });
@@ -136,12 +143,7 @@ export default function AdminSettings() {
       const res = await fetch("/api/admin/database/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          url: dbUrl,
-          username: dbUser || undefined,
-          password: dbPass || undefined,
-          label: dbLabel || undefined,
-        }),
+        body: JSON.stringify({ url: dbUrl, username: dbUser || undefined, password: dbPass || undefined, label: dbLabel || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -172,11 +174,52 @@ export default function AdminSettings() {
     onError: (e: any) => toast({ title: "Disconnect failed", description: e.message, variant: "destructive" }),
   });
 
+  const importMutation = useMutation({
+    mutationFn: async () => {
+      const body: any = { sql: importSql };
+      if (importTarget === "custom" && importUrl.trim()) {
+        body.url = importUrl.trim();
+        if (importUser.trim()) body.username = importUser.trim();
+        if (importPass.trim()) body.password = importPass.trim();
+      }
+      const res = await fetch("/api/admin/database/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      toast({ title: "Import complete", description: "SQL file was executed successfully." });
+      setImportSql(""); setImportFileName(""); setImportUrl(""); setImportUser(""); setImportPass("");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    },
+    onError: (e: any) => toast({ title: "Import failed", description: e.message, variant: "destructive" }),
+  });
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
   const isSyncing = syncMutation.isPending || settings?.syncStatus === "syncing";
   const maskedKey = (key: string) =>
     key.length > 10 ? key.slice(0, 6) + "•".repeat(key.length - 10) + key.slice(-4) : key;
 
-  const canConnect = dbUrl.trim().length > 0;
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileLoading(true);
+    setImportFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setImportSql((ev.target?.result as string) ?? "");
+      setFileLoading(false);
+    };
+    reader.onerror = () => {
+      toast({ title: "Could not read file", variant: "destructive" });
+      setFileLoading(false);
+    };
+    reader.readAsText(file);
+  }
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -185,7 +228,7 @@ export default function AdminSettings() {
         <p className="text-muted-foreground">Manage API integrations, data sync, and database connection</p>
       </div>
 
-      {/* ── API Key ──────────────────────────────────────────────────────────── */}
+      {/* ── API Key ────────────────────────────────────────────────────────────── */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
@@ -218,25 +261,19 @@ export default function AdminSettings() {
                 onChange={(e) => setNewKey(e.target.value)}
                 className="font-mono"
               />
-              <Button
-                onClick={() => saveKeyMutation.mutate(newKey)}
-                disabled={!newKey.trim() || saveKeyMutation.isPending}
-                className="shrink-0"
-              >
+              <Button onClick={() => saveKeyMutation.mutate(newKey)} disabled={!newKey.trim() || saveKeyMutation.isPending} className="shrink-0">
                 {saveKeyMutation.isPending ? "Saving..." : "Save"}
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
               API keys expire every 30 days. Get yours at{" "}
-              <a href="https://allsportsapi.com" target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">
-                allsportsapi.com
-              </a>
+              <a href="https://allsportsapi.com" target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">allsportsapi.com</a>
             </p>
           </div>
         </CardContent>
       </Card>
 
-      {/* ── Sync ─────────────────────────────────────────────────────────────── */}
+      {/* ── Sync ──────────────────────────────────────────────────────────────── */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
@@ -250,10 +287,7 @@ export default function AdminSettings() {
               <p className="font-medium">
                 {!settings || settings.lastSync === "never"
                   ? "Never synced"
-                  : (() => {
-                      try { return format(new Date(settings.lastSync), "PPP p"); }
-                      catch { return settings.lastSync; }
-                    })()}
+                  : (() => { try { return format(new Date(settings.lastSync), "PPP p"); } catch { return settings.lastSync; } })()}
               </p>
             </div>
             <div>
@@ -270,22 +304,16 @@ export default function AdminSettings() {
               )}
             </div>
           </div>
-
           {settings?.syncSummary && (
             <div className="px-3 py-2 rounded-lg bg-primary/5 border border-primary/20 text-xs text-muted-foreground">
               <span className="font-semibold text-foreground">Last result: </span>{settings.syncSummary}
             </div>
           )}
-
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">
-              Pulls upcoming fixtures for the next <strong>14 days</strong> from AllSportsAPI and imports them into the platform. Existing fixtures are updated; new ones are created with 1X2 markets.
+              Pulls upcoming fixtures for the next <strong>14 days</strong> from AllSportsAPI and imports them.
             </p>
-            <Button
-              onClick={() => syncMutation.mutate()}
-              disabled={isSyncing || !settings?.apiKey}
-              className="w-full gap-2"
-            >
+            <Button onClick={() => syncMutation.mutate()} disabled={isSyncing || !settings?.apiKey} className="w-full gap-2">
               <RefreshCw className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`} />
               {isSyncing ? "Syncing fixtures…" : "Sync Now"}
             </Button>
@@ -298,7 +326,7 @@ export default function AdminSettings() {
         </CardContent>
       </Card>
 
-      {/* ── Database Connection ───────────────────────────────────────────────── */}
+      {/* ── Database Connection ──────────────────────────────────────────────── */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
@@ -306,7 +334,6 @@ export default function AdminSettings() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-
           {/* Current status */}
           {!dbLoading && (
             <div className="flex items-center justify-between p-3 rounded-lg bg-accent/30 border border-border">
@@ -328,8 +355,7 @@ export default function AdminSettings() {
                       <PlugZap className="w-3 h-3" /> Custom DB
                     </Badge>
                     <Button
-                      variant="outline"
-                      size="sm"
+                      variant="outline" size="sm"
                       className="text-destructive border-destructive/30 hover:bg-destructive/10 gap-1.5"
                       onClick={() => disconnectDbMutation.mutate()}
                       disabled={disconnectDbMutation.isPending}
@@ -352,107 +378,227 @@ export default function AdminSettings() {
             <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
               {dbStatus?.connected ? "Switch to a Different Database" : "Connect a Custom Database"}
             </p>
-
             <div className="space-y-2">
               <Label htmlFor="dbLabel" className="text-xs text-muted-foreground">Label (optional)</Label>
-              <Input
-                id="dbLabel"
-                placeholder="e.g. Production DB, Season 2025"
-                value={dbLabel}
-                onChange={(e) => { setDbLabel(e.target.value); setTestResult(null); }}
-              />
+              <Input id="dbLabel" placeholder="e.g. Production DB, Season 2025" value={dbLabel}
+                onChange={(e) => { setDbLabel(e.target.value); setTestResult(null); }} />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="dbUrl" className="text-xs text-muted-foreground">
                 Connection URL <span className="text-destructive">*</span>
               </Label>
-              <Input
-                id="dbUrl"
-                placeholder="postgresql://host:5432/dbname"
-                value={dbUrl}
+              <Input id="dbUrl" placeholder="postgresql://host:5432/dbname" value={dbUrl}
                 onChange={(e) => { setDbUrl(e.target.value); setTestResult(null); }}
-                className="font-mono text-sm"
-              />
+                className="font-mono text-sm" />
             </div>
-
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="dbUser" className="text-xs text-muted-foreground">Username (optional)</Label>
-                <Input
-                  id="dbUser"
-                  placeholder="postgres"
-                  value={dbUser}
-                  onChange={(e) => { setDbUser(e.target.value); setTestResult(null); }}
-                  autoComplete="off"
-                />
+                <Input id="dbUser" placeholder="postgres" value={dbUser}
+                  onChange={(e) => { setDbUser(e.target.value); setTestResult(null); }} autoComplete="off" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="dbPass" className="text-xs text-muted-foreground">Password (optional)</Label>
                 <div className="relative">
-                  <Input
-                    id="dbPass"
-                    type={showDbPass ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={dbPass}
+                  <Input id="dbPass" type={showDbPass ? "text" : "password"} placeholder="••••••••" value={dbPass}
                     onChange={(e) => { setDbPass(e.target.value); setTestResult(null); }}
-                    autoComplete="new-password"
-                    className="pr-9"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowDbPass(!showDbPass)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
+                    autoComplete="new-password" className="pr-9" />
+                  <button type="button" onClick={() => setShowDbPass(!showDbPass)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                     {showDbPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   </button>
                 </div>
               </div>
             </div>
-
-            {/* Test result feedback */}
             {testResult && (
               <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs border ${
                 testResult.ok
                   ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
                   : "bg-destructive/10 border-destructive/20 text-destructive"
               }`}>
-                {testResult.ok
-                  ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                  : <AlertTriangle className="w-3.5 h-3.5 shrink-0" />}
+                {testResult.ok ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <AlertTriangle className="w-3.5 h-3.5 shrink-0" />}
                 {testResult.ok ? "Connection successful — ready to connect." : testResult.error}
               </div>
             )}
-
             <div className="flex gap-2 pt-1">
-              <Button
-                variant="outline"
-                className="gap-2"
-                onClick={() => testDbMutation.mutate()}
-                disabled={!canConnect || testDbMutation.isPending}
-              >
+              <Button variant="outline" className="gap-2" onClick={() => testDbMutation.mutate()}
+                disabled={!dbUrl.trim() || testDbMutation.isPending}>
                 <FlaskConical className="w-4 h-4" />
                 {testDbMutation.isPending ? "Testing…" : "Test Connection"}
               </Button>
-              <Button
-                className="flex-1 gap-2"
-                onClick={() => connectDbMutation.mutate()}
-                disabled={!canConnect || connectDbMutation.isPending}
-              >
+              <Button className="flex-1 gap-2" onClick={() => connectDbMutation.mutate()}
+                disabled={!dbUrl.trim() || connectDbMutation.isPending}>
                 <PlugZap className="w-4 h-4" />
                 {connectDbMutation.isPending ? "Connecting…" : "Connect Database"}
               </Button>
             </div>
           </div>
-
           <p className="text-xs text-muted-foreground border-t pt-3">
-            The target database must use the same schema as this platform. Username and password fields are optional
-            if already included in the connection URL. The connection is saved and restored automatically on server restart.
+            The target database must use the same schema. Username and password are optional if included in the URL.
+            The connection is saved and restored automatically on server restart.
           </p>
         </CardContent>
       </Card>
 
-      {/* ── Info ─────────────────────────────────────────────────────────────── */}
+      {/* ── SQL Import ──────────────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Upload className="w-4 h-4" /> SQL Import
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Info callout */}
+          <div className="flex gap-3 px-3 py-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-blue-600 dark:text-blue-400">
+            <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-semibold">Recommended workflow for a blank custom database:</p>
+              <ol className="list-decimal list-inside space-y-0.5 ml-1">
+                <li>Choose <strong>Custom database URL</strong> below and enter the blank DB credentials</li>
+                <li>Select your <code>.sql</code> backup file and click <strong>Run Import</strong></li>
+                <li>Once complete, go to <strong>Database Connection</strong> above and connect to that DB</li>
+                <li>Log in again — your imported users and data will be active</li>
+              </ol>
+            </div>
+          </div>
+
+          {/* Target selector */}
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground uppercase tracking-wider">Import Target</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setImportTarget("current")}
+                className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm transition-colors ${
+                  importTarget === "current"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-accent/20 text-muted-foreground hover:border-border/80"
+                }`}
+              >
+                <Database className="w-4 h-4 shrink-0" />
+                <span className="font-medium">Current active DB</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setImportTarget("custom")}
+                className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm transition-colors ${
+                  importTarget === "custom"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-accent/20 text-muted-foreground hover:border-border/80"
+                }`}
+              >
+                <Plug className="w-4 h-4 shrink-0" />
+                <span className="font-medium">Custom database URL</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Custom URL fields */}
+          {importTarget === "custom" && (
+            <div className="space-y-3 p-3 rounded-lg border border-border bg-accent/10">
+              <div className="space-y-2">
+                <Label htmlFor="importUrl" className="text-xs text-muted-foreground">
+                  Target Connection URL <span className="text-destructive">*</span>
+                </Label>
+                <Input id="importUrl" placeholder="postgresql://host:5432/dbname" value={importUrl}
+                  onChange={(e) => setImportUrl(e.target.value)} className="font-mono text-sm" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="importUser" className="text-xs text-muted-foreground">Username (optional)</Label>
+                  <Input id="importUser" placeholder="postgres" value={importUser}
+                    onChange={(e) => setImportUser(e.target.value)} autoComplete="off" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="importPass" className="text-xs text-muted-foreground">Password (optional)</Label>
+                  <div className="relative">
+                    <Input id="importPass" type={showImportPass ? "text" : "password"} placeholder="••••••••"
+                      value={importPass} onChange={(e) => setImportPass(e.target.value)}
+                      autoComplete="new-password" className="pr-9" />
+                    <button type="button" onClick={() => setShowImportPass(!showImportPass)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                      {showImportPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* File picker */}
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground uppercase tracking-wider">SQL Backup File</Label>
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className={`flex items-center gap-3 px-4 py-4 rounded-lg border-2 border-dashed cursor-pointer transition-colors
+                ${importFileName ? "border-primary/40 bg-primary/5" : "border-border hover:border-primary/30 hover:bg-accent/30"}`}
+            >
+              {fileLoading ? (
+                <RefreshCw className="w-5 h-5 text-muted-foreground animate-spin shrink-0" />
+              ) : importFileName ? (
+                <FileText className="w-5 h-5 text-primary shrink-0" />
+              ) : (
+                <Upload className="w-5 h-5 text-muted-foreground shrink-0" />
+              )}
+              <div className="min-w-0">
+                {importFileName ? (
+                  <>
+                    <p className="text-sm font-medium truncate">{importFileName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {importSql ? `${(importSql.length / 1024).toFixed(1)} KB loaded` : "Loading…"}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted-foreground">Click to select a <code>.sql</code> file</p>
+                    <p className="text-xs text-muted-foreground">pg_dump backups supported</p>
+                  </>
+                )}
+              </div>
+              {importFileName && !fileLoading && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setImportSql(""); setImportFileName("");
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  }}
+                  className="ml-auto text-muted-foreground hover:text-foreground text-xs underline shrink-0"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            <input ref={fileInputRef} type="file" accept=".sql,.txt" className="hidden" onChange={handleFileSelect} />
+          </div>
+
+          {importMutation.isPending && (
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground">Executing SQL — this may take a moment for large files…</p>
+              <Progress value={undefined} className="h-1.5 animate-pulse" />
+            </div>
+          )}
+
+          <Button
+            className="w-full gap-2"
+            onClick={() => importMutation.mutate()}
+            disabled={
+              !importSql || fileLoading || importMutation.isPending ||
+              (importTarget === "custom" && !importUrl.trim())
+            }
+          >
+            <Upload className="w-4 h-4" />
+            {importMutation.isPending ? "Running import…" : "Run Import"}
+          </Button>
+
+          <p className="text-xs text-muted-foreground border-t pt-3">
+            The entire SQL file runs inside a single transaction. If any statement fails the whole import is rolled back,
+            leaving the target database unchanged.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* ── Info ──────────────────────────────────────────────────────────────── */}
       <Card className="border-dashed">
         <CardContent className="pt-5">
           <div className="flex gap-3">
