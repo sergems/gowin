@@ -267,7 +267,7 @@ function FinishedSection() {
 type Tab = "live" | "finished";
 
 export default function ResultsPage() {
-  const [activeTab, setActiveTab] = useState<Tab>("live");
+  const [activeTab, setActiveTab] = useState<Tab>("finished");
 
   const { data: liveData } = useListFixtures(
     { status: "live", limit: 1 } as any,
@@ -288,6 +288,15 @@ export default function ResultsPage() {
 
       {/* Top-level tabs */}
       <div className="flex gap-0 border-b border-border">
+        <button onClick={() => setActiveTab("finished")}
+          className={`flex items-center gap-2 px-5 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
+            activeTab === "finished"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}>
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          Finished
+        </button>
         <button onClick={() => setActiveTab("live")}
           className={`flex items-center gap-2 px-5 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
             activeTab === "live"
@@ -301,15 +310,6 @@ export default function ResultsPage() {
               {liveCount}
             </span>
           )}
-        </button>
-        <button onClick={() => setActiveTab("finished")}
-          className={`flex items-center gap-2 px-5 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
-            activeTab === "finished"
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}>
-          <CheckCircle2 className="w-3.5 h-3.5" />
-          Finished
         </button>
       </div>
 
