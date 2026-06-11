@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { execFile } from "child_process";
 import { testDatabaseConnection, switchDatabase, createDb } from "@workspace/db";
 import { requireAdmin, type AuthRequest } from "../middlewares/auth";
 import {
@@ -8,6 +9,8 @@ import {
   setMetaSetting,
   deleteMetaSetting,
 } from "../lib/metaDb";
+
+const PG_DUMP = "/nix/store/bgwr5i8jf8jpg75rr53rz3fqv5k8yrwp-postgresql-16.10/bin/pg_dump";
 
 const router = Router();
 
@@ -146,6 +149,39 @@ router.post("/admin/database/import", requireAdmin, async (req: AuthRequest, res
     if (client) client.release();
     importPool.end().catch(() => {});
   }
+});
+
+// POST /api/admin/database/export
+// Runs pg_dump against the currently active DB and returns the SQL as a download.
+router.post("/admin/database/export", requireAdmin, async (_req, res): Promise<void> => {
+  const connStr = (await getMetaSetting(CUSTOM_DB_KEY)) ?? process.env.DATABASE_URL!;
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  const filename = `gowin-backup-${timestamp}.sql`;
+
+  res.setHeader("Content-Type", "application/sql");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+  const child = execFile(
+    PG_DUMP,
+    [
+      "--no-owner",
+      "--no-acl",
+      "--clean",
+      "--if-exists",
+      connStr,
+    ],
+    { maxBuffer: 512 * 1024 * 1024 }, // 512 MB max
+    (err, stdout, stderr) => {
+      if (err) {
+        if (!res.headersSent) {
+          res.status(500).json({ error: stderr || err.message });
+        }
+      }
+    }
+  );
+
+  child.stdout?.pipe(res);
 });
 
 export default router;
