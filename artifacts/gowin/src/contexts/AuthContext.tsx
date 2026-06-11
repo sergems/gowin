@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useGetMe, getGetMeQueryKey, login as apiLogin, register as apiRegister, setAuthTokenGetter } from "@workspace/api-client-react";
 import type { LoginInput, RegisterInput, User } from "@workspace/api-client-react";
 
@@ -16,6 +17,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(localStorage.getItem("gowin_token"));
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     setAuthTokenGetter(() => localStorage.getItem("gowin_token"));
@@ -57,6 +59,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     handleSetToken(null);
+    // Clear all cached query data so user details/balance disappear immediately
+    queryClient.clear();
   };
 
   const refreshUser = async () => {
