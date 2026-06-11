@@ -598,22 +598,6 @@ export default function AdminSettings() {
         </CardContent>
       </Card>
 
-      {/* ── Info ──────────────────────────────────────────────────────────────── */}
-      <Card className="border-dashed">
-        <CardContent className="pt-5">
-          <div className="flex gap-3">
-            <Clock className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
-            <div className="text-sm text-muted-foreground space-y-1">
-              <p>AllSportsAPI keys rotate every 30 days. When fixtures stop updating:</p>
-              <ol className="list-decimal list-inside space-y-0.5 ml-1">
-                <li>Get your new key from allsportsapi.com</li>
-                <li>Paste it above and click <strong>Save</strong></li>
-                <li>Click <strong>Sync Now</strong> to pull fresh data</li>
-              </ol>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
