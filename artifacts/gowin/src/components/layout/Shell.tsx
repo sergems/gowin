@@ -99,7 +99,13 @@ export function Shell({ children }: { children: ReactNode }) {
     });
   };
 
-  const handleLogout = () => { logout(); setMobileSidebarOpen(false); navigate("/login"); };
+  const handleLogout = () => {
+    logout();
+    setMobileSidebarOpen(false);
+    setLogoutConfirmOpen(false);
+    // Defer navigation so Radix dialog close animation doesn't swallow it
+    setTimeout(() => navigate("/login"), 0);
+  };
 
   const adminLinks = user?.role === "admin" ? [
     { href: "/admin",              icon: LayoutDashboard, label: "Dashboard",    match: (l: string) => l === "/admin" },
@@ -308,12 +314,12 @@ export function Shell({ children }: { children: ReactNode }) {
                     <p className="text-xs text-muted-foreground font-mono">ID: {(user as any).publicId ?? "—"}</p>
                   </div>
                 </div>
-                <Button variant="outline" className="w-full justify-start text-muted-foreground" onClick={handleLogout}>
+                <Button variant="outline" className="w-full justify-start text-muted-foreground" onClick={() => setLogoutConfirmOpen(true)}>
                   <LogOut className="w-4 h-4 mr-2" /> Logout
                 </Button>
               </>
             ) : (
-              <button onClick={handleLogout} title="Logout"
+              <button onClick={() => setLogoutConfirmOpen(true)} title="Logout"
                 className="w-full flex justify-center text-muted-foreground hover:text-destructive transition-colors p-2 rounded-md hover:bg-accent">
                 <LogOut className="w-4 h-4" />
               </button>
