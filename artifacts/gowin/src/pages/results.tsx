@@ -134,7 +134,7 @@ function LiveSection() {
 
   const { data, isLoading, dataUpdatedAt } = useListFixtures(
     { status: "live", limit: 200 } as any,
-    { query: { queryKey: ["fixtures", "live"], refetchInterval: 30 * 1000 } },
+    { query: { queryKey: ["fixtures", "live"], refetchInterval: 30 * 1000, placeholderData: (prev: any) => prev } },
   );
 
   useEffect(() => {
@@ -271,7 +271,7 @@ export default function ResultsPage() {
 
   const { data: liveData } = useListFixtures(
     { status: "live", limit: 1 } as any,
-    { query: { queryKey: ["fixtures", "live-count-results"], refetchInterval: 30 * 1000, staleTime: 20 * 1000 } },
+    { query: { queryKey: ["fixtures", "live-count-results"] } },
   );
   const liveCount = liveData?.total ?? 0;
 

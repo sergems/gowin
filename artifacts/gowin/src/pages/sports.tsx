@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useSearch } from "wouter";
 import { useListFixtures } from "@workspace/api-client-react";
 import type { ListFixturesParams } from "@workspace/api-client-react";
@@ -217,15 +217,11 @@ export default function FootballPage() {
     (selectedLeagueId
       ? { leagueId: selectedLeagueId, status: "upcoming", limit: 50, withMarkets: true }
       : { status: "upcoming", limit: 20, withMarkets: true }) as ListFixturesParams,
-    { query: { queryKey: ["fixtures", "sports", selectedLeagueId], refetchInterval: 60 * 1000 } },
+    { query: { queryKey: ["fixtures", "sports", selectedLeagueId] } },
   );
 
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 60 * 1000);
-    return () => clearInterval(timer);
-  }, []);
-
+  // Server already filters startTime > NOW(); client-side guard covers stale cache on first render
+  const now = new Date();
   const fixtures = (fixturesData?.fixtures ?? []).filter(
     (f) => new Date(f.startTime) > now,
   );
