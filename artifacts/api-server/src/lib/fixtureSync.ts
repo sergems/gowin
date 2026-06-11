@@ -74,37 +74,56 @@ export async function syncFixtureResults(): Promise<{ updated: number; errors: n
       const fixtureExtId = String(event.event_key);
       // Prefer event_ft_result (full-time) over event_final_result (half-time/incomplete)
       const score = parseScore(event.event_ft_result || event.event_final_result || "");
+      // NOTE: startTime is only used when inserting NEW fixtures. For existing fixtures we
+      // never overwrite startTime — AllSports may return local (non-UTC) event times and we
+      // don't know the UTC offset per competition.
       const startTime = new Date(`${event.event_date}T${event.event_time ?? "00:00"}:00Z`);
       const rawStatus = mapStatus(event.event_status ?? "");
       const now = new Date();
       // 2h 30m — enough for 90 min + ET + stoppage
       const finishedCutoff = new Date(now.getTime() - 150 * 60 * 1000);
 
-      let status: "upcoming" | "live" | "finished" | "cancelled" = rawStatus;
+      let apiStatus: "upcoming" | "live" | "finished" | "cancelled" = rawStatus;
 
       // API says "upcoming" but score is present and kick-off is past → finished
-      if (status === "upcoming" && score.home !== null && score.away !== null && startTime < now) {
-        status = "finished";
+      if (apiStatus === "upcoming" && score.home !== null && score.away !== null && startTime < now) {
+        apiStatus = "finished";
       }
       // API returns stale "live" for games well past the match window → finished
-      if (status === "live" && startTime < finishedCutoff) {
-        status = "finished";
+      if (apiStatus === "live" && startTime < finishedCutoff) {
+        apiStatus = "finished";
       }
-      // API hasn't updated status yet for a game inside the match window → keep live
-      if (status === "upcoming" && startTime < now && startTime >= finishedCutoff) {
-        status = "live";
+      // API hasn't updated status yet for a game inside the match window → live
+      if (apiStatus === "upcoming" && startTime < now && startTime >= finishedCutoff) {
+        apiStatus = "live";
+      }
+      // API returns live but startTime is in the future (timezone mismatch) → trust API: live
+      if (rawStatus === "live" && apiStatus !== "finished") {
+        apiStatus = "live";
       }
 
       const [existing] = await db
-        .select({ id: fixturesTable.id })
+        .select({ id: fixturesTable.id, status: fixturesTable.status })
         .from(fixturesTable)
         .where(eq(fixturesTable.externalId, fixtureExtId))
         .limit(1);
 
       if (existing) {
+        // Status merge rules — API data can be delayed or use wrong timezones:
+        // 1. Never let API "upcoming" demote a game we've already marked "live" or "finished".
+        // 2. Never let API "live" or "upcoming" demote a game we've already marked "finished".
+        // 3. startTime is NEVER updated for existing fixtures.
+        let finalStatus = apiStatus;
+        if (existing.status === "live" && (apiStatus === "upcoming")) {
+          finalStatus = "live";
+        }
+        if (existing.status === "finished" && (apiStatus === "upcoming" || apiStatus === "live")) {
+          finalStatus = "finished";
+        }
+
         await db
           .update(fixturesTable)
-          .set({ status, scoreHome: score.home, scoreAway: score.away, startTime })
+          .set({ status: finalStatus, scoreHome: score.home, scoreAway: score.away })
           .where(eq(fixturesTable.id, existing.id));
         updated++;
       }

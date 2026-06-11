@@ -282,18 +282,23 @@ router.post("/admin/sync-fixtures", requireAdmin, async (_req, res): Promise<voi
       const awayTeamId = await upsertTeam(event.event_away_team, event.away_team_logo ?? null, awayExtId);
 
       const startTime = new Date(`${event.event_date}T${event.event_time ?? "00:00"}:00Z`);
-      const status = mapStatus(event.event_status ?? "");
+      const rawStatus = mapStatus(event.event_status ?? "");
       const score = parseScore(event.event_final_result ?? "");
 
       const [existing] = await db.select({ id: fixturesTable.id }).from(fixturesTable).where(eq(fixturesTable.externalId, fixtureExtId)).limit(1);
 
       if (existing) {
-        await db.update(fixturesTable).set({ status, scoreHome: score.home, scoreAway: score.away, startTime }).where(eq(fixturesTable.id, existing.id));
+        // Never overwrite startTime for live/finished — AllSports may return local (non-UTC) times.
+        const updateFields: Record<string, unknown> = { status: rawStatus, scoreHome: score.home, scoreAway: score.away };
+        if (rawStatus === "upcoming") {
+          updateFields.startTime = startTime;
+        }
+        await db.update(fixturesTable).set(updateFields).where(eq(fixturesTable.id, existing.id));
         updated++;
       } else {
-        const [fixture] = await db.insert(fixturesTable).values({ leagueId, homeTeamId, awayTeamId, startTime, status, scoreHome: score.home, scoreAway: score.away, externalId: fixtureExtId }).returning();
+        const [fixture] = await db.insert(fixturesTable).values({ leagueId, homeTeamId, awayTeamId, startTime, status: rawStatus, scoreHome: score.home, scoreAway: score.away, externalId: fixtureExtId }).returning();
 
-        if (status === "upcoming") {
+        if (rawStatus === "upcoming") {
           // Try to fetch real odds from AllSportsAPI
           const realOdds = await fetchRealOdds(apiKey, fixtureExtId);
           const seed = (parseInt(fixtureExtId, 10) % 1000) / 1000;
