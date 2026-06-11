@@ -312,8 +312,8 @@ export default function History() {
                                           <div className="text-[11px] text-muted-foreground/60 leading-tight">
                                             {[
                                               sel.fixture?.league?.name,
-                                              sel.fixture?.startTime
-                                                ? fmtUTCDateTimeShort(sel.fixture.startTime)
+                                              (sel.fixture?.displayTime ?? sel.fixture?.startTime)
+                                                ? fmtUTCDateTimeShort(sel.fixture.displayTime ?? sel.fixture.startTime)
                                                 : null,
                                             ].filter(Boolean).join("  ·  ")}
                                           </div>

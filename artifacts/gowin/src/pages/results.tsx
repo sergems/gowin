@@ -31,7 +31,7 @@ function ResultCard({ fixture }: { fixture: any }) {
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <CalendarDays className="w-3 h-3 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">{fmtUTCTime(fixture.startTime)}</span>
+              <span className="text-xs text-muted-foreground">{fmtUTCTime(fixture.displayTime ?? fixture.startTime)}</span>
               <span className="text-xs font-semibold text-muted-foreground bg-accent/50 px-1.5 py-0.5 rounded ml-1">FT</span>
             </div>
           </div>
@@ -100,7 +100,7 @@ function LiveCard({ fixture }: { fixture: any }) {
                 <span className="text-muted-foreground/40 font-bold text-xl">:</span>
                 <span className={`text-3xl font-black tabular-nums ${awayLeading ? "text-foreground" : "text-muted-foreground"}`}>{awayScore}</span>
               </div>
-              <span className="text-[10px] text-muted-foreground/60">KO {fmtUTCTime(fixture.startTime)}</span>
+              <span className="text-[10px] text-muted-foreground/60">KO {fmtUTCTime(fixture.displayTime ?? fixture.startTime)}</span>
             </div>
             <div className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
               <Logo src={fixture.awayTeam?.logo} alt={fixture.awayTeam?.name ?? ""} size={36} />

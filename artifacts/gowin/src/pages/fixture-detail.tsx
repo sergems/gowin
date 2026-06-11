@@ -224,7 +224,7 @@ export default function FixtureDetail() {
               ) : (
                 <span className="flex items-center gap-1.5 text-muted-foreground">
                   <CalendarDays className="w-4 h-4" />
-                  {fmtUTCDateTimeLong(fixture.startTime)}
+                  {fmtUTCDateTimeLong(fixture.displayTime ?? fixture.startTime)}
                 </span>
               )}
             </div>
@@ -299,7 +299,7 @@ export default function FixtureDetail() {
                   fixtureId={fixture.id}
                   fixtureName={fixtureName}
                   competitionName={(fixture as any).league?.name}
-                  startTime={fixture.startTime}
+                  startTime={fixture.displayTime ?? fixture.startTime}
                   disabled={isFinished || isLive}
                 />
               ))}

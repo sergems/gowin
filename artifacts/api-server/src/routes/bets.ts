@@ -165,6 +165,7 @@ router.get("/bets/my", requireAuth, async (req: AuthRequest, res): Promise<void>
   const teamMap = Object.fromEntries(allTeams.map((t) => [t.id, t]));
   const fixtureMap = Object.fromEntries(allFixtures.map((f) => [f.id, {
     ...f,
+    displayTime: new Date(f.startTime.getTime() + 2 * 60 * 60 * 1000),
     homeTeam: teamMap[f.homeTeamId] || null,
     awayTeam: teamMap[f.awayTeamId] || null,
     league: leagueMap[f.leagueId] || null,
@@ -214,6 +215,7 @@ router.get("/admin/bets/lookup/:code", requireAdmin, async (req: AuthRequest, re
   const leagueMapL = Object.fromEntries(leaguesLookup.map((l) => [l.id, l]));
   const fixtureMap = Object.fromEntries(fixtures.map((f) => [f.id, {
     ...f,
+    displayTime: new Date(f.startTime.getTime() + 2 * 60 * 60 * 1000),
     homeTeam: teamMapL[f.homeTeamId] || null,
     awayTeam: teamMapL[f.awayTeamId] || null,
     league: leagueMapL[f.leagueId] || null,
@@ -288,7 +290,7 @@ router.get("/bets/:id", requireAuth, async (req: AuthRequest, res): Promise<void
   const leagueIds2 = [...new Set(fixtures.map((f) => f.leagueId))];
   const leagues2 = leagueIds2.length > 0 ? await db.select().from(leaguesTable).where(inArray(leaguesTable.id, leagueIds2)) : [];
   const leagueMap2 = Object.fromEntries(leagues2.map((l) => [l.id, l]));
-  const fixtureMap = Object.fromEntries(fixtures.map((f) => [f.id, { ...f, league: leagueMap2[f.leagueId] || null }]));
+  const fixtureMap = Object.fromEntries(fixtures.map((f) => [f.id, { ...f, displayTime: new Date(f.startTime.getTime() + 2 * 60 * 60 * 1000), league: leagueMap2[f.leagueId] || null }]));
 
   const [user] = await db.select({ id: usersTable.id, username: usersTable.username, email: usersTable.email, role: usersTable.role, createdAt: usersTable.createdAt })
     .from(usersTable).where(eq(usersTable.id, bet.userId)).limit(1);

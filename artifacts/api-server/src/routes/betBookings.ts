@@ -84,6 +84,9 @@ router.get("/bet-bookings/:code", async (req: Request, res: Response): Promise<v
       : s.fixtureName || "Unknown Fixture",
     competitionName: fixtureMap[s.fixtureId]?.league?.name || s.competitionName,
     startTime: fixtureMap[s.fixtureId]?.startTime || s.startTime,
+    displayTime: fixtureMap[s.fixtureId]?.startTime
+      ? new Date(new Date(fixtureMap[s.fixtureId]!.startTime).getTime() + 2 * 60 * 60 * 1000).toISOString()
+      : s.startTime,
   }));
 
   res.json({ code: booking.code, expiresAt: booking.expiresAt, createdAt: booking.createdAt, selections: enriched });

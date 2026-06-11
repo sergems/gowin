@@ -262,12 +262,15 @@ router.get("/fixtures", async (req, res): Promise<void> => {
     : [];
   const teamMap = Object.fromEntries(teamRows.map((t) => [t.id, t]));
 
+  const toDisplayTime = (t: Date) => new Date(t.getTime() + 2 * 60 * 60 * 1000);
+
   const fixtures = rows.map((row: any) => ({
     id: row.id,
     leagueId: row.leagueId,
     homeTeamId: row.homeTeamId,
     awayTeamId: row.awayTeamId,
     startTime: row.startTime,
+    displayTime: toDisplayTime(row.startTime),
     status: row.status,
     scoreHome: row.scoreHome,
     scoreAway: row.scoreAway,
@@ -369,6 +372,7 @@ router.get("/fixtures/:id", async (req, res): Promise<void> => {
 
   res.json({
     ...fixture,
+    displayTime: new Date(fixture.startTime.getTime() + 2 * 60 * 60 * 1000),
     league: { ...league, sport },
     homeTeam,
     awayTeam,

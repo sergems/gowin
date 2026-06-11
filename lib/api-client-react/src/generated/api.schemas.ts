@@ -210,6 +210,8 @@ export interface Fixture {
   homeTeamId: number;
   awayTeamId: number;
   startTime: string;
+  /** Original time as received from the API (UTC+2), for display purposes only */
+  displayTime: string;
   status: FixtureStatus;
   /** @nullable */
   scoreHome?: number | null;
@@ -250,6 +252,8 @@ export interface FixtureDetail {
   homeTeamId: number;
   awayTeamId: number;
   startTime: string;
+  /** Original time as received from the API (UTC+2), for display purposes only */
+  displayTime: string;
   status: FixtureDetailStatus;
   /** @nullable */
   scoreHome?: number | null;

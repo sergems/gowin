@@ -111,7 +111,7 @@ function FixtureCard({ fixture }: { fixture: any }) {
               ) : (
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
                   <CalendarDays className="w-3 h-3" />
-                  {fmtUTCTime(fixture.startTime)}
+                  {fmtUTCTime(fixture.displayTime ?? fixture.startTime)}
                 </span>
               )}
             </div>
@@ -179,7 +179,7 @@ function FixtureCard({ fixture }: { fixture: any }) {
                     oddsValue={odd.oddsValue}
                     fixtureName={fixtureName}
                     competitionName={fixture.league?.name}
-                    startTime={fixture.startTime}
+                    startTime={fixture.displayTime ?? fixture.startTime}
                   />
                 ))}
               </div>

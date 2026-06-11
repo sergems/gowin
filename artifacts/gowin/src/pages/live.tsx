@@ -58,7 +58,7 @@ function LiveCard({ fixture }: { fixture: any }) {
                   {awayScore}
                 </span>
               </div>
-              <span className="text-[10px] text-muted-foreground/60">KO {fmtUTCTime(fixture.startTime)}</span>
+              <span className="text-[10px] text-muted-foreground/60">KO {fmtUTCTime(fixture.displayTime ?? fixture.startTime)}</span>
             </div>
 
             {/* Away team */}

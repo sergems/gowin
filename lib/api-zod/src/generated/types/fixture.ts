@@ -15,6 +15,8 @@ export interface Fixture {
   homeTeamId: number;
   awayTeamId: number;
   startTime: Date;
+  /** Original time as received from the API (UTC+2), for display purposes only */
+  displayTime: Date;
   status: FixtureStatus;
   /** @nullable */
   scoreHome?: number | null;

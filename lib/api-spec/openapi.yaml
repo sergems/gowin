@@ -1206,7 +1206,7 @@ components:
 
     Fixture:
       type: object
-      required: [id, leagueId, homeTeamId, awayTeamId, startTime, status]
+      required: [id, leagueId, homeTeamId, awayTeamId, startTime, displayTime, status]
       properties:
         id:
           type: integer
@@ -1219,6 +1219,10 @@ components:
         startTime:
           type: string
           format: date-time
+        displayTime:
+          type: string
+          format: date-time
+          description: Original time as received from the API (UTC+2), for display purposes only
         status:
           type: string
           enum: [upcoming, live, finished, cancelled]
@@ -1235,7 +1239,7 @@ components:
 
     FixtureDetail:
       type: object
-      required: [id, leagueId, homeTeamId, awayTeamId, startTime, status, markets]
+      required: [id, leagueId, homeTeamId, awayTeamId, startTime, displayTime, status, markets]
       properties:
         id:
           type: integer
@@ -1248,6 +1252,10 @@ components:
         startTime:
           type: string
           format: date-time
+        displayTime:
+          type: string
+          format: date-time
+          description: Original time as received from the API (UTC+2), for display purposes only
         status:
           type: string
           enum: [upcoming, live, finished, cancelled]
