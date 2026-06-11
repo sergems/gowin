@@ -1,4 +1,5 @@
 import { ReactNode, useState, useEffect, useRef } from "react";
+import gowinLogo from "../../assets/logo.png";
 import { format } from "date-fns";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -354,10 +355,7 @@ export function Shell({ children }: { children: ReactNode }) {
       <aside className={`${sidebarOpen ? "w-64" : "w-14"} border-r border-border bg-card hidden md:flex flex-col shrink-0 transition-all duration-200`}>
         <div className={`h-14 flex items-center border-b border-border shrink-0 ${sidebarOpen ? "px-4 gap-2" : "justify-center"}`}>
           {sidebarOpen && (
-            <>
-              <Trophy className="w-5 h-5 text-primary shrink-0" />
-              <span className="font-bold text-xl tracking-tight flex-1">GoWin</span>
-            </>
+            <img src={gowinLogo} alt="GoWin" className="h-8 w-auto object-contain flex-1" />
           )}
           <button onClick={() => setSidebarOpen((v) => !v)}
             className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-accent"
@@ -374,8 +372,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileSidebarOpen(false)} />
           <aside className="absolute left-0 top-0 bottom-0 w-72 bg-card border-r border-border flex flex-col overflow-hidden">
             <div className="h-14 flex items-center px-4 gap-2 border-b border-border shrink-0">
-              <Trophy className="w-5 h-5 text-primary shrink-0" />
-              <span className="font-bold text-xl tracking-tight flex-1">GoWin</span>
+              <img src={gowinLogo} alt="GoWin" className="h-8 w-auto object-contain flex-1" />
               <button onClick={() => setMobileSidebarOpen(false)}
                 className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-accent">
                 <X className="w-5 h-5" />
@@ -410,9 +407,8 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
 
           {/* Mobile: centered logo */}
-          <div className="md:hidden flex items-center gap-1.5 absolute left-1/2 -translate-x-1/2">
-            <Trophy className="w-4 h-4 text-primary" />
-            <span className="font-bold text-lg tracking-tight">GoWin</span>
+          <div className="md:hidden flex items-center absolute left-1/2 -translate-x-1/2">
+            <img src={gowinLogo} alt="GoWin" className="h-7 w-auto object-contain" />
           </div>
 
           <p className={`flex-[5] text-center text-xs text-muted-foreground/70 leading-snug px-2 ${user ? "hidden" : "hidden md:block"}`}>
