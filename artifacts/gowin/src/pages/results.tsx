@@ -3,7 +3,9 @@ import { useListFixtures } from "@workspace/api-client-react";
 import type { ListFixturesParams } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { fmtUTCTime, utcDateLabel } from "@/lib/formatUTC";
-import { CalendarDays, CheckCircle2, Shield, Globe, Radio } from "lucide-react";
+import { CalendarDays, CheckCircle2, Shield, Globe, Radio, ChevronDown } from "lucide-react";
+
+const INITIAL_SHOW = 4;
 
 function Logo({ src, alt, size = 24 }: { src: string | null | undefined; alt: string; size?: number }) {
   const [failed, setFailed] = useState(false);
@@ -15,7 +17,13 @@ function Logo({ src, alt, size = 24 }: { src: string | null | undefined; alt: st
   );
 }
 
-// ── Finished result card ───────────────────────────────────────────────────────
+function FlagImg({ src, alt }: { src: string | null | undefined; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) return <Globe className="w-3.5 h-3.5 text-muted-foreground shrink-0" />;
+  return <img src={src} alt={alt} width={16} height={11} className="object-cover rounded-sm shrink-0 w-4" style={{ height: 11 }} onError={() => setFailed(true)} />;
+}
+
+// ── Finished result card ────────────────────────────────────────────────────────
 
 function ResultCard({ fixture }: { fixture: any }) {
   const hasScore = fixture.scoreHome !== null && fixture.scoreAway !== null;
@@ -23,12 +31,7 @@ function ResultCard({ fixture }: { fixture: any }) {
     <Link href={`/fixtures/${fixture.id}`}>
       <div className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/20 transition-all cursor-pointer hover:bg-accent/10">
         <div className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <Logo src={fixture.league?.countryLogo} alt={fixture.league?.countryName ?? ""} size={14} />
-              <Logo src={fixture.league?.logo} alt={fixture.league?.name ?? ""} size={14} />
-              <span className="text-xs text-muted-foreground truncate">{fixture.league?.name}</span>
-            </div>
+          <div className="flex items-center justify-end mb-3">
             <div className="flex items-center gap-1.5 shrink-0">
               <CalendarDays className="w-3 h-3 text-muted-foreground" />
               <span className="text-xs text-muted-foreground">{fmtUTCTime(fixture.displayTime ?? fixture.startTime)}</span>
@@ -66,7 +69,7 @@ function ResultCard({ fixture }: { fixture: any }) {
   );
 }
 
-// ── Live score card ────────────────────────────────────────────────────────────
+// ── Live score card ─────────────────────────────────────────────────────────────
 
 function LiveCard({ fixture }: { fixture: any }) {
   const homeScore = fixture.scoreHome ?? 0;
@@ -77,14 +80,10 @@ function LiveCard({ fixture }: { fixture: any }) {
     <Link href={`/fixtures/${fixture.id}`}>
       <div className="bg-card border border-red-500/30 rounded-xl overflow-hidden hover:border-red-500/60 transition-all cursor-pointer hover:bg-accent/10">
         <div className="px-4 pt-3 pb-2 flex items-center justify-between">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <Logo src={fixture.league?.countryLogo} alt={fixture.league?.countryName ?? ""} size={14} />
-            <Logo src={fixture.league?.logo} alt={fixture.league?.name ?? ""} size={14} />
-            <span className="text-xs text-muted-foreground truncate">{fixture.league?.name}</span>
-          </div>
           <span className="flex items-center gap-1 text-xs font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full shrink-0">
             <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />LIVE
           </span>
+          <span className="text-[10px] text-muted-foreground/60">KO {fmtUTCTime(fixture.displayTime ?? fixture.startTime)}</span>
         </div>
         <div className="px-4 pb-4">
           <div className="flex items-center gap-3">
@@ -100,7 +99,6 @@ function LiveCard({ fixture }: { fixture: any }) {
                 <span className="text-muted-foreground/40 font-bold text-xl">:</span>
                 <span className={`text-3xl font-black tabular-nums ${awayLeading ? "text-foreground" : "text-muted-foreground"}`}>{awayScore}</span>
               </div>
-              <span className="text-[10px] text-muted-foreground/60">KO {fmtUTCTime(fixture.displayTime ?? fixture.startTime)}</span>
             </div>
             <div className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
               <Logo src={fixture.awayTeam?.logo} alt={fixture.awayTeam?.name ?? ""} size={36} />
@@ -115,19 +113,135 @@ function LiveCard({ fixture }: { fixture: any }) {
   );
 }
 
-function groupByLeague(fixtures: any[]) {
-  const map = new Map<number, { name: string; countryName?: string; logo?: string | null; countryLogo?: string | null; fixtures: any[] }>();
+// ── Grouping helpers ────────────────────────────────────────────────────────────
+
+type LeagueGroup = {
+  leagueId: number;
+  leagueName: string;
+  leagueLogo: string | null | undefined;
+  fixtures: any[];
+};
+
+type CountryGroup = {
+  countryName: string;
+  countryLogo: string | null | undefined;
+  leagues: LeagueGroup[];
+};
+
+function groupByCountryLeague(fixtures: any[]): CountryGroup[] {
+  const countryMap = new Map<string, CountryGroup>();
+
   for (const f of fixtures) {
-    const lid = f.leagueId ?? 0;
-    if (!map.has(lid)) {
-      map.set(lid, { name: f.league?.name ?? "Unknown", countryName: f.league?.countryName, logo: f.league?.logo, countryLogo: f.league?.countryLogo, fixtures: [] });
+    const country = f.league?.countryName ?? "International";
+    const leagueId = f.leagueId ?? 0;
+
+    if (!countryMap.has(country)) {
+      countryMap.set(country, {
+        countryName: country,
+        countryLogo: f.league?.countryLogo,
+        leagues: [],
+      });
     }
-    map.get(lid)!.fixtures.push(f);
+    const cg = countryMap.get(country)!;
+
+    let lg = cg.leagues.find((l) => l.leagueId === leagueId);
+    if (!lg) {
+      lg = { leagueId, leagueName: f.league?.name ?? "Unknown", leagueLogo: f.league?.leagueLogo, fixtures: [] };
+      cg.leagues.push(lg);
+    }
+    lg.fixtures.push(f);
   }
-  return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+
+  const result = Array.from(countryMap.values());
+  result.sort((a, b) => a.countryName.localeCompare(b.countryName));
+  result.forEach((cg) => cg.leagues.sort((a, b) => a.leagueName.localeCompare(b.leagueName)));
+  return result;
 }
 
-// ── Live section ──────────────────────────────────────────────────────────────
+// ── League block with show-more toggle ─────────────────────────────────────────
+
+function LeagueBlock({
+  league,
+  renderCard,
+  gridCols = "grid-cols-1 xl:grid-cols-2",
+}: {
+  league: LeagueGroup;
+  renderCard: (f: any) => React.ReactNode;
+  gridCols?: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? league.fixtures : league.fixtures.slice(0, INITIAL_SHOW);
+  const hidden = league.fixtures.length - INITIAL_SHOW;
+
+  return (
+    <div className="space-y-2">
+      {/* League header */}
+      <div className="flex items-center gap-2 px-0.5">
+        <Logo src={league.leagueLogo} alt={league.leagueName} size={14} />
+        <span className="text-xs font-semibold uppercase tracking-wide text-foreground">{league.leagueName}</span>
+        <span className="text-xs text-muted-foreground/60 tabular-nums">{league.fixtures.length}</span>
+      </div>
+
+      {/* Cards */}
+      <div className={`grid ${gridCols} gap-3`}>
+        {visible.map((f) => renderCard(f))}
+      </div>
+
+      {/* Show more / less toggle */}
+      {league.fixtures.length > INITIAL_SHOW && (
+        <button
+          onClick={() => setExpanded((e) => !e)}
+          className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground border border-border/50 rounded-lg hover:border-border hover:bg-accent/10 transition-all"
+        >
+          <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
+          {expanded ? "Show less" : `Show ${hidden} more`}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Country section ─────────────────────────────────────────────────────────────
+
+function CountrySection({
+  country,
+  renderCard,
+  gridCols,
+}: {
+  country: CountryGroup;
+  renderCard: (f: any) => React.ReactNode;
+  gridCols?: string;
+}) {
+  const [collapsed, setCollapsed] = useState(false);
+  const total = country.leagues.reduce((s, l) => s + l.fixtures.length, 0);
+
+  return (
+    <div className="rounded-xl border border-border overflow-hidden">
+      {/* Country header — click to collapse */}
+      <button
+        onClick={() => setCollapsed((c) => !c)}
+        className="w-full flex items-center gap-2.5 px-4 py-2.5 bg-accent/20 hover:bg-accent/30 transition-colors"
+      >
+        <FlagImg src={country.countryLogo} alt={country.countryName} />
+        <span className="text-sm font-bold flex-1 text-left">{country.countryName}</span>
+        <span className="text-xs text-muted-foreground tabular-nums">{total}</span>
+        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`} />
+      </button>
+
+      {!collapsed && (
+        <div className="divide-y divide-border/30">
+          {country.leagues.map((league) => (
+            <div key={league.leagueId} className="px-4 py-4">
+              <LeagueBlock league={league} renderCard={renderCard} gridCols={gridCols} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Live section ───────────────────────────────────────────────────────────────
 
 function LiveSection() {
   const [lastUpdated, setLastUpdated] = useState(() => new Date());
@@ -142,11 +256,11 @@ function LiveSection() {
   }, [dataUpdatedAt]);
 
   const fixtures = data?.fixtures ?? [];
-  const leagueGroups = groupByLeague(fixtures);
+  const countryGroups = groupByCountryLeague(fixtures);
   const timeStr = lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           {isLoading ? "Loading…" : `${fixtures.length} match${fixtures.length !== 1 ? "es" : ""} in play`}
@@ -170,19 +284,14 @@ function LiveSection() {
           <p className="text-sm text-muted-foreground">Check back during match times — scores refresh every 30 seconds</p>
         </div>
       ) : (
-        <div className="space-y-6">
-          {leagueGroups.map((league) => (
-            <div key={league.name}>
-              <div className="flex items-center gap-2 mb-3">
-                <Logo src={league.countryLogo} alt={league.countryName ?? ""} size={14} />
-                <Logo src={league.logo} alt={league.name} size={14} />
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{league.name}</span>
-                <span className="text-[10px] text-muted-foreground/50">{league.fixtures.length}</span>
-              </div>
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                {league.fixtures.map((f: any) => <LiveCard key={f.id} fixture={f} />)}
-              </div>
-            </div>
+        <div className="space-y-3">
+          {countryGroups.map((cg) => (
+            <CountrySection
+              key={cg.countryName}
+              country={cg}
+              renderCard={(f) => <LiveCard key={f.id} fixture={f} />}
+              gridCols="grid-cols-1 xl:grid-cols-2"
+            />
           ))}
         </div>
       )}
@@ -190,7 +299,7 @@ function LiveSection() {
   );
 }
 
-// ── Finished section ──────────────────────────────────────────────────────────
+// ── Finished section ───────────────────────────────────────────────────────────
 
 const DAY_TABS = [
   { label: "Today", daysAgo: 0 },
@@ -211,7 +320,7 @@ function FinishedSection() {
   const fixtures = (data?.fixtures ?? [])
     .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
 
-  const leagueGroups = groupByLeague(fixtures);
+  const countryGroups = groupByCountryLeague(fixtures);
 
   return (
     <div className="space-y-5">
@@ -241,20 +350,14 @@ function FinishedSection() {
           <p className="text-sm text-muted-foreground">No matches have finished for this day.</p>
         </div>
       ) : (
-        <div className="space-y-6">
-          {leagueGroups.map((group) => (
-            <div key={group.name} className="space-y-2">
-              <div className="flex items-center gap-2 px-0.5">
-                <Globe className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                <span className="text-xs font-semibold uppercase tracking-wide text-foreground">
-                  {group.countryName ? `${group.countryName} · ` : ""}{group.name}
-                </span>
-                <span className="text-xs text-muted-foreground">({group.fixtures.length})</span>
-              </div>
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                {group.fixtures.map((f) => <ResultCard key={f.id} fixture={f} />)}
-              </div>
-            </div>
+        <div className="space-y-3">
+          {countryGroups.map((cg) => (
+            <CountrySection
+              key={cg.countryName}
+              country={cg}
+              renderCard={(f) => <ResultCard key={f.id} fixture={f} />}
+              gridCols="grid-cols-1 xl:grid-cols-2"
+            />
           ))}
         </div>
       )}
@@ -262,7 +365,7 @@ function FinishedSection() {
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+// ── Main page ──────────────────────────────────────────────────────────────────
 
 type Tab = "live" | "finished";
 
