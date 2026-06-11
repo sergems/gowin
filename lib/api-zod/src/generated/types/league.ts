@@ -11,5 +11,13 @@ export interface League {
   id: number;
   sportId: number;
   name: string;
+  /** @nullable */
+  countryName?: string | null;
+  /** @nullable */
+  countryKey?: string | null;
+  /** @nullable */
+  countryLogo?: string | null;
+  /** @nullable */
+  leagueLogo?: string | null;
   sport?: Sport;
 }

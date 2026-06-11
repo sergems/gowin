@@ -174,6 +174,14 @@ export interface League {
   id: number;
   sportId: number;
   name: string;
+  /** @nullable */
+  countryName?: string | null;
+  /** @nullable */
+  countryKey?: string | null;
+  /** @nullable */
+  countryLogo?: string | null;
+  /** @nullable */
+  leagueLogo?: string | null;
   sport?: Sport;
 }
 
@@ -438,6 +446,7 @@ sportId?: number;
 status?: ListFixturesStatus;
 page?: number;
 limit?: number;
+withMarkets?: boolean;
 };
 
 export type ListFixturesStatus = typeof ListFixturesStatus[keyof typeof ListFixturesStatus];

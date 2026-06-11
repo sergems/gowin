@@ -5,7 +5,7 @@ import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBetSlip } from "@/contexts/BetSlipContext";
-import { useGetMyWallet } from "@workspace/api-client-react";
+import { useGetMyWallet, getGetMyWalletQueryKey } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -43,7 +43,7 @@ function FlagImg({ src, alt }: { src: string | null | undefined; alt: string }) 
 
 export function Shell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
-  const { data: wallet } = useGetMyWallet({ query: { enabled: !!user } });
+  const { data: wallet } = useGetMyWallet({ query: { enabled: !!user, queryKey: getGetMyWalletQueryKey() } });
   const [location, navigate] = useLocation();
   const { selections, stake, lastPlacedBet, clearLastPlacedBet } = useBetSlip();
   const [sidebarOpen, setSidebarOpen] = useState(true);

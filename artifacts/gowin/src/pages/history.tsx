@@ -90,7 +90,7 @@ export default function History() {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [liveFixtures, setLiveFixtures] = useState<Map<number, LiveFixtureData>>(new Map());
 
-  const { data: betsData, isLoading } = useGetMyBets({
+  const { data: betsData, isLoading } = useGetMyBets(undefined, {
     query: { queryKey: ["myBets", activeTab] },
   });
 

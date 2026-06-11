@@ -216,7 +216,7 @@ export default function FootballPage() {
   const { data: fixturesData, isLoading } = useListFixtures(
     (selectedLeagueId
       ? { leagueId: selectedLeagueId, status: "upcoming", limit: 50, withMarkets: true }
-      : { status: "upcoming", limit: 20, withMarkets: true }) as ListFixturesParams,
+      : { status: "upcoming", limit: 20, withMarkets: true }) as any,
     { query: { queryKey: ["fixtures", "sports", selectedLeagueId] } },
   );
 

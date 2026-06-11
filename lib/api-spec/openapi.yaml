@@ -549,6 +549,10 @@ paths:
           schema:
             type: integer
             default: 20
+        - name: withMarkets
+          in: query
+          schema:
+            type: boolean
       responses:
         "200":
           description: Fixtures
@@ -1172,6 +1176,14 @@ components:
           type: integer
         name:
           type: string
+        countryName:
+          type: ["string", "null"]
+        countryKey:
+          type: ["string", "null"]
+        countryLogo:
+          type: ["string", "null"]
+        leagueLogo:
+          type: ["string", "null"]
         sport:
           $ref: "#/components/schemas/Sport"
 

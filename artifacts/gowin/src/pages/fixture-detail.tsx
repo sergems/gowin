@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useRoute } from "wouter";
-import { useGetFixture } from "@workspace/api-client-react";
+import { useGetFixture, getGetFixtureQueryKey } from "@workspace/api-client-react";
 import { useBetSlip } from "@/contexts/BetSlipContext";
 import { sortOdds } from "@/lib/sortOdds";
 import { Trophy, CalendarDays, Activity, ChevronLeft } from "lucide-react";
@@ -140,7 +140,7 @@ export default function FixtureDetail() {
   const [activeTab, setActiveTab] = useState("Popular");
 
   const { data: fixture, isLoading } = useGetFixture(fixtureId, {
-    query: { enabled: !!fixtureId },
+    query: { enabled: !!fixtureId, queryKey: getGetFixtureQueryKey(fixtureId) },
   });
 
   if (isLoading) {

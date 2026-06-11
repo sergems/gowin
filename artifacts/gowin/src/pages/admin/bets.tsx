@@ -180,7 +180,7 @@ function BetVerifier() {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function AdminBets() {
-  const { data, isLoading } = useListAllBets({ query: { queryKey: ["allBets"] } });
+  const { data, isLoading } = useListAllBets(undefined, { query: { queryKey: ["allBets"] } });
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const voidMutation = useVoidBet();

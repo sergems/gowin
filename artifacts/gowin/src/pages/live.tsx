@@ -97,7 +97,7 @@ export default function LivePage() {
       leagueMap.set(lid, {
         name: f.league?.name ?? "Unknown",
         countryName: f.league?.countryName ?? undefined,
-        logo: f.league?.logo,
+        logo: f.league?.leagueLogo,
         countryLogo: f.league?.countryLogo,
         fixtures: [],
       });

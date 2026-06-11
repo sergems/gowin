@@ -338,6 +338,10 @@ export const ListLeaguesResponseItem = zod.object({
   "id": zod.number(),
   "sportId": zod.number(),
   "name": zod.string(),
+  "countryName": zod.string().nullish(),
+  "countryKey": zod.string().nullish(),
+  "countryLogo": zod.string().nullish(),
+  "leagueLogo": zod.string().nullish(),
   "sport": zod.object({
   "id": zod.number(),
   "name": zod.string(),
@@ -387,7 +391,8 @@ export const ListFixturesQueryParams = zod.object({
   "sportId": zod.coerce.number().optional(),
   "status": zod.enum(['upcoming', 'live', 'finished']).optional(),
   "page": zod.coerce.number().default(listFixturesQueryPageDefault),
-  "limit": zod.coerce.number().default(listFixturesQueryLimitDefault)
+  "limit": zod.coerce.number().default(listFixturesQueryLimitDefault),
+  "withMarkets": zod.coerce.boolean().optional()
 })
 
 export const ListFixturesResponse = zod.object({
@@ -405,6 +410,10 @@ export const ListFixturesResponse = zod.object({
   "id": zod.number(),
   "sportId": zod.number(),
   "name": zod.string(),
+  "countryName": zod.string().nullish(),
+  "countryKey": zod.string().nullish(),
+  "countryLogo": zod.string().nullish(),
+  "leagueLogo": zod.string().nullish(),
   "sport": zod.object({
   "id": zod.number(),
   "name": zod.string(),
@@ -460,6 +469,10 @@ export const GetFixtureResponse = zod.object({
   "id": zod.number(),
   "sportId": zod.number(),
   "name": zod.string(),
+  "countryName": zod.string().nullish(),
+  "countryKey": zod.string().nullish(),
+  "countryLogo": zod.string().nullish(),
+  "leagueLogo": zod.string().nullish(),
   "sport": zod.object({
   "id": zod.number(),
   "name": zod.string(),
@@ -518,6 +531,10 @@ export const UpdateFixtureResponse = zod.object({
   "id": zod.number(),
   "sportId": zod.number(),
   "name": zod.string(),
+  "countryName": zod.string().nullish(),
+  "countryKey": zod.string().nullish(),
+  "countryLogo": zod.string().nullish(),
+  "leagueLogo": zod.string().nullish(),
   "sport": zod.object({
   "id": zod.number(),
   "name": zod.string(),
@@ -729,6 +746,10 @@ export const GetBetResponse = zod.object({
   "id": zod.number(),
   "sportId": zod.number(),
   "name": zod.string(),
+  "countryName": zod.string().nullish(),
+  "countryKey": zod.string().nullish(),
+  "countryLogo": zod.string().nullish(),
+  "leagueLogo": zod.string().nullish(),
   "sport": zod.object({
   "id": zod.number(),
   "name": zod.string(),
@@ -836,6 +857,10 @@ export const GetTopFixturesResponseItem = zod.object({
   "id": zod.number(),
   "sportId": zod.number(),
   "name": zod.string(),
+  "countryName": zod.string().nullish(),
+  "countryKey": zod.string().nullish(),
+  "countryLogo": zod.string().nullish(),
+  "leagueLogo": zod.string().nullish(),
   "sport": zod.object({
   "id": zod.number(),
   "name": zod.string(),

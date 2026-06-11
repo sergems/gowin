@@ -13,4 +13,5 @@ sportId?: number;
 status?: ListFixturesStatus;
 page?: number;
 limit?: number;
+withMarkets?: boolean;
 };
