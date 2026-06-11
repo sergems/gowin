@@ -77,5 +77,5 @@ async function runFixtureSyncAndSettle() {
 
 setTimeout(() => {
   runFixtureSyncAndSettle();
-  setInterval(runFixtureSyncAndSettle, 30 * 60 * 1000);
+  setInterval(runFixtureSyncAndSettle, 10 * 60 * 1000);
 }, 30_000);
