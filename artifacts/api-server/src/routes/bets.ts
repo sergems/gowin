@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, betsTable, betSelectionsTable, walletsTable, transactionsTable, fixturesTable, usersTable, teamsTable, leaguesTable } from "@workspace/db";
-import { eq, desc, and, count, inArray } from "drizzle-orm";
+import { eq, desc, and, count, inArray, ne } from "drizzle-orm";
 import { requireAuth, requireAdmin, type AuthRequest } from "../middlewares/auth";
 import {
   PlaceBetBody,
@@ -36,6 +36,23 @@ router.post("/bets", requireAuth, async (req: AuthRequest, res): Promise<void> =
     return;
   }
   const { stake, selections } = parsed.data;
+
+  // Validate all fixtures are still open for betting
+  const fixtureIds = [...new Set(selections.map((s) => s.fixtureId))];
+  const fixtures = fixtureIds.length > 0
+    ? await db.select({ id: fixturesTable.id, status: fixturesTable.status }).from(fixturesTable).where(inArray(fixturesTable.id, fixtureIds))
+    : [];
+
+  if (fixtures.length !== fixtureIds.length) {
+    res.status(400).json({ error: "One or more fixtures could not be found." });
+    return;
+  }
+
+  const nonUpcoming = fixtures.filter((f) => f.status !== "upcoming");
+  if (nonUpcoming.length > 0) {
+    res.status(400).json({ error: "One or more events have already started or finished and are no longer open for betting." });
+    return;
+  }
 
   const [userRecord] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
   if (!userRecord?.phoneNumber) {

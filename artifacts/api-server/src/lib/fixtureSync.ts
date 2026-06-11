@@ -75,15 +75,25 @@ export async function syncFixtureResults(): Promise<{ updated: number; errors: n
       // Prefer event_ft_result (full-time) over event_final_result (half-time/incomplete)
       const score = parseScore(event.event_ft_result || event.event_final_result || "");
       const startTime = new Date(`${event.event_date}T${event.event_time ?? "00:00"}:00Z`);
-      // AllSports sometimes returns "" status for finished matches. If the API says "upcoming"
-      // (i.e. empty/unknown status) but a score is already recorded and kick-off is in the past,
-      // treat it as finished. Do NOT override an explicit "live" status — that would wrongly
-      // mark in-progress games (e.g. 1-0 at HT) as finished.
       const rawStatus = mapStatus(event.event_status ?? "");
-      const status: "upcoming" | "live" | "finished" | "cancelled" =
-        rawStatus === "upcoming" && score.home !== null && score.away !== null && startTime < new Date()
-          ? "finished"
-          : rawStatus;
+      const now = new Date();
+      // 2h 30m — enough for 90 min + ET + stoppage
+      const finishedCutoff = new Date(now.getTime() - 150 * 60 * 1000);
+
+      let status: "upcoming" | "live" | "finished" | "cancelled" = rawStatus;
+
+      // API says "upcoming" but score is present and kick-off is past → finished
+      if (status === "upcoming" && score.home !== null && score.away !== null && startTime < now) {
+        status = "finished";
+      }
+      // API returns stale "live" for games well past the match window → finished
+      if (status === "live" && startTime < finishedCutoff) {
+        status = "finished";
+      }
+      // API hasn't updated status yet for a game inside the match window → keep live
+      if (status === "upcoming" && startTime < now && startTime >= finishedCutoff) {
+        status = "live";
+      }
 
       const [existing] = await db
         .select({ id: fixturesTable.id })

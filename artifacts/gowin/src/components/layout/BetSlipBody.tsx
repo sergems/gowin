@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { format } from "date-fns";
 import { fmtUTCDateTimeShort } from "@/lib/formatUTC";
 import { Link } from "wouter";
 import { useBetSlip } from "@/contexts/BetSlipContext";
@@ -17,6 +16,12 @@ interface BetSlipBodyProps {
   onToggle?: () => void;
 }
 
+interface FixtureLiveData {
+  status: string;
+  scoreHome: number | null;
+  scoreAway: number | null;
+}
+
 export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
   const {
     selections, removeSelection, stake, setStake,
@@ -32,6 +37,7 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
   const [loadCodeInput, setLoadCodeInput] = useState("");
   const [loadCodeError, setLoadCodeError] = useState("");
   const [isLoadingCode, setIsLoadingCode] = useState(false);
+  const [liveData, setLiveData] = useState<Map<number, FixtureLiveData>>(new Map());
 
   const prevLen = useRef(selections.length);
   useEffect(() => {
@@ -40,6 +46,43 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
     }
     prevLen.current = selections.length;
   }, [selections.length]);
+
+  // Poll fixture data every 30s to show live scores/status on slip
+  const fixtureIdsKey = selections.map((s) => s.fixtureId).join(",");
+  useEffect(() => {
+    if (selections.length === 0) return;
+
+    async function fetchLiveData() {
+      const ids = [...new Set(selections.map((s) => s.fixtureId))];
+      const results = await Promise.all(
+        ids.map((id) =>
+          fetch(`/api/fixtures/${id}`)
+            .then((r) => (r.ok ? r.json() : null))
+            .catch(() => null),
+        ),
+      );
+      const map = new Map<number, FixtureLiveData>();
+      for (const f of results) {
+        if (f && f.id != null) {
+          map.set(f.id, {
+            status: f.status,
+            scoreHome: f.scoreHome ?? null,
+            scoreAway: f.scoreAway ?? null,
+          });
+        }
+      }
+      setLiveData(map);
+    }
+
+    fetchLiveData();
+    const interval = setInterval(fetchLiveData, 30_000);
+    return () => clearInterval(interval);
+  }, [fixtureIdsKey]);
+
+  const hasStartedSelections = selections.some((s) => {
+    const d = liveData.get(s.fixtureId);
+    return d && d.status !== "upcoming";
+  });
 
   async function handleBookBet() {
     const code = await bookBet();
@@ -160,32 +203,73 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
           </div>
         ) : (
           <div className="space-y-3">
-            {selections.map((sel) => (
-              <div key={sel.oddsId} className="bg-accent/40 border border-border rounded-lg p-3 relative group">
-                <button
-                  onClick={() => removeSelection(sel.oddsId)}
-                  className="absolute top-2 right-2 text-muted-foreground hover:text-destructive transition-colors"
+            {selections.map((sel) => {
+              const live = liveData.get(sel.fixtureId);
+              const isLive = live?.status === "live";
+              const isFinished = live?.status === "finished" || live?.status === "cancelled";
+              const hasScore = live != null && (live.scoreHome != null || live.scoreAway != null);
+
+              return (
+                <div
+                  key={sel.oddsId}
+                  className={`border rounded-lg p-3 relative group transition-colors ${
+                    isLive
+                      ? "bg-red-500/5 border-red-500/30"
+                      : isFinished
+                      ? "bg-accent/20 border-border opacity-70"
+                      : "bg-accent/40 border-border"
+                  }`}
                 >
-                  <X className="w-4 h-4" />
-                </button>
-                <p className="text-xs text-muted-foreground mb-1 pr-6">{sel.fixtureName}</p>
-                <p className="font-semibold text-sm leading-tight">{sel.selection}</p>
-                {(sel.competitionName || sel.startTime) && (
-                  <p className="text-[11px] text-muted-foreground/70 mt-0.5 mb-1 leading-tight">
-                    {[
-                      sel.competitionName,
-                      sel.startTime ? fmtUTCDateTimeShort(sel.startTime) : null,
-                    ].filter(Boolean).join("  ·  ")}
-                  </p>
-                )}
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs bg-background/50 px-2 py-1 rounded text-muted-foreground">
-                    {sel.marketName}
-                  </span>
-                  <span className="font-bold text-primary">{sel.odds.toFixed(2)}</span>
+                  <button
+                    onClick={() => removeSelection(sel.oddsId)}
+                    className="absolute top-2 right-2 text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+
+                  {/* Live / FT status badge */}
+                  {(isLive || isFinished) && (
+                    <div className="flex items-center gap-2 mb-1.5">
+                      {isLive ? (
+                        <span className="flex items-center gap-1 text-[10px] font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                          LIVE
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-muted-foreground bg-accent px-1.5 py-0.5 rounded">
+                          FT
+                        </span>
+                      )}
+                      {hasScore && (
+                        <span className="text-[11px] font-bold tabular-nums">
+                          {live!.scoreHome ?? 0} – {live!.scoreAway ?? 0}
+                        </span>
+                      )}
+                      {isFinished && (
+                        <span className="text-[10px] text-amber-400 ml-auto pr-6">bet may be rejected</span>
+                      )}
+                    </div>
+                  )}
+
+                  <p className="text-xs text-muted-foreground mb-1 pr-6">{sel.fixtureName}</p>
+                  <p className="font-semibold text-sm leading-tight">{sel.selection}</p>
+                  {(sel.competitionName || sel.startTime) && (
+                    <p className="text-[11px] text-muted-foreground/70 mt-0.5 mb-1 leading-tight">
+                      {[
+                        sel.competitionName,
+                        sel.startTime ? fmtUTCDateTimeShort(sel.startTime) : null,
+                      ].filter(Boolean).join("  ·  ")}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-xs bg-background/50 px-2 py-1 rounded text-muted-foreground">
+                      {sel.marketName}
+                    </span>
+                    <span className="font-bold text-primary">{sel.odds.toFixed(2)}</span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -193,6 +277,14 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
       {/* Footer */}
       {selections.length > 0 && (
         <div className="p-4 border-t border-border bg-accent/10 space-y-3 shrink-0">
+          {hasStartedSelections && (
+            <div className="flex items-start gap-2 p-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10">
+              <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+              <p className="text-xs text-amber-300 leading-snug">
+                One or more events have already started. Remove them to place your bet.
+              </p>
+            </div>
+          )}
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Total Odds</span>
@@ -235,7 +327,7 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
           <Button
             className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold h-11"
             onClick={() => placeBet()}
-            disabled={isPlacing || stake <= 0 || !user}
+            disabled={isPlacing || stake <= 0 || !user || hasStartedSelections}
           >
             {isPlacing ? "Placing Bet..." : !user ? "Login to Bet" : "Place Bet"}
           </Button>

@@ -9,6 +9,9 @@ interface BetSlipItem extends BetSelectionInput {
   marketName: string;
   competitionName?: string;
   startTime?: string;
+  fixtureStatus?: string;
+  scoreHome?: number | null;
+  scoreAway?: number | null;
 }
 
 export interface PlacedBetDetails {

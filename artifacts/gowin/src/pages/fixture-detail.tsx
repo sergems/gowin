@@ -300,7 +300,7 @@ export default function FixtureDetail() {
                   fixtureName={fixtureName}
                   competitionName={(fixture as any).league?.name}
                   startTime={fixture.startTime}
-                  disabled={isFinished}
+                  disabled={isFinished || isLive}
                 />
               ))}
             </div>
