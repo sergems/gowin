@@ -4,8 +4,9 @@ import { refreshAllUpcomingOdds } from "./lib/oddsRefresh";
 import { syncFixtureResults } from "./lib/fixtureSync";
 import { autoSettleFinishedFixtures } from "./lib/autoSettle";
 import { autoExpireFixtures } from "./lib/fixtureExpiry";
-import { switchDatabase } from "@workspace/db";
+import { switchDatabase, db, fixturesTable } from "@workspace/db";
 import { getMetaSetting, CUSTOM_DB_KEY } from "./lib/metaDb";
+import { eq, sql } from "drizzle-orm";
 
 const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
@@ -95,3 +96,28 @@ setTimeout(() => {
   runFixtureSyncAndSettle();
   setInterval(runFixtureSyncAndSettle, 5 * 60 * 1000);
 }, 30_000);
+
+// ── Fast live-score sync (every 60 s) ─────────────────────────────────────────
+// Only fires when at least one fixture is currently live, to avoid burning API
+// calls when nothing is in progress.
+async function runLiveSync() {
+  try {
+    const [row] = await db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(fixturesTable)
+      .where(eq(fixturesTable.status, "live"));
+    const liveCount = row?.n ?? 0;
+    if (liveCount > 0) {
+      const result = await syncFixtureResults();
+      logger.info({ ...result, liveCount }, "Live score sync finished");
+      await autoSettleFinishedFixtures();
+    }
+  } catch (err) {
+    logger.error({ err }, "Live score sync failed");
+  }
+}
+
+// Start the live sync loop 90 s after boot (after initial full sync completes)
+setTimeout(() => {
+  setInterval(runLiveSync, 60_000);
+}, 90_000);

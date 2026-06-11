@@ -75,12 +75,13 @@ export async function syncFixtureResults(): Promise<{ updated: number; errors: n
       // Prefer event_ft_result (full-time) over event_final_result (half-time/incomplete)
       const score = parseScore(event.event_ft_result || event.event_final_result || "");
       const startTime = new Date(`${event.event_date}T${event.event_time ?? "00:00"}:00Z`);
-      // If the API already returned a score AND the kick-off is in the past, treat as finished
-      // regardless of what event_status says (AllSports sometimes returns "" for finished matches)
+      // AllSports sometimes returns "" status for finished matches. If the API says "upcoming"
+      // (i.e. empty/unknown status) but a score is already recorded and kick-off is in the past,
+      // treat it as finished. Do NOT override an explicit "live" status — that would wrongly
+      // mark in-progress games (e.g. 1-0 at HT) as finished.
       const rawStatus = mapStatus(event.event_status ?? "");
       const status: "upcoming" | "live" | "finished" | "cancelled" =
-        (rawStatus !== "finished" && rawStatus !== "cancelled" &&
-          score.home !== null && score.away !== null && startTime < new Date())
+        rawStatus === "upcoming" && score.home !== null && score.away !== null && startTime < new Date()
           ? "finished"
           : rawStatus;
 
