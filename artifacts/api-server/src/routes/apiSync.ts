@@ -281,14 +281,16 @@ router.post("/admin/sync-fixtures", requireAdmin, async (_req, res): Promise<voi
       const homeTeamId = await upsertTeam(event.event_home_team, event.home_team_logo ?? null, homeExtId);
       const awayTeamId = await upsertTeam(event.event_away_team, event.away_team_logo ?? null, awayExtId);
 
-      const startTime = new Date(`${event.event_date}T${event.event_time ?? "00:00"}:00Z`);
+      // The AllSports API sends event_time as local time (UTC+2) but labels it as UTC.
+      // Subtract 2 hours to get true UTC so live/upcoming detection stays in sync.
+      const rawStartTime = new Date(`${event.event_date}T${event.event_time ?? "00:00"}:00Z`);
+      const startTime = new Date(rawStartTime.getTime() - 2 * 60 * 60 * 1000);
       const rawStatus = mapStatus(event.event_status ?? "");
       const score = parseScore(event.event_final_result ?? "");
 
       const [existing] = await db.select({ id: fixturesTable.id }).from(fixturesTable).where(eq(fixturesTable.externalId, fixtureExtId)).limit(1);
 
       if (existing) {
-        // Never overwrite startTime for live/finished — AllSports may return local (non-UTC) times.
         const updateFields: Record<string, unknown> = { status: rawStatus, scoreHome: score.home, scoreAway: score.away };
         if (rawStatus === "upcoming") {
           updateFields.startTime = startTime;

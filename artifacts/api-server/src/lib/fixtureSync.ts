@@ -74,10 +74,12 @@ export async function syncFixtureResults(): Promise<{ updated: number; errors: n
       const fixtureExtId = String(event.event_key);
       // Prefer event_ft_result (full-time) over event_final_result (half-time/incomplete)
       const score = parseScore(event.event_ft_result || event.event_final_result || "");
+      // The AllSports API sends event_time as local time (UTC+2) but labels it as UTC.
+      // We subtract 2 hours to convert to true UTC so live/upcoming detection is accurate.
       // NOTE: startTime is only used when inserting NEW fixtures. For existing fixtures we
-      // never overwrite startTime — AllSports may return local (non-UTC) event times and we
-      // don't know the UTC offset per competition.
-      const startTime = new Date(`${event.event_date}T${event.event_time ?? "00:00"}:00Z`);
+      // never overwrite startTime.
+      const rawStartTime = new Date(`${event.event_date}T${event.event_time ?? "00:00"}:00Z`);
+      const startTime = new Date(rawStartTime.getTime() - 2 * 60 * 60 * 1000);
       const rawStatus = mapStatus(event.event_status ?? "");
       const now = new Date();
       // 2h 30m — enough for 90 min + ET + stoppage
