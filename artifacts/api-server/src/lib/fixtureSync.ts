@@ -85,9 +85,9 @@ export async function syncFixtureResults(): Promise<{ updated: number; errors: n
       // 2h 30m window — enough for 90 min + ET + shootout + stoppage
       const finishedCutoff = new Date(now.getTime() - 150 * 60 * 1000);
       // Minimum real time before a match can legitimately finish:
-      // 45 min (1H) + 15 min (HT break) + 35 min (minimum 2H) = 95 min.
+      // 45 min (1H) + stoppage + 15 min (HT break) + 45 min (2H) + stoppage ≈ 115 min.
       // Anything shorter means the API is reporting FT prematurely.
-      const tooEarlyToFinish = new Date(now.getTime() - 95 * 60 * 1000);
+      const tooEarlyToFinish = new Date(now.getTime() - 115 * 60 * 1000);
 
       let apiStatus: "upcoming" | "live" | "finished" | "cancelled" = rawStatus;
 
