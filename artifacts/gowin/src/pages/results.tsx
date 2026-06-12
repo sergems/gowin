@@ -11,6 +11,7 @@ const INITIAL_SHOW = 4;
 const COUNTRY_PRIORITY = ["England", "Spain", "Germany", "Italy", "France", "Netherlands", "Portugal", "Turkey", "Congo DR"];
 
 const UEFA_MATCHERS = [
+  (n: string) => /world cup/i.test(n),
   (n: string) => /champions league/i.test(n) && !/caf|afc/i.test(n),
   (n: string) => /europa league/i.test(n) && !/conference/i.test(n),
   (n: string) => /conference/i.test(n),
@@ -279,7 +280,7 @@ function CountrySection({
           <FlagImg src={country.countryLogo} alt={country.countryName} />
         )}
         <span className={`text-sm font-bold flex-1 text-left ${isUEFA ? "text-primary" : ""}`}>
-          {isUEFA ? "⭐ " : ""}{country.countryName}
+          {isUEFA ? "⭐ " : ""}{isUEFA ? "Featured Competitions" : country.countryName}
         </span>
         <span className="text-xs text-muted-foreground tabular-nums">{total}</span>
         <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`} />
