@@ -42,42 +42,41 @@ function FlagImg({ src, alt }: { src: string | null | undefined; alt: string }) 
 
 function ResultCard({ fixture }: { fixture: any }) {
   const hasScore = fixture.scoreHome !== null && fixture.scoreAway !== null;
+  const homeWin = hasScore && fixture.scoreHome > fixture.scoreAway;
+  const awayWin = hasScore && fixture.scoreAway > fixture.scoreHome;
   return (
     <Link href={`/fixtures/${fixture.id}`}>
-      <div className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/20 transition-all cursor-pointer hover:bg-accent/10">
-        <div className="p-4">
-          <div className="flex items-center justify-end mb-3">
-            <div className="flex items-center gap-1.5 shrink-0">
-              <CalendarDays className="w-3 h-3 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">{fmtUTCTime(fixture.displayTime ?? fixture.startTime)}</span>
-              <span className="text-xs font-semibold text-muted-foreground bg-accent/50 px-1.5 py-0.5 rounded ml-1">FT</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex-1 flex items-center gap-2 min-w-0">
-              <Logo src={fixture.homeTeam?.logo} alt={fixture.homeTeam?.name ?? ""} size={28} />
-              <span className="font-semibold text-sm truncate">{fixture.homeTeam?.name}</span>
-            </div>
-            <div className="shrink-0 min-w-[60px] text-center">
-              {hasScore ? (
-                <div className="flex items-center justify-center gap-2">
-                  <span className={`text-xl font-black ${fixture.scoreHome > fixture.scoreAway ? "text-primary" : "text-foreground"}`}>
-                    {fixture.scoreHome}
-                  </span>
-                  <span className="text-muted-foreground text-sm font-normal">–</span>
-                  <span className={`text-xl font-black ${fixture.scoreAway > fixture.scoreHome ? "text-primary" : "text-foreground"}`}>
-                    {fixture.scoreAway}
-                  </span>
-                </div>
-              ) : (
-                <div className="px-2.5 py-1 rounded-lg bg-accent/50 text-xs font-bold text-muted-foreground">VS</div>
-              )}
-            </div>
-            <div className="flex-1 flex items-center justify-end gap-2 min-w-0">
-              <span className="font-semibold text-sm truncate text-right">{fixture.awayTeam?.name}</span>
-              <Logo src={fixture.awayTeam?.logo} alt={fixture.awayTeam?.name ?? ""} size={28} />
-            </div>
-          </div>
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card hover:bg-accent/10 hover:border-primary/20 transition-all cursor-pointer">
+        {/* Home */}
+        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+          <Logo src={fixture.homeTeam?.logo} alt={fixture.homeTeam?.name ?? ""} size={20} />
+          <span className={`text-xs font-semibold truncate ${homeWin ? "text-foreground" : "text-muted-foreground"}`}>
+            {fixture.homeTeam?.name}
+          </span>
+        </div>
+        {/* Score */}
+        <div className="shrink-0 flex items-center gap-1 px-2">
+          {hasScore ? (
+            <>
+              <span className={`text-sm font-black tabular-nums w-4 text-center ${homeWin ? "text-foreground" : "text-muted-foreground"}`}>{fixture.scoreHome}</span>
+              <span className="text-muted-foreground/50 text-xs">–</span>
+              <span className={`text-sm font-black tabular-nums w-4 text-center ${awayWin ? "text-foreground" : "text-muted-foreground"}`}>{fixture.scoreAway}</span>
+            </>
+          ) : (
+            <span className="text-[10px] font-bold text-muted-foreground px-1">vs</span>
+          )}
+        </div>
+        {/* Away */}
+        <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
+          <span className={`text-xs font-semibold truncate text-right ${awayWin ? "text-foreground" : "text-muted-foreground"}`}>
+            {fixture.awayTeam?.name}
+          </span>
+          <Logo src={fixture.awayTeam?.logo} alt={fixture.awayTeam?.name ?? ""} size={20} />
+        </div>
+        {/* Time + FT */}
+        <div className="shrink-0 flex items-center gap-1 pl-1 border-l border-border/50 ml-1">
+          <span className="text-[10px] text-muted-foreground/60 tabular-nums">{fmtUTCTime(fixture.displayTime ?? fixture.startTime)}</span>
+          <span className="text-[9px] font-bold text-muted-foreground bg-accent/60 px-1 py-px rounded">FT</span>
         </div>
       </div>
     </Link>
@@ -93,35 +92,32 @@ function LiveCard({ fixture }: { fixture: any }) {
   const awayLeading = awayScore > homeScore;
   return (
     <Link href={`/fixtures/${fixture.id}`}>
-      <div className="bg-card border border-red-500/30 rounded-xl overflow-hidden hover:border-red-500/60 transition-all cursor-pointer hover:bg-accent/10">
-        <div className="px-4 pt-3 pb-2 flex items-center justify-between">
-          <span className="flex items-center gap-1 text-xs font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full shrink-0">
-            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />LIVE
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-red-500/30 bg-card hover:border-red-500/60 hover:bg-accent/10 transition-all cursor-pointer">
+        {/* Home */}
+        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+          <Logo src={fixture.homeTeam?.logo} alt={fixture.homeTeam?.name ?? ""} size={20} />
+          <span className={`text-xs font-semibold truncate ${homeLeading ? "text-foreground" : "text-muted-foreground"}`}>
+            {fixture.homeTeam?.name}
           </span>
-          <span className="text-[10px] text-muted-foreground/60">KO {fmtUTCTime(fixture.displayTime ?? fixture.startTime)}</span>
         </div>
-        <div className="px-4 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
-              <Logo src={fixture.homeTeam?.logo} alt={fixture.homeTeam?.name ?? ""} size={36} />
-              <span className={`text-xs font-semibold text-center truncate w-full ${homeLeading ? "text-foreground" : "text-muted-foreground"}`}>
-                {fixture.homeTeam?.name}
-              </span>
-            </div>
-            <div className="shrink-0 flex flex-col items-center gap-0.5">
-              <div className="flex items-center gap-2">
-                <span className={`text-3xl font-black tabular-nums ${homeLeading ? "text-foreground" : "text-muted-foreground"}`}>{homeScore}</span>
-                <span className="text-muted-foreground/40 font-bold text-xl">:</span>
-                <span className={`text-3xl font-black tabular-nums ${awayLeading ? "text-foreground" : "text-muted-foreground"}`}>{awayScore}</span>
-              </div>
-            </div>
-            <div className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
-              <Logo src={fixture.awayTeam?.logo} alt={fixture.awayTeam?.name ?? ""} size={36} />
-              <span className={`text-xs font-semibold text-center truncate w-full ${awayLeading ? "text-foreground" : "text-muted-foreground"}`}>
-                {fixture.awayTeam?.name}
-              </span>
-            </div>
-          </div>
+        {/* Score */}
+        <div className="shrink-0 flex items-center gap-1 px-2">
+          <span className={`text-sm font-black tabular-nums w-4 text-center ${homeLeading ? "text-foreground" : "text-muted-foreground"}`}>{homeScore}</span>
+          <span className="text-muted-foreground/50 text-xs">:</span>
+          <span className={`text-sm font-black tabular-nums w-4 text-center ${awayLeading ? "text-foreground" : "text-muted-foreground"}`}>{awayScore}</span>
+        </div>
+        {/* Away */}
+        <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
+          <span className={`text-xs font-semibold truncate text-right ${awayLeading ? "text-foreground" : "text-muted-foreground"}`}>
+            {fixture.awayTeam?.name}
+          </span>
+          <Logo src={fixture.awayTeam?.logo} alt={fixture.awayTeam?.name ?? ""} size={20} />
+        </div>
+        {/* LIVE badge */}
+        <div className="shrink-0 pl-1 border-l border-border/50 ml-1">
+          <span className="flex items-center gap-1 text-[9px] font-bold text-red-500 bg-red-500/10 px-1.5 py-px rounded-full">
+            <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />LIVE
+          </span>
         </div>
       </div>
     </Link>
