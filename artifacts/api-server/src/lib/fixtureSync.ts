@@ -82,11 +82,21 @@ export async function syncFixtureResults(): Promise<{ updated: number; errors: n
       const startTime = new Date(rawStartTime.getTime() - 2 * 60 * 60 * 1000);
       const rawStatus = mapStatus(event.event_status ?? "");
       const now = new Date();
-      // 2h 30m — enough for 90 min + ET + stoppage
+      // 2h 30m window — enough for 90 min + ET + shootout + stoppage
       const finishedCutoff = new Date(now.getTime() - 150 * 60 * 1000);
+      // Minimum real time before a match can legitimately finish:
+      // 45 min (1H) + 15 min (HT break) + 35 min (minimum 2H) = 95 min.
+      // Anything shorter means the API is reporting FT prematurely.
+      const tooEarlyToFinish = new Date(now.getTime() - 95 * 60 * 1000);
 
       let apiStatus: "upcoming" | "live" | "finished" | "cancelled" = rawStatus;
 
+      // API says "finished" but not enough real time has elapsed (e.g. FT at 70' game-clock).
+      // HT break is not counted in game clock — 70' game-clock ≈ 85-90 min real time, so
+      // we must not trust "finished" until at least 95 min have passed since kick-off.
+      if (apiStatus === "finished" && startTime >= tooEarlyToFinish && startTime < now) {
+        apiStatus = "live";
+      }
       // API says "upcoming" but score is present and kick-off is past.
       // Only mark finished if the match window has elapsed — a score during play
       // (e.g. 0-1 at 62') must not be treated as FT.
