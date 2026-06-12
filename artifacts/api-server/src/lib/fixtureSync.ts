@@ -87,9 +87,11 @@ export async function syncFixtureResults(): Promise<{ updated: number; errors: n
 
       let apiStatus: "upcoming" | "live" | "finished" | "cancelled" = rawStatus;
 
-      // API says "upcoming" but score is present and kick-off is past → finished
+      // API says "upcoming" but score is present and kick-off is past.
+      // Only mark finished if the match window has elapsed — a score during play
+      // (e.g. 0-1 at 62') must not be treated as FT.
       if (apiStatus === "upcoming" && score.home !== null && score.away !== null && startTime < now) {
-        apiStatus = "finished";
+        apiStatus = startTime < finishedCutoff ? "finished" : "live";
       }
       // API returns stale "live" for games well past the match window → finished
       if (apiStatus === "live" && startTime < finishedCutoff) {
