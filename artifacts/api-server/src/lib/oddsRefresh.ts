@@ -95,8 +95,8 @@ async function refreshFixture(apiKey: string, fixtureId: number, externalId: str
     );
   }
 
-  // ── Over/Under (5 lines) ──────────────────────────────────────────────────
-  for (const line of ["0.5", "1.5", "2.5", "3.5", "4.5"]) {
+  // ── Over/Under (all lines the API provides: 0.5 – 5.5) ──────────────────────
+  for (const line of ["0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", "4.5", "5", "5.5"]) {
     const overKey = `o+${line}`;
     const underKey = `u+${line}`;
     if (valid(bk[overKey]) && valid(bk[underKey])) {
@@ -108,29 +108,33 @@ async function refreshFixture(apiKey: string, fixtureId: number, externalId: str
     }
   }
 
-  // ── Asian Handicap — first valid line from API ─────────────────────────────
+  // ── Asian Handicap — all valid lines, each stored as its own market ─────────
   const ahPairs: [string, string, string, string][] = [
-    ["ah-1_1", "ah-1_2", "-1", "+1"],
+    ["ah-4_1",   "ah-4_2",   "-4",   "+4"  ],
+    ["ah-3.5_1", "ah-3.5_2", "-3.5", "+3.5"],
+    ["ah-3_1",   "ah-3_2",   "-3",   "+3"  ],
+    ["ah-2.5_1", "ah-2.5_2", "-2.5", "+2.5"],
+    ["ah-2_1",   "ah-2_2",   "-2",   "+2"  ],
     ["ah-1.5_1", "ah-1.5_2", "-1.5", "+1.5"],
-    ["ah0_1", "ah0_2", "0", "0"],
-    ["ah+1_1", "ah+1_2", "+1", "-1"],
+    ["ah-1_1",   "ah-1_2",   "-1",   "+1"  ],
+    ["ah0_1",    "ah0_2",    "0",    "0"   ],
+    ["ah+0.5_1", "ah+0.5_2", "+0.5", "-0.5"],
+    ["ah+1_1",   "ah+1_2",   "+1",   "-1"  ],
     ["ah+1.5_1", "ah+1.5_2", "+1.5", "-1.5"],
+    ["ah+2_1",   "ah+2_2",   "+2",   "-2"  ],
+    ["ah+2.5_1", "ah+2.5_2", "+2.5", "-2.5"],
+    ["ah+3_1",   "ah+3_2",   "+3",   "-3"  ],
+    ["ah+3.5_1", "ah+3.5_2", "+3.5", "-3.5"],
+    ["ah+4_1",   "ah+4_2",   "+4",   "-4"  ],
+    ["ah+4.5_1", "ah+4.5_2", "+4.5", "-4.5"],
   ];
   for (const [k1, k2, l1, l2] of ahPairs) {
     if (valid(bk[k1]) && valid(bk[k2])) {
-      // Re-use any existing AH market or create a new one
-      const existingAH = [...byType.entries()].find(([t]) => t.startsWith("Asian Handicap"));
-      let m: any;
-      if (existingAH) {
-        m = existingAH[1];
-      } else {
-        [m] = await db.insert(marketsTable).values({ fixtureId, marketType: `Asian Handicap ${l1}` }).returning();
-      }
+      const m = await getOrCreateMarket(fixtureId, `Asian Handicap ${l1}`, byType);
       rows.push(
         { marketId: m.id, selection: `Home (${l1})`, oddsValue: Number(bk[k1]).toFixed(2) },
         { marketId: m.id, selection: `Away (${l2})`, oddsValue: Number(bk[k2]).toFixed(2) },
       );
-      break;
     }
   }
 

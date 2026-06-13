@@ -113,8 +113,8 @@ async function updateFixture(fixtureId, externalId) {
     );
   }
 
-  // ── Over/Under lines ──────────────────────────────────────────────────────
-  for (const line of ["0.5", "1.5", "2.5", "3.5", "4.5"]) {
+  // ── Over/Under lines (all API lines: 0.5 – 5.5) ──────────────────────────
+  for (const line of ["0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", "4.5", "5", "5.5"]) {
     if (valid(bk[`o+${line}`]) && valid(bk[`u+${line}`])) {
       const mId = await getOrCreateMarket(fixtureId, `Over/Under ${line}`);
       oddsRows.push(
@@ -124,27 +124,33 @@ async function updateFixture(fixtureId, externalId) {
     }
   }
 
-  // ── Asian Handicap — first valid line ─────────────────────────────────────
+  // ── Asian Handicap — all valid lines, each as its own market ──────────────
   const ahPairs = [
-    ["ah-1_1", "ah-1_2", "-1", "+1"],
+    ["ah-4_1",   "ah-4_2",   "-4",   "+4"  ],
+    ["ah-3.5_1", "ah-3.5_2", "-3.5", "+3.5"],
+    ["ah-3_1",   "ah-3_2",   "-3",   "+3"  ],
+    ["ah-2.5_1", "ah-2.5_2", "-2.5", "+2.5"],
+    ["ah-2_1",   "ah-2_2",   "-2",   "+2"  ],
     ["ah-1.5_1", "ah-1.5_2", "-1.5", "+1.5"],
-    ["ah0_1", "ah0_2", "0", "0"],
-    ["ah+1_1", "ah+1_2", "+1", "-1"],
+    ["ah-1_1",   "ah-1_2",   "-1",   "+1"  ],
+    ["ah0_1",    "ah0_2",    "0",    "0"   ],
+    ["ah+0.5_1", "ah+0.5_2", "+0.5", "-0.5"],
+    ["ah+1_1",   "ah+1_2",   "+1",   "-1"  ],
     ["ah+1.5_1", "ah+1.5_2", "+1.5", "-1.5"],
+    ["ah+2_1",   "ah+2_2",   "+2",   "-2"  ],
+    ["ah+2.5_1", "ah+2.5_2", "+2.5", "-2.5"],
+    ["ah+3_1",   "ah+3_2",   "+3",   "-3"  ],
+    ["ah+3.5_1", "ah+3.5_2", "+3.5", "-3.5"],
+    ["ah+4_1",   "ah+4_2",   "+4",   "-4"  ],
+    ["ah+4.5_1", "ah+4.5_2", "+4.5", "-4.5"],
   ];
   for (const [k1, k2, l1, l2] of ahPairs) {
     if (valid(bk[k1]) && valid(bk[k2])) {
-      // Re-use any existing AH market or create new
-      const { rows: ahRows } = await db.query(
-        `SELECT id FROM markets WHERE fixture_id = $1 AND market_type LIKE 'Asian Handicap%' LIMIT 1`,
-        [fixtureId]
-      );
-      const mId = ahRows[0]?.id ?? (await getOrCreateMarket(fixtureId, `Asian Handicap ${l1}`));
+      const mId = await getOrCreateMarket(fixtureId, `Asian Handicap ${l1}`);
       oddsRows.push(
         [mId, `Home (${l1})`, Number(bk[k1]).toFixed(2)],
         [mId, `Away (${l2})`, Number(bk[k2]).toFixed(2)],
       );
-      break;
     }
   }
 

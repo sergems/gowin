@@ -12,41 +12,25 @@ import { Link } from "wouter";
 const CATEGORIES: { label: string; types: string[]; prefix?: string }[] = [
   {
     label: "Popular",
-    types: ["1X2", "Double Chance", "Draw No Bet", "Both Teams To Score", "Over/Under 2.5"],
+    types: ["1X2", "Double Chance", "Both Teams To Score", "Over/Under 2.5", "Over/Under 1.5"],
   },
   {
     label: "Goals",
     types: [
-      "Over/Under 0.5", "Over/Under 1.5", "Over/Under 2.5", "Over/Under 3.5", "Over/Under 4.5",
-      "Both Teams To Score", "Correct Score",
+      "Over/Under 0.5", "Over/Under 1", "Over/Under 1.5", "Over/Under 2",
+      "Over/Under 2.5", "Over/Under 3", "Over/Under 3.5", "Over/Under 4",
+      "Over/Under 4.5", "Over/Under 5", "Over/Under 5.5",
+      "Both Teams To Score",
     ],
   },
   {
     label: "Match",
-    types: ["1X2", "Double Chance", "Draw No Bet", "European Handicap", "Half-Time Result", "Half-Time/Full-Time"],
-  },
-  {
-    label: "Half-Time",
-    types: ["Half-Time Result", "HT Total Goals 0.5", "HT Total Goals 1.5", "HT Total Goals 2.5", "Half-Time/Full-Time"],
-  },
-  {
-    label: "Either Half",
-    types: ["Home Win Either Half", "Away Win Either Half"],
+    types: ["1X2", "Double Chance", "Both Teams To Score"],
   },
   {
     label: "Handicap",
-    types: ["Asian Handicap 0", "Asian Handicap -1", "Asian Handicap +1", "Asian Handicap -1.5", "Asian Handicap +1.5", "European Handicap", "Draw No Bet"],
-  },
-  {
-    label: "Corners",
-    types: [
-      "Over/Under Corners 7.5", "Over/Under Corners 8.5", "Over/Under Corners 9.5",
-      "Over/Under Corners 10.5", "Over/Under Corners 11.5", "Over/Under Corners 12.5",
-    ],
-  },
-  {
-    label: "Cards",
-    types: ["Over/Under Yellow Cards"],
+    types: [],
+    prefix: "Asian Handicap",
   },
 ];
 
@@ -169,14 +153,10 @@ export default function FixtureDetail() {
   for (const m of markets) marketsByType.set(m.marketType, m);
 
   // Filter out categories with no markets, build "All" tab
-  const availableCategories = CATEGORIES.filter((cat) =>
-    cat.types.some((t) => {
-      if (t.startsWith("Asian Handicap")) {
-        return markets.some((m) => m.marketType.startsWith("Asian Handicap"));
-      }
-      return marketsByType.has(t);
-    })
-  );
+  const availableCategories = CATEGORIES.filter((cat) => {
+    if (cat.prefix) return markets.some((m) => m.marketType.startsWith(cat.prefix!));
+    return cat.types.some((t) => marketsByType.has(t));
+  });
 
   // Build tab list: Popular + available categories + All
   const tabs = ["Popular", ...availableCategories.filter((c) => c.label !== "Popular").map((c) => c.label), "All"];
@@ -186,10 +166,8 @@ export default function FixtureDetail() {
     if (tab === "All") return markets;
     const cat = CATEGORIES.find((c) => c.label === tab);
     if (!cat) return [];
+    if (cat.prefix) return markets.filter((m) => m.marketType.startsWith(cat.prefix!));
     return cat.types.flatMap((t) => {
-      if (t.startsWith("Asian Handicap")) {
-        return markets.filter((m) => m.marketType.startsWith("Asian Handicap"));
-      }
       const m = marketsByType.get(t);
       return m ? [m] : [];
     }).filter((m, i, arr) => arr.findIndex((x) => x.id === m.id) === i);
