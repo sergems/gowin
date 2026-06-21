@@ -1,32 +1,10 @@
 import { Router } from "express";
-import { db, branchesTable, usersTable, betsTable } from "@workspace/db";
+import { db, branchesTable, usersTable, betsTable, walletsTable, transactionsTable } from "@workspace/db";
 import { branchFloatAllocationsTable, cashUpSessionsTable } from "@workspace/db";
-import { eq, and, gte, lte, sum, desc } from "drizzle-orm";
+import { eq, and, gte, lte, sum, desc, or } from "drizzle-orm";
 import { requireAdmin, requireBranchAdmin, type AuthRequest } from "../middlewares/auth";
 
 const router = Router();
-
-// ── POST /api/admin/branches/:id/credit — super admin credits a branch ────────
-router.post("/admin/branches/:id/credit", requireAdmin, async (req, res): Promise<void> => {
-  const branchId = parseInt(req.params.id);
-  const { amount, notes } = req.body as { amount: number; notes?: string };
-
-  if (!amount || typeof amount !== "number" || amount <= 0) {
-    res.status(400).json({ error: "Amount must be a positive number" });
-    return;
-  }
-
-  const [branch] = await db.select().from(branchesTable).where(eq(branchesTable.id, branchId)).limit(1);
-  if (!branch) { res.status(404).json({ error: "Branch not found" }); return; }
-
-  const newBalance = parseFloat(branch.balance as any ?? "0") + amount;
-  const [updated] = await db.update(branchesTable)
-    .set({ balance: String(newBalance) } as any)
-    .where(eq(branchesTable.id, branchId))
-    .returning();
-
-  res.json({ ok: true, branch: { id: updated.id, name: updated.name, balance: parseFloat(updated.balance as any ?? "0") } });
-});
 
 // ── GET /api/branch/floats — list floats for a given date ─────────────────────
 router.get("/branch/floats", requireBranchAdmin, async (req: AuthRequest, res): Promise<void> => {
@@ -118,6 +96,21 @@ router.post("/branch/floats", requireBranchAdmin, async (req: AuthRequest, res):
     status: "open",
   }).returning();
 
+  // Credit agent's wallet so they can place bets
+  const [agentWallet] = await db.select().from(walletsTable).where(eq(walletsTable.userId, agentId)).limit(1);
+  if (agentWallet) {
+    const newAgentBalance = parseFloat(agentWallet.balance) + amount;
+    await db.update(walletsTable)
+      .set({ balance: String(newAgentBalance.toFixed(2)) })
+      .where(eq(walletsTable.userId, agentId));
+    await db.insert(transactionsTable).values({
+      walletId: agentWallet.id,
+      amount: String(amount),
+      type: "credit",
+      description: `Float allocation – ${shiftLabel} shift (${shiftDate})`,
+    });
+  }
+
   res.status(201).json({ allocation: { ...alloc, amount: parseFloat(alloc.amount as any) } });
 });
 
@@ -137,25 +130,17 @@ router.get("/branch/floats/:id/preview", requireBranchAdmin, async (req: AuthReq
   const shiftStart = alloc.createdAt;
   const now = new Date();
 
-  // Sum all bets placed by this agent since float was allocated
+  // Sum all bets placed by this agent since float was allocated (via agent interface OR regular UI)
+  const agentBetFilter = or(eq(betsTable.agentId, alloc.agentId), eq(betsTable.userId, alloc.agentId));
   const [betStats] = await db
     .select({ total: sum(betsTable.stake) })
     .from(betsTable)
-    .where(and(
-      eq(betsTable.agentId, alloc.agentId),
-      gte(betsTable.createdAt, shiftStart),
-      lte(betsTable.createdAt, now),
-    ));
+    .where(and(agentBetFilter, gte(betsTable.createdAt, shiftStart), lte(betsTable.createdAt, now)));
 
   const [payoutStats] = await db
     .select({ total: sum(betsTable.potentialWin) })
     .from(betsTable)
-    .where(and(
-      eq(betsTable.agentId, alloc.agentId),
-      eq(betsTable.status, "won"),
-      gte(betsTable.createdAt, shiftStart),
-      lte(betsTable.createdAt, now),
-    ));
+    .where(and(agentBetFilter, eq(betsTable.status, "won"), gte(betsTable.createdAt, shiftStart), lte(betsTable.createdAt, now)));
 
   const totalBets = parseFloat(betStats?.total as any ?? "0") || 0;
   const totalPayouts = parseFloat(payoutStats?.total as any ?? "0") || 0;
@@ -187,15 +172,16 @@ router.post("/branch/floats/:id/cashup", requireBranchAdmin, async (req: AuthReq
   const shiftStart = alloc.createdAt;
   const now = new Date();
 
+  const cashUpBetFilter = or(eq(betsTable.agentId, alloc.agentId), eq(betsTable.userId, alloc.agentId));
   const [betStats] = await db
     .select({ total: sum(betsTable.stake) })
     .from(betsTable)
-    .where(and(eq(betsTable.agentId, alloc.agentId), gte(betsTable.createdAt, shiftStart), lte(betsTable.createdAt, now)));
+    .where(and(cashUpBetFilter, gte(betsTable.createdAt, shiftStart), lte(betsTable.createdAt, now)));
 
   const [payoutStats] = await db
     .select({ total: sum(betsTable.potentialWin) })
     .from(betsTable)
-    .where(and(eq(betsTable.agentId, alloc.agentId), eq(betsTable.status, "won"), gte(betsTable.createdAt, shiftStart), lte(betsTable.createdAt, now)));
+    .where(and(cashUpBetFilter, eq(betsTable.status, "won"), gte(betsTable.createdAt, shiftStart), lte(betsTable.createdAt, now)));
 
   const totalBets = parseFloat(betStats?.total as any ?? "0") || 0;
   const totalPayouts = parseFloat(payoutStats?.total as any ?? "0") || 0;
@@ -228,6 +214,21 @@ router.post("/branch/floats/:id/cashup", requireBranchAdmin, async (req: AuthReq
   await db.update(branchesTable)
     .set({ balance: String(currentBalance + cashReturned) } as any)
     .where(eq(branchesTable.id, branchId));
+
+  // Debit agent's wallet for the cash they're physically returning
+  const [agentWallet] = await db.select().from(walletsTable).where(eq(walletsTable.userId, alloc.agentId)).limit(1);
+  if (agentWallet && cashReturned > 0) {
+    const remaining = Math.max(0, parseFloat(agentWallet.balance) - cashReturned);
+    await db.update(walletsTable)
+      .set({ balance: String(remaining.toFixed(2)) })
+      .where(eq(walletsTable.userId, alloc.agentId));
+    await db.insert(transactionsTable).values({
+      walletId: agentWallet.id,
+      amount: String(cashReturned),
+      type: "debit",
+      description: `Float return – cash up (shift ${alloc.shiftDate})`,
+    });
+  }
 
   res.json({ ok: true, variance, expectedReturn, cashReturned });
 });
