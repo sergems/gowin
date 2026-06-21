@@ -5,20 +5,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { AlertCircle, Lock } from "lucide-react";
+import { AlertCircle, Lock, ShieldOff } from "lucide-react";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { login, isLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
   const [lockedError, setLockedError] = useState(false);
+  const [inlineError, setInlineError] = useState<{ icon: "alert" | "shield"; message: string } | null>(null);
+
+  function clearError() {
+    setInlineError(null);
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLockedError(false);
+    setInlineError(null);
     try {
       const result = await login({ email, password });
       if (result?.mustChangePassword) {
@@ -33,17 +37,15 @@ export default function Login() {
         return;
       }
       if (code === "account_disabled_admin") {
-        toast({
-          title: "Account disabled",
-          description: "Your account has been disabled by an administrator. Please contact support.",
-          variant: "destructive",
+        setInlineError({
+          icon: "shield",
+          message: "Your account has been suspended by an administrator. Please contact support.",
         });
         return;
       }
-      toast({
-        title: "Login failed",
-        description: err.message || "Invalid credentials",
-        variant: "destructive",
+      setInlineError({
+        icon: "alert",
+        message: "The email or password you entered is incorrect. Please check your details and try again.",
       });
     }
   };
@@ -87,7 +89,7 @@ export default function Login() {
                   type="email"
                   placeholder="m@example.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => { setEmail(e.target.value); clearError(); }}
                   required
                 />
               </div>
@@ -102,13 +104,28 @@ export default function Login() {
                   id="password"
                   type="password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => { setPassword(e.target.value); clearError(); }}
                   required
                 />
               </div>
-              <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isLoading}>
+
+              <Button
+                type="submit"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+                disabled={isLoading}
+              >
                 {isLoading ? "Signing in..." : "Sign In"}
               </Button>
+
+              {inlineError && (
+                <div className="flex items-start gap-3 px-3 py-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                  {inlineError.icon === "shield"
+                    ? <ShieldOff className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                    : <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />}
+                  <p className="text-sm text-destructive leading-snug">{inlineError.message}</p>
+                </div>
+              )}
+
               <div className="text-center text-sm">
                 Don't have an account?{" "}
                 <Link href="/register" className="text-primary hover:underline">
