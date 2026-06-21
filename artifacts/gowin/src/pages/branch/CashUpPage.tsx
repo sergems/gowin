@@ -1,62 +1,23 @@
 import { useState, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import {
-  DollarSign, Users, Plus, CheckCircle2, AlertTriangle, TrendingUp,
-  TrendingDown, Clock, ChevronDown, ChevronUp, RefreshCw, X,
-} from "lucide-react";
+import { DollarSign, Users, Plus, CheckCircle2, AlertTriangle, Clock, ChevronDown, ChevronUp, RefreshCw, X } from "lucide-react";
 import { format } from "date-fns";
 
-interface Agent {
-  id: number;
-  username: string;
-  firstName: string | null;
-  lastName: string | null;
-  commissionRate: number;
-}
-
 interface FloatAllocation {
-  id: number;
-  agentId: number;
-  agentUsername: string;
-  agentName: string | null;
-  amount: number;
-  shiftDate: string;
-  shiftLabel: string;
-  status: "open" | "cashed_up";
-  notes: string | null;
-  createdAt: string;
+  id: number; agentId: number; agentUsername: string; agentName: string | null;
+  amount: number; shiftDate: string; shiftLabel: string; status: "open" | "cashed_up";
+  notes: string | null; createdAt: string;
 }
-
-interface CashUpPreview {
-  openingFloat: number;
-  totalBets: number;
-  expectedReturn: number;
-}
-
+interface CashUpPreview { openingFloat: number; totalBets: number; expectedReturn: number; }
 interface CashUpSession {
-  id: number;
-  agentUsername: string;
-  agentName: string | null;
-  performedByUsername: string;
-  openingFloat: number;
-  totalBets: number;
-  totalPayouts: number;
-  expectedReturn: number;
-  cashReturned: number;
-  variance: number;
-  shiftDate: string;
-  shiftLabel: string;
-  notes: string | null;
-  createdAt: string;
+  id: number; agentUsername: string; agentName: string | null;
+  openingFloat: number; totalBets: number; totalPayouts: number;
+  expectedReturn: number; cashReturned: number; variance: number;
+  shiftDate: string; shiftLabel: string; notes: string | null; createdAt: string;
 }
-
-interface BranchInfo {
-  id: number;
-  name: string;
-  balance: number | string;
-}
+interface BranchInfo { id: number; name: string; balance: number | string; }
 
 async function apiFetch(path: string, method: string, body: object | null, token: string | null) {
   const res = await fetch(path, {
@@ -71,26 +32,10 @@ async function apiFetch(path: string, method: string, body: object | null, token
 
 const SHIFT_LABELS = ["Morning", "Afternoon", "Evening", "Night", "Day"];
 
-function VarianceBadge({ variance }: { variance: number }) {
-  if (Math.abs(variance) < 0.01) {
-    return (
-      <span className="flex items-center gap-1 text-emerald-400 font-bold">
-        <CheckCircle2 className="w-4 h-4" /> Balanced
-      </span>
-    );
-  }
-  if (variance < 0) {
-    return (
-      <span className="flex items-center gap-1 text-red-400 font-bold">
-        <AlertTriangle className="w-4 h-4" /> Short ${Math.abs(variance).toFixed(2)}
-      </span>
-    );
-  }
-  return (
-    <span className="flex items-center gap-1 text-amber-400 font-bold">
-      <TrendingUp className="w-4 h-4" /> Surplus ${variance.toFixed(2)}
-    </span>
-  );
+function VariancePill({ v }: { v: number }) {
+  if (Math.abs(v) < 0.01) return <span className="text-xs text-emerald-400 font-bold">✓ Balanced</span>;
+  if (v < 0) return <span className="text-xs text-red-400 font-bold">▼ Short ${Math.abs(v).toFixed(2)}</span>;
+  return <span className="text-xs text-amber-400 font-bold">▲ +${v.toFixed(2)}</span>;
 }
 
 export default function CashUpPage() {
@@ -109,7 +54,7 @@ export default function CashUpPage() {
   const [cashReturned, setCashReturned] = useState("");
   const [cashUpNotes, setCashUpNotes] = useState("");
   const [loadingPreview, setLoadingPreview] = useState(false);
-  const [submittingCashUp, setSubmittingCashUp] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -118,94 +63,79 @@ export default function CashUpPage() {
     queryKey: ["branch-info-cashup"],
     queryFn: () => fetch("/api/branch/info", { headers }).then(r => r.json()).then(d => d.branch),
   });
-
-  const branchBalance = parseFloat(String(branchInfo?.balance ?? "0"));
-
-  const { data: agentsData } = useQuery<{ agents: Agent[] }>({
+  const { data: agentsData } = useQuery<{ agents: { id: number; username: string; firstName: string|null; lastName: string|null }[] }>({
     queryKey: ["branch-agents-cashup"],
     queryFn: () => fetch("/api/branch/agents", { headers }).then(r => r.json()),
   });
-
   const { data: floatsData, isLoading: floatsLoading } = useQuery<{ floats: FloatAllocation[] }>({
     queryKey: ["branch-floats", shiftDate],
     queryFn: () => fetch(`/api/branch/floats?date=${shiftDate}`, { headers }).then(r => r.json()),
     refetchInterval: 30000,
   });
-
   const { data: historyData } = useQuery<{ sessions: CashUpSession[] }>({
     queryKey: ["branch-cashups"],
     queryFn: () => fetch("/api/branch/cashups", { headers }).then(r => r.json()),
     enabled: historyOpen,
   });
 
-  const agents: Agent[] = agentsData?.agents ?? [];
+  const agents = agentsData?.agents ?? [];
   const floats: FloatAllocation[] = floatsData?.floats ?? [];
   const sessions: CashUpSession[] = historyData?.sessions ?? [];
-
   const openFloats = floats.filter(f => f.status === "open");
   const closedFloats = floats.filter(f => f.status === "cashed_up");
+  const branchBalance = parseFloat(String(branchInfo?.balance ?? "0"));
 
-  const shiftStats = useMemo(() => {
-    const totalAllocated = floats.reduce((s, f) => s + f.amount, 0);
-    const doneCount = closedFloats.length;
-    const openCount = openFloats.length;
-    return { totalAllocated, doneCount, openCount };
-  }, [floats, openFloats, closedFloats]);
+  const stats = useMemo(() => ({
+    totalAllocated: floats.reduce((s, f) => s + f.amount, 0),
+    open: openFloats.length,
+    done: closedFloats.length,
+  }), [floats, openFloats.length, closedFloats.length]);
 
   const handleAllocate = async (e: React.FormEvent) => {
     e.preventDefault();
     setAllocating(true);
     try {
-      await apiFetch("/api/branch/floats", "POST", {
+      const res = await apiFetch("/api/branch/floats", "POST", {
         agentId: parseInt(allocForm.agentId),
         amount: parseFloat(allocForm.amount),
-        shiftDate,
-        shiftLabel: allocForm.shiftLabel,
-        notes: allocForm.notes || null,
+        shiftDate, shiftLabel: allocForm.shiftLabel, notes: allocForm.notes || null,
       }, token);
-      toast({ title: "Float allocated", description: `$${parseFloat(allocForm.amount).toFixed(2)} sent to agent` });
+      const msg = res.accumulated
+        ? `Added $${parseFloat(allocForm.amount).toFixed(2)} to existing float`
+        : `$${parseFloat(allocForm.amount).toFixed(2)} float allocated`;
+      toast({ title: "Float allocated", description: msg });
       qc.invalidateQueries({ queryKey: ["branch-floats"] });
       qc.invalidateQueries({ queryKey: ["branch-info-cashup"] });
       setAllocForm({ agentId: "", amount: "", shiftLabel: "Day", notes: "" });
       setShowAllocate(false);
     } catch (err: any) {
       toast({ title: "Failed", description: err.message, variant: "destructive" });
-    } finally {
-      setAllocating(false);
-    }
+    } finally { setAllocating(false); }
   };
 
-  const openCashUp = async (allocationId: number) => {
+  const openCashUp = async (id: number) => {
     setLoadingPreview(true);
-    setCashUpId(allocationId);
+    setCashUpId(id);
     setCashReturned("");
     setCashUpNotes("");
     try {
-      const data = await apiFetch(`/api/branch/floats/${allocationId}/preview`, "GET", null, token);
+      const data = await apiFetch(`/api/branch/floats/${id}/preview`, "GET", null, token);
       setCashUpPreview(data);
     } catch (err: any) {
-      toast({ title: "Failed to load preview", description: err.message, variant: "destructive" });
+      toast({ title: "Preview failed", description: err.message, variant: "destructive" });
       setCashUpId(null);
-    } finally {
-      setLoadingPreview(false);
-    }
+    } finally { setLoadingPreview(false); }
   };
 
   const handleCashUp = async () => {
     if (!cashUpId || !cashUpPreview || cashReturned === "") return;
-    setSubmittingCashUp(true);
+    setSubmitting(true);
     try {
       await apiFetch(`/api/branch/floats/${cashUpId}/cashup`, "POST", {
-        cashReturned: parseFloat(cashReturned),
-        notes: cashUpNotes || null,
+        cashReturned: parseFloat(cashReturned), notes: cashUpNotes || null,
       }, token);
-      const variance = parseFloat(cashReturned) - cashUpPreview.expectedReturn;
-      const msg = Math.abs(variance) < 0.01
-        ? "Sheets balanced perfectly."
-        : variance < 0
-        ? `Short by $${Math.abs(variance).toFixed(2)} — flagged.`
-        : `Surplus of $${variance.toFixed(2)} returned to branch.`;
-      toast({ title: "Cash up complete", description: msg });
+      const v = parseFloat(cashReturned) - cashUpPreview.expectedReturn;
+      toast({ title: "Cash up done", description: Math.abs(v) < 0.01 ? "Balanced." : v < 0 ? `Short $${Math.abs(v).toFixed(2)}` : `Surplus $${v.toFixed(2)}` });
       qc.invalidateQueries({ queryKey: ["branch-floats"] });
       qc.invalidateQueries({ queryKey: ["branch-cashups"] });
       qc.invalidateQueries({ queryKey: ["branch-info-cashup"] });
@@ -213,102 +143,84 @@ export default function CashUpPage() {
       setCashUpPreview(null);
     } catch (err: any) {
       toast({ title: "Cash up failed", description: err.message, variant: "destructive" });
-    } finally {
-      setSubmittingCashUp(false);
-    }
+    } finally { setSubmitting(false); }
   };
 
   const cashReturnedNum = parseFloat(cashReturned) || 0;
   const liveVariance = cashUpPreview ? cashReturnedNum - cashUpPreview.expectedReturn : 0;
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 max-w-4xl mx-auto space-y-4">
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <DollarSign className="w-7 h-7 text-emerald-400" />
-            Cash Up
+          <h1 className="text-xl font-bold text-white flex items-center gap-2">
+            <DollarSign className="w-5 h-5 text-emerald-400" /> Cash Up
           </h1>
-          <p className="text-zinc-400 mt-1">Manage daily float allocation and end-of-shift reconciliation</p>
+          <p className="text-xs text-zinc-400">Float allocation & end-of-shift reconciliation</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2 text-right">
-            <p className="text-xs text-zinc-500">Branch Balance</p>
-            <p className="text-lg font-black text-emerald-400">${branchBalance.toFixed(2)}</p>
+        <div className="flex items-center gap-2">
+          <div className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-right">
+            <p className="text-[10px] text-zinc-500">Branch Balance</p>
+            <p className="text-sm font-black text-emerald-400">${branchBalance.toFixed(2)}</p>
           </div>
-          <input
-            type="date"
-            value={shiftDate}
-            onChange={e => setShiftDate(e.target.value)}
-            className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
-          />
-          <button
-            onClick={() => setShowAllocate(true)}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
-          >
-            <Plus className="w-4 h-4" /> Allocate Float
+          <input type="date" value={shiftDate} onChange={e => setShiftDate(e.target.value)}
+            className="bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+          <button onClick={() => setShowAllocate(true)}
+            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
+            <Plus className="w-3.5 h-3.5" /> Allocate Float
           </button>
         </div>
       </div>
 
-      {/* Shift summary strip */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* Stats strip */}
+      <div className="grid grid-cols-3 gap-2">
         {[
-          { label: "Total Allocated",  value: `$${shiftStats.totalAllocated.toFixed(2)}`, icon: DollarSign, color: "text-emerald-400" },
-          { label: "Open Shifts",      value: shiftStats.openCount,                        icon: Clock,      color: "text-amber-400" },
-          { label: "Cashed Up",        value: shiftStats.doneCount,                        icon: CheckCircle2, color: "text-blue-400" },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-zinc-800 border border-zinc-700 rounded-xl p-4 flex items-center gap-4">
-            <Icon className={`w-6 h-6 ${color} shrink-0`} />
-            <div>
-              <p className="text-xs text-zinc-500">{label}</p>
-              <p className={`text-xl font-bold ${color}`}>{value}</p>
-            </div>
+          { label: "Total Allocated", val: `$${stats.totalAllocated.toFixed(2)}`, color: "text-emerald-400" },
+          { label: "Open Shifts",     val: stats.open,                             color: "text-amber-400" },
+          { label: "Cashed Up",       val: stats.done,                             color: "text-blue-400" },
+        ].map(({ label, val, color }) => (
+          <div key={label} className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2">
+            <p className="text-[10px] text-zinc-500 mb-0.5">{label}</p>
+            <p className={`text-base font-black ${color}`}>{val}</p>
           </div>
         ))}
       </div>
 
-      {/* Open floats */}
+      {/* Open shifts */}
       <div>
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400 mb-3 flex items-center gap-2">
-          <Clock className="w-4 h-4 text-amber-400" /> Open Shifts ({openFloats.length})
-        </h2>
+        <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+          <Clock className="w-3.5 h-3.5 text-amber-400" /> Open Shifts ({openFloats.length})
+        </p>
         {floatsLoading ? (
-          <div className="space-y-2">{[1,2].map(i => <div key={i} className="h-20 bg-zinc-800 rounded-xl animate-pulse" />)}</div>
+          <div className="h-14 bg-zinc-800 rounded-lg animate-pulse" />
         ) : openFloats.length === 0 ? (
-          <div className="bg-zinc-800/50 border border-zinc-700 border-dashed rounded-xl p-8 text-center text-zinc-500">
-            No open shifts for {shiftDate === today ? "today" : shiftDate}. Allocate a float to start.
+          <div className="bg-zinc-800/50 border border-zinc-700 border-dashed rounded-lg py-6 text-center text-xs text-zinc-500">
+            No open shifts for {shiftDate === today ? "today" : shiftDate}
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {openFloats.map(f => (
-              <div key={f.id} className="bg-zinc-800 border border-amber-500/20 rounded-xl p-4 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-zinc-700 flex items-center justify-center text-sm font-bold text-white shrink-0">
-                    {(f.agentName || f.agentUsername).charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-white">{f.agentName || f.agentUsername}</span>
-                      <span className="text-xs text-zinc-500">@{f.agentUsername}</span>
-                      <span className="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full">{f.shiftLabel}</span>
-                    </div>
-                    <p className="text-xs text-zinc-500 mt-0.5">Allocated {format(new Date(f.createdAt), "h:mm a")}{f.notes ? ` · ${f.notes}` : ""}</p>
-                  </div>
+              <div key={f.id} className="bg-zinc-800 border border-amber-500/20 rounded-lg px-4 py-2.5 flex items-center gap-3">
+                <div className="w-7 h-7 rounded-full bg-zinc-700 flex items-center justify-center text-xs font-bold text-white shrink-0">
+                  {(f.agentName || f.agentUsername).charAt(0).toUpperCase()}
                 </div>
-                <div className="flex items-center gap-4 shrink-0">
-                  <div className="text-right">
-                    <p className="text-xs text-zinc-500">Float</p>
-                    <p className="text-lg font-black text-white">${f.amount.toFixed(2)}</p>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-sm font-semibold text-white truncate">{f.agentName || f.agentUsername}</span>
+                    <span className="text-[10px] text-zinc-500">@{f.agentUsername}</span>
+                    <span className="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded-full">{f.shiftLabel}</span>
                   </div>
-                  <button
-                    onClick={() => openCashUp(f.id)}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5"
-                  >
-                    <CheckCircle2 className="w-4 h-4" /> Cash Up
-                  </button>
+                  <p className="text-[10px] text-zinc-500">{format(new Date(f.createdAt), "h:mm a")}{f.notes ? ` · ${f.notes}` : ""}</p>
                 </div>
+                <div className="text-right shrink-0 mr-2">
+                  <p className="text-[10px] text-zinc-500">Float</p>
+                  <p className="text-sm font-black text-white">${f.amount.toFixed(2)}</p>
+                </div>
+                <button onClick={() => openCashUp(f.id)}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-md text-xs font-semibold transition-colors flex items-center gap-1 shrink-0">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Cash Up
+                </button>
               </div>
             ))}
           </div>
@@ -318,26 +230,22 @@ export default function CashUpPage() {
       {/* Cashed up today */}
       {closedFloats.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400 mb-3 flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-blue-400" /> Completed Today ({closedFloats.length})
-          </h2>
-          <div className="space-y-2">
+          <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" /> Completed ({closedFloats.length})
+          </p>
+          <div className="space-y-1.5">
             {closedFloats.map(f => (
-              <div key={f.id} className="bg-zinc-800/50 border border-zinc-700 rounded-xl p-4 flex items-center justify-between gap-4 opacity-75">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center text-xs font-bold text-zinc-300">
+              <div key={f.id} className="bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-2 flex items-center justify-between gap-3 opacity-70">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-zinc-700 flex items-center justify-center text-[10px] font-bold text-zinc-300">
                     {(f.agentName || f.agentUsername).charAt(0).toUpperCase()}
                   </div>
-                  <div>
-                    <span className="font-medium text-zinc-300">{f.agentName || f.agentUsername}</span>
-                    <span className="ml-2 text-xs text-zinc-500">{f.shiftLabel} shift</span>
-                  </div>
+                  <span className="text-sm text-zinc-300">{f.agentName || f.agentUsername}</span>
+                  <span className="text-[10px] text-zinc-500">{f.shiftLabel}</span>
                 </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-sm font-semibold text-zinc-300">${f.amount.toFixed(2)}</span>
-                  <span className="text-xs bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" /> Cashed Up
-                  </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-semibold text-zinc-300">${f.amount.toFixed(2)}</span>
+                  <span className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full">Cashed Up</span>
                 </div>
               </div>
             ))}
@@ -345,56 +253,50 @@ export default function CashUpPage() {
         </div>
       )}
 
-      {/* History accordion */}
-      <div className="border border-zinc-700 rounded-xl overflow-hidden">
-        <button
-          onClick={() => setHistoryOpen(h => !h)}
-          className="w-full flex items-center justify-between px-5 py-4 bg-zinc-800 hover:bg-zinc-700/80 transition-colors text-sm font-semibold text-zinc-300"
-        >
-          <span className="flex items-center gap-2"><RefreshCw className="w-4 h-4" /> Cash Up History</span>
-          {historyOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+      {/* History */}
+      <div className="border border-zinc-700 rounded-lg overflow-hidden">
+        <button onClick={() => setHistoryOpen(h => !h)}
+          className="w-full flex items-center justify-between px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700/80 transition-colors text-xs font-semibold text-zinc-300">
+          <span className="flex items-center gap-1.5"><RefreshCw className="w-3.5 h-3.5" /> Cash Up History</span>
+          {historyOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
         </button>
         {historyOpen && (
-          <div className="divide-y divide-zinc-700/50">
+          <div className="divide-y divide-zinc-700/50 max-h-72 overflow-y-auto">
             {!historyData ? (
-              <div className="p-6 text-center text-zinc-500">Loading…</div>
+              <div className="p-4 text-center text-xs text-zinc-500">Loading…</div>
             ) : sessions.length === 0 ? (
-              <div className="p-8 text-center text-zinc-500">No cash up history yet.</div>
-            ) : (
-              sessions.map(s => {
-                const isShort = s.variance < -0.005;
-                const isSurplus = s.variance > 0.005;
-                return (
-                  <div key={s.id} className="px-5 py-4 flex flex-wrap items-center gap-4 justify-between hover:bg-zinc-700/20">
+              <div className="p-6 text-center text-xs text-zinc-500">No history yet.</div>
+            ) : sessions.map(s => {
+              const isShort = s.variance < -0.005;
+              const isSurplus = s.variance > 0.005;
+              return (
+                <div key={s.id} className="px-4 py-2.5 flex items-center gap-3 justify-between hover:bg-zinc-700/20">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-sm font-semibold text-white truncate">{s.agentName || s.agentUsername}</span>
+                      <span className="text-[10px] text-zinc-500">{s.shiftLabel} · {format(new Date(s.shiftDate), "d MMM")}</span>
+                    </div>
+                    <p className="text-[10px] text-zinc-500">Float ${s.openingFloat.toFixed(2)} · Bets ${s.totalBets.toFixed(2)}</p>
+                  </div>
+                  <div className="flex items-center gap-4 text-right shrink-0">
                     <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-white">{s.agentName || s.agentUsername}</span>
-                        <span className="text-xs text-zinc-500">{s.shiftLabel} · {format(new Date(s.shiftDate), "MMM d, yyyy")}</span>
-                      </div>
-                      <p className="text-xs text-zinc-500 mt-0.5">
-                        Float ${s.openingFloat.toFixed(2)} · Bets ${s.totalBets.toFixed(2)}
+                      <p className="text-[10px] text-zinc-500">Expected</p>
+                      <p className="text-xs font-bold text-zinc-200">${s.expectedReturn.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-zinc-500">Returned</p>
+                      <p className="text-xs font-bold text-zinc-200">${s.cashReturned.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-zinc-500">Variance</p>
+                      <p className={`text-xs font-black ${isShort ? "text-red-400" : isSurplus ? "text-amber-400" : "text-emerald-400"}`}>
+                        {isShort ? "-" : isSurplus ? "+" : ""}${Math.abs(s.variance).toFixed(2)}
                       </p>
                     </div>
-                    <div className="flex items-center gap-6 text-right">
-                      <div>
-                        <p className="text-xs text-zinc-500">Expected</p>
-                        <p className="text-sm font-bold text-zinc-200">${s.expectedReturn.toFixed(2)}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-zinc-500">Returned</p>
-                        <p className="text-sm font-bold text-zinc-200">${s.cashReturned.toFixed(2)}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-zinc-500">Variance</p>
-                        <p className={`text-sm font-black ${isShort ? "text-red-400" : isSurplus ? "text-amber-400" : "text-emerald-400"}`}>
-                          {isShort ? "-" : isSurplus ? "+" : ""}${Math.abs(s.variance).toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
                   </div>
-                );
-              })
-            )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -402,24 +304,20 @@ export default function CashUpPage() {
       {/* Allocate Float Modal */}
       {showAllocate && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-md">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-xl font-bold text-white">Allocate Float to Agent</h2>
-              <button onClick={() => setShowAllocate(false)} className="text-zinc-400 hover:text-white"><X className="w-5 h-5" /></button>
+          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-5 w-full max-w-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-bold text-white">Allocate Float</h2>
+              <button onClick={() => setShowAllocate(false)} className="text-zinc-400 hover:text-white"><X className="w-4 h-4" /></button>
             </div>
-            <div className="bg-zinc-800 rounded-lg px-4 py-2 mb-4 text-sm flex justify-between">
+            <div className="bg-zinc-800 rounded-lg px-3 py-1.5 mb-3 text-xs flex justify-between">
               <span className="text-zinc-400">Branch balance</span>
               <span className="font-bold text-emerald-400">${branchBalance.toFixed(2)}</span>
             </div>
-            <form onSubmit={handleAllocate} className="space-y-4">
+            <form onSubmit={handleAllocate} className="space-y-3">
               <div>
                 <label className="text-xs text-zinc-400 block mb-1">Agent</label>
-                <select
-                  required
-                  value={allocForm.agentId}
-                  onChange={e => setAllocForm(f => ({ ...f, agentId: e.target.value }))}
-                  className="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
-                >
+                <select required value={allocForm.agentId} onChange={e => setAllocForm(f => ({ ...f, agentId: e.target.value }))}
+                  className="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
                   <option value="">— Select agent —</option>
                   {agents.map(a => (
                     <option key={a.id} value={a.id}>
@@ -428,52 +326,39 @@ export default function CashUpPage() {
                   ))}
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-xs text-zinc-400 block mb-1">Float Amount ($)</label>
-                  <input
-                    required
-                    type="number" min="1" step="0.01"
-                    value={allocForm.amount}
+                  <label className="text-xs text-zinc-400 block mb-1">Amount ($)</label>
+                  <input required type="number" min="1" step="0.01" value={allocForm.amount}
                     onChange={e => setAllocForm(f => ({ ...f, amount: e.target.value }))}
                     placeholder="0.00"
-                    className="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
-                  />
+                    className="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
                 </div>
                 <div>
                   <label className="text-xs text-zinc-400 block mb-1">Shift</label>
-                  <select
-                    value={allocForm.shiftLabel}
-                    onChange={e => setAllocForm(f => ({ ...f, shiftLabel: e.target.value }))}
-                    className="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
-                  >
+                  <select value={allocForm.shiftLabel} onChange={e => setAllocForm(f => ({ ...f, shiftLabel: e.target.value }))}
+                    className="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
                     {SHIFT_LABELS.map(s => <option key={s}>{s}</option>)}
                   </select>
                 </div>
               </div>
               <div>
                 <label className="text-xs text-zinc-400 block mb-1">Notes (optional)</label>
-                <input
-                  type="text"
-                  value={allocForm.notes}
-                  onChange={e => setAllocForm(f => ({ ...f, notes: e.target.value }))}
-                  placeholder="e.g. Extra float for weekend"
-                  className="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
-                />
+                <input type="text" value={allocForm.notes} onChange={e => setAllocForm(f => ({ ...f, notes: e.target.value }))}
+                  placeholder="Optional note"
+                  className="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
               </div>
               {allocForm.amount && parseFloat(allocForm.amount) > branchBalance && (
-                <p className="text-xs text-red-400 bg-red-900/20 rounded-lg px-3 py-2 flex items-center gap-1">
-                  <AlertTriangle className="w-3.5 h-3.5" /> Amount exceeds branch balance
-                </p>
+                <p className="text-xs text-red-400 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Exceeds branch balance</p>
               )}
-              <div className="flex gap-3 pt-1">
+              <div className="flex gap-2 pt-1">
                 <button type="button" onClick={() => setShowAllocate(false)}
-                  className="flex-1 border border-zinc-600 text-zinc-300 rounded-lg px-4 py-2 text-sm hover:bg-zinc-800 transition-colors">
+                  className="flex-1 border border-zinc-600 text-zinc-300 rounded-lg px-3 py-2 text-sm hover:bg-zinc-800 transition-colors">
                   Cancel
                 </button>
                 <button type="submit" disabled={allocating}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50 transition-colors">
-                  {allocating ? "Allocating…" : "Allocate Float"}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-50 transition-colors">
+                  {allocating ? "Allocating…" : "Allocate"}
                 </button>
               </div>
             </form>
@@ -484,112 +369,84 @@ export default function CashUpPage() {
       {/* Cash Up Modal */}
       {cashUpId !== null && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-lg">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-emerald-400" /> End-of-Shift Cash Up
+          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-5 w-full max-w-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> End-of-Shift Cash Up
               </h2>
               <button onClick={() => { setCashUpId(null); setCashUpPreview(null); }} className="text-zinc-400 hover:text-white">
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             {loadingPreview ? (
-              <div className="flex items-center justify-center py-12 text-zinc-400">
-                <RefreshCw className="w-6 h-6 animate-spin mr-2" /> Loading shift data…
+              <div className="flex items-center justify-center py-10 text-zinc-400 text-sm">
+                <RefreshCw className="w-4 h-4 animate-spin mr-2" /> Loading…
               </div>
             ) : cashUpPreview ? (
-              <div className="space-y-5">
+              <div className="space-y-4">
                 {/* Breakdown */}
-                <div className="bg-zinc-800 rounded-xl divide-y divide-zinc-700">
-                  {[
-                    { label: "Opening Float",  value: cashUpPreview.openingFloat, color: "text-white",         desc: "Float given at start of shift" },
-                    { label: "Cash Collected", value: -cashUpPreview.totalBets,   color: "text-red-400",       desc: "Client bets placed (cash received)" },
-                  ].map(({ label, value, color, desc }) => (
-                    <div key={label} className="flex items-center justify-between px-4 py-3">
-                      <div>
-                        <p className="text-sm font-medium text-zinc-200">{label}</p>
-                        <p className="text-xs text-zinc-500">{desc}</p>
-                      </div>
-                      <p className={`text-base font-bold ${color}`}>
-                        {value < 0 ? `-$${Math.abs(value).toFixed(2)}` : `$${value.toFixed(2)}`}
-                      </p>
-                    </div>
-                  ))}
-                  <div className="flex items-center justify-between px-4 py-3 bg-zinc-700/40">
+                <div className="bg-zinc-800 rounded-xl overflow-hidden">
+                  <div className="flex justify-between items-center px-4 py-2.5 border-b border-zinc-700">
                     <div>
-                      <p className="text-sm font-bold text-white">Expected Return</p>
-                      <p className="text-xs text-zinc-400">What agent should hand back</p>
+                      <p className="text-sm font-medium text-zinc-200">Opening Float</p>
+                      <p className="text-[10px] text-zinc-500">Float given at start of shift</p>
                     </div>
-                    <p className="text-lg font-black text-white">${cashUpPreview.expectedReturn.toFixed(2)}</p>
+                    <p className="text-sm font-bold text-white">${cashUpPreview.openingFloat.toFixed(2)}</p>
+                  </div>
+                  <div className="flex justify-between items-center px-4 py-2.5 border-b border-zinc-700">
+                    <div>
+                      <p className="text-sm font-medium text-zinc-200">Cash Collected</p>
+                      <p className="text-[10px] text-zinc-500">Client bets placed</p>
+                    </div>
+                    <p className="text-sm font-bold text-red-400">-${cashUpPreview.totalBets.toFixed(2)}</p>
+                  </div>
+                  <div className="flex justify-between items-center px-4 py-2.5 bg-zinc-700/40">
+                    <p className="text-sm font-bold text-white">Expected Return</p>
+                    <p className="text-base font-black text-white">${cashUpPreview.expectedReturn.toFixed(2)}</p>
                   </div>
                 </div>
 
                 {/* Cash returned input */}
                 <div>
-                  <label className="text-sm font-semibold text-zinc-300 block mb-2">Actual Cash Returned by Agent ($)</label>
-                  <input
-                    type="number" min="0" step="0.01"
-                    value={cashReturned}
+                  <label className="text-xs font-semibold text-zinc-300 block mb-1.5">Actual Cash Returned ($)</label>
+                  <input type="number" min="0" step="0.01" value={cashReturned}
                     onChange={e => setCashReturned(e.target.value)}
-                    placeholder="0.00"
-                    className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-3 text-lg font-bold text-white focus:outline-none focus:border-emerald-500"
-                    autoFocus
-                  />
+                    placeholder="0.00" autoFocus
+                    className="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-2.5 text-lg font-bold text-white focus:outline-none focus:border-emerald-500" />
                 </div>
 
                 {/* Live variance */}
                 {cashReturned !== "" && (
-                  <div className={`rounded-xl px-4 py-3 border flex items-center justify-between ${
-                    Math.abs(liveVariance) < 0.01
-                      ? "bg-emerald-900/20 border-emerald-700"
-                      : liveVariance < 0
-                      ? "bg-red-900/20 border-red-700"
-                      : "bg-amber-900/20 border-amber-700"
+                  <div className={`rounded-lg px-3 py-2.5 border flex items-center justify-between ${
+                    Math.abs(liveVariance) < 0.01 ? "bg-emerald-900/20 border-emerald-700"
+                    : liveVariance < 0 ? "bg-red-900/20 border-red-700"
+                    : "bg-amber-900/20 border-amber-700"
                   }`}>
-                    <div>
-                      <p className="text-sm font-semibold text-zinc-200">Variance</p>
-                      <p className="text-xs text-zinc-400">
-                        {Math.abs(liveVariance) < 0.01
-                          ? "Perfectly balanced"
-                          : liveVariance < 0
-                          ? "Agent is short — difference flagged"
-                          : "Agent has surplus — will return to branch"}
-                      </p>
-                    </div>
-                    <p className={`text-2xl font-black ${
-                      Math.abs(liveVariance) < 0.01 ? "text-emerald-400"
-                      : liveVariance < 0 ? "text-red-400"
-                      : "text-amber-400"
-                    }`}>
+                    <p className="text-xs text-zinc-300">
+                      {Math.abs(liveVariance) < 0.01 ? "✓ Perfectly balanced"
+                       : liveVariance < 0 ? "⚠ Agent is short"
+                       : "Agent has surplus"}
+                    </p>
+                    <p className={`text-lg font-black ${Math.abs(liveVariance) < 0.01 ? "text-emerald-400" : liveVariance < 0 ? "text-red-400" : "text-amber-400"}`}>
                       {liveVariance >= 0 ? "+" : ""}{liveVariance.toFixed(2)}
                     </p>
                   </div>
                 )}
 
                 {/* Notes */}
-                <div>
-                  <label className="text-xs text-zinc-400 block mb-1">Notes (optional)</label>
-                  <input
-                    type="text"
-                    value={cashUpNotes}
-                    onChange={e => setCashUpNotes(e.target.value)}
-                    placeholder="e.g. Agent explained missing $5 due to client dispute"
-                    className="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
+                <input type="text" value={cashUpNotes} onChange={e => setCashUpNotes(e.target.value)}
+                  placeholder="Notes (optional)"
+                  className="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
 
-                <div className="flex gap-3 pt-1">
+                <div className="flex gap-2">
                   <button onClick={() => { setCashUpId(null); setCashUpPreview(null); }}
-                    className="flex-1 border border-zinc-600 text-zinc-300 rounded-lg px-4 py-2 text-sm hover:bg-zinc-800 transition-colors">
+                    className="flex-1 border border-zinc-600 text-zinc-300 rounded-lg px-3 py-2 text-sm hover:bg-zinc-800 transition-colors">
                     Cancel
                   </button>
-                  <button
-                    onClick={handleCashUp}
-                    disabled={cashReturned === "" || submittingCashUp}
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-                  >
-                    {submittingCashUp ? <><RefreshCw className="w-4 h-4 animate-spin" /> Processing…</> : "Confirm Cash Up"}
+                  <button onClick={handleCashUp} disabled={cashReturned === "" || submitting}
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5">
+                    {submitting ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Processing…</> : "Confirm Cash Up"}
                   </button>
                 </div>
               </div>

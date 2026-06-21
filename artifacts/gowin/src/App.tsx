@@ -47,6 +47,9 @@ import AgentVouchers from "@/pages/agent/VouchersPage";
 import AgentReports from "@/pages/agent/ReportsPage";
 import AgentBets from "@/pages/agent/BetsPage";
 
+// Payout Pages
+import PayoutPage from "@/pages/payout/PayoutPage";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -78,6 +81,7 @@ function ProtectedRoute({ component: Component, allowedRoles, adminOnly = false,
     if (user.role === "admin") return <AdminDashboard />;
     if (user.role === "branch_admin") return <BranchDashboard />;
     if (user.role === "agent") return <AgentDashboard />;
+    if (user.role === "payout") return <PayoutPage />;
     return <Home />;
   }
 
@@ -127,6 +131,9 @@ function Router() {
         <Route path="/agent/bets" component={() => <ProtectedRoute component={AgentBets} allowedRoles={["agent"]} />} />
         <Route path="/agent/vouchers" component={() => <ProtectedRoute component={AgentVouchers} allowedRoles={["agent"]} />} />
         <Route path="/agent/reports" component={() => <ProtectedRoute component={AgentReports} allowedRoles={["agent"]} />} />
+
+        {/* Payout Routes */}
+        <Route path="/payout" component={() => <ProtectedRoute component={PayoutPage} allowedRoles={["payout", "admin"]} />} />
 
         <Route component={NotFound} />
       </Switch>

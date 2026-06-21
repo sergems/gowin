@@ -74,3 +74,13 @@ export function requireBranchOrAdmin(req: AuthRequest, res: Response, next: Next
     next();
   });
 }
+
+export function requirePayout(req: AuthRequest, res: Response, next: NextFunction): void {
+  requireAuth(req, res, () => {
+    if (req.userRole !== "payout" && req.userRole !== "admin") {
+      res.status(403).json({ error: "Payout access required" });
+      return;
+    }
+    next();
+  });
+}

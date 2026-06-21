@@ -69,7 +69,8 @@ export function Shell({ children }: { children: ReactNode }) {
   const isAdmin = user?.role === "admin";
   const isBranchAdmin = user?.role === "branch_admin";
   const isAgent = user?.role === "agent";
-  const isStaffRole = isBranchAdmin || isAgent;
+  const isPayout = user?.role === "payout";
+  const isStaffRole = isBranchAdmin || isAgent || isPayout;
 
   const { data: footballData } = useQuery<FootballData>({
     queryKey: ["football-countries"],
@@ -123,6 +124,10 @@ export function Shell({ children }: { children: ReactNode }) {
     { href: "/agent/bets",     icon: History,         label: "My Bets",    match: (l: string) => l === "/agent/bets" },
     { href: "/agent/vouchers", icon: Ticket,          label: "Vouchers",   match: (l: string) => l === "/agent/vouchers" },
     { href: "/agent/reports",  icon: BarChart3,       label: "Reports",    match: (l: string) => l === "/agent/reports" },
+  ] : [];
+
+  const payoutLinks = isPayout ? [
+    { href: "/payout", icon: Banknote, label: "Payout Desk", match: (l: string) => l === "/payout" },
   ] : [];
 
   const adminLinks = user?.role === "admin" ? [
@@ -343,6 +348,26 @@ export function Shell({ children }: { children: ReactNode }) {
                 )}
                 {!open && <div className="my-2 mx-1 border-t border-border" />}
                 {agentLinks.map(({ href, icon: Icon, label, match }) => (
+                  <Link key={href} href={href} title={!open ? label : undefined} onClick={onNav}
+                    className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                      ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
+                      ${match(location) ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
+                    <Icon className="w-4 h-4 shrink-0" />
+                    {open && label}
+                  </Link>
+                ))}
+              </>
+            )}
+
+            {payoutLinks.length > 0 && (
+              <>
+                {open && (
+                  <div className="pt-4 pb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Payout
+                  </div>
+                )}
+                {!open && <div className="my-2 mx-1 border-t border-border" />}
+                {payoutLinks.map(({ href, icon: Icon, label, match }) => (
                   <Link key={href} href={href} title={!open ? label : undefined} onClick={onNav}
                     className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
                       ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}

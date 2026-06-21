@@ -1,4 +1,4 @@
-import { db, fixturesTable, betsTable, betSelectionsTable, walletsTable, transactionsTable } from "@workspace/db";
+import { db, fixturesTable, betsTable, betSelectionsTable } from "@workspace/db";
 import { eq, and, inArray, isNotNull } from "drizzle-orm";
 import { logger } from "./logger";
 
@@ -112,24 +112,8 @@ export async function autoSettleFinishedFixtures(): Promise<{
     if (hasPending) continue;
 
     await db.update(betsTable).set({ status: "won" }).where(eq(betsTable.id, bet.id));
-    const payout = parseFloat(bet.potentialWin);
     won++;
-
-    const [wallet] = await db
-      .select()
-      .from(walletsTable)
-      .where(eq(walletsTable.userId, bet.userId))
-      .limit(1);
-    if (wallet) {
-      const newBalance = parseFloat(wallet.balance) + payout;
-      await db.update(walletsTable).set({ balance: newBalance.toFixed(2) }).where(eq(walletsTable.id, wallet.id));
-      await db.insert(transactionsTable).values({
-        walletId: wallet.id,
-        amount: payout.toFixed(2),
-        type: "bet_won",
-        description: `Bet #${bet.id} won`,
-      });
-    }
+    // Winnings are NOT auto-credited — winner must claim via a Payout agent.
   }
 
   logger.info({ settled: won + lost, won, lost }, "Auto-settle complete");
