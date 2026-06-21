@@ -51,7 +51,18 @@ interface AdminUser {
 
 interface Branch { id: number; name: string; code: string; }
 
+const ROLE_TABS = [
+  { key: "all",          label: "All Users" },
+  { key: "admin",        label: "Admins" },
+  { key: "branch_admin", label: "Branch Admins" },
+  { key: "agent",        label: "Agents" },
+  { key: "user",         label: "Users" },
+] as const;
+
+type RoleTab = typeof ROLE_TABS[number]["key"];
+
 export default function AdminUsers() {
+  const [activeTab, setActiveTab] = useState<RoleTab>("all");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -103,7 +114,8 @@ export default function AdminUsers() {
 
   const [disableLoadingId, setDisableLoadingId] = useState<number | null>(null);
 
-  const users: AdminUser[] = (data as any)?.users || [];
+  const allUsers: AdminUser[] = (data as any)?.users || [];
+  const users = activeTab === "all" ? allUsers : allUsers.filter(u => u.role === activeTab);
 
   const openWalletDialog = (user: AdminUser, type: "credit" | "debit") => {
     setSelectedUser(user); setActionType(type); setIsWalletDialogOpen(true);
@@ -247,6 +259,30 @@ export default function AdminUsers() {
       <div>
         <h1 className="text-3xl font-black tracking-tight mb-2">User Management</h1>
         <p className="text-muted-foreground">Manage users, roles, wallet balances, and account access</p>
+      </div>
+
+      {/* Role tabs */}
+      <div className="flex gap-1 border-b border-border pb-0">
+        {ROLE_TABS.map(tab => {
+          const tabCount = tab.key === "all" ? allUsers.length : allUsers.filter(u => u.role === tab.key).length;
+          const isActive = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors flex items-center gap-1.5
+                ${isActive
+                  ? "border-primary text-primary bg-primary/5"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+                }`}
+            >
+              {tab.label}
+              <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
+                {tabCount}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="flex items-center gap-3">

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, branchesTable, usersTable, walletsTable, betsTable } from "@workspace/db";
-import { eq, count, desc, sum, inArray } from "drizzle-orm";
+import { eq, count, desc, sum, inArray, or, sql } from "drizzle-orm";
 import { requireAdmin, type AuthRequest } from "../middlewares/auth";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
@@ -161,14 +161,20 @@ router.get("/admin/branches/:id/members", requireAdmin, async (req, res): Promis
 
   if (memberIds.length > 0) {
     const betStats = await db.select({
-      agentId: betsTable.agentId,
+      memberId: sql<number>`COALESCE(${betsTable.agentId}, ${betsTable.userId})`,
       betsPlaced: count(),
       turnover: sum(betsTable.stake),
-    }).from(betsTable).where(inArray(betsTable.agentId, memberIds)).groupBy(betsTable.agentId);
+    }).from(betsTable)
+      .where(or(inArray(betsTable.agentId, memberIds), inArray(betsTable.userId, memberIds)))
+      .groupBy(sql`COALESCE(${betsTable.agentId}, ${betsTable.userId})`);
 
     for (const s of betStats) {
-      if (s.agentId != null) {
-        statsMap[s.agentId] = { betsPlaced: s.betsPlaced, turnover: parseFloat(s.turnover ?? "0") };
+      if (s.memberId != null) {
+        const existing = statsMap[s.memberId];
+        statsMap[s.memberId] = {
+          betsPlaced: (existing?.betsPlaced ?? 0) + s.betsPlaced,
+          turnover: (existing?.turnover ?? 0) + parseFloat(s.turnover ?? "0"),
+        };
       }
     }
   }
@@ -181,6 +187,29 @@ router.get("/admin/branches/:id/members", requireAdmin, async (req, res): Promis
       turnover: statsMap[m.id]?.turnover ?? 0,
     })),
   });
+});
+
+// ── POST /admin/branches/:id/credit — add funds to branch balance ────────────
+router.post("/admin/branches/:id/credit", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid branch ID" }); return; }
+
+  const amount = parseFloat(req.body.amount);
+  if (isNaN(amount) || amount <= 0) {
+    res.status(400).json({ error: "Amount must be a positive number" });
+    return;
+  }
+
+  const [branch] = await db.select().from(branchesTable).where(eq(branchesTable.id, id)).limit(1);
+  if (!branch) { res.status(404).json({ error: "Branch not found" }); return; }
+
+  const newBalance = (parseFloat(branch.balance) + amount).toFixed(2);
+  const [updated] = await db.update(branchesTable)
+    .set({ balance: newBalance })
+    .where(eq(branchesTable.id, id))
+    .returning();
+
+  res.json({ branch: updated, credited: amount });
 });
 
 // ── PATCH /admin/users/:id/assign-branch — assign/update user branch & role ──

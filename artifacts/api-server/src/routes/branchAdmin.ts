@@ -1,7 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { db, usersTable, walletsTable, betsTable, vouchersTable, transactionsTable, branchesTable } from "@workspace/db";
-import { eq, count, sum, desc, and, gte, lte, sql } from "drizzle-orm";
+import { eq, count, sum, desc, and, gte, lte, sql, or, inArray } from "drizzle-orm";
 import { requireBranchAdmin, requireAdmin, type AuthRequest } from "../middlewares/auth";
 
 const router = Router();
@@ -246,12 +246,21 @@ router.get("/branch/reports", requireBranchAdmin, async (req: AuthRequest, res):
     return d;
   });
 
+  const branchMembers = await db.select({ id: usersTable.id })
+    .from(usersTable).where(eq(usersTable.branchId, branchId));
+  const memberIds = branchMembers.map(m => m.id);
+
   const dailySales = await Promise.all(days.map(async (day) => {
     const nextDay = new Date(day);
     nextDay.setDate(nextDay.getDate() + 1);
 
+    const timeFilter = and(gte(betsTable.createdAt, day), lte(betsTable.createdAt, nextDay));
+    const branchFilter = memberIds.length > 0
+      ? or(eq(betsTable.branchId, branchId), inArray(betsTable.userId, memberIds))
+      : eq(betsTable.branchId, branchId);
+
     const [bets] = await db.select({ count: count(), total: sum(betsTable.stake) }).from(betsTable)
-      .where(and(eq(betsTable.branchId, branchId), gte(betsTable.createdAt, day), lte(betsTable.createdAt, nextDay)));
+      .where(and(branchFilter, timeFilter));
 
     return {
       date: day.toISOString().split("T")[0],
@@ -265,7 +274,7 @@ router.get("/branch/reports", requireBranchAdmin, async (req: AuthRequest, res):
 
   const agentPerformance = await Promise.all(agents.map(async (agent) => {
     const [bets] = await db.select({ count: count(), total: sum(betsTable.stake) }).from(betsTable)
-      .where(eq(betsTable.agentId, agent.id));
+      .where(or(eq(betsTable.agentId, agent.id), eq(betsTable.userId, agent.id)));
     const [vouchers] = await db.select({ count: count() }).from(vouchersTable)
       .where(eq(vouchersTable.agentId, agent.id));
     return {
