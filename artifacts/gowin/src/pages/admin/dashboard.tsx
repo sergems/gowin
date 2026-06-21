@@ -1,6 +1,6 @@
 import { useGetAdminStats, useGetRecentBets, useGetTopFixtures } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Activity, Trophy, DollarSign, ListTodo } from "lucide-react";
+import { Users, Activity, Trophy, DollarSign, ListTodo, Building2, Target } from "lucide-react";
 import { format } from "date-fns";
 import { fmtUTCDateTimeAdmin } from "@/lib/formatUTC";
 import { Badge } from "@/components/ui/badge";
@@ -18,63 +18,33 @@ export default function AdminDashboard() {
       </div>
 
       {isStatsLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map(i => <div key={i} className="h-32 bg-accent/50 rounded-xl animate-pulse" />)}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {[1,2,3,4,5,6].map(i => <div key={i} className="h-28 bg-accent/50 rounded-xl animate-pulse" />)}
         </div>
       ) : stats ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="border-border bg-card">
-            <CardContent className="p-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-1">Total Users</p>
-                  <h3 className="text-3xl font-black">{stats.totalUsers}</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {[
+            { label: "Total Users",     value: (stats as any).totalUsers,           icon: Users,      color: "bg-primary/20 text-primary" },
+            { label: "Branches",        value: (stats as any).totalBranches,        icon: Building2,  color: "bg-emerald-500/20 text-emerald-400" },
+            { label: "Branch Admins",   value: (stats as any).totalBranchAdmins,    icon: Users,      color: "bg-blue-500/20 text-blue-400" },
+            { label: "Agents",          value: (stats as any).totalAgents,          icon: Target,     color: "bg-violet-500/20 text-violet-400" },
+            { label: "Total Turnover",  value: `$${(stats as any).totalTurnover.toFixed(2)}`,  icon: DollarSign, color: "bg-primary/20 text-primary" },
+            { label: "Active Fixtures", value: (stats as any).totalActiveFixtures,  icon: Activity,   color: "bg-orange-500/20 text-orange-400" },
+          ].map(({ label, value, icon: Icon, color }) => (
+            <Card key={label} className="border-border bg-card">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-muted-foreground mb-1 truncate">{label}</p>
+                    <h3 className="text-2xl font-black">{value}</h3>
+                  </div>
+                  <div className={`p-2 rounded-md shrink-0 ${color}`}>
+                    <Icon className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="p-2 bg-primary/20 rounded-md">
-                  <Users className="w-5 h-5 text-primary" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-border bg-card">
-            <CardContent className="p-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-1">Total Turnover</p>
-                  <h3 className="text-3xl font-black">${stats.totalTurnover.toFixed(2)}</h3>
-                </div>
-                <div className="p-2 bg-primary/20 rounded-md">
-                  <DollarSign className="w-5 h-5 text-primary" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-border bg-card">
-            <CardContent className="p-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-1">Total Payout</p>
-                  <h3 className="text-3xl font-black">${stats.totalPayout.toFixed(2)}</h3>
-                </div>
-                <div className="p-2 bg-destructive/20 rounded-md">
-                  <DollarSign className="w-5 h-5 text-destructive" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-border bg-card">
-            <CardContent className="p-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-1">Active Fixtures</p>
-                  <h3 className="text-3xl font-black">{stats.totalActiveFixtures}</h3>
-                </div>
-                <div className="p-2 bg-primary/20 rounded-md">
-                  <Activity className="w-5 h-5 text-primary" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       ) : null}
 

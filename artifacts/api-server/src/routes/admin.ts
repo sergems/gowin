@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, usersTable, betsTable, fixturesTable, walletsTable, betSelectionsTable } from "@workspace/db";
+import { db, usersTable, betsTable, fixturesTable, walletsTable, betSelectionsTable, branchesTable } from "@workspace/db";
 import { eq, count, sum, desc, sql, and, inArray } from "drizzle-orm";
 import { requireAdmin, type AuthRequest } from "../middlewares/auth";
 
@@ -7,6 +7,9 @@ const router = Router();
 
 router.get("/admin/stats", requireAdmin, async (_req, res): Promise<void> => {
   const [totalUsers] = await db.select({ count: count() }).from(usersTable);
+  const [totalBranches] = await db.select({ count: count() }).from(branchesTable);
+  const [totalBranchAdmins] = await db.select({ count: count() }).from(usersTable).where(eq(usersTable.role, "branch_admin"));
+  const [totalAgents] = await db.select({ count: count() }).from(usersTable).where(eq(usersTable.role, "agent"));
   const [totalBets] = await db.select({ count: count() }).from(betsTable);
   const [pendingBets] = await db.select({ count: count() }).from(betsTable).where(eq(betsTable.status, "pending"));
   const [wonBets] = await db.select({ count: count() }).from(betsTable).where(eq(betsTable.status, "won"));
@@ -19,6 +22,9 @@ router.get("/admin/stats", requireAdmin, async (_req, res): Promise<void> => {
 
   res.json({
     totalUsers: totalUsers.count,
+    totalBranches: totalBranches.count,
+    totalBranchAdmins: totalBranchAdmins.count,
+    totalAgents: totalAgents.count,
     totalBets: totalBets.count,
     pendingBets: pendingBets.count,
     wonBets: wonBets.count,

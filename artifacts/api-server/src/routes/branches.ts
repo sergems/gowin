@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, branchesTable, usersTable, walletsTable } from "@workspace/db";
-import { eq, count, desc } from "drizzle-orm";
+import { db, branchesTable, usersTable, walletsTable, betsTable } from "@workspace/db";
+import { eq, count, desc, sum, inArray } from "drizzle-orm";
 import { requireAdmin, type AuthRequest } from "../middlewares/auth";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
@@ -137,6 +137,87 @@ router.post("/admin/branches/:id/admins", requireAdmin, async (req: AuthRequest,
   await db.insert(walletsTable).values({ userId: user.id, balance: "0.00" });
 
   res.status(201).json({ user: { ...user, tempPassword }, tempPassword });
+});
+
+// ── GET /admin/branches/:id/members ──────────────────────────────────────────
+router.get("/admin/branches/:id/members", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid branch ID" }); return; }
+
+  const members = await db.select({
+    id: usersTable.id,
+    username: usersTable.username,
+    email: usersTable.email,
+    firstName: usersTable.firstName,
+    lastName: usersTable.lastName,
+    role: usersTable.role,
+    commissionRate: usersTable.commissionRate,
+    disabled: usersTable.disabled,
+    createdAt: usersTable.createdAt,
+  }).from(usersTable).where(eq(usersTable.branchId, id));
+
+  const memberIds = members.map((m) => m.id);
+  let statsMap: Record<number, { betsPlaced: number; turnover: number }> = {};
+
+  if (memberIds.length > 0) {
+    const betStats = await db.select({
+      agentId: betsTable.agentId,
+      betsPlaced: count(),
+      turnover: sum(betsTable.stake),
+    }).from(betsTable).where(inArray(betsTable.agentId, memberIds)).groupBy(betsTable.agentId);
+
+    for (const s of betStats) {
+      if (s.agentId != null) {
+        statsMap[s.agentId] = { betsPlaced: s.betsPlaced, turnover: parseFloat(s.turnover ?? "0") };
+      }
+    }
+  }
+
+  res.json({
+    members: members.map((m) => ({
+      ...m,
+      commissionRate: parseFloat(m.commissionRate ?? "0"),
+      betsPlaced: statsMap[m.id]?.betsPlaced ?? 0,
+      turnover: statsMap[m.id]?.turnover ?? 0,
+    })),
+  });
+});
+
+// ── PATCH /admin/users/:id/assign-branch — assign/update user branch & role ──
+router.patch("/admin/users/:id/assign-branch", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid user ID" }); return; }
+
+  const { branchId, role, commissionRate } = req.body;
+  const updates: Record<string, any> = {};
+
+  if ("branchId" in req.body) {
+    if (branchId === null || branchId === "") {
+      updates.branchId = null;
+    } else {
+      const bid = parseInt(String(branchId));
+      if (isNaN(bid)) { res.status(400).json({ error: "Invalid branch ID" }); return; }
+      const [branch] = await db.select({ id: branchesTable.id }).from(branchesTable).where(eq(branchesTable.id, bid)).limit(1);
+      if (!branch) { res.status(404).json({ error: "Branch not found" }); return; }
+      updates.branchId = bid;
+    }
+  }
+
+  if (role && ["admin", "branch_admin", "agent", "user"].includes(role)) {
+    updates.role = role;
+  }
+
+  if ("commissionRate" in req.body) {
+    const rate = parseFloat(String(commissionRate));
+    updates.commissionRate = isNaN(rate) ? "0.00" : Math.min(100, Math.max(0, rate)).toFixed(2);
+  }
+
+  if (Object.keys(updates).length === 0) { res.status(400).json({ error: "No updates provided" }); return; }
+
+  const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, id)).returning();
+  if (!updated) { res.status(404).json({ error: "User not found" }); return; }
+
+  res.json({ user: updated });
 });
 
 export default router;

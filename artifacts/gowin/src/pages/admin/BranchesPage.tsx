@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
-import { Building2, Plus, Pencil, Trash2, Users, CheckCircle, XCircle, UserPlus, Copy } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  Building2, Plus, Pencil, Trash2, Users, UserPlus, ChevronDown, ChevronRight,
+  ShieldCheck, Target, DollarSign, BarChart3,
+} from "lucide-react";
+import { format } from "date-fns";
+import { Badge } from "@/components/ui/badge";
 
 interface Branch {
   id: number;
@@ -17,16 +23,138 @@ interface Branch {
   agentCount: number;
 }
 
+interface BranchMember {
+  id: number;
+  username: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  role: string;
+  commissionRate: number;
+  disabled: boolean;
+  createdAt: string;
+  betsPlaced: number;
+  turnover: number;
+}
+
 const emptyForm = { name: "", code: "", country: "", city: "", address: "", phone: "", email: "" };
+
+const ROLE_META: Record<string, { label: string; color: string; icon: typeof ShieldCheck }> = {
+  branch_admin: { label: "Branch Admin", color: "bg-blue-600 text-white", icon: ShieldCheck },
+  agent:        { label: "Agent",        color: "bg-violet-600 text-white", icon: Target },
+};
+
+function MembersList({ branchId, token }: { branchId: number; token: string | null }) {
+  const { data, isLoading } = useQuery<{ members: BranchMember[] }>({
+    queryKey: ["branch-members", branchId],
+    queryFn: () => fetch(`/api/admin/branches/${branchId}/members`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }).then(r => r.json()),
+  });
+
+  const members = data?.members ?? [];
+
+  if (isLoading) {
+    return <div className="px-5 py-4 text-sm text-zinc-400">Loading members…</div>;
+  }
+
+  if (members.length === 0) {
+    return (
+      <div className="px-5 py-4 text-sm text-zinc-500 text-center">
+        No members assigned to this branch yet.
+        <br />
+        <span className="text-xs">Assign users from the <strong>Users</strong> page by editing their role and branch.</span>
+      </div>
+    );
+  }
+
+  const branchAdmins = members.filter(m => m.role === "branch_admin");
+  const agents = members.filter(m => m.role === "agent");
+  const totalTurnover = members.reduce((s, m) => s + m.turnover, 0);
+  const totalBets = members.reduce((s, m) => s + m.betsPlaced, 0);
+
+  return (
+    <div className="border-t border-zinc-700">
+      {/* Summary strip */}
+      <div className="grid grid-cols-4 gap-px bg-zinc-700">
+        {[
+          { label: "Branch Admins", value: branchAdmins.length, icon: ShieldCheck, color: "text-blue-400" },
+          { label: "Agents",        value: agents.length,        icon: Target,      color: "text-violet-400" },
+          { label: "Bets Placed",   value: totalBets,            icon: BarChart3,   color: "text-yellow-400" },
+          { label: "Total Turnover",value: `$${totalTurnover.toFixed(2)}`, icon: DollarSign, color: "text-emerald-400" },
+        ].map(({ label, value, icon: Icon, color }) => (
+          <div key={label} className="bg-zinc-800/80 px-4 py-3 flex items-center gap-3">
+            <Icon className={`w-4 h-4 ${color} shrink-0`} />
+            <div>
+              <p className="text-xs text-zinc-500">{label}</p>
+              <p className={`text-sm font-bold ${color}`}>{value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Member rows */}
+      <div className="divide-y divide-zinc-700/50">
+        {members.map((m) => {
+          const meta = ROLE_META[m.role] ?? { label: m.role, color: "bg-zinc-600 text-white", icon: Users };
+          const displayName = [m.firstName, m.lastName].filter(Boolean).join(" ") || m.username;
+          return (
+            <div key={m.id} className={`flex items-center gap-4 px-5 py-3 hover:bg-zinc-700/30 transition-colors ${m.disabled ? "opacity-50" : ""}`}>
+              <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center text-sm font-bold text-zinc-300 shrink-0">
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-white truncate">{displayName}</span>
+                  <Badge className={`text-[10px] px-1.5 py-0.5 ${meta.color}`}>{meta.label}</Badge>
+                  {m.disabled && <Badge variant="destructive" className="text-[10px] px-1.5 py-0.5">Blocked</Badge>}
+                </div>
+                <p className="text-xs text-zinc-400 truncate">{m.email}</p>
+              </div>
+              <div className="hidden md:flex items-center gap-6 text-right shrink-0">
+                {m.role === "agent" && (
+                  <div>
+                    <p className="text-xs text-zinc-500">Commission</p>
+                    <p className="text-sm font-semibold text-zinc-200">{m.commissionRate}%</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs text-zinc-500">Bets</p>
+                  <p className="text-sm font-semibold text-zinc-200">{m.betsPlaced}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-zinc-500">Turnover</p>
+                  <p className="text-sm font-semibold text-emerald-400">${m.turnover.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-zinc-500">Since</p>
+                  <p className="text-xs text-zinc-400">{format(new Date(m.createdAt), "MMM d, yyyy")}</p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="px-5 py-2.5 bg-zinc-800/30 border-t border-zinc-700/50">
+        <p className="text-xs text-zinc-500">
+          To add or remove members, go to <strong className="text-zinc-300">Users</strong> and edit a user's role and branch assignment.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function BranchesPage() {
   const qc = useQueryClient();
+  const { token } = useAuth();
   const [showCreate, setShowCreate] = useState(false);
   const [editBranch, setEditBranch] = useState<Branch | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [adminForm, setAdminForm] = useState({ username: "", email: "", firstName: "", lastName: "" });
   const [showAddAdmin, setShowAddAdmin] = useState<number | null>(null);
   const [tempCred, setTempCred] = useState<{ username: string; email: string; tempPassword: string } | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const [error, setError] = useState("");
 
   const { data, isLoading } = useQuery({
@@ -59,6 +187,8 @@ export default function BranchesPage() {
       setTempCred({ username: data.user.username, email: data.user.email, tempPassword: data.tempPassword });
       setShowAddAdmin(null);
       setAdminForm({ username: "", email: "", firstName: "", lastName: "" });
+      qc.invalidateQueries({ queryKey: ["branch-members"] });
+      qc.invalidateQueries({ queryKey: ["admin-branches"] });
     },
     onError: (e: any) => setError(e.message ?? "Failed to create branch admin"),
   });
@@ -71,6 +201,8 @@ export default function BranchesPage() {
     setError("");
   }
 
+  const toggleExpand = (id: number) => setExpandedId(prev => prev === id ? null : id);
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex justify-between items-center mb-6">
@@ -79,9 +211,10 @@ export default function BranchesPage() {
             <Building2 className="w-7 h-7 text-emerald-400" />
             Branch Management
           </h1>
-          <p className="text-zinc-400 mt-1">Create and manage branches across regions</p>
+          <p className="text-zinc-400 mt-1">Create and manage branches, admins, and agents</p>
         </div>
-        <button onClick={() => { setShowCreate(true); setForm(emptyForm); setError(""); }}
+        <button
+          onClick={() => { setShowCreate(true); setForm(emptyForm); setError(""); }}
           className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
           <Plus className="w-4 h-4" /> New Branch
         </button>
@@ -103,50 +236,68 @@ export default function BranchesPage() {
         </div>
       )}
 
-      {/* Branch list */}
       {isLoading ? (
-        <div className="text-zinc-400 text-center py-16">Loading branches...</div>
+        <div className="text-zinc-400 text-center py-16">Loading branches…</div>
       ) : branches.length === 0 ? (
         <div className="text-center py-16 text-zinc-500">
           <Building2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p>No branches yet. Create your first one.</p>
         </div>
       ) : (
-        <div className="grid gap-4">
+        <div className="space-y-3">
           {branches.map((b) => (
-            <div key={b.id} className="bg-zinc-800 border border-zinc-700 rounded-xl p-5">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-lg font-semibold text-white">{b.name}</h3>
-                    <span className="font-mono text-xs bg-zinc-700 text-zinc-300 px-2 py-0.5 rounded">{b.code}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${b.status === "active" ? "bg-emerald-900/50 text-emerald-400" : "bg-red-900/50 text-red-400"}`}>
-                      {b.status}
-                    </span>
+            <div key={b.id} className="bg-zinc-800 border border-zinc-700 rounded-xl overflow-hidden">
+              {/* Branch header row */}
+              <div className="p-5">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-2 flex-wrap">
+                      <h3 className="text-lg font-semibold text-white">{b.name}</h3>
+                      <span className="font-mono text-xs bg-zinc-700 text-zinc-300 px-2 py-0.5 rounded">{b.code}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${b.status === "active" ? "bg-emerald-900/50 text-emerald-400" : "bg-red-900/50 text-red-400"}`}>
+                        {b.status}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-1 text-sm text-zinc-400">
+                      <span>📍 {b.city}, {b.country}</span>
+                      <span>📞 {b.phone}</span>
+                      <span>✉️ {b.email}</span>
+                      <span className="flex items-center gap-1">
+                        <Users className="w-3.5 h-3.5" /> {b.agentCount} member{b.agentCount !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+                    {b.address && <p className="text-xs text-zinc-500 mt-1">{b.address}</p>}
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-1 text-sm text-zinc-400">
-                    <span>📍 {b.city}, {b.country}</span>
-                    <span>📞 {b.phone}</span>
-                    <span>✉️ {b.email}</span>
-                    <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {b.agentCount} agent{b.agentCount !== 1 ? "s" : ""}</span>
+
+                  <div className="flex items-center gap-1 ml-4 shrink-0">
+                    <button
+                      onClick={() => toggleExpand(b.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-700/50 hover:bg-zinc-700 text-zinc-300 text-xs font-medium transition-colors"
+                      title="View members"
+                    >
+                      <Users className="w-3.5 h-3.5" />
+                      Members
+                      {expandedId === b.id ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                    </button>
+                    <button
+                      onClick={() => setShowAddAdmin(b.id)}
+                      className="p-2 rounded-lg hover:bg-zinc-700 text-zinc-400 hover:text-emerald-400 transition-colors" title="Create Branch Admin">
+                      <UserPlus className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => openEdit(b)}
+                      className="p-2 rounded-lg hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors">
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => { if (confirm(`Delete branch "${b.name}"?`)) deleteMut.mutate(b.id); }}
+                      className="p-2 rounded-lg hover:bg-zinc-700 text-zinc-400 hover:text-red-400 transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
-                  <p className="text-xs text-zinc-500 mt-1">{b.address}</p>
-                </div>
-                <div className="flex items-center gap-2 ml-4">
-                  <button onClick={() => setShowAddAdmin(b.id)}
-                    className="p-2 rounded-lg hover:bg-zinc-700 text-zinc-400 hover:text-emerald-400 transition-colors" title="Add Branch Admin">
-                    <UserPlus className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => openEdit(b)}
-                    className="p-2 rounded-lg hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors">
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => { if (confirm(`Delete branch "${b.name}"?`)) deleteMut.mutate(b.id); }}
-                    className="p-2 rounded-lg hover:bg-zinc-700 text-zinc-400 hover:text-red-400 transition-colors">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
                 </div>
               </div>
+
+              {/* Expandable members section */}
+              {expandedId === b.id && <MembersList branchId={b.id} token={token} />}
             </div>
           ))}
         </div>
@@ -155,18 +306,18 @@ export default function BranchesPage() {
       {/* Create/Edit modal */}
       {(showCreate || editBranch) && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-md">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-white mb-4">{editBranch ? "Edit Branch" : "New Branch"}</h2>
             {error && <p className="text-red-400 text-sm mb-3 bg-red-900/20 rounded-lg px-3 py-2">{error}</p>}
             <div className="space-y-3">
               {[
-                { key: "name", label: "Branch Name", placeholder: "Lagos Central" },
-                { key: "code", label: "Branch Code", placeholder: "LGS001", disabled: !!editBranch },
-                { key: "country", label: "Country", placeholder: "Nigeria" },
-                { key: "city", label: "City", placeholder: "Lagos" },
-                { key: "address", label: "Address", placeholder: "123 Main Street" },
-                { key: "phone", label: "Phone", placeholder: "+234 800 000 0000" },
-                { key: "email", label: "Email", placeholder: "lagos@gowin.com" },
+                { key: "name",    label: "Branch Name", placeholder: "Lagos Central" },
+                { key: "code",    label: "Branch Code", placeholder: "LGS001", disabled: !!editBranch },
+                { key: "country", label: "Country",     placeholder: "Nigeria" },
+                { key: "city",    label: "City",        placeholder: "Lagos" },
+                { key: "address", label: "Address",     placeholder: "123 Main Street" },
+                { key: "phone",   label: "Phone",       placeholder: "+234 800 000 0000" },
+                { key: "email",   label: "Email",       placeholder: "lagos@gowin.com" },
               ].map(({ key, label, placeholder, disabled }) => (
                 <div key={key}>
                   <label className="text-xs text-zinc-400 mb-1 block">{label}</label>
@@ -194,8 +345,7 @@ export default function BranchesPage() {
               )}
             </div>
             <div className="flex gap-3 mt-5">
-              <button
-                onClick={() => { setShowCreate(false); setEditBranch(null); setError(""); }}
+              <button onClick={() => { setShowCreate(false); setEditBranch(null); setError(""); }}
                 className="flex-1 px-4 py-2 rounded-lg border border-zinc-600 text-zinc-300 hover:bg-zinc-800 text-sm">
                 Cancel
               </button>
@@ -218,14 +368,19 @@ export default function BranchesPage() {
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-md">
             <h2 className="text-xl font-bold text-white mb-1">Create Branch Admin</h2>
-            <p className="text-sm text-zinc-400 mb-4">For: <span className="text-white">{branches.find((b) => b.id === showAddAdmin)?.name}</span></p>
+            <p className="text-sm text-zinc-400 mb-4">
+              For: <span className="text-white">{branches.find((b) => b.id === showAddAdmin)?.name}</span>
+            </p>
+            <p className="text-xs text-zinc-500 mb-4 bg-zinc-800 rounded-lg p-3">
+              This creates a <strong className="text-zinc-300">new</strong> branch admin account. To assign an existing user as branch admin or agent, go to the <strong className="text-zinc-300">Users</strong> page and edit their role.
+            </p>
             {error && <p className="text-red-400 text-sm mb-3 bg-red-900/20 rounded-lg px-3 py-2">{error}</p>}
             <div className="space-y-3">
               {[
-                { key: "username", label: "Username", placeholder: "lagos_admin" },
-                { key: "email", label: "Email", placeholder: "admin@branch.com" },
+                { key: "username",  label: "Username",   placeholder: "lagos_admin" },
+                { key: "email",     label: "Email",      placeholder: "admin@branch.com" },
                 { key: "firstName", label: "First Name", placeholder: "John" },
-                { key: "lastName", label: "Last Name", placeholder: "Doe" },
+                { key: "lastName",  label: "Last Name",  placeholder: "Doe" },
               ].map(({ key, label, placeholder }) => (
                 <div key={key}>
                   <label className="text-xs text-zinc-400 mb-1 block">{label}</label>

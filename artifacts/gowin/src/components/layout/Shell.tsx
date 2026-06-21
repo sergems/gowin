@@ -127,6 +127,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const adminLinks = user?.role === "admin" ? [
     { href: "/admin",              icon: LayoutDashboard, label: "Dashboard",    match: (l: string) => l === "/admin" },
     { href: "/admin/users",        icon: Users,           label: "Users",        match: (l: string) => l === "/admin/users" },
+    { href: "/admin/branches",     icon: Building2,       label: "Branches",     match: (l: string) => l.startsWith("/admin/branches") },
     { href: "/admin/fixtures",     icon: Activity,        label: "Fixtures",     match: (l: string) => l === "/admin/fixtures" },
     { href: "/admin/bets",         icon: Settings,        label: "Bets",         match: (l: string) => l === "/admin/bets" },
     { href: "/admin/transactions", icon: ArrowLeftRight,  label: "Transactions", match: (l: string) => l === "/admin/transactions" },

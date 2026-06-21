@@ -19,6 +19,8 @@ function formatUser(u: any, wallet?: any) {
     lastName: u.lastName ?? null,
     phoneNumber: u.phoneNumber ?? null,
     role: u.role,
+    branchId: u.branchId ?? null,
+    commissionRate: parseFloat(u.commissionRate ?? "0"),
     disabled: u.disabled ?? false,
     disabledReason: u.disabledReason ?? null,
     mustChangePassword: u.mustChangePassword ?? false,
