@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, usersTable, walletsTable, betsTable, betSelectionsTable, vouchersTable, transactionsTable } from "@workspace/db";
-import { eq, count, sum, desc, and, gte, lte } from "drizzle-orm";
+import { eq, count, sum, desc, and, gte, lte, or } from "drizzle-orm";
 import { requireAgent, type AuthRequest } from "../middlewares/auth";
 import { randomBytes } from "crypto";
 
@@ -21,20 +21,22 @@ router.get("/agent/dashboard", requireAgent, async (req: AuthRequest, res): Prom
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
+  const agentBetFilter = or(eq(betsTable.agentId, agentId), eq(betsTable.userId, agentId))!;
+
   const [totalBets] = await db.select({ count: count(), total: sum(betsTable.stake) }).from(betsTable)
-    .where(eq(betsTable.agentId, agentId));
+    .where(agentBetFilter);
 
   const [todayBets] = await db.select({ count: count(), total: sum(betsTable.stake) }).from(betsTable)
-    .where(and(eq(betsTable.agentId, agentId), gte(betsTable.createdAt, todayStart)));
+    .where(and(agentBetFilter, gte(betsTable.createdAt, todayStart)));
 
   const [monthBets] = await db.select({ count: count(), total: sum(betsTable.stake) }).from(betsTable)
-    .where(and(eq(betsTable.agentId, agentId), gte(betsTable.createdAt, monthStart)));
+    .where(and(agentBetFilter, gte(betsTable.createdAt, monthStart)));
 
   const [vouchersSold] = await db.select({ count: count(), total: sum(vouchersTable.value) }).from(vouchersTable)
     .where(eq(vouchersTable.agentId, agentId));
 
   const [pendingPayouts] = await db.select({ total: sum(betsTable.potentialWin) }).from(betsTable)
-    .where(and(eq(betsTable.agentId, agentId), eq(betsTable.status, "won")));
+    .where(and(agentBetFilter, eq(betsTable.status, "won")));
 
   const totalStake = parseFloat(totalBets.total ?? "0");
   const commissionRate = parseFloat(agent.commissionRate ?? "0");
@@ -125,7 +127,7 @@ router.get("/agent/bets", requireAgent, async (req: AuthRequest, res): Promise<v
   const offset = parseInt(req.query.offset as string) || 0;
 
   const bets = await db.select().from(betsTable)
-    .where(eq(betsTable.agentId, agentId))
+    .where(or(eq(betsTable.agentId, agentId), eq(betsTable.userId, agentId)))
     .orderBy(desc(betsTable.createdAt))
     .limit(limit).offset(offset);
 
@@ -215,8 +217,9 @@ router.get("/agent/reports", requireAgent, async (req: AuthRequest, res): Promis
     const nextDay = new Date(day);
     nextDay.setDate(nextDay.getDate() + 1);
 
+    const agentBetFilter = or(eq(betsTable.agentId, agentId), eq(betsTable.userId, agentId))!;
     const [bets] = await db.select({ count: count(), total: sum(betsTable.stake) }).from(betsTable)
-      .where(and(eq(betsTable.agentId, agentId), gte(betsTable.createdAt, day), lte(betsTable.createdAt, nextDay)));
+      .where(and(agentBetFilter, gte(betsTable.createdAt, day), lte(betsTable.createdAt, nextDay)));
 
     return {
       date: day.toISOString().split("T")[0],
