@@ -19,7 +19,7 @@ import {
   Activity, LayoutDashboard, History, Wallet, Trophy, LogOut, Users, Settings, X,
   ArrowLeftRight, Ticket, UserCircle, AlertTriangle, Banknote, SlidersHorizontal,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, ChevronDown, ChevronRight, Globe, Shield, CheckCircle2,
-  Home, Menu, Images, Printer, Clock,
+  Home, Menu, Images, Printer, Clock, Building2, Target, BarChart3, FileText,
 } from "lucide-react";
 import type { PlacedBetDetails } from "@/contexts/BetSlipContext";
 import { printBetSlip } from "@/lib/printBetSlip";
@@ -67,11 +67,14 @@ export function Shell({ children }: { children: ReactNode }) {
   }, [selections.length]);
 
   const isAdmin = user?.role === "admin";
+  const isBranchAdmin = user?.role === "branch_admin";
+  const isAgent = user?.role === "agent";
+  const isStaffRole = isBranchAdmin || isAgent;
 
   const { data: footballData } = useQuery<FootballData>({
     queryKey: ["football-countries"],
     queryFn: () => fetch("/api/football/countries").then((r) => r.json()),
-    enabled: sportsOpen && !isAdmin,
+    enabled: sportsOpen && !isAdmin && !isStaffRole,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -107,6 +110,20 @@ export function Shell({ children }: { children: ReactNode }) {
     setTimeout(() => navigate("/"), 0);
   };
 
+  const branchAdminLinks = isBranchAdmin ? [
+    { href: "/branch",          icon: LayoutDashboard, label: "Dashboard",  match: (l: string) => l === "/branch" },
+    { href: "/branch/agents",   icon: Users,           label: "Agents",     match: (l: string) => l === "/branch/agents" },
+    { href: "/branch/vouchers", icon: Ticket,          label: "Vouchers",   match: (l: string) => l === "/branch/vouchers" },
+    { href: "/branch/reports",  icon: BarChart3,       label: "Reports",    match: (l: string) => l === "/branch/reports" },
+  ] : [];
+
+  const agentLinks = isAgent ? [
+    { href: "/agent",          icon: LayoutDashboard, label: "Dashboard",  match: (l: string) => l === "/agent" },
+    { href: "/agent/bet",      icon: Target,          label: "Place Bet",  match: (l: string) => l === "/agent/bet" },
+    { href: "/agent/vouchers", icon: Ticket,          label: "Vouchers",   match: (l: string) => l === "/agent/vouchers" },
+    { href: "/agent/reports",  icon: BarChart3,       label: "Reports",    match: (l: string) => l === "/agent/reports" },
+  ] : [];
+
   const adminLinks = user?.role === "admin" ? [
     { href: "/admin",              icon: LayoutDashboard, label: "Dashboard",    match: (l: string) => l === "/admin" },
     { href: "/admin/users",        icon: Users,           label: "Users",        match: (l: string) => l === "/admin/users" },
@@ -135,7 +152,7 @@ export function Shell({ children }: { children: ReactNode }) {
               {open && <span className="flex-1">Home</span>}
             </Link>
 
-            {isAdmin ? (
+            {!isStaffRole && isAdmin ? (
               <Link href="/sports" title={!open ? "Sports" : undefined} onClick={onNav}
                 className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
                   ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
@@ -143,8 +160,8 @@ export function Shell({ children }: { children: ReactNode }) {
                 <Trophy className="w-4 h-4 shrink-0" />
                 {open && <span className="flex-1">Sports</span>}
               </Link>
-            ) : (
-              <>
+            ) : !isStaffRole ? (
+              <> 
                 <button title={!open ? "Sports" : undefined}
                   onClick={() => {
                     if (!open) setSidebarOpen(true);
@@ -231,9 +248,9 @@ export function Shell({ children }: { children: ReactNode }) {
                   </div>
                 )}
               </>
-            )}
+            ) : null}
 
-            {!isAdmin && (
+            {!isAdmin && !isStaffRole && (
               <Link href="/results" title={!open ? "Results" : undefined} onClick={onNav}
                 className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
                   ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
@@ -243,7 +260,7 @@ export function Shell({ children }: { children: ReactNode }) {
               </Link>
             )}
 
-            {user && (
+            {user && !isStaffRole && (
               <Link href="/history" title={!open ? "My Bets" : undefined} onClick={onNav}
                 className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
                   ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
@@ -253,7 +270,7 @@ export function Shell({ children }: { children: ReactNode }) {
               </Link>
             )}
 
-            {user && (
+            {user && (isAgent || !isStaffRole) && (
               <Link href="/wallet" title={!open ? "Wallet" : undefined} onClick={onNav}
                 className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
                   ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
@@ -270,8 +287,8 @@ export function Shell({ children }: { children: ReactNode }) {
                   ${location.startsWith("/profile") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
                 <UserCircle className="w-4 h-4 shrink-0" />
                 {open && <span className="flex-1">Profile</span>}
-                {open && !(user as any).phoneNumber && <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />}
-                {!open && !(user as any).phoneNumber && <span className="absolute w-1.5 h-1.5 rounded-full bg-amber-500 top-1 right-1" />}
+                {open && !(user as any).phoneNumber && !isStaffRole && <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />}
+                {!open && !(user as any).phoneNumber && !isStaffRole && <span className="absolute w-1.5 h-1.5 rounded-full bg-amber-500 top-1 right-1" />}
               </Link>
             )}
 
@@ -284,6 +301,46 @@ export function Shell({ children }: { children: ReactNode }) {
                 )}
                 {!open && <div className="my-2 mx-1 border-t border-border" />}
                 {adminLinks.map(({ href, icon: Icon, label, match }) => (
+                  <Link key={href} href={href} title={!open ? label : undefined} onClick={onNav}
+                    className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                      ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
+                      ${match(location) ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
+                    <Icon className="w-4 h-4 shrink-0" />
+                    {open && label}
+                  </Link>
+                ))}
+              </>
+            )}
+
+            {branchAdminLinks.length > 0 && (
+              <>
+                {open && (
+                  <div className="pt-4 pb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Branch
+                  </div>
+                )}
+                {!open && <div className="my-2 mx-1 border-t border-border" />}
+                {branchAdminLinks.map(({ href, icon: Icon, label, match }) => (
+                  <Link key={href} href={href} title={!open ? label : undefined} onClick={onNav}
+                    className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                      ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
+                      ${match(location) ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
+                    <Icon className="w-4 h-4 shrink-0" />
+                    {open && label}
+                  </Link>
+                ))}
+              </>
+            )}
+
+            {agentLinks.length > 0 && (
+              <>
+                {open && (
+                  <div className="pt-4 pb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Agent
+                  </div>
+                )}
+                {!open && <div className="my-2 mx-1 border-t border-border" />}
+                {agentLinks.map(({ href, icon: Icon, label, match }) => (
                   <Link key={href} href={href} title={!open ? label : undefined} onClick={onNav}
                     className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
                       ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}

@@ -26,6 +26,8 @@ function formatUser(user: any) {
     disabled: user.disabled,
     mustChangePassword: user.mustChangePassword ?? false,
     createdAt: user.createdAt,
+    branchId: user.branchId ?? null,
+    commissionRate: user.commissionRate ? parseFloat(user.commissionRate) : 0,
   };
 }
 
@@ -81,7 +83,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 
   await db.insert(walletsTable).values({ userId: user.id, balance: "0.00" });
 
-  const token = signToken(user.id, user.role);
+  const token = signToken(user.id, user.role, null);
   res.status(201).json({ token, user: formatUser(user) });
 });
 
@@ -100,111 +102,70 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
-  // Admin-disabled accounts are fully blocked — even temp password won't work
   if (user.disabled && user.disabledReason === "admin") {
     res.status(403).json({ error: "Your account has been disabled by an administrator. Please contact support.", code: "account_disabled_admin" });
     return;
   }
 
-  // Check temp password first (it has priority so locked users can still unlock with temp)
   let usedTempPassword = false;
   if (user.tempPasswordHash && user.tempPasswordExpiry) {
     const tempExpired = new Date() > new Date(user.tempPasswordExpiry);
     if (!tempExpired) {
       const tempMatch = await bcrypt.compare(password, user.tempPasswordHash);
-      if (tempMatch) {
-        usedTempPassword = true;
-      }
+      if (tempMatch) usedTempPassword = true;
     }
   }
 
-  // Check main password
   const mainMatch = !usedTempPassword ? await bcrypt.compare(password, user.passwordHash) : false;
 
   if (!usedTempPassword && !mainMatch) {
-    // Wrong password — increment attempts
     const newAttempts = (user.loginAttempts ?? 0) + 1;
     const shouldLock = newAttempts >= MAX_LOGIN_ATTEMPTS && !user.disabled;
 
     await db.update(usersTable)
-      .set({
-        loginAttempts: newAttempts,
-        ...(shouldLock ? { disabled: true, disabledReason: "system" } : {}),
-      })
+      .set({ loginAttempts: newAttempts, ...(shouldLock ? { disabled: true, disabledReason: "system" } : {}) })
       .where(eq(usersTable.id, user.id));
 
     if (shouldLock) {
       sendAccountLockedEmail(user.email, user.username).catch(() => {});
-      res.status(403).json({
-        error: "Your account has been locked after too many failed attempts. Please reset your password to regain access.",
-        code: "account_locked",
-      });
+      res.status(403).json({ error: "Your account has been locked after too many failed attempts. Please reset your password to regain access.", code: "account_locked" });
       return;
     }
 
     const remaining = MAX_LOGIN_ATTEMPTS - newAttempts;
-    res.status(401).json({
-      error: remaining > 0
-        ? `Invalid credentials. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining before lockout.`
-        : "Invalid credentials",
-    });
+    res.status(401).json({ error: remaining > 0 ? `Invalid credentials. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining before lockout.` : "Invalid credentials" });
     return;
   }
 
-  // Correct main password but account is system-locked → must reset via OTP or temp password
   if (mainMatch && user.disabled && user.disabledReason === "system") {
-    res.status(403).json({
-      error: "Your account is locked due to failed login attempts. Please reset your password to regain access.",
-      code: "account_locked",
-    });
+    res.status(403).json({ error: "Your account is locked due to failed login attempts. Please reset your password to regain access.", code: "account_locked" });
     return;
   }
 
-  // Temp password login — clear temp, reactivate if system-locked, force password change
   if (usedTempPassword) {
     await db.update(usersTable)
-      .set({
-        tempPasswordHash: null,
-        tempPasswordExpiry: null,
-        mustChangePassword: true,
-        loginAttempts: 0,
-        ...(user.disabled && user.disabledReason === "system"
-          ? { disabled: false, disabledReason: null }
-          : {}),
-      })
+      .set({ tempPasswordHash: null, tempPasswordExpiry: null, mustChangePassword: true, loginAttempts: 0, ...(user.disabled && user.disabledReason === "system" ? { disabled: false, disabledReason: null } : {}) })
       .where(eq(usersTable.id, user.id));
 
-    const token = signToken(user.id, user.role);
-    res.json({
-      token,
-      user: { ...formatUser(user), mustChangePassword: true, disabled: false },
-      mustChangePassword: true,
-    });
+    const token = signToken(user.id, user.role, user.branchId);
+    res.json({ token, user: { ...formatUser(user), mustChangePassword: true, disabled: false }, mustChangePassword: true });
     return;
   }
 
-  // Normal successful login
   await db.update(usersTable).set({ loginAttempts: 0 }).where(eq(usersTable.id, user.id));
 
-  const token = signToken(user.id, user.role);
-  res.json({
-    token,
-    user: formatUser(user),
-    mustChangePassword: user.mustChangePassword ?? false,
-  });
+  const token = signToken(user.id, user.role, user.branchId);
+  res.json({ token, user: formatUser(user), mustChangePassword: user.mustChangePassword ?? false });
 });
 
 // ── Get current user ──────────────────────────────────────────────────────────
 router.get("/auth/me", requireAuth, async (req: AuthRequest, res): Promise<void> => {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
-  if (!user) {
-    res.status(401).json({ error: "User not found" });
-    return;
-  }
+  if (!user) { res.status(401).json({ error: "User not found" }); return; }
   res.json(formatUser(user));
 });
 
-// ── Forgot password (request OTP) ─────────────────────────────────────────────
+// ── Forgot password ────────────────────────────────────────────────────────────
 router.post("/auth/forgot-password", async (req, res): Promise<void> => {
   const { email } = req.body as { email?: string };
   if (!email || typeof email !== "string" || !email.includes("@")) {
@@ -212,7 +173,6 @@ router.post("/auth/forgot-password", async (req, res): Promise<void> => {
     return;
   }
 
-  // Always return success to prevent email enumeration
   const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
   if (!user) {
     res.json({ message: "If an account with that email exists, an OTP has been sent." });
@@ -221,14 +181,9 @@ router.post("/auth/forgot-password", async (req, res): Promise<void> => {
 
   const otp = generateOtp();
   const otpHash = await bcrypt.hash(otp, 10);
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-  await db.insert(passwordResetOtpsTable).values({
-    userId: user.id,
-    otpHash,
-    expiresAt,
-  });
-
+  await db.insert(passwordResetOtpsTable).values({ userId: user.id, otpHash, expiresAt });
   sendOtpEmail(user.email, user.username, otp).catch(() => {});
 
   logger.info({ userId: user.id }, "Password reset OTP generated");
@@ -244,54 +199,29 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
   }
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
-  if (!user) {
-    res.status(400).json({ error: "Invalid OTP or email" });
-    return;
-  }
+  if (!user) { res.status(400).json({ error: "Invalid OTP or email" }); return; }
 
-  // Find all valid (unexpired, unused) OTPs for this user
   const now = new Date();
   const otpRecords = await db.select()
     .from(passwordResetOtpsTable)
-    .where(
-      and(
-        eq(passwordResetOtpsTable.userId, user.id),
-        gt(passwordResetOtpsTable.expiresAt, now),
-        isNull(passwordResetOtpsTable.usedAt),
-      )
-    )
+    .where(and(eq(passwordResetOtpsTable.userId, user.id), gt(passwordResetOtpsTable.expiresAt, now), isNull(passwordResetOtpsTable.usedAt)))
     .orderBy(passwordResetOtpsTable.id);
 
   let matchedRecord = null;
   for (const record of otpRecords) {
     const match = await bcrypt.compare(otp, record.otpHash);
-    if (match) {
-      matchedRecord = record;
-      break;
-    }
+    if (match) { matchedRecord = record; break; }
   }
 
-  if (!matchedRecord) {
-    res.status(400).json({ error: "Invalid or expired OTP" });
-    return;
-  }
+  if (!matchedRecord) { res.status(400).json({ error: "Invalid or expired OTP" }); return; }
 
-  // Mark OTP as used
-  await db.update(passwordResetOtpsTable)
-    .set({ usedAt: now })
-    .where(eq(passwordResetOtpsTable.id, matchedRecord.id));
+  await db.update(passwordResetOtpsTable).set({ usedAt: now }).where(eq(passwordResetOtpsTable.id, matchedRecord.id));
 
-  // Issue a short-lived reset token (15 minutes)
-  const resetToken = jwt.sign(
-    { userId: user.id, type: "password_reset" },
-    JWT_SECRET,
-    { expiresIn: "15m" }
-  );
-
+  const resetToken = jwt.sign({ userId: user.id, type: "password_reset" }, JWT_SECRET, { expiresIn: "15m" });
   res.json({ resetToken });
 });
 
-// ── Reset password (via OTP reset token) ──────────────────────────────────────
+// ── Reset password ────────────────────────────────────────────────────────────
 router.post("/auth/reset-password", async (req, res): Promise<void> => {
   const { resetToken, newPassword } = req.body as { resetToken?: string; newPassword?: string };
   if (!resetToken || typeof resetToken !== "string" || !newPassword || typeof newPassword !== "string" || newPassword.length < 6) {
@@ -300,35 +230,20 @@ router.post("/auth/reset-password", async (req, res): Promise<void> => {
   }
 
   let payload: any;
-  try {
-    payload = jwt.verify(resetToken, JWT_SECRET);
-  } catch {
-    res.status(400).json({ error: "Invalid or expired reset token" });
-    return;
-  }
+  try { payload = jwt.verify(resetToken, JWT_SECRET); }
+  catch { res.status(400).json({ error: "Invalid or expired reset token" }); return; }
 
-  if (payload.type !== "password_reset") {
-    res.status(400).json({ error: "Invalid reset token" });
-    return;
-  }
+  if (payload.type !== "password_reset") { res.status(400).json({ error: "Invalid reset token" }); return; }
 
   const passwordHash = await bcrypt.hash(newPassword, 10);
   await db.update(usersTable)
-    .set({
-      passwordHash,
-      disabled: false,
-      disabledReason: null,
-      loginAttempts: 0,
-      mustChangePassword: false,
-      tempPasswordHash: null,
-      tempPasswordExpiry: null,
-    })
+    .set({ passwordHash, disabled: false, disabledReason: null, loginAttempts: 0, mustChangePassword: false, tempPasswordHash: null, tempPasswordExpiry: null })
     .where(eq(usersTable.id, payload.userId));
 
   res.json({ message: "Password reset successfully. You can now log in." });
 });
 
-// ── Change password (logged-in, must-change flow) ─────────────────────────────
+// ── Change password ────────────────────────────────────────────────────────────
 router.post("/auth/change-password", requireAuth, async (req: AuthRequest, res): Promise<void> => {
   const { newPassword } = req.body as { newPassword?: string };
   if (!newPassword || typeof newPassword !== "string" || newPassword.length < 6) {
@@ -337,24 +252,15 @@ router.post("/auth/change-password", requireAuth, async (req: AuthRequest, res):
   }
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
-  if (!user) {
-    res.status(404).json({ error: "User not found" });
-    return;
-  }
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
 
   const passwordHash = await bcrypt.hash(newPassword, 10);
   const [updated] = await db.update(usersTable)
-    .set({
-      passwordHash,
-      mustChangePassword: false,
-      tempPasswordHash: null,
-      tempPasswordExpiry: null,
-      ...(user.disabledReason === "system" ? { disabled: false, disabledReason: null, loginAttempts: 0 } : {}),
-    })
+    .set({ passwordHash, mustChangePassword: false, tempPasswordHash: null, tempPasswordExpiry: null, ...(user.disabledReason === "system" ? { disabled: false, disabledReason: null, loginAttempts: 0 } : {}) })
     .where(eq(usersTable.id, req.userId!))
     .returning();
 
-  const token = signToken(updated.id, updated.role);
+  const token = signToken(updated.id, updated.role, updated.branchId);
   res.json({ message: "Password changed successfully.", token, user: formatUser(updated) });
 });
 

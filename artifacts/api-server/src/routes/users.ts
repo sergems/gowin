@@ -157,8 +157,8 @@ router.patch("/users/:id/role", requireAdmin, async (req: AuthRequest, res): Pro
   }
 
   const { role } = req.body;
-  if (!role || !["admin", "user"].includes(role)) {
-    res.status(400).json({ error: "Role must be 'admin' or 'user'" });
+  if (!role || !["admin", "user", "branch_admin", "agent"].includes(role)) {
+    res.status(400).json({ error: "Role must be 'admin', 'user', 'branch_admin', or 'agent'" });
     return;
   }
 

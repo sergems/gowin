@@ -1,0 +1,258 @@
+
+Extend the existing GoWin sportsbook platform by adding Branch and Agent management functionality.
+
+Do NOT replace the existing user system.
+
+Implement a hierarchical multi-tenant architecture where data visibility is restricted according to the user's role and assigned branch.
+
+User Roles
+
+Implement the following roles:
+
+SUPER_ADMIN
+
+The existing platform administrator.
+
+Full system access.
+
+Can:
+
+Manage all users
+Manage all branches
+Manage all agents
+Manage vouchers
+Manage fixtures
+Manage system settings
+View all transactions
+View all reports
+View all branches
+BRANCH_ADMIN
+
+Represents a company branch.
+
+A branch only sees data belonging to its branch.
+
+Branch Admin can:
+
+View branch dashboard
+Manage branch agents
+Allocate vouchers to agents
+View branch reports
+View branch sales
+View branch wallet activity
+View branch betting activity
+Create agent accounts
+Suspend agents
+
+Branch Admin CANNOT:
+
+Access global settings
+Access fixture management
+Access global reports
+Access users from other branches
+Access Super Admin features
+AGENT
+
+Company employee working under a branch.
+
+Agents have a dashboard similar to a punter but with additional branch tools.
+
+Agents can:
+
+Login
+Place bets on behalf of walk-in customers
+Sell vouchers
+Print vouchers
+Can not Redeem vouchers but get allocated funds to bet with, can request a void of ticket if a punter cancels a ticket
+View their sales
+View commission reports
+View betting activity placed through them
+
+Agents only see their own activity.
+
+Agents cannot view data from other agents.
+
+PUNTER
+
+Regular website customer.
+
+Current functionality remains unchanged.
+
+Create new entity:
+
+Branch
+
+Fields:
+
+id
+name
+code
+country
+city
+address
+phone
+email
+status
+createdAt
+
+A branch may have many agents.
+
+A branch will be allocated many vouchers by the super admin.
+
+A branch may have many transactions.
+
+Agent Management
+
+Create entity:
+
+Agent
+
+Fields:
+
+id
+branchId (this should be filled in automatically since agents will be registered / created at the branch)
+firstName
+lastName
+email
+phone
+username
+passwordHash
+status
+commissionRate
+createdAt
+
+Relationship:
+
+Branch → Many Agents
+
+Voucher Management
+
+Create voucher inventory system.
+
+Super Admin creates voucher batches.
+
+Branches receive voucher allocations.
+
+Branches can allocate vouchers to agents.
+
+Agents can sell or print vouchers.
+
+Voucher fields:
+update the current voucher system. and add show when a voucher has been allocated to a branch, and once sold, it must show which agent sold it
+
+Agents must be able to place bets for customers who do not have accounts.
+
+Branch Dashboard
+
+Branch dashboard should only display branch-specific data.
+
+Show:
+
+Total Sales
+Total Bets
+Active Agents
+Voucher Sales
+Pending Payouts
+Daily Revenue
+Monthly Revenue
+
+All statistics must be filtered by branchId.
+
+Agent Dashboard
+
+Show:
+
+Tickets Sold
+Bets Placed
+Voucher Sales
+Commission Earned
+Pending Payouts
+
+Agents only see their own data.
+
+Permissions System
+
+Implement Role-Based Access Control (RBAC).
+
+Permissions must be enforced on:
+
+Backend APIs
+Frontend Routes
+Dashboard Widgets
+Reports
+Data Isolation
+
+IMPORTANT
+
+Branch users must NEVER see:
+
+Other branches
+Other branch agents
+Other branch reports
+Other branch transactions
+
+Every query must filter by branchId.
+
+Agents must NEVER see another agent's records.
+
+Every agent query must filter by agentId.
+
+Navigation Changes
+
+SUPER ADMIN MENU
+
+Dashboard
+Users
+Branches
+Agents
+Vouchers
+Fixtures
+Reports
+Settings
+
+BRANCH MENU
+
+Dashboard
+Agents
+Vouchers
+Sales
+Reports
+
+AGENT MENU
+
+Dashboard
+Place Bet
+Sell Voucher
+Voucher Inventory
+Tickets
+Reports
+Database Changes
+
+
+Add branchId to all relevant transactional tables.
+
+Add agentId to all relevant agent-generated records.
+
+Reporting
+
+Create reports for:
+
+Branch:
+
+Daily Sales
+Monthly Sales
+Voucher Sales
+Agent Performance
+
+Agent:
+
+Tickets Sold
+Voucher Sales
+Commission Earned
+Payout Activity
+UI Requirements
+
+Use the existing GoWin theme and design system.
+
+Do not redesign the application.
+Do not generate placeholder functionality.

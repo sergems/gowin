@@ -14,6 +14,9 @@ import apiSyncRouter from "./apiSync";
 import slidesRouter from "./slides";
 import betBookingsRouter from "./betBookings";
 import databaseRouter from "./database";
+import branchesRouter from "./branches";
+import branchAdminRouter from "./branchAdmin";
+import agentRouter from "./agentRoutes";
 
 const router: IRouter = Router();
 
@@ -32,5 +35,8 @@ router.use(apiSyncRouter);
 router.use(slidesRouter);
 router.use(betBookingsRouter);
 router.use(databaseRouter);
+router.use(branchesRouter);
+router.use(branchAdminRouter);
+router.use(agentRouter);
 
 export default router;

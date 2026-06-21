@@ -32,6 +32,19 @@ import AdminWithdrawals from "@/pages/admin/withdrawals";
 import AdminSettings from "@/pages/admin/settings";
 import AdminSlides from "@/pages/admin/slides";
 import AdminFixtureUpdate from "@/pages/admin/fixture-update";
+import AdminBranches from "@/pages/admin/BranchesPage";
+
+// Branch Admin Pages
+import BranchDashboard from "@/pages/branch/DashboardPage";
+import BranchAgents from "@/pages/branch/AgentsPage";
+import BranchVouchers from "@/pages/branch/VouchersPage";
+import BranchReports from "@/pages/branch/ReportsPage";
+
+// Agent Pages
+import AgentDashboard from "@/pages/agent/DashboardPage";
+import AgentPlaceBet from "@/pages/agent/PlaceBetPage";
+import AgentVouchers from "@/pages/agent/VouchersPage";
+import AgentReports from "@/pages/agent/ReportsPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,21 +58,25 @@ const queryClient = new QueryClient({
   },
 });
 
-// Protected Route Component
-function ProtectedRoute({ component: Component, adminOnly = false, ...rest }: any) {
+function ProtectedRoute({ component: Component, allowedRoles, adminOnly = false, ...rest }: any) {
   const { user, isLoading } = useAuth();
 
-  if (isLoading) return <div className="h-screen w-full flex items-center justify-center bg-background"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
+  if (isLoading) return (
+    <div className="h-screen w-full flex items-center justify-center bg-background">
+      <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+    </div>
+  );
 
-  if (!user) {
-    return <Login />;
-  }
+  if (!user) return <Login />;
 
-  if ((user as any).mustChangePassword) {
-    return <ChangePassword />;
-  }
+  if ((user as any).mustChangePassword) return <ChangePassword />;
 
-  if (adminOnly && user.role !== "admin") {
+  if (adminOnly && user.role !== "admin") return <Home />;
+
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    if (user.role === "admin") return <AdminDashboard />;
+    if (user.role === "branch_admin") return <BranchDashboard />;
+    if (user.role === "agent") return <AgentDashboard />;
     return <Home />;
   }
 
@@ -84,6 +101,7 @@ function Router() {
         <Route path="/wallet" component={() => <ProtectedRoute component={Wallet} />} />
         <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
 
+        {/* Super Admin Routes */}
         <Route path="/admin" component={() => <ProtectedRoute component={AdminDashboard} adminOnly />} />
         <Route path="/admin/users" component={() => <ProtectedRoute component={AdminUsers} adminOnly />} />
         <Route path="/admin/fixtures" component={() => <ProtectedRoute component={AdminFixtures} adminOnly />} />
@@ -94,6 +112,19 @@ function Router() {
         <Route path="/admin/settings" component={() => <ProtectedRoute component={AdminSettings} adminOnly />} />
         <Route path="/admin/slides" component={() => <ProtectedRoute component={AdminSlides} adminOnly />} />
         <Route path="/admin/fixture-update" component={() => <ProtectedRoute component={AdminFixtureUpdate} adminOnly />} />
+        <Route path="/admin/branches" component={() => <ProtectedRoute component={AdminBranches} adminOnly />} />
+
+        {/* Branch Admin Routes */}
+        <Route path="/branch" component={() => <ProtectedRoute component={BranchDashboard} allowedRoles={["branch_admin"]} />} />
+        <Route path="/branch/agents" component={() => <ProtectedRoute component={BranchAgents} allowedRoles={["branch_admin"]} />} />
+        <Route path="/branch/vouchers" component={() => <ProtectedRoute component={BranchVouchers} allowedRoles={["branch_admin"]} />} />
+        <Route path="/branch/reports" component={() => <ProtectedRoute component={BranchReports} allowedRoles={["branch_admin"]} />} />
+
+        {/* Agent Routes */}
+        <Route path="/agent" component={() => <ProtectedRoute component={AgentDashboard} allowedRoles={["agent"]} />} />
+        <Route path="/agent/bet" component={() => <ProtectedRoute component={AgentPlaceBet} allowedRoles={["agent"]} />} />
+        <Route path="/agent/vouchers" component={() => <ProtectedRoute component={AgentVouchers} allowedRoles={["agent"]} />} />
+        <Route path="/agent/reports" component={() => <ProtectedRoute component={AgentReports} allowedRoles={["agent"]} />} />
 
         <Route component={NotFound} />
       </Switch>

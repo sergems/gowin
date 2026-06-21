@@ -35,6 +35,12 @@ export const vouchersTable = pgTable("vouchers", {
   redeemedBy: integer("redeemed_by").references(() => usersTable.id, { onDelete: "set null" }),
   redeemedAt: timestamp("redeemed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  branchId: integer("branch_id"),
+  allocatedToBranch: boolean("allocated_to_branch").notNull().default(false),
+  allocatedToBranchAt: timestamp("allocated_to_branch_at", { withTimezone: true }),
+  agentId: integer("agent_id").references(() => usersTable.id, { onDelete: "set null" }),
+  soldAt: timestamp("sold_at", { withTimezone: true }),
+  printedAt: timestamp("printed_at", { withTimezone: true }),
 });
 
 export const insertVoucherSchema = createInsertSchema(vouchersTable).omit({ id: true, createdAt: true });

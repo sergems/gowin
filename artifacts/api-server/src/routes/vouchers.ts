@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { db, vouchersTable, walletsTable, transactionsTable, usersTable } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
-import { requireAuth, requireAdmin, type AuthRequest } from "../middlewares/auth";
+import { db, vouchersTable, walletsTable, transactionsTable, usersTable, branchesTable } from "@workspace/db";
+import { eq, desc, and, isNull } from "drizzle-orm";
+import { requireAuth, requireAdmin, requireBranchAdmin, type AuthRequest } from "../middlewares/auth";
 import { randomBytes } from "crypto";
 
 const router = Router();
@@ -18,6 +18,7 @@ function generateVoucherCode(): string {
   return code;
 }
 
+// ── POST /admin/vouchers — create batch (super admin) ────────────────────────
 router.post("/admin/vouchers", requireAdmin, async (req, res): Promise<void> => {
   const { value, quantity = 1 } = req.body;
 
@@ -44,7 +45,6 @@ router.post("/admin/vouchers", requireAdmin, async (req, res): Promise<void> => 
       const existing = await db.select().from(vouchersTable).where(eq(vouchersTable.code, code)).limit(1);
       if (existing.length === 0) break;
     }
-
     const [voucher] = await db.insert(vouchersTable).values({ code, value: String(value) }).returning();
     created.push(voucher);
   }
@@ -52,6 +52,7 @@ router.post("/admin/vouchers", requireAdmin, async (req, res): Promise<void> => 
   res.status(201).json({ vouchers: created.map((v) => ({ ...v, value: parseFloat(v.value) })) });
 });
 
+// ── GET /admin/vouchers — list all (super admin) ──────────────────────────────
 router.get("/admin/vouchers", requireAdmin, async (_req, res): Promise<void> => {
   const vouchers = await db
     .select({
@@ -62,17 +63,59 @@ router.get("/admin/vouchers", requireAdmin, async (_req, res): Promise<void> => 
       redeemedBy: vouchersTable.redeemedBy,
       redeemedAt: vouchersTable.redeemedAt,
       createdAt: vouchersTable.createdAt,
+      branchId: vouchersTable.branchId,
+      allocatedToBranch: vouchersTable.allocatedToBranch,
+      allocatedToBranchAt: vouchersTable.allocatedToBranchAt,
+      agentId: vouchersTable.agentId,
+      soldAt: vouchersTable.soldAt,
+      printedAt: vouchersTable.printedAt,
       redeemedByUsername: usersTable.username,
     })
     .from(vouchersTable)
     .leftJoin(usersTable, eq(vouchersTable.redeemedBy, usersTable.id))
     .orderBy(desc(vouchersTable.createdAt));
 
+  // Load branch names separately
+  const branches = await db.select({ id: branchesTable.id, name: branchesTable.name }).from(branchesTable);
+  const branchMap = Object.fromEntries(branches.map((b) => [b.id, b.name]));
+
   res.json({
-    vouchers: vouchers.map((v) => ({ ...v, value: parseFloat(v.value) })),
+    vouchers: vouchers.map((v) => ({
+      ...v,
+      value: parseFloat(v.value),
+      branchName: v.branchId ? branchMap[v.branchId] ?? null : null,
+    })),
   });
 });
 
+// ── POST /admin/vouchers/allocate-to-branch ───────────────────────────────────
+router.post("/admin/vouchers/allocate-to-branch", requireAdmin, async (req, res): Promise<void> => {
+  const { voucherIds, branchId } = req.body as { voucherIds: number[]; branchId: number };
+
+  if (!Array.isArray(voucherIds) || voucherIds.length === 0) {
+    res.status(400).json({ error: "voucherIds must be a non-empty array" });
+    return;
+  }
+  const [branch] = await db.select().from(branchesTable).where(eq(branchesTable.id, branchId)).limit(1);
+  if (!branch) { res.status(404).json({ error: "Branch not found" }); return; }
+
+  let allocated = 0;
+  for (const vid of voucherIds) {
+    const [v] = await db.select().from(vouchersTable).where(eq(vouchersTable.id, vid)).limit(1);
+    if (!v || v.isRedeemed || v.allocatedToBranch) continue;
+
+    await db.update(vouchersTable).set({
+      branchId,
+      allocatedToBranch: true,
+      allocatedToBranchAt: new Date(),
+    }).where(eq(vouchersTable.id, vid));
+    allocated++;
+  }
+
+  res.json({ success: true, allocated });
+});
+
+// ── POST /wallet/redeem-voucher — user redeems voucher ───────────────────────
 router.post("/wallet/redeem-voucher", requireAuth, async (req: AuthRequest, res): Promise<void> => {
   const rawCode = req.body?.code;
   if (!rawCode || typeof rawCode !== "string") {

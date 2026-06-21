@@ -4,3 +4,4 @@ export * from "./sports";
 export * from "./bets";
 export * from "./withdrawals";
 export * from "./password-reset-otps";
+export * from "./branches";

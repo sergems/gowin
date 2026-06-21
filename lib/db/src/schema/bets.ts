@@ -15,6 +15,8 @@ export const betsTable = pgTable("bets", {
   potentialWin: numeric("potential_win", { precision: 15, scale: 2 }).notNull(),
   status: betStatusEnum("status").notNull().default("pending"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  agentId: integer("agent_id").references(() => usersTable.id, { onDelete: "set null" }),
+  branchId: integer("branch_id"),
 });
 
 export const betSelectionsTable = pgTable("bet_selections", {

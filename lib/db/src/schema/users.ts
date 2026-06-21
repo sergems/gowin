@@ -1,8 +1,8 @@
-import { pgTable, text, serial, integer, timestamp, pgEnum, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, numeric, timestamp, pgEnum, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
-export const userRoleEnum = pgEnum("user_role", ["user", "admin"]);
+export const userRoleEnum = pgEnum("user_role", ["user", "admin", "branch_admin", "agent"]);
 
 export const usersTable = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -21,6 +21,8 @@ export const usersTable = pgTable("users", {
   tempPasswordHash: text("temp_password_hash"),
   tempPasswordExpiry: timestamp("temp_password_expiry", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  branchId: integer("branch_id"),
+  commissionRate: numeric("commission_rate", { precision: 5, scale: 2 }).default("0.00"),
 });
 
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true, createdAt: true });
