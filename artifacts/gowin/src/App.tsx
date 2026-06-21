@@ -37,6 +37,7 @@ import AdminBranches from "@/pages/admin/BranchesPage";
 // Branch Admin Pages
 import BranchDashboard from "@/pages/branch/DashboardPage";
 import BranchAgents from "@/pages/branch/AgentsPage";
+import BranchBets from "@/pages/branch/BetsPage";
 import BranchCashUp from "@/pages/branch/CashUpPage";
 import BranchVouchers from "@/pages/branch/VouchersPage";
 import BranchReports from "@/pages/branch/ReportsPage";
@@ -122,6 +123,7 @@ function Router() {
         {/* Branch Admin Routes */}
         <Route path="/branch" component={() => <ProtectedRoute component={BranchDashboard} allowedRoles={["branch_admin"]} />} />
         <Route path="/branch/agents" component={() => <ProtectedRoute component={BranchAgents} allowedRoles={["branch_admin"]} />} />
+        <Route path="/branch/bets"   component={() => <ProtectedRoute component={BranchBets}   allowedRoles={["branch_admin"]} />} />
         <Route path="/branch/cashup" component={() => <ProtectedRoute component={BranchCashUp} allowedRoles={["branch_admin"]} />} />
         <Route path="/branch/vouchers" component={() => <ProtectedRoute component={BranchVouchers} allowedRoles={["branch_admin"]} />} />
         <Route path="/branch/reports" component={() => <ProtectedRoute component={BranchReports} allowedRoles={["branch_admin"]} />} />

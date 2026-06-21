@@ -114,6 +114,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const branchAdminLinks = isBranchAdmin ? [
     { href: "/branch",          icon: LayoutDashboard, label: "Dashboard",  match: (l: string) => l === "/branch" },
     { href: "/branch/agents",   icon: Users,           label: "Agents",     match: (l: string) => l === "/branch/agents" },
+    { href: "/branch/bets",     icon: History,         label: "Bets",       match: (l: string) => l === "/branch/bets" },
     { href: "/branch/cashup",   icon: DollarSign,      label: "Cash Up",    match: (l: string) => l === "/branch/cashup" },
     { href: "/branch/vouchers", icon: Ticket,          label: "Vouchers",   match: (l: string) => l === "/branch/vouchers" },
     { href: "/branch/reports",  icon: BarChart3,       label: "Reports",    match: (l: string) => l === "/branch/reports" },

@@ -1,7 +1,8 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { db, usersTable, walletsTable, betsTable, vouchersTable, transactionsTable, branchesTable } from "@workspace/db";
-import { eq, count, sum, desc, and, gte, lte, sql, or, inArray } from "drizzle-orm";
+import { eq, count, sum, desc, and, gte, lte, sql, or, inArray, asc } from "drizzle-orm";
+import { betSelectionsTable } from "@workspace/db";
 import { requireBranchAdmin, requireAdmin, type AuthRequest } from "../middlewares/auth";
 
 const router = Router();
@@ -288,6 +289,60 @@ router.get("/branch/reports", requireBranchAdmin, async (req: AuthRequest, res):
   }));
 
   res.json({ dailySales, agentPerformance });
+});
+
+// ── GET /branch/bets — list all bets for this branch ─────────────────────────
+router.get("/branch/bets", requireBranchAdmin, async (req: AuthRequest, res): Promise<void> => {
+  const branchId = getBranchId(req);
+  if (!branchId) { res.status(403).json({ error: "No branch assigned" }); return; }
+
+  const limit = Math.min(parseInt(String(req.query.limit ?? "200")), 500);
+  const status = req.query.status as string | undefined;
+
+  const where = status && status !== "all"
+    ? and(eq(betsTable.branchId, branchId), eq(betsTable.status, status as any))
+    : eq(betsTable.branchId, branchId);
+
+  const bets = await db
+    .select({
+      id: betsTable.id,
+      code: betsTable.code,
+      stake: betsTable.stake,
+      totalOdds: betsTable.totalOdds,
+      potentialWin: betsTable.potentialWin,
+      status: betsTable.status,
+      createdAt: betsTable.createdAt,
+      agentId: betsTable.agentId,
+      agentUsername: usersTable.username,
+      agentFirstName: usersTable.firstName,
+      agentLastName: usersTable.lastName,
+    })
+    .from(betsTable)
+    .leftJoin(usersTable, eq(betsTable.agentId, usersTable.id))
+    .where(where)
+    .orderBy(desc(betsTable.createdAt))
+    .limit(limit);
+
+  // Fetch selections for all bets
+  const betIds = bets.map(b => b.id);
+  const selections = betIds.length > 0
+    ? await db.select().from(betSelectionsTable).where(inArray(betSelectionsTable.betId, betIds))
+    : [];
+
+  const selectionsByBet = selections.reduce<Record<number, typeof selections>>((acc, s) => {
+    (acc[s.betId] ??= []).push(s);
+    return acc;
+  }, {});
+
+  res.json({
+    bets: bets.map(b => ({
+      ...b,
+      stake: parseFloat(b.stake as any),
+      totalOdds: parseFloat(b.totalOdds as any),
+      potentialWin: parseFloat(b.potentialWin as any),
+      selections: selectionsByBet[b.id] ?? [],
+    })),
+  });
 });
 
 export default router;
