@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -8,10 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
 import {
   Key, RefreshCw, CheckCircle2, AlertTriangle,
   Eye, EyeOff, Database, Plug, PlugZap, Unplug, FlaskConical,
-  Upload, FileText, Info, Download,
+  Upload, FileText, Info, Download, Mail, Send, ShieldCheck, ShieldOff,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -20,6 +21,17 @@ interface AdminSettings {
   lastSync: string;
   syncStatus: string;
   syncSummary: string;
+}
+
+interface EmailSettings {
+  host: string;
+  port: string;
+  user: string;
+  hasPass: boolean;
+  secure: boolean;
+  from: string;
+  appUrl: string;
+  configured: boolean;
 }
 
 interface DbStatus {
@@ -36,6 +48,18 @@ export default function AdminSettings() {
   // ── API Key state ───────────────────────────────────────────────────────────
   const [newKey, setNewKey] = useState("");
   const [showKey, setShowKey] = useState(false);
+
+  // ── SMTP / Email state ───────────────────────────────────────────────────────
+  const [smtpHost, setSmtpHost] = useState("");
+  const [smtpPort, setSmtpPort] = useState("587");
+  const [smtpUser, setSmtpUser] = useState("");
+  const [smtpPass, setSmtpPass] = useState("");
+  const [smtpSecure, setSmtpSecure] = useState(false);
+  const [smtpFrom, setSmtpFrom] = useState("");
+  const [appUrl, setAppUrl] = useState("");
+  const [showSmtpPass, setShowSmtpPass] = useState(false);
+  const [testEmailTo, setTestEmailTo] = useState("");
+  const [smtpLoaded, setSmtpLoaded] = useState(false);
 
   // ── Database connection state ───────────────────────────────────────────────
   const [dbUrl, setDbUrl] = useState("");
@@ -102,6 +126,29 @@ export default function AdminSettings() {
     refetchInterval: 3000,
   });
 
+  const { data: emailSettings } = useQuery<EmailSettings>({
+    queryKey: ["/api/admin/email-settings"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/email-settings", { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      return data;
+    },
+  });
+
+  useEffect(() => {
+    if (emailSettings && !smtpLoaded) {
+      setSmtpHost(emailSettings.host);
+      setSmtpPort(emailSettings.port || "587");
+      setSmtpUser(emailSettings.user);
+      setSmtpPass(emailSettings.hasPass ? "••••••••" : "");
+      setSmtpSecure(emailSettings.secure);
+      setSmtpFrom(emailSettings.from);
+      setAppUrl(emailSettings.appUrl);
+      setSmtpLoaded(true);
+    }
+  }, [emailSettings, smtpLoaded]);
+
   const { data: dbStatus, isLoading: dbLoading } = useQuery<DbStatus>({
     queryKey: ["/api/admin/database"],
     queryFn: async () => {
@@ -130,6 +177,42 @@ export default function AdminSettings() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/settings"] });
     },
     onError: (e: any) => toast({ title: "Save failed", description: e.message, variant: "destructive" }),
+  });
+
+  const saveEmailMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/admin/email-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          host: smtpHost, port: smtpPort, user: smtpUser, pass: smtpPass,
+          secure: smtpSecure, from: smtpFrom, appUrl,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      toast({ title: "Email settings saved" });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/email-settings"] });
+    },
+    onError: (e: any) => toast({ title: "Save failed", description: e.message, variant: "destructive" }),
+  });
+
+  const testEmailMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/admin/email-settings/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ to: testEmailTo }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => toast({ title: "Test email sent", description: `Check inbox at ${testEmailTo}` }),
+    onError: (e: any) => toast({ title: "Test failed", description: e.message, variant: "destructive" }),
   });
 
   const syncMutation = useMutation({
@@ -303,6 +386,132 @@ export default function AdminSettings() {
               API keys expire every 30 days. Get yours at{" "}
               <a href="https://allsportsapi.com" target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">allsportsapi.com</a>
             </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Email / SMTP ─────────────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Mail className="w-4 h-4" /> Email Settings (SMTP)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Status banner */}
+          <div className="flex items-center justify-between p-3 rounded-lg bg-accent/30 border border-border">
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Email Status</p>
+              <p className="text-sm font-medium">
+                {emailSettings?.configured ? "Email notifications active" : "Not configured"}
+              </p>
+            </div>
+            {emailSettings?.configured ? (
+              <Badge className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30 flex items-center gap-1.5">
+                <ShieldCheck className="w-3 h-3" /> Active
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-muted-foreground flex items-center gap-1.5">
+                <ShieldOff className="w-3 h-3" /> Inactive
+              </Badge>
+            )}
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div className="col-span-2 space-y-2">
+              <Label htmlFor="smtpHost" className="text-xs text-muted-foreground">
+                SMTP Host <span className="text-destructive">*</span>
+              </Label>
+              <Input id="smtpHost" placeholder="smtp.gmail.com" value={smtpHost}
+                onChange={(e) => setSmtpHost(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="smtpPort" className="text-xs text-muted-foreground">Port</Label>
+              <Input id="smtpPort" placeholder="587" value={smtpPort}
+                onChange={(e) => setSmtpPort(e.target.value)} className="font-mono" />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="smtpUser" className="text-xs text-muted-foreground">
+              Username / Email <span className="text-destructive">*</span>
+            </Label>
+            <Input id="smtpUser" placeholder="noreply@yourdomain.com" value={smtpUser}
+              onChange={(e) => setSmtpUser(e.target.value)} autoComplete="off" />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="smtpPass" className="text-xs text-muted-foreground">
+              Password <span className="text-destructive">*</span>
+            </Label>
+            <div className="relative">
+              <Input id="smtpPass" type={showSmtpPass ? "text" : "password"}
+                placeholder={emailSettings?.hasPass ? "Leave unchanged" : "App password or SMTP password"}
+                value={smtpPass} onChange={(e) => setSmtpPass(e.target.value)}
+                autoComplete="new-password" className="pr-9" />
+              <button type="button" onClick={() => setShowSmtpPass(!showSmtpPass)}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                {showSmtpPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-accent/10">
+            <div>
+              <p className="text-sm font-medium">Use SSL/TLS</p>
+              <p className="text-xs text-muted-foreground">Enable for port 465. Leave off for 587 (STARTTLS).</p>
+            </div>
+            <Switch checked={smtpSecure} onCheckedChange={setSmtpSecure} />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="smtpFrom" className="text-xs text-muted-foreground">From Address</Label>
+            <Input id="smtpFrom" placeholder='GoWin <noreply@yourdomain.com>' value={smtpFrom}
+              onChange={(e) => setSmtpFrom(e.target.value)} />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="appUrl" className="text-xs text-muted-foreground">App URL</Label>
+            <Input id="appUrl" placeholder="https://yourdomain.com" value={appUrl}
+              onChange={(e) => setAppUrl(e.target.value)} className="font-mono text-sm" />
+            <p className="text-xs text-muted-foreground">
+              Used in password reset links sent to users.
+            </p>
+          </div>
+
+          <Button
+            className="w-full gap-2"
+            onClick={() => saveEmailMutation.mutate()}
+            disabled={!smtpHost.trim() || !smtpUser.trim() || saveEmailMutation.isPending}
+          >
+            {saveEmailMutation.isPending ? <><RefreshCw className="w-4 h-4 animate-spin" /> Saving…</> : "Save Email Settings"}
+          </Button>
+
+          {/* Test email */}
+          <div className="border-t pt-4 space-y-3">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Send Test Email</p>
+            <div className="flex gap-2">
+              <Input
+                placeholder="recipient@example.com"
+                value={testEmailTo}
+                onChange={(e) => setTestEmailTo(e.target.value)}
+                className="flex-1"
+              />
+              <Button
+                variant="outline"
+                className="gap-2 shrink-0"
+                onClick={() => testEmailMutation.mutate()}
+                disabled={!testEmailTo.trim() || !emailSettings?.configured || testEmailMutation.isPending}
+              >
+                <Send className="w-4 h-4" />
+                {testEmailMutation.isPending ? "Sending…" : "Send Test"}
+              </Button>
+            </div>
+            {!emailSettings?.configured && (
+              <p className="text-xs text-amber-500 flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> Save SMTP settings first before sending a test
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>

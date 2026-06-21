@@ -1,4 +1,6 @@
 import { createRequire } from "node:module";
+import { db, settingsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import { logger } from "./logger";
 
 const require = createRequire(import.meta.url);
@@ -10,38 +12,76 @@ interface MailOptions {
   text: string;
 }
 
-function isSmtpConfigured(): boolean {
-  return !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+interface SmtpConfig {
+  host: string;
+  port: number;
+  user: string;
+  pass: string;
+  secure: boolean;
+  from: string;
+  appUrl: string;
 }
 
-function createTransporter() {
-  const nodemailer = require("nodemailer");
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || "587"),
-    secure: process.env.SMTP_SECURE === "true",
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
+async function getDbSetting(key: string): Promise<string | null> {
+  try {
+    const [row] = await db.select().from(settingsTable).where(eq(settingsTable.key, key)).limit(1);
+    return row?.value ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getSmtpConfig(): Promise<SmtpConfig | null> {
+  // DB settings take priority; env vars are the fallback
+  const host = (await getDbSetting("smtp_host")) ?? process.env.SMTP_HOST ?? "";
+  const user = (await getDbSetting("smtp_user")) ?? process.env.SMTP_USER ?? "";
+  const pass = (await getDbSetting("smtp_pass")) ?? process.env.SMTP_PASS ?? "";
+  const port = parseInt((await getDbSetting("smtp_port")) ?? process.env.SMTP_PORT ?? "587", 10);
+  const secure = ((await getDbSetting("smtp_secure")) ?? process.env.SMTP_SECURE ?? "false") === "true";
+  const from = (await getDbSetting("smtp_from")) ?? process.env.SMTP_FROM ?? "GoWin <noreply@gowin.com>";
+  const appUrl = (await getDbSetting("app_url")) ?? process.env.APP_URL ?? "";
+
+  if (!host || !user || !pass) return null;
+  return { host, port, user, pass, secure, from, appUrl };
 }
 
 async function sendMail(opts: MailOptions): Promise<boolean> {
-  if (!isSmtpConfigured()) {
+  const cfg = await getSmtpConfig();
+  if (!cfg) {
     logger.warn("SMTP not configured — email not sent", { to: opts.to, subject: opts.subject });
     return false;
   }
   try {
-    const transporter = createTransporter();
-    const from = process.env.SMTP_FROM || `GoWin <noreply@gowin.com>`;
-    await transporter.sendMail({ from, ...opts });
+    const nodemailer = require("nodemailer");
+    const transporter = nodemailer.createTransport({
+      host: cfg.host,
+      port: cfg.port,
+      secure: cfg.secure,
+      auth: { user: cfg.user, pass: cfg.pass },
+    });
+    await transporter.sendMail({ from: cfg.from, ...opts });
     logger.info("Email sent", { to: opts.to, subject: opts.subject });
     return true;
   } catch (err) {
     logger.error({ err }, "Failed to send email");
     return false;
   }
+}
+
+export async function sendTestEmail(to: string): Promise<boolean> {
+  return sendMail({
+    to,
+    subject: "GoWin — Email Configuration Test",
+    text: "This is a test email from your GoWin Sportsbook. Your email settings are working correctly.",
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+        <h2 style="color:#1a1a1a">Email Test Successful</h2>
+        <p>This is a test email from your <strong>GoWin Sportsbook</strong> admin panel.</p>
+        <p style="color:#666;font-size:14px">Your SMTP configuration is working correctly. Users will now receive email notifications for password resets, OTP codes, and account alerts.</p>
+        <p style="color:#666;font-size:14px">— The GoWin Admin Panel</p>
+      </div>
+    `,
+  });
 }
 
 export async function sendOtpEmail(to: string, username: string, otp: string): Promise<boolean> {
@@ -86,6 +126,7 @@ export async function sendTempPasswordEmail(to: string, username: string, tempPa
 }
 
 export async function sendAccountLockedEmail(to: string, username: string): Promise<boolean> {
+  const appUrl = (await getDbSetting("app_url")) ?? process.env.APP_URL ?? "";
   return sendMail({
     to,
     subject: "GoWin — Account Locked",
@@ -97,7 +138,7 @@ export async function sendAccountLockedEmail(to: string, username: string): Prom
         <p>Your GoWin account has been locked due to <strong>3 consecutive failed login attempts</strong>.</p>
         <p>To regain access, please reset your password using the link below:</p>
         <div style="text-align:center;margin:24px 0">
-          <a href="${process.env.APP_URL || ""}/forgot-password" style="background:#1a1a1a;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold">Reset Password</a>
+          <a href="${appUrl}/forgot-password" style="background:#1a1a1a;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold">Reset Password</a>
         </div>
         <p style="color:#666;font-size:14px">If this was not you, please contact support immediately.</p>
         <p style="color:#666;font-size:14px">— The GoWin Team</p>

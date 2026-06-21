@@ -3,6 +3,7 @@ import { db, settingsTable, sportsTable, leaguesTable, teamsTable, fixturesTable
 import { eq, sql } from "drizzle-orm";
 import { requireAdmin, type AuthRequest } from "../middlewares/auth";
 import { refreshAllUpcomingOdds } from "../lib/oddsRefresh";
+import { sendTestEmail } from "../lib/email";
 
 const router = Router();
 
@@ -199,6 +200,69 @@ router.put("/admin/settings", requireAdmin, async (req: AuthRequest, res): Promi
   }
   await setSetting("allsports_api_key", apiKey.trim());
   res.json({ ok: true });
+});
+
+// ── GET /admin/email-settings ─────────────────────────────────────────────────
+router.get("/admin/email-settings", requireAdmin, async (_req, res): Promise<void> => {
+  const host = await getSetting("smtp_host");
+  const port = await getSetting("smtp_port");
+  const user = await getSetting("smtp_user");
+  const pass = await getSetting("smtp_pass");
+  const secure = await getSetting("smtp_secure");
+  const from = await getSetting("smtp_from");
+  const appUrl = await getSetting("app_url");
+  res.json({
+    host: host ?? "",
+    port: port ?? "587",
+    user: user ?? "",
+    hasPass: !!pass,
+    secure: secure === "true",
+    from: from ?? "",
+    appUrl: appUrl ?? "",
+    configured: !!(host && user && pass),
+  });
+});
+
+// ── PUT /admin/email-settings ─────────────────────────────────────────────────
+router.put("/admin/email-settings", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+  const { host, port, user, pass, secure, from, appUrl } = req.body;
+  if (!host || typeof host !== "string" || !host.trim()) {
+    res.status(400).json({ error: "SMTP host is required" });
+    return;
+  }
+  if (!user || typeof user !== "string" || !user.trim()) {
+    res.status(400).json({ error: "SMTP username is required" });
+    return;
+  }
+  await setSetting("smtp_host", host.trim());
+  await setSetting("smtp_port", String(port || "587").trim());
+  await setSetting("smtp_user", user.trim());
+  if (pass && typeof pass === "string" && pass.trim() && pass !== "••••••••") {
+    await setSetting("smtp_pass", pass.trim());
+  }
+  await setSetting("smtp_secure", secure ? "true" : "false");
+  if (from && typeof from === "string" && from.trim()) {
+    await setSetting("smtp_from", from.trim());
+  }
+  if (appUrl && typeof appUrl === "string" && appUrl.trim()) {
+    await setSetting("app_url", appUrl.trim());
+  }
+  res.json({ ok: true });
+});
+
+// ── POST /admin/email-settings/test ──────────────────────────────────────────
+router.post("/admin/email-settings/test", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+  const { to } = req.body;
+  if (!to || typeof to !== "string" || !to.trim()) {
+    res.status(400).json({ error: "Recipient email address is required" });
+    return;
+  }
+  const ok = await sendTestEmail(to.trim());
+  if (ok) {
+    res.json({ ok: true });
+  } else {
+    res.status(500).json({ error: "Failed to send test email — check your SMTP settings are saved and correct." });
+  }
 });
 
 // ── POST /admin/refresh-odds ──────────────────────────────────────────────────
