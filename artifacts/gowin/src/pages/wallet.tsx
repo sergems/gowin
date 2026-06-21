@@ -61,6 +61,8 @@ export default function Wallet() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const isRestrictedRole = user?.role === "agent" || user?.role === "branch_admin";
+
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [activeTab, setActiveTab] = useState<"voucher" | "withdraw">("voucher");
@@ -124,7 +126,9 @@ export default function Wallet() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-black tracking-tight mb-2">Wallet</h1>
-        <p className="text-muted-foreground">Manage your funds and view transaction history</p>
+        <p className="text-muted-foreground">
+          {isRestrictedRole ? "View your allocated balance and transaction history" : "Manage your funds and view transaction history"}
+        </p>
       </div>
 
       {isWalletLoading ? (
@@ -137,7 +141,9 @@ export default function Wallet() {
                 <WalletIcon className="w-8 h-8 text-primary" />
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-1">Available Balance</p>
+                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                  {isRestrictedRole ? "Allocated Balance" : "Available Balance"}
+                </p>
                 <h2 className="text-5xl font-black tracking-tight">${wallet?.balance?.toFixed(2) ?? "0.00"}</h2>
               </div>
             </div>
@@ -145,7 +151,8 @@ export default function Wallet() {
         </Card>
       )}
 
-      {/* Action Tabs */}
+      {/* Action Tabs — hidden for agents and branch admins */}
+      {!isRestrictedRole && (
       <Card>
         <CardHeader className="pb-3">
           <div className="flex gap-2">
@@ -246,53 +253,56 @@ export default function Wallet() {
           )}
         </CardContent>
       </Card>
+      )}
 
-      {/* Withdrawal History */}
-      <div>
-        <div className="flex items-center gap-2 mb-5">
-          <Banknote className="w-5 h-5 text-primary" />
-          <h2 className="text-2xl font-bold tracking-tight">My Withdrawals</h2>
-        </div>
-        {isWithdrawalsLoading ? (
-          <div className="space-y-3">{[1, 2].map((i) => <div key={i} className="h-20 bg-accent/50 rounded-lg animate-pulse" />)}</div>
-        ) : withdrawals.length === 0 ? (
-          <div className="py-10 text-center border border-dashed border-border rounded-xl">
-            <p className="text-muted-foreground">No withdrawal requests yet.</p>
+      {/* Withdrawal History — hidden for agents and branch admins */}
+      {!isRestrictedRole && (
+        <div>
+          <div className="flex items-center gap-2 mb-5">
+            <Banknote className="w-5 h-5 text-primary" />
+            <h2 className="text-2xl font-bold tracking-tight">My Withdrawals</h2>
           </div>
-        ) : (
-          <div className="space-y-3">
-            {withdrawals.map((w) => (
-              <div key={w.id} className="flex items-center justify-between p-4 rounded-xl border border-border bg-card">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-bold text-lg">${w.amount.toFixed(2)}</span>
-                    <StatusBadge status={w.status} />
+          {isWithdrawalsLoading ? (
+            <div className="space-y-3">{[1, 2].map((i) => <div key={i} className="h-20 bg-accent/50 rounded-lg animate-pulse" />)}</div>
+          ) : withdrawals.length === 0 ? (
+            <div className="py-10 text-center border border-dashed border-border rounded-xl">
+              <p className="text-muted-foreground">No withdrawal requests yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {withdrawals.map((w) => (
+                <div key={w.id} className="flex items-center justify-between p-4 rounded-xl border border-border bg-card">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-bold text-lg">${w.amount.toFixed(2)}</span>
+                      <StatusBadge status={w.status} />
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-1">{w.bankDetails}</p>
+                    <p className="text-xs text-muted-foreground">{format(new Date(w.createdAt), "PPP p")}</p>
+                    {w.status === "rejected" && w.adminNote && (
+                      <p className="text-xs text-destructive mt-1">Reason: {w.adminNote}</p>
+                    )}
+                    {w.status === "rejected" && (
+                      <p className="text-xs text-primary mt-1 font-medium">✓ Amount refunded to your wallet</p>
+                    )}
                   </div>
-                  <p className="text-xs text-muted-foreground line-clamp-1">{w.bankDetails}</p>
-                  <p className="text-xs text-muted-foreground">{format(new Date(w.createdAt), "PPP p")}</p>
-                  {w.status === "rejected" && w.adminNote && (
-                    <p className="text-xs text-destructive mt-1">Reason: {w.adminNote}</p>
-                  )}
-                  {w.status === "rejected" && (
-                    <p className="text-xs text-primary mt-1 font-medium">✓ Amount refunded to your wallet</p>
-                  )}
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    w.status === "paid" ? "bg-primary/20 text-primary" :
+                    w.status === "approved" ? "bg-blue-500/20 text-blue-500" :
+                    w.status === "rejected" ? "bg-destructive/20 text-destructive" :
+                    "bg-amber-500/20 text-amber-500"
+                  }`}>
+                    {w.status === "paid" ? <Banknote className="w-5 h-5" /> :
+                     w.status === "approved" ? <CheckCircle2 className="w-5 h-5" /> :
+                     w.status === "rejected" ? <XCircle className="w-5 h-5" /> :
+                     <Clock className="w-5 h-5" />}
+                  </div>
                 </div>
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  w.status === "paid" ? "bg-primary/20 text-primary" :
-                  w.status === "approved" ? "bg-blue-500/20 text-blue-500" :
-                  w.status === "rejected" ? "bg-destructive/20 text-destructive" :
-                  "bg-amber-500/20 text-amber-500"
-                }`}>
-                  {w.status === "paid" ? <Banknote className="w-5 h-5" /> :
-                   w.status === "approved" ? <CheckCircle2 className="w-5 h-5" /> :
-                   w.status === "rejected" ? <XCircle className="w-5 h-5" /> :
-                   <Clock className="w-5 h-5" />}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Transaction History */}
       <div className="mt-4">
@@ -304,7 +314,9 @@ export default function Wallet() {
           <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-16 bg-accent/50 rounded-lg animate-pulse" />)}</div>
         ) : transactions.length === 0 ? (
           <div className="py-12 text-center border border-dashed border-border rounded-xl">
-            <p className="text-muted-foreground">No transactions yet. Redeem a voucher to get started!</p>
+            <p className="text-muted-foreground">
+              {isRestrictedRole ? "No transactions yet." : "No transactions yet. Redeem a voucher to get started!"}
+            </p>
           </div>
         ) : (
           <div className="space-y-3">
