@@ -121,6 +121,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const agentLinks = isAgent ? [
     { href: "/agent",          icon: LayoutDashboard, label: "Dashboard",  match: (l: string) => l === "/agent" },
     { href: "/agent/bet",      icon: Target,          label: "Place Bet",  match: (l: string) => l === "/agent/bet" },
+    { href: "/agent/bets",     icon: History,         label: "My Bets",    match: (l: string) => l === "/agent/bets" },
     { href: "/agent/vouchers", icon: Ticket,          label: "Vouchers",   match: (l: string) => l === "/agent/vouchers" },
     { href: "/agent/reports",  icon: BarChart3,       label: "Reports",    match: (l: string) => l === "/agent/reports" },
   ] : [];

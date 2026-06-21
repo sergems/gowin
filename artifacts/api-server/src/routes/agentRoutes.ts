@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, usersTable, walletsTable, betsTable, betSelectionsTable, vouchersTable, transactionsTable } from "@workspace/db";
-import { eq, count, sum, desc, and, gte } from "drizzle-orm";
+import { eq, count, sum, desc, and, gte, lte } from "drizzle-orm";
 import { requireAgent, type AuthRequest } from "../middlewares/auth";
 import { randomBytes } from "crypto";
 
@@ -216,7 +216,7 @@ router.get("/agent/reports", requireAgent, async (req: AuthRequest, res): Promis
     nextDay.setDate(nextDay.getDate() + 1);
 
     const [bets] = await db.select({ count: count(), total: sum(betsTable.stake) }).from(betsTable)
-      .where(and(eq(betsTable.agentId, agentId), gte(betsTable.createdAt, day)));
+      .where(and(eq(betsTable.agentId, agentId), gte(betsTable.createdAt, day), lte(betsTable.createdAt, nextDay)));
 
     return {
       date: day.toISOString().split("T")[0],
