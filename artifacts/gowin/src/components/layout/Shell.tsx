@@ -19,7 +19,7 @@ import {
   Activity, LayoutDashboard, History, Wallet, Trophy, LogOut, Users, Settings, X,
   ArrowLeftRight, Ticket, UserCircle, AlertTriangle, Banknote, SlidersHorizontal,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, ChevronDown, ChevronRight, Globe, Shield, CheckCircle2,
-  Home, Menu, Images, Printer, Clock, Building2, Target, BarChart3, FileText,
+  Home, Menu, Images, Printer, Clock, Building2, Target, BarChart3, FileText, DollarSign,
 } from "lucide-react";
 import type { PlacedBetDetails } from "@/contexts/BetSlipContext";
 import { printBetSlip } from "@/lib/printBetSlip";
@@ -113,6 +113,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const branchAdminLinks = isBranchAdmin ? [
     { href: "/branch",          icon: LayoutDashboard, label: "Dashboard",  match: (l: string) => l === "/branch" },
     { href: "/branch/agents",   icon: Users,           label: "Agents",     match: (l: string) => l === "/branch/agents" },
+    { href: "/branch/cashup",   icon: DollarSign,      label: "Cash Up",    match: (l: string) => l === "/branch/cashup" },
     { href: "/branch/vouchers", icon: Ticket,          label: "Vouchers",   match: (l: string) => l === "/branch/vouchers" },
     { href: "/branch/reports",  icon: BarChart3,       label: "Reports",    match: (l: string) => l === "/branch/reports" },
   ] : [];

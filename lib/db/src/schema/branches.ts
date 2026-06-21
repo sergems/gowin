@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, pgEnum, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -14,6 +14,7 @@ export const branchesTable = pgTable("branches", {
   phone: text("phone").notNull(),
   email: text("email").notNull(),
   status: branchStatusEnum("status").notNull().default("active"),
+  balance: numeric("balance", { precision: 15, scale: 2 }).notNull().default("0"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

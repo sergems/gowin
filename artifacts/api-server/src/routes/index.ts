@@ -17,6 +17,7 @@ import databaseRouter from "./database";
 import branchesRouter from "./branches";
 import branchAdminRouter from "./branchAdmin";
 import agentRouter from "./agentRoutes";
+import cashUpRouter from "./cashUp";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(databaseRouter);
 router.use(branchesRouter);
 router.use(branchAdminRouter);
 router.use(agentRouter);
+router.use(cashUpRouter);
 
 export default router;
