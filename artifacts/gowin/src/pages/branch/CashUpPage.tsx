@@ -32,7 +32,6 @@ interface FloatAllocation {
 interface CashUpPreview {
   openingFloat: number;
   totalBets: number;
-  totalPayouts: number;
   expectedReturn: number;
 }
 
@@ -373,7 +372,7 @@ export default function CashUpPage() {
                         <span className="text-xs text-zinc-500">{s.shiftLabel} · {format(new Date(s.shiftDate), "MMM d, yyyy")}</span>
                       </div>
                       <p className="text-xs text-zinc-500 mt-0.5">
-                        Float ${s.openingFloat.toFixed(2)} · Bets ${s.totalBets.toFixed(2)} · Payouts ${s.totalPayouts.toFixed(2)}
+                        Float ${s.openingFloat.toFixed(2)} · Bets ${s.totalBets.toFixed(2)}
                       </p>
                     </div>
                     <div className="flex items-center gap-6 text-right">
@@ -504,9 +503,8 @@ export default function CashUpPage() {
                 {/* Breakdown */}
                 <div className="bg-zinc-800 rounded-xl divide-y divide-zinc-700">
                   {[
-                    { label: "Opening Float",    value: cashUpPreview.openingFloat,  color: "text-white", desc: "Float given at start of shift" },
-                    { label: "Cash Collected",   value: cashUpPreview.totalBets,     color: "text-emerald-400", desc: "Client bets placed (cash received)" },
-                    { label: "Winnings Paid Out", value: -cashUpPreview.totalPayouts, color: "text-red-400", desc: "Won bets paid to clients" },
+                    { label: "Opening Float",  value: cashUpPreview.openingFloat, color: "text-white",         desc: "Float given at start of shift" },
+                    { label: "Cash Collected", value: -cashUpPreview.totalBets,   color: "text-red-400",       desc: "Client bets placed (cash received)" },
                   ].map(({ label, value, color, desc }) => (
                     <div key={label} className="flex items-center justify-between px-4 py-3">
                       <div>

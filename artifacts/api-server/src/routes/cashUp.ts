@@ -157,16 +157,10 @@ router.get("/branch/floats/:id/preview", requireBranchAdmin, async (req: AuthReq
     .from(betsTable)
     .where(and(agentBetFilter, gte(betsTable.createdAt, shiftStart), lte(betsTable.createdAt, now)));
 
-  const [payoutStats] = await db
-    .select({ total: sum(betsTable.potentialWin) })
-    .from(betsTable)
-    .where(and(agentBetFilter, eq(betsTable.status, "won"), gte(betsTable.createdAt, shiftStart), lte(betsTable.createdAt, now)));
-
   const totalBets = parseFloat(betStats?.total as any ?? "0") || 0;
-  const totalPayouts = parseFloat(payoutStats?.total as any ?? "0") || 0;
-  const expectedReturn = openingFloat + totalBets - totalPayouts;
+  const expectedReturn = openingFloat - totalBets;
 
-  res.json({ openingFloat, totalBets, totalPayouts, expectedReturn: Math.max(0, expectedReturn) });
+  res.json({ openingFloat, totalBets, expectedReturn: Math.max(0, expectedReturn) });
 });
 
 // ── POST /api/branch/floats/:id/cashup — perform cash up ─────────────────────
@@ -198,14 +192,8 @@ router.post("/branch/floats/:id/cashup", requireBranchAdmin, async (req: AuthReq
     .from(betsTable)
     .where(and(cashUpBetFilter, gte(betsTable.createdAt, shiftStart), lte(betsTable.createdAt, now)));
 
-  const [payoutStats] = await db
-    .select({ total: sum(betsTable.potentialWin) })
-    .from(betsTable)
-    .where(and(cashUpBetFilter, eq(betsTable.status, "won"), gte(betsTable.createdAt, shiftStart), lte(betsTable.createdAt, now)));
-
   const totalBets = parseFloat(betStats?.total as any ?? "0") || 0;
-  const totalPayouts = parseFloat(payoutStats?.total as any ?? "0") || 0;
-  const expectedReturn = Math.max(0, openingFloat + totalBets - totalPayouts);
+  const expectedReturn = Math.max(0, openingFloat - totalBets);
   const variance = cashReturned - expectedReturn;
 
   // Save session
@@ -216,7 +204,7 @@ router.post("/branch/floats/:id/cashup", requireBranchAdmin, async (req: AuthReq
     performedBy: req.userId!,
     openingFloat: String(openingFloat),
     totalBets: String(totalBets),
-    totalPayouts: String(totalPayouts),
+    totalPayouts: "0",
     expectedReturn: String(expectedReturn),
     cashReturned: String(cashReturned),
     variance: String(variance),
