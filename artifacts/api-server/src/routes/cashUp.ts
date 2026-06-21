@@ -84,17 +84,37 @@ router.post("/branch/floats", requireBranchAdmin, async (req: AuthRequest, res):
     .set({ balance: String(currentBalance - amount) } as any)
     .where(eq(branchesTable.id, branchId));
 
-  // Create allocation
-  const [alloc] = await db.insert(branchFloatAllocationsTable).values({
-    branchId,
-    agentId,
-    allocatedBy: req.userId!,
-    amount: String(amount),
-    shiftDate,
-    shiftLabel,
-    notes: notes ?? null,
-    status: "open",
-  }).returning();
+  // Check for an existing open allocation for this agent on the same shift date
+  const [existing] = await db.select().from(branchFloatAllocationsTable)
+    .where(and(
+      eq(branchFloatAllocationsTable.branchId, branchId),
+      eq(branchFloatAllocationsTable.agentId, agentId),
+      eq(branchFloatAllocationsTable.shiftDate, shiftDate),
+      eq(branchFloatAllocationsTable.status, "open"),
+    ))
+    .limit(1);
+
+  let alloc;
+  if (existing) {
+    // Accumulate into existing allocation — no new record needed
+    const newAmount = parseFloat(existing.amount as any) + amount;
+    [alloc] = await db.update(branchFloatAllocationsTable)
+      .set({ amount: String(newAmount.toFixed(2)) })
+      .where(eq(branchFloatAllocationsTable.id, existing.id))
+      .returning();
+  } else {
+    // First allocation for this agent on this shift
+    [alloc] = await db.insert(branchFloatAllocationsTable).values({
+      branchId,
+      agentId,
+      allocatedBy: req.userId!,
+      amount: String(amount),
+      shiftDate,
+      shiftLabel,
+      notes: notes ?? null,
+      status: "open",
+    }).returning();
+  }
 
   // Credit agent's wallet so they can place bets
   const [agentWallet] = await db.select().from(walletsTable).where(eq(walletsTable.userId, agentId)).limit(1);
@@ -107,11 +127,11 @@ router.post("/branch/floats", requireBranchAdmin, async (req: AuthRequest, res):
       walletId: agentWallet.id,
       amount: String(amount),
       type: "credit",
-      description: `Float allocation – ${shiftLabel} shift (${shiftDate})`,
+      description: `Float top-up – ${shiftLabel} shift (${shiftDate})`,
     });
   }
 
-  res.status(201).json({ allocation: { ...alloc, amount: parseFloat(alloc.amount as any) } });
+  res.status(201).json({ allocation: { ...alloc, amount: parseFloat(alloc.amount as any) }, accumulated: !!existing });
 });
 
 // ── GET /api/branch/floats/:id/preview — compute expected figures ─────────────
