@@ -56,69 +56,6 @@ router.get("/agent/dashboard", requireAgent, async (req: AuthRequest, res): Prom
   });
 });
 
-// ── POST /agent/bets — place bet on behalf of customer ───────────────────────
-router.post("/agent/bets", requireAgent, async (req: AuthRequest, res): Promise<void> => {
-  const agentId = req.userId!;
-  const [agent] = await db.select().from(usersTable).where(eq(usersTable.id, agentId)).limit(1);
-  if (!agent || !agent.branchId) { res.status(403).json({ error: "Agent not properly configured" }); return; }
-
-  const { selections, stake } = req.body as {
-    selections: Array<{ fixtureId: number; market: string; selection: string; odds: number }>;
-    stake: number;
-  };
-
-  if (!Array.isArray(selections) || selections.length === 0) {
-    res.status(400).json({ error: "Selections required" });
-    return;
-  }
-  if (typeof stake !== "number" || stake <= 0) {
-    res.status(400).json({ error: "Valid stake required" });
-    return;
-  }
-
-  const wallet = await db.select().from(walletsTable).where(eq(walletsTable.userId, agentId)).limit(1);
-  const agentWallet = wallet[0];
-  if (!agentWallet || parseFloat(agentWallet.balance) < stake) {
-    res.status(400).json({ error: "Insufficient agent wallet balance" });
-    return;
-  }
-
-  const totalOdds = selections.reduce((acc, s) => acc * s.odds, 1);
-  const potentialWin = stake * totalOdds;
-  const code = generateBetCode();
-
-  const [bet] = await db.insert(betsTable).values({
-    code,
-    userId: agentId,
-    stake: String(stake),
-    totalOdds: String(totalOdds.toFixed(4)),
-    potentialWin: String(potentialWin.toFixed(2)),
-    status: "pending",
-    agentId,
-    branchId: agent.branchId,
-  }).returning();
-
-  for (const s of selections) {
-    await db.insert(betSelectionsTable).values({
-      betId: bet.id,
-      fixtureId: s.fixtureId,
-      market: s.market,
-      selection: s.selection,
-      odds: String(s.odds),
-    });
-  }
-
-  const newBalance = parseFloat(agentWallet.balance) - stake;
-  await db.update(walletsTable).set({ balance: String(newBalance.toFixed(2)) }).where(eq(walletsTable.id, agentWallet.id));
-  await db.insert(transactionsTable).values({
-    walletId: agentWallet.id,
-    amount: String(stake),
-    type: "bet_placed",
-    description: `Agent bet placed: ${code}`,
-  });
-
-  res.status(201).json({ bet: { ...bet, stake: parseFloat(bet.stake), totalOdds: parseFloat(bet.totalOdds), potentialWin: parseFloat(bet.potentialWin) }, code });
-});
 
 // ── GET /agent/bets — agent's bet history ─────────────────────────────────────
 router.get("/agent/bets", requireAgent, async (req: AuthRequest, res): Promise<void> => {

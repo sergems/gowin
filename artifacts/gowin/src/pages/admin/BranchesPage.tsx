@@ -249,67 +249,78 @@ export default function BranchesPage() {
           <p>No branches yet. Create your first one.</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {branches.map((b) => (
-            <div key={b.id} className="bg-zinc-800 border border-zinc-700 rounded-xl overflow-hidden">
-              {/* Branch header row */}
-              <div className="p-5">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2 flex-wrap">
-                      <h3 className="text-lg font-semibold text-white">{b.name}</h3>
-                      <span className="font-mono text-xs bg-zinc-700 text-zinc-300 px-2 py-0.5 rounded">{b.code}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${b.status === "active" ? "bg-emerald-900/50 text-emerald-400" : "bg-red-900/50 text-red-400"}`}>
-                        {b.status}
-                      </span>
-                      <span className="text-xs bg-zinc-700 px-2 py-0.5 rounded-full flex items-center gap-1">
-                        <DollarSign className="w-3 h-3 text-emerald-400" />
-                        <span className="text-emerald-400 font-bold">${parseFloat(String(b.balance ?? "0")).toFixed(2)}</span>
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-1 text-sm text-zinc-400">
-                      <span>📍 {b.city}, {b.country}</span>
-                      <span>📞 {b.phone}</span>
-                      <span>✉️ {b.email}</span>
-                      <span className="flex items-center gap-1">
-                        <Users className="w-3.5 h-3.5" /> {b.agentCount} member{b.agentCount !== 1 ? "s" : ""}
-                      </span>
-                    </div>
-                    {b.address && <p className="text-xs text-zinc-500 mt-1">{b.address}</p>}
-                  </div>
-
-                  <div className="flex items-center gap-1 ml-4 shrink-0">
-                    <button
-                      onClick={() => { setCreditBranch(b); setCreditAmount(""); setCreditNotes(""); }}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-900/40 hover:bg-emerald-900/70 text-emerald-400 text-xs font-medium transition-colors border border-emerald-700/40"
-                      title="Credit branch balance"
-                    >
-                      <DollarSign className="w-3.5 h-3.5" /> Credit
-                    </button>
-                    <button
-                      onClick={() => toggleExpand(b.id)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-700/50 hover:bg-zinc-700 text-zinc-300 text-xs font-medium transition-colors"
-                      title="View members"
-                    >
-                      <Users className="w-3.5 h-3.5" />
-                      Members
-                      {expandedId === b.id ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                    </button>
-                    <button
-                      onClick={() => setShowAddAdmin(b.id)}
-                      className="p-2 rounded-lg hover:bg-zinc-700 text-zinc-400 hover:text-emerald-400 transition-colors" title="Create Branch Admin">
-                      <UserPlus className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => openEdit(b)}
-                      className="p-2 rounded-lg hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors">
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => { if (confirm(`Delete branch "${b.name}"?`)) deleteMut.mutate(b.id); }}
-                      className="p-2 rounded-lg hover:bg-zinc-700 text-zinc-400 hover:text-red-400 transition-colors">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+            <div key={b.id} className="bg-zinc-800/80 border border-zinc-700/60 rounded-xl overflow-hidden hover:border-zinc-600/80 transition-colors">
+              {/* Compact branch row */}
+              <div className="px-4 py-3 flex items-center gap-3">
+                {/* Icon */}
+                <div className="w-9 h-9 rounded-lg bg-zinc-700/60 flex items-center justify-center shrink-0">
+                  <Building2 className="w-4 h-4 text-emerald-400" />
                 </div>
+
+                {/* Name + badges */}
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <h3 className="font-semibold text-white text-sm truncate">{b.name}</h3>
+                  <span className="font-mono text-[10px] bg-zinc-700 text-zinc-400 px-1.5 py-0.5 rounded shrink-0">{b.code}</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${b.status === "active" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"}`}>
+                    {b.status}
+                  </span>
+                </div>
+
+                {/* Stats strip */}
+                <div className="hidden md:flex items-center gap-4 shrink-0 text-xs text-zinc-400 mr-2">
+                  <span className="flex items-center gap-1">
+                    <span className="text-emerald-400 font-bold text-sm">${parseFloat(String(b.balance ?? "0")).toFixed(2)}</span>
+                  </span>
+                  <span className="text-zinc-600">|</span>
+                  <span className="flex items-center gap-1">
+                    <Users className="w-3 h-3" /> {b.agentCount} member{b.agentCount !== 1 ? "s" : ""}
+                  </span>
+                  <span className="text-zinc-600">|</span>
+                  <span className="text-zinc-500 truncate max-w-[140px]">{b.city}, {b.country}</span>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => { setCreditBranch(b); setCreditAmount(""); setCreditNotes(""); }}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-medium transition-colors border border-emerald-500/20"
+                    title="Credit branch balance"
+                  >
+                    <DollarSign className="w-3 h-3" /> Credit
+                  </button>
+                  <button
+                    onClick={() => toggleExpand(b.id)}
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors border ${expandedId === b.id ? "bg-zinc-600/60 border-zinc-500/40 text-zinc-200" : "bg-zinc-700/40 border-zinc-600/40 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"}`}
+                    title="View members"
+                  >
+                    <Users className="w-3 h-3" /> Members
+                    {expandedId === b.id ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                  </button>
+                  <div className="w-px h-5 bg-zinc-700 mx-0.5" />
+                  <button
+                    onClick={() => setShowAddAdmin(b.id)}
+                    className="p-1.5 rounded-lg hover:bg-zinc-700 text-zinc-500 hover:text-emerald-400 transition-colors" title="Create Branch Admin">
+                    <UserPlus className="w-3.5 h-3.5" />
+                  </button>
+                  <button onClick={() => openEdit(b)}
+                    className="p-1.5 rounded-lg hover:bg-zinc-700 text-zinc-500 hover:text-zinc-200 transition-colors">
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <button onClick={() => { if (confirm(`Delete branch "${b.name}"?`)) deleteMut.mutate(b.id); }}
+                    className="p-1.5 rounded-lg hover:bg-zinc-700 text-zinc-500 hover:text-red-400 transition-colors">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Secondary info row */}
+              <div className="px-4 pb-2.5 flex items-center gap-4 text-xs text-zinc-500 border-t border-zinc-700/40 pt-2">
+                <span>📍 {b.city}, {b.country}</span>
+                {b.phone && <span>📞 {b.phone}</span>}
+                {b.email && <span className="truncate">✉️ {b.email}</span>}
+                {b.address && <span className="text-zinc-600 truncate">{b.address}</span>}
               </div>
 
               {/* Expandable members section */}

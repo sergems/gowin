@@ -43,7 +43,6 @@ import BranchReports from "@/pages/branch/ReportsPage";
 
 // Agent Pages
 import AgentDashboard from "@/pages/agent/DashboardPage";
-import AgentPlaceBet from "@/pages/agent/PlaceBetPage";
 import AgentVouchers from "@/pages/agent/VouchersPage";
 import AgentReports from "@/pages/agent/ReportsPage";
 import AgentBets from "@/pages/agent/BetsPage";
@@ -125,7 +124,6 @@ function Router() {
 
         {/* Agent Routes */}
         <Route path="/agent" component={() => <ProtectedRoute component={AgentDashboard} allowedRoles={["agent"]} />} />
-        <Route path="/agent/bet" component={() => <ProtectedRoute component={AgentPlaceBet} allowedRoles={["agent"]} />} />
         <Route path="/agent/bets" component={() => <ProtectedRoute component={AgentBets} allowedRoles={["agent"]} />} />
         <Route path="/agent/vouchers" component={() => <ProtectedRoute component={AgentVouchers} allowedRoles={["agent"]} />} />
         <Route path="/agent/reports" component={() => <ProtectedRoute component={AgentReports} allowedRoles={["agent"]} />} />
