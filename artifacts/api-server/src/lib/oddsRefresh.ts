@@ -32,6 +32,7 @@ async function fetchApiOdds(apiKey: string, externalId: string): Promise<any | n
       const bks: any[] = data.result[externalId];
       const bk =
         bks.find((b) => b.odd_bookmakers === "bet365") ??
+        bks.find((b) => b.odd_bookmakers === "1xBet") ??
         bks.find((b) => b.odd_bookmakers === "WilliamHill") ??
         bks[0] ??
         null;
@@ -95,7 +96,25 @@ async function refreshFixture(apiKey: string, fixtureId: number, externalId: str
     );
   }
 
-  // ── Over/Under (all lines the API provides: 0.5 – 5.5) ──────────────────────
+  // ── Draw No Bet (derived from 1X2) ─────────────────────────────────────────
+  // DNB Home = odd_1 × (odd_x − 1) / odd_x
+  // DNB Away = odd_2 × (odd_x − 1) / odd_x
+  if (valid(bk.odd_1) && valid(bk.odd_x) && valid(bk.odd_2)) {
+    const o1 = Number(bk.odd_1);
+    const ox = Number(bk.odd_x);
+    const o2 = Number(bk.odd_2);
+    const dnbHome = o1 * (ox - 1) / ox;
+    const dnbAway = o2 * (ox - 1) / ox;
+    if (dnbHome > 1 && dnbAway > 1) {
+      const m = await getOrCreateMarket(fixtureId, "Draw No Bet", byType);
+      rows.push(
+        { marketId: m.id, selection: "Home", oddsValue: dnbHome.toFixed(2) },
+        { marketId: m.id, selection: "Away", oddsValue: dnbAway.toFixed(2) },
+      );
+    }
+  }
+
+  // ── Over/Under (all lines 0.5 – 5.5 including whole numbers) ─────────────
   for (const line of ["0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", "4.5", "5", "5.5"]) {
     const overKey = `o+${line}`;
     const underKey = `u+${line}`;
@@ -110,6 +129,7 @@ async function refreshFixture(apiKey: string, fixtureId: number, externalId: str
 
   // ── Asian Handicap — all valid lines, each stored as its own market ─────────
   const ahPairs: [string, string, string, string][] = [
+    ["ah-4.5_1", "ah-4.5_2", "-4.5", "+4.5"],
     ["ah-4_1",   "ah-4_2",   "-4",   "+4"  ],
     ["ah-3.5_1", "ah-3.5_2", "-3.5", "+3.5"],
     ["ah-3_1",   "ah-3_2",   "-3",   "+3"  ],

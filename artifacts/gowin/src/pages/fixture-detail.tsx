@@ -5,32 +5,75 @@ import { useBetSlip } from "@/contexts/BetSlipContext";
 import { sortOdds } from "@/lib/sortOdds";
 import { Trophy, CalendarDays, Activity, ChevronLeft } from "lucide-react";
 import { fmtUTCDateTimeLong } from "@/lib/formatUTC";
-import { Link } from "wouter";
 
 // ── Market category definitions ───────────────────────────────────────────────
 
-const CATEGORIES: { label: string; types: string[]; prefix?: string }[] = [
+const CATEGORIES: { label: string; types?: string[]; prefix?: string }[] = [
   {
     label: "Popular",
-    types: ["1X2", "Double Chance", "Both Teams To Score", "Over/Under 2.5", "Over/Under 1.5"],
-  },
-  {
-    label: "Goals",
     types: [
-      "Over/Under 0.5", "Over/Under 1", "Over/Under 1.5", "Over/Under 2",
-      "Over/Under 2.5", "Over/Under 3", "Over/Under 3.5", "Over/Under 4",
-      "Over/Under 4.5", "Over/Under 5", "Over/Under 5.5",
+      "1X2",
       "Both Teams To Score",
+      "Over/Under 2.5",
+      "Over/Under 1.5",
+      "Double Chance",
+      "Draw No Bet",
     ],
   },
   {
     label: "Match",
-    types: ["1X2", "Double Chance", "Both Teams To Score"],
+    types: [
+      "1X2",
+      "Double Chance",
+      "Draw No Bet",
+      "Both Teams To Score",
+      "European Handicap",
+      "Home Win Either Half",
+      "Away Win Either Half",
+    ],
+  },
+  {
+    label: "Goals",
+    types: [
+      "Over/Under 0.5",
+      "Over/Under 1",
+      "Over/Under 1.5",
+      "Over/Under 2",
+      "Over/Under 2.5",
+      "Over/Under 3",
+      "Over/Under 3.5",
+      "Over/Under 4",
+      "Over/Under 4.5",
+      "Over/Under 5",
+      "Over/Under 5.5",
+      "Both Teams To Score",
+    ],
+  },
+  {
+    label: "Half Time",
+    types: [
+      "Half-Time Result",
+      "Half-Time/Full-Time",
+      "HT Total Goals 0.5",
+      "HT Total Goals 1.5",
+      "HT Total Goals 2.5",
+    ],
   },
   {
     label: "Handicap",
-    types: [],
     prefix: "Asian Handicap",
+  },
+  {
+    label: "Corners",
+    prefix: "Over/Under Corners",
+  },
+  {
+    label: "Cards",
+    types: ["Over/Under Yellow Cards"],
+  },
+  {
+    label: "Correct Score",
+    types: ["Correct Score"],
   },
 ];
 
@@ -85,8 +128,14 @@ function MarketCard({ market, fixtureId, fixtureName, competitionName, startTime
   disabled?: boolean;
 }) {
   const odds: any[] = sortOdds(market.odds ?? [], market.marketType);
-  const isWide = odds.length >= 3 && odds.length <= 4;
-  const isGrid2 = odds.length === 2;
+  const count = odds.length;
+
+  // Choose grid layout based on number of selections
+  let gridClass = "space-y-2";
+  if (count === 2) gridClass = "grid grid-cols-2 gap-2";
+  else if (count === 3) gridClass = "grid grid-cols-3 gap-2";
+  else if (count >= 4 && count <= 6) gridClass = "grid grid-cols-3 gap-2";
+  else if (count > 6) gridClass = "grid grid-cols-3 gap-2";
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -95,8 +144,7 @@ function MarketCard({ market, fixtureId, fixtureName, competitionName, startTime
           {market.marketType}
         </p>
       </div>
-      <div className={`p-3 ${isWide || isGrid2 ? "grid grid-cols-" + Math.min(odds.length, 3) + " gap-2" : "space-y-2"}`}
-        style={isWide || isGrid2 ? { gridTemplateColumns: `repeat(${Math.min(odds.length, 3)}, minmax(0, 1fr))` } : {}}>
+      <div className={`p-3 ${gridClass}`}>
         {odds.map((odd: any) => (
           <OddsButton
             key={odd.id}
@@ -148,32 +196,42 @@ export default function FixtureDetail() {
   const isFinished = fixture.status === "finished" || fixture.status === "cancelled";
   const isLive = fixture.status === "live";
 
-  // Build category → markets mapping
+  // Only include markets that actually have odds
+  const marketsWithOdds = markets.filter((m) => (m.odds ?? []).length > 0);
   const marketsByType = new Map<string, any>();
-  for (const m of markets) marketsByType.set(m.marketType, m);
+  for (const m of marketsWithOdds) marketsByType.set(m.marketType, m);
 
-  // Filter out categories with no markets, build "All" tab
-  const availableCategories = CATEGORIES.filter((cat) => {
-    if (cat.prefix) return markets.some((m) => m.marketType.startsWith(cat.prefix!));
-    return cat.types.some((t) => marketsByType.has(t));
+  function getMarketsForCategory(cat: (typeof CATEGORIES)[number]): any[] {
+    if (cat.prefix) return marketsWithOdds.filter((m) => m.marketType.startsWith(cat.prefix!));
+    if (cat.types) {
+      return cat.types
+        .map((t) => marketsByType.get(t))
+        .filter(Boolean)
+        .filter((m, i, arr) => arr.findIndex((x: any) => x.id === m.id) === i);
+    }
+    return [];
+  }
+
+  // Build visible tabs — only include categories that have at least 1 market with odds
+  const availableCategories = CATEGORIES.filter((cat) => getMarketsForCategory(cat).length > 0);
+  const tabLabels = ["Popular", ...availableCategories.filter((c) => c.label !== "Popular").map((c) => c.label), "All"];
+  const uniqueTabs = [...new Set(tabLabels)].filter((tab) => {
+    if (tab === "All") return marketsWithOdds.length > 0;
+    if (tab === "Popular") return getMarketsForCategory(CATEGORIES[0]).length > 0;
+    return availableCategories.some((c) => c.label === tab);
   });
 
-  // Build tab list: Popular + available categories + All
-  const tabs = ["Popular", ...availableCategories.filter((c) => c.label !== "Popular").map((c) => c.label), "All"];
-  const uniqueTabs = [...new Set(tabs)];
-
   function getMarketsForTab(tab: string): any[] {
-    if (tab === "All") return markets;
+    if (tab === "All") return marketsWithOdds;
     const cat = CATEGORIES.find((c) => c.label === tab);
     if (!cat) return [];
-    if (cat.prefix) return markets.filter((m) => m.marketType.startsWith(cat.prefix!));
-    return cat.types.flatMap((t) => {
-      const m = marketsByType.get(t);
-      return m ? [m] : [];
-    }).filter((m, i, arr) => arr.findIndex((x) => x.id === m.id) === i);
+    return getMarketsForCategory(cat);
   }
 
   const visibleMarkets = getMarketsForTab(activeTab);
+
+  // Ensure active tab is valid
+  const resolvedTab = uniqueTabs.includes(activeTab) ? activeTab : (uniqueTabs[0] ?? "All");
 
   return (
     <div className="space-y-5 pb-8">
@@ -242,12 +300,12 @@ export default function FixtureDetail() {
       </div>
 
       {/* Markets section */}
-      {markets.length > 0 ? (
+      {marketsWithOdds.length > 0 ? (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <Activity className="w-4 h-4 text-primary" />
             <h2 className="font-bold text-lg">Betting Markets</h2>
-            <span className="text-xs text-muted-foreground bg-accent/50 px-2 py-0.5 rounded-full">{markets.length}</span>
+            <span className="text-xs text-muted-foreground bg-accent/50 px-2 py-0.5 rounded-full">{marketsWithOdds.length}</span>
           </div>
 
           {/* Category tabs */}
@@ -257,7 +315,7 @@ export default function FixtureDetail() {
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap
-                  ${activeTab === tab
+                  ${resolvedTab === tab
                     ? "bg-primary text-primary-foreground"
                     : "bg-accent/50 text-muted-foreground hover:bg-accent hover:text-foreground border border-border"
                   }`}

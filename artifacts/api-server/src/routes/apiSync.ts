@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, settingsTable, sportsTable, leaguesTable, teamsTable, fixturesTable, marketsTable, oddsTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { requireAdmin, type AuthRequest } from "../middlewares/auth";
+import { refreshAllUpcomingOdds } from "../lib/oddsRefresh";
 
 const router = Router();
 
@@ -198,6 +199,16 @@ router.put("/admin/settings", requireAdmin, async (req: AuthRequest, res): Promi
   }
   await setSetting("allsports_api_key", apiKey.trim());
   res.json({ ok: true });
+});
+
+// ── POST /admin/refresh-odds ──────────────────────────────────────────────────
+router.post("/admin/refresh-odds", requireAdmin, async (_req, res): Promise<void> => {
+  try {
+    const result = await refreshAllUpcomingOdds();
+    res.json({ ok: true, ...result });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ── POST /admin/sync-fixtures ─────────────────────────────────────────────────
