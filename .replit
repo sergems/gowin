@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "bash", "postgresql-16"]
+modules = ["nodejs-20", "web", "bash"]
 
 [deployment]
 router = "application"
@@ -29,7 +29,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pnpm --filter @workspace/gowin run dev"
+args = "pnpm --filter @workspace/api-server run dev & pnpm --filter @workspace/gowin run dev"
 waitForPort = 5000
 
 [agent]
