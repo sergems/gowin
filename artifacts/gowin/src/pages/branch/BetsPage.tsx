@@ -1,183 +1,289 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import { useState, useMemo } from "react";
-import { History, ChevronDown, ChevronUp, Search, Filter } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { Search, CheckCircle2, XCircle, Clock, HelpCircle, Hash } from "lucide-react";
 
-interface BetSelection { id: number; market: string; selection: string; odds: number; }
-interface Bet {
-  id: number; code: string; stake: number; totalOdds: number; potentialWin: number;
-  status: "pending" | "won" | "lost" | "void"; createdAt: string;
-  agentId: number | null; agentUsername: string | null;
-  agentFirstName: string | null; agentLastName: string | null;
-  selections: BetSelection[];
+// ── Outcome helper ─────────────────────────────────────────────────────────────
+function selectionOutcome(sel: any): "won" | "lost" | "pending" | "unknown" {
+  const f = sel.fixture;
+  if (!f || f.status === "cancelled") return "unknown";
+  if (f.status !== "finished" || f.scoreHome == null || f.scoreAway == null) return "pending";
+  const h = f.scoreHome, a = f.scoreAway, total = h + a;
+  const m: string = sel.market ?? "", s: string = sel.selection ?? "";
+  if (m === "1X2" || m === "Match Result") {
+    const r = h > a ? "Home" : a > h ? "Away" : "Draw";
+    return s === r ? "won" : "lost";
+  }
+  if (m === "Double Chance") {
+    const win = (s === "1X" && h >= a) || (s === "X2" && a >= h) || (s === "12" && h !== a);
+    return win ? "won" : "lost";
+  }
+  if (m === "Both Teams To Score") {
+    const both = h > 0 && a > 0;
+    return (s === "Yes") === both ? "won" : "lost";
+  }
+  const ou = m.match(/^Over\/Under (\d+(?:\.\d+)?)$/);
+  if (ou) {
+    const line = parseFloat(ou[1]!);
+    if (s.startsWith("Over"))  return total > line ? "won" : "lost";
+    if (s.startsWith("Under")) return total < line ? "won" : "lost";
+  }
+  return "unknown";
 }
 
-const STATUS_STYLE: Record<string, string> = {
-  pending: "text-amber-400  bg-amber-500/10  border-amber-500/30",
-  won:     "text-emerald-400 bg-emerald-500/10 border-emerald-500/30",
-  lost:    "text-red-400    bg-red-500/10    border-red-500/30",
-  void:    "text-zinc-400   bg-zinc-500/10   border-zinc-500/30",
+function OutcomeIcon({ outcome }: { outcome: ReturnType<typeof selectionOutcome> }) {
+  if (outcome === "won")     return <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />;
+  if (outcome === "lost")    return <XCircle className="w-4 h-4 text-destructive shrink-0" />;
+  if (outcome === "pending") return <Clock className="w-4 h-4 text-yellow-400/70 shrink-0" />;
+  return <HelpCircle className="w-4 h-4 text-muted-foreground/40 shrink-0" />;
+}
+
+const STATUS_VARIANT: Record<string, any> = {
+  won: "default", lost: "destructive", pending: "secondary", void: "outline",
 };
 
+// ── Bet Verifier ───────────────────────────────────────────────────────────────
+function BetVerifier() {
+  const { token } = useAuth();
+  const [code, setCode] = useState("");
+  const [submitted, setSubmitted] = useState("");
+
+  const { data: result, isLoading, error } = useQuery<any>({
+    queryKey: ["branch-bet-lookup", submitted],
+    queryFn: async () => {
+      const res = await fetch(`/api/branch/bets/lookup/${submitted}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 404) return null;
+      if (!res.ok) throw new Error("Lookup failed");
+      return res.json();
+    },
+    enabled: submitted.length === 6,
+    retry: false,
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = code.trim().toUpperCase();
+    if (trimmed.length !== 6) return;
+    setSubmitted(trimmed);
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+      <div className="flex items-center gap-2">
+        <Hash className="w-4 h-4 text-primary" />
+        <h2 className="font-bold text-base">Verify Bet by Code</h2>
+      </div>
+      <form onSubmit={handleSubmit} className="flex gap-2">
+        <Input
+          value={code}
+          onChange={e => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6))}
+          placeholder="6-character code (e.g. AB12CD)"
+          className="font-mono tracking-widest uppercase max-w-xs"
+          maxLength={6}
+        />
+        <Button type="submit" disabled={code.trim().length !== 6 || isLoading} className="gap-2">
+          <Search className="w-4 h-4" />
+          {isLoading ? "Looking up…" : "Verify"}
+        </Button>
+      </form>
+
+      {submitted && !isLoading && (
+        result === null || error ? (
+          <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-4 py-3">
+            <XCircle className="w-4 h-4 shrink-0" />
+            No bet found with code <span className="font-mono font-bold ml-1">{submitted}</span> at this branch.
+          </div>
+        ) : result && (
+          <div className="border border-border rounded-xl overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 bg-accent/20 border-b border-border/60">
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-lg font-black tracking-widest text-primary">{result.code}</span>
+                <span className="text-muted-foreground text-sm">Bet #{result.id}</span>
+                <Badge variant={STATUS_VARIANT[result.status] ?? "outline"} className="uppercase text-xs">
+                  {result.status}
+                </Badge>
+              </div>
+              <div className="flex gap-6 text-sm">
+                <div>
+                  <div className="text-xs text-muted-foreground">Agent</div>
+                  <div className="font-semibold">{result.agentUsername ?? "—"}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Stake</div>
+                  <div className="font-bold">${Number(result.stake).toFixed(2)}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">{result.status === "won" ? "Won" : "To Win"}</div>
+                  <div className={`font-black ${result.status === "won" ? "text-primary" : ""}`}>
+                    ${Number(result.potentialWin).toFixed(2)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Placed</div>
+                  <div className="text-sm">{format(new Date(result.createdAt), "dd MMM yyyy, HH:mm")}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="divide-y divide-border/40">
+              {result.selections?.map((sel: any) => {
+                const outcome = selectionOutcome(sel);
+                const score = sel.fixture?.status === "finished" && sel.fixture?.scoreHome != null
+                  ? `${sel.fixture.scoreHome} – ${sel.fixture.scoreAway}`
+                  : null;
+                return (
+                  <div key={sel.id} className={`flex items-center justify-between px-5 py-3 text-sm ${
+                    outcome === "won" ? "bg-emerald-500/5" : outcome === "lost" ? "bg-destructive/5" : ""
+                  }`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <OutcomeIcon outcome={outcome} />
+                      <div className="min-w-0">
+                        <div className="font-semibold">{sel.selection}</div>
+                        <div className="text-muted-foreground text-xs truncate">
+                          {sel.fixture?.homeTeam?.name ?? "—"} vs {sel.fixture?.awayTeam?.name ?? "—"}
+                          {score && <span className="ml-2 font-mono font-bold text-foreground">[{score}]</span>}
+                        </div>
+                        <div className="text-xs uppercase tracking-wider text-muted-foreground/60 mt-0.5">{sel.market}</div>
+                      </div>
+                    </div>
+                    <div className="text-right ml-4 shrink-0">
+                      <div className="text-xs text-muted-foreground">Odds</div>
+                      <div className="font-bold text-primary">{Number(sel.odds).toFixed(2)}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )
+      )}
+    </div>
+  );
+}
+
+// ── Main page ──────────────────────────────────────────────────────────────────
 export default function BranchBetsPage() {
   const { token } = useAuth();
-  const [expanded, setExpanded] = useState<Set<number>>(new Set());
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const headers = { Authorization: `Bearer ${token}` };
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["branch-bets", statusFilter],
-    queryFn: () =>
-      fetch(`/api/branch/bets?limit=500&status=${statusFilter}`, { headers }).then(r => r.json()),
+  const { data, isLoading } = useQuery<{ bets: any[] }>({
+    queryKey: ["branch-bets"],
+    queryFn: () => fetch("/api/branch/bets?limit=500", { headers }).then(r => r.json()),
     refetchInterval: 60_000,
   });
 
-  const allBets: Bet[] = data?.bets ?? [];
+  const bets = data?.bets ?? [];
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return allBets;
-    return allBets.filter(b =>
-      b.code?.toLowerCase().includes(q) ||
-      b.agentUsername?.toLowerCase().includes(q) ||
-      `${b.agentFirstName} ${b.agentLastName}`.toLowerCase().includes(q),
-    );
-  }, [allBets, search]);
-
-  const toggle = (id: number) =>
-    setExpanded(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-
-  const totalStake = allBets.reduce((s, b) => s + b.stake, 0);
-  const pending = allBets.filter(b => b.status === "pending").length;
-  const won = allBets.filter(b => b.status === "won").length;
+  const handleVoid = async (betId: number) => {
+    if (!confirm("Void this bet and refund the stake?")) return;
+    try {
+      const res = await fetch(`/api/bets/${betId}/void`, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error || "Void failed");
+      }
+      toast({ title: "Bet Voided", description: "Stake has been refunded." });
+      queryClient.invalidateQueries({ queryKey: ["branch-bets"] });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
 
   return (
-    <div className="p-4 max-w-5xl mx-auto space-y-4">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-bold text-white flex items-center gap-2">
-          <History className="w-5 h-5 text-emerald-400" /> Branch Bets
-        </h1>
-        <div className="flex items-center gap-3 text-xs text-zinc-400 flex-wrap">
-          <span>{allBets.length} total</span>
-          <span>·</span>
-          <span className="text-amber-400">{pending} pending</span>
-          <span>·</span>
-          <span className="text-emerald-400">{won} won</span>
-          <span>·</span>
-          <span>${totalStake.toFixed(2)} staked</span>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-black tracking-tight mb-2">Bets Management</h1>
+        <p className="text-muted-foreground">All bets placed at this branch</p>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
-          <input
-            type="text" value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search code or agent…"
-            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:border-emerald-500"
-          />
-        </div>
-        <div className="relative">
-          <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500 pointer-events-none" />
-          <select
-            value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-            className="bg-zinc-800 border border-zinc-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 appearance-none cursor-pointer"
-          >
-            <option value="all">All statuses</option>
-            <option value="pending">Pending</option>
-            <option value="won">Won</option>
-            <option value="lost">Lost</option>
-            <option value="void">Void</option>
-          </select>
-        </div>
-      </div>
+      <BetVerifier />
 
-      {/* Table */}
-      <div className="bg-zinc-800 border border-zinc-700 rounded-xl overflow-hidden">
-        {isLoading ? (
-          <div className="p-6 text-center text-xs text-zinc-400">Loading bets…</div>
-        ) : filtered.length === 0 ? (
-          <div className="p-8 text-center text-xs text-zinc-500">
-            {allBets.length === 0 ? "No bets recorded for this branch yet." : "No bets match your filters."}
+      <Card className="border-border bg-card">
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-accent/10">
+                <TableRow>
+                  <TableHead>Code</TableHead>
+                  <TableHead>Bet #</TableHead>
+                  <TableHead>Agent</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Stake</TableHead>
+                  <TableHead className="text-right">Odds</TableHead>
+                  <TableHead className="text-right">To Win</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-8">Loading…</TableCell>
+                  </TableRow>
+                ) : bets.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                      No bets recorded at this branch yet
+                    </TableCell>
+                  </TableRow>
+                ) : bets.map((bet: any) => (
+                  <TableRow key={bet.id}>
+                    <TableCell>
+                      {bet.code
+                        ? <span className="font-mono text-xs font-bold tracking-widest bg-primary/10 text-primary border border-primary/20 rounded px-2 py-0.5">{bet.code}</span>
+                        : <span className="text-muted-foreground/40 text-xs">—</span>
+                      }
+                    </TableCell>
+                    <TableCell className="font-medium">#{bet.id}</TableCell>
+                    <TableCell className="text-sm">
+                      {[bet.agentFirstName, bet.agentLastName].filter(Boolean).join(" ") || bet.agentUsername || <span className="text-muted-foreground/40">—</span>}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {format(new Date(bet.createdAt), "MMM d, HH:mm")}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">${bet.stake.toFixed(2)}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{bet.totalOdds.toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-bold text-primary">${bet.potentialWin.toFixed(2)}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={STATUS_VARIANT[bet.status] ?? "outline"}
+                        className={`uppercase ${bet.status === "won" ? "bg-primary text-primary-foreground" : ""}`}
+                      >
+                        {bet.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="outline" size="sm"
+                        onClick={() => handleVoid(bet.id)}
+                        disabled={bet.status !== "pending"}
+                        className="hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+                      >
+                        Void
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
-        ) : (
-          <div className="divide-y divide-zinc-700/50">
-            {/* Column header */}
-            <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-2 px-4 py-1.5 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider bg-zinc-900/50">
-              <span>Ticket / Agent</span>
-              <span className="text-right">Stake</span>
-              <span className="text-right">Odds</span>
-              <span className="text-right">Payout</span>
-              <span className="text-right">Status</span>
-              <span></span>
-            </div>
-
-            {filtered.map(bet => {
-              const isOpen = expanded.has(bet.id);
-              const agentName = [bet.agentFirstName, bet.agentLastName].filter(Boolean).join(" ") || bet.agentUsername;
-              return (
-                <div key={bet.id}>
-                  <button
-                    className="w-full grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-2 items-center px-4 py-2.5 hover:bg-zinc-700/30 transition-colors text-left"
-                    onClick={() => toggle(bet.id)}
-                  >
-                    <div className="min-w-0">
-                      <span className="font-mono text-xs text-zinc-200 block truncate">{bet.code}</span>
-                      <span className="text-[10px] text-zinc-500">
-                        {agentName ? `Agent: ${agentName}` : "No agent"} · {new Date(bet.createdAt).toLocaleDateString()} · {bet.selections.length} sel
-                      </span>
-                    </div>
-                    <span className="text-xs font-semibold text-white text-right">${bet.stake.toFixed(2)}</span>
-                    <span className="text-xs text-zinc-400 text-right">×{bet.totalOdds.toFixed(2)}</span>
-                    <span className="text-xs font-semibold text-emerald-400 text-right">${bet.potentialWin.toFixed(2)}</span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${STATUS_STYLE[bet.status]}`}>
-                      {bet.status.charAt(0).toUpperCase() + bet.status.slice(1)}
-                    </span>
-                    {isOpen ? <ChevronUp className="w-3.5 h-3.5 text-zinc-500" /> : <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />}
-                  </button>
-
-                  {isOpen && (
-                    <div className="px-4 pb-3 pt-1 bg-zinc-900/40 border-t border-zinc-700/30">
-                      <table className="w-full text-xs mt-1">
-                        <thead>
-                          <tr className="text-[10px] text-zinc-500 border-b border-zinc-700/50">
-                            <th className="pb-1.5 text-left font-medium">Market</th>
-                            <th className="pb-1.5 text-left font-medium">Selection</th>
-                            <th className="pb-1.5 text-right font-medium">Odds</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-zinc-700/20">
-                          {bet.selections.map(s => (
-                            <tr key={s.id} className="text-zinc-300">
-                              <td className="py-1 text-zinc-400">{s.market}</td>
-                              <td className="py-1 font-medium text-white">{s.selection}</td>
-                              <td className="py-1 text-right text-emerald-400">@{Number(s.odds).toFixed(2)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {filtered.length > 0 && (
-        <p className="text-[10px] text-zinc-600 text-center">
-          Showing {filtered.length} of {allBets.length} bets
-        </p>
-      )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

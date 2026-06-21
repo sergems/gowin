@@ -291,6 +291,53 @@ router.get("/branch/reports", requireBranchAdmin, async (req: AuthRequest, res):
   res.json({ dailySales, agentPerformance });
 });
 
+// ── GET /branch/bets/lookup/:code — verify a ticket (branch-scoped) ──────────
+router.get("/branch/bets/lookup/:code", requireBranchAdmin, async (req: AuthRequest, res): Promise<void> => {
+  const branchId = getBranchId(req);
+  if (!branchId) { res.status(403).json({ error: "No branch assigned" }); return; }
+
+  const { code } = req.params;
+
+  const [bet] = await db
+    .select()
+    .from(betsTable)
+    .where(and(eq(betsTable.code, code.toUpperCase()), eq(betsTable.branchId, branchId)))
+    .limit(1);
+
+  if (!bet) { res.status(404).json({ error: "Bet not found" }); return; }
+
+  const selections = await db
+    .select({
+      id: betSelectionsTable.id,
+      betId: betSelectionsTable.betId,
+      fixtureId: betSelectionsTable.fixtureId,
+      market: betSelectionsTable.market,
+      selection: betSelectionsTable.selection,
+      odds: betSelectionsTable.odds,
+      fixture: {
+        id: sql`f.id`,
+        status: sql`f.status`,
+        scoreHome: sql`f.score_home`,
+        scoreAway: sql`f.score_away`,
+        homeTeam: sql`jsonb_build_object('name', ht.name)`,
+        awayTeam: sql`jsonb_build_object('name', at.name)`,
+      },
+    })
+    .from(betSelectionsTable)
+    .leftJoin(sql`fixtures f`, sql`f.id = ${betSelectionsTable.fixtureId}`)
+    .leftJoin(sql`teams ht`, sql`ht.id = f.home_team_id`)
+    .leftJoin(sql`teams at`, sql`at.id = f.away_team_id`)
+    .where(eq(betSelectionsTable.betId, bet.id));
+
+  res.json({
+    ...bet,
+    stake: parseFloat(bet.stake as any),
+    totalOdds: parseFloat(bet.totalOdds as any),
+    potentialWin: parseFloat(bet.potentialWin as any),
+    selections,
+  });
+});
+
 // ── GET /branch/bets — list all bets for this branch ─────────────────────────
 router.get("/branch/bets", requireBranchAdmin, async (req: AuthRequest, res): Promise<void> => {
   const branchId = getBranchId(req);
