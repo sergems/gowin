@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict Qrx51Efx7n1q9AgmwNEdkNpyugg3hwnRcs5GG1Tv1IHiBqjeLbBsGDxz1bP0YfJ
+\restrict MTrAAnpu0zJhWDWvs3f3zZj1F6fbmp03oKw3tKsTfddhicfQ3VnU13RVIOacxZd
 
 -- Dumped from database version 16.10
 -- Dumped by pg_dump version 16.10
@@ -4637,7 +4637,6 @@ COPY public.fixtures (id, league_id, home_team_id, away_team_id, start_time, sta
 3112	109	787	782	2026-06-27 11:30:00+00	upcoming	\N	\N	1729556
 72	67	138	139	2026-06-21 14:00:00+00	finished	1	2	1758442
 628	61	1250	1251	2026-06-20 16:00:00+00	finished	0	4	1777970
-2535	71	2235	2080	2026-06-22 23:00:00+00	upcoming	\N	\N	1751928
 2619	47	434	930	2026-06-23 23:00:00+00	upcoming	\N	\N	1755393
 3793	22441	41359	41358	2026-06-23 22:30:00+00	upcoming	\N	\N	1781889
 335	331	664	665	2026-06-21 15:00:00+00	finished	\N	\N	1778178
@@ -5058,6 +5057,7 @@ COPY public.fixtures (id, league_id, home_team_id, away_team_id, start_time, sta
 3769	481	970	974	2026-06-25 18:00:00+00	upcoming	\N	\N	1757049
 2621	47	475	474	2026-06-23 23:00:00+00	upcoming	\N	\N	1755395
 2544	47	1404	1407	2026-06-23 01:00:00+00	upcoming	\N	\N	1755389
+2535	71	2235	2080	2026-06-22 23:00:00+00	live	\N	\N	1751928
 \.
 
 
@@ -95830,7 +95830,7 @@ site_language	fr	2026-06-22 18:14:40.108+00
 site_currency	USD	2026-06-22 18:14:40.103+00
 last_auto_sync	2026-06-22T22:00:08.859Z	2026-06-22 22:00:08.859+00
 jwt_secret	83e7839d6be88e915615178a9617193ef46e48dd46deeccdf97e9843889c2db1991745703219bfa143df767620a198f1bbd2215ddb444f9cce91fbb691a21bc9	2026-06-22 22:51:24.585+00
-last_odds_refresh	2026-06-22T22:52:55.075Z	2026-06-22 22:52:55.076+00
+last_odds_refresh	2026-06-22T23:17:31.003Z	2026-06-22 23:17:31.004+00
 \.
 
 
@@ -99852,5 +99852,5 @@ GRANT CREATE ON SCHEMA public TO PUBLIC;
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Qrx51Efx7n1q9AgmwNEdkNpyugg3hwnRcs5GG1Tv1IHiBqjeLbBsGDxz1bP0YfJ
+\unrestrict MTrAAnpu0zJhWDWvs3f3zZj1F6fbmp03oKw3tKsTfddhicfQ3VnU13RVIOacxZd
 
