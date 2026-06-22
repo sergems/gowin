@@ -291,18 +291,6 @@ export function Shell({ children }: { children: ReactNode }) {
               </Link>
             )}
 
-            {user && (
-              <Link href="/profile" title={!open ? "Profile" : undefined} onClick={onNav}
-                className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors relative
-                  ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
-                  ${location.startsWith("/profile") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
-                <UserCircle className="w-4 h-4 shrink-0" />
-                {open && <span className="flex-1">Profile</span>}
-                {open && !(user as any).phoneNumber && !isStaffRole && <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />}
-                {!open && !(user as any).phoneNumber && !isStaffRole && <span className="absolute w-1.5 h-1.5 rounded-full bg-amber-500 top-1 right-1" />}
-              </Link>
-            )}
-
             {adminLinks.length > 0 && (
               <>
                 {open && (
@@ -381,6 +369,18 @@ export function Shell({ children }: { children: ReactNode }) {
                   </Link>
                 ))}
               </>
+            )}
+
+            {user && (
+              <Link href="/profile" title={!open ? "Profile" : undefined} onClick={onNav}
+                className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors relative
+                  ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
+                  ${location.startsWith("/profile") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
+                <UserCircle className="w-4 h-4 shrink-0" />
+                {open && <span className="flex-1">Profile</span>}
+                {open && !(user as any).phoneNumber && !isStaffRole && <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />}
+                {!open && !(user as any).phoneNumber && !isStaffRole && <span className="absolute w-1.5 h-1.5 rounded-full bg-amber-500 top-1 right-1" />}
+              </Link>
             )}
           </nav>
         </ScrollArea>
