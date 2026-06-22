@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import {
   Building2, Plus, Pencil, Trash2, Users, UserPlus, ChevronDown, ChevronRight,
   ShieldCheck, Target, DollarSign, BarChart3,
@@ -46,6 +47,7 @@ const ROLE_META: Record<string, { label: string; color: string; icon: typeof Shi
 };
 
 function MembersList({ branchId, token }: { branchId: number; token: string | null }) {
+  const { formatCurrency } = useSiteSettings();
   const { data, isLoading } = useQuery<{ members: BranchMember[] }>({
     queryKey: ["branch-members", branchId],
     queryFn: () => fetch(`/api/admin/branches/${branchId}/members`, {
@@ -82,7 +84,7 @@ function MembersList({ branchId, token }: { branchId: number; token: string | nu
           { label: "Branch Admins", value: branchAdmins.length, icon: ShieldCheck, color: "text-blue-400" },
           { label: "Agents",        value: agents.length,        icon: Target,      color: "text-violet-400" },
           { label: "Bets Placed",   value: totalBets,            icon: BarChart3,   color: "text-yellow-400" },
-          { label: "Total Turnover",value: `$${totalTurnover.toFixed(2)}`, icon: DollarSign, color: "text-emerald-400" },
+          { label: "Total Turnover",value: formatCurrency(totalTurnover), icon: DollarSign, color: "text-emerald-400" },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-zinc-800/80 px-4 py-3 flex items-center gap-3">
             <Icon className={`w-4 h-4 ${color} shrink-0`} />
@@ -125,7 +127,7 @@ function MembersList({ branchId, token }: { branchId: number; token: string | nu
                 </div>
                 <div>
                   <p className="text-xs text-zinc-500">Turnover</p>
-                  <p className="text-sm font-semibold text-emerald-400">${m.turnover.toFixed(2)}</p>
+                  <p className="text-sm font-semibold text-emerald-400">{formatCurrency(m.turnover)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-zinc-500">Since</p>
@@ -149,6 +151,7 @@ function MembersList({ branchId, token }: { branchId: number; token: string | nu
 export default function BranchesPage() {
   const qc = useQueryClient();
   const { token } = useAuth();
+  const { formatCurrency } = useSiteSettings();
   const [showCreate, setShowCreate] = useState(false);
   const [editBranch, setEditBranch] = useState<Branch | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -271,7 +274,7 @@ export default function BranchesPage() {
                 {/* Stats strip */}
                 <div className="hidden md:flex items-center gap-4 shrink-0 text-xs text-zinc-400 mr-2">
                   <span className="flex items-center gap-1">
-                    <span className="text-emerald-400 font-bold text-sm">${parseFloat(String(b.balance ?? "0")).toFixed(2)}</span>
+                    <span className="text-emerald-400 font-bold text-sm">{formatCurrency(parseFloat(String(b.balance ?? "0")))}</span>
                   </span>
                   <span className="text-zinc-600">|</span>
                   <span className="flex items-center gap-1">
@@ -396,7 +399,7 @@ export default function BranchesPage() {
           <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-md">
             <h2 className="text-xl font-bold text-white mb-1">Credit Branch Balance</h2>
             <p className="text-sm text-zinc-400 mb-1">Branch: <span className="text-white font-medium">{creditBranch.name}</span></p>
-            <p className="text-sm text-zinc-400 mb-4">Current balance: <span className="text-emerald-400 font-bold">${parseFloat(String(creditBranch.balance ?? "0")).toFixed(2)}</span></p>
+            <p className="text-sm text-zinc-400 mb-4">Current balance: <span className="text-emerald-400 font-bold">{formatCurrency(parseFloat(String(creditBranch.balance ?? "0")))}</span></p>
             {error && <p className="text-red-400 text-sm mb-3 bg-red-900/20 rounded-lg px-3 py-2">{error}</p>}
             <div className="space-y-3">
               <div>

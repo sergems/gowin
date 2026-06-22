@@ -3,6 +3,7 @@ import { fmtUTCDateTimeShort } from "@/lib/formatUTC";
 import { Link } from "wouter";
 import { useBetSlip } from "@/contexts/BetSlipContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -23,6 +24,7 @@ interface FixtureLiveData {
 }
 
 export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
+  const { t, formatCurrency, currency } = useSiteSettings();
   const {
     selections, removeSelection, stake, setStake,
     totalOdds, potentialWin, isMaxWinCapped,
@@ -293,11 +295,11 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
           )}
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Total Odds</span>
+              <span className="text-muted-foreground">{t("betslip.total_odds")}</span>
               <span className="font-bold">{totalOdds.toFixed(2)}</span>
             </div>
             <div className="flex justify-between items-center text-sm pt-2">
-              <span className="text-muted-foreground">Stake ($)</span>
+              <span className="text-muted-foreground">{t("betslip.stake")} ({currency})</span>
               <Input
                 type="text"
                 inputMode="decimal"
@@ -321,13 +323,13 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
             </div>
             <Separator className="my-2" />
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Potential Win</span>
+              <span className="text-muted-foreground">{t("betslip.potential_win")}</span>
               <span className="font-bold text-primary">
-                ${potentialWin.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {formatCurrency(potentialWin)}
               </span>
             </div>
             {isMaxWinCapped && (
-              <p className="text-[11px] text-amber-400 mt-1 text-right">Max win capped at $1,000,000</p>
+              <p className="text-[11px] text-amber-400 mt-1 text-right">{t("betslip.max_win_capped")} {formatCurrency(1000000)}</p>
             )}
           </div>
           <Button

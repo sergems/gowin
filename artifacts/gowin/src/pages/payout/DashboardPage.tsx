@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import api from "../../lib/api";
+import { useSiteSettings } from "../../contexts/SiteSettingsContext";
 import { format } from "date-fns";
 import { Banknote, CheckCircle2, Clock, LayoutDashboard, ArrowRight } from "lucide-react";
 
@@ -15,6 +16,7 @@ interface PayoutStats {
 
 export default function PayoutDashboardPage() {
   const [, navigate] = useLocation();
+  const { formatCurrency } = useSiteSettings();
 
   const { data, isLoading } = useQuery<PayoutStats>({
     queryKey: ["payout-stats"],
@@ -57,7 +59,7 @@ export default function PayoutDashboardPage() {
               <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Paid Today</p>
             </div>
             <p className="text-3xl font-black text-white">{stats.paidToday}</p>
-            <p className="text-sm text-emerald-300 font-semibold mt-0.5">${stats.amountPaidToday.toFixed(2)}</p>
+            <p className="text-sm text-emerald-300 font-semibold mt-0.5">{formatCurrency(stats.amountPaidToday)}</p>
           </div>
 
           <div className={`border rounded-2xl p-4 ${stats.pendingClaims > 0 ? "bg-amber-900/20 border-amber-700/40" : "bg-zinc-800 border-zinc-700"}`}>
@@ -75,7 +77,7 @@ export default function PayoutDashboardPage() {
               <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Total Paid Out</p>
             </div>
             <p className="text-3xl font-black text-white">{stats.paidTotal}</p>
-            <p className="text-sm text-zinc-300 font-semibold mt-0.5">${stats.amountPaidTotal.toFixed(2)}</p>
+            <p className="text-sm text-zinc-300 font-semibold mt-0.5">{formatCurrency(stats.amountPaidTotal)}</p>
           </div>
 
           <div className="bg-zinc-800 border border-zinc-700 rounded-2xl p-4 flex flex-col justify-center">
@@ -100,7 +102,7 @@ export default function PayoutDashboardPage() {
                   <p className="text-xs text-zinc-500">{format(new Date(item.createdAt), "d MMM, HH:mm")}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold text-emerald-400">${item.amount.toFixed(2)}</p>
+                  <p className="text-sm font-bold text-emerald-400">{formatCurrency(item.amount)}</p>
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-900/40 text-emerald-400 font-semibold">Paid</span>
                 </div>
               </div>

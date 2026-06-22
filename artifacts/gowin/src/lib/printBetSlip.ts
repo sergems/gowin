@@ -17,13 +17,21 @@ export interface PrintBetData {
   status?: string;
 }
 
-export function printBetSlip(bet: PrintBetData) {
+export function printBetSlip(bet: PrintBetData, currency = "USD") {
   const win = window.open("", "_blank", "width=360,height=680");
   if (!win) return;
 
   const fmtOdds = (v: number | string) => Number(v).toFixed(2);
-  const fmtMoney = (v: number | string) =>
-    Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtMoney = (v: number | string) => {
+    try {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency", currency,
+        minimumFractionDigits: 2, maximumFractionDigits: 2,
+      }).format(Number(v));
+    } catch {
+      return `${Number(v).toFixed(2)} ${currency}`;
+    }
+  };
   const fmtDate = (s: string | Date) => {
     try { return new Date(s).toLocaleString(); } catch { return String(s); }
   };
@@ -108,13 +116,13 @@ export function printBetSlip(bet: PrintBetData) {
   <hr class="divider-solid"/>
 
   <div class="row bold"><span>Total Odds</span><span>${fmtOdds(bet.totalOdds)}</span></div>
-  <div class="row"><span>Stake</span><span>$${fmtMoney(bet.stake)}</span></div>
-  <div class="row total"><span>Potential Win</span><span>$${fmtMoney(bet.potentialWin)}</span></div>
+  <div class="row"><span>Stake</span><span>${fmtMoney(bet.stake)}</span></div>
+  <div class="row total"><span>Potential Win</span><span>${fmtMoney(bet.potentialWin)}</span></div>
 
   <hr class="divider" style="margin-top:8px"/>
   <div class="footer">
     Please gamble responsibly. 18+ only.<br/>
-    GoWin · Max win $1,000,000
+    GoWin
   </div>
 
   <script>window.onload = function(){ window.print(); };<\/script>

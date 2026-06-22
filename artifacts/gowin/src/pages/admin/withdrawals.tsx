@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -108,7 +109,7 @@ function WithdrawalRow({ w, onAction }: { w: Withdrawal; onAction: (id: number, 
         </div>
       </div>
       <div className="flex items-center gap-3 ml-14 sm:ml-0">
-        <span className="text-xl font-black">${w.amount.toFixed(2)}</span>
+        <span className="text-xl font-black">{formatCurrency(w.amount)}</span>
         {isPending && (
           <div className="flex gap-2">
             <Button size="sm" onClick={() => onAction(w.id, "approved")} className="bg-blue-500 hover:bg-blue-600 text-white">
@@ -148,6 +149,7 @@ const TABS: { key: TabKey; label: string; emptyMsg: string }[] = [
 ];
 
 export default function AdminWithdrawals() {
+  const { formatCurrency } = useSiteSettings();
   const [activeTab, setActiveTab] = useState<TabKey>("pending");
   const { data, isLoading } = useWithdrawals(activeTab);
   const updateWithdrawal = useUpdateWithdrawal();

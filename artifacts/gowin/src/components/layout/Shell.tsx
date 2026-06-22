@@ -24,6 +24,7 @@ import {
 import type { PlacedBetDetails } from "@/contexts/BetSlipContext";
 import { printBetSlip } from "@/lib/printBetSlip";
 import { BetSlipBody } from "./BetSlipBody";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 
 interface LeagueEntry { id: number; name: string; logo: string | null; fixtureCount: number; }
 interface CountryEntry { name: string; logo: string | null; leagues: LeagueEntry[]; }
@@ -43,6 +44,7 @@ function FlagImg({ src, alt }: { src: string | null | undefined; alt: string }) 
 
 export function Shell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
+  const { formatCurrency, currency } = useSiteSettings();
   const { data: wallet } = useGetMyWallet({ query: { enabled: !!user, queryKey: getGetMyWalletQueryKey() } });
   const [location, navigate] = useLocation();
   const { selections, stake, lastPlacedBet, clearLastPlacedBet } = useBetSlip();
@@ -522,7 +524,7 @@ export function Shell({ children }: { children: ReactNode }) {
               <Link href="/wallet">
                 <div className="flex items-center gap-1.5 bg-accent/50 px-2.5 py-1 md:px-3 md:py-1.5 rounded-full border border-border hover:bg-accent transition-colors cursor-pointer">
                   <Wallet className="w-4 h-4 text-primary" />
-                  <span className="font-semibold text-sm">${wallet.balance.toFixed(2)}</span>
+                  <span className="font-semibold text-sm">{formatCurrency(wallet.balance)}</span>
                 </div>
               </Link>
             )}
@@ -698,12 +700,12 @@ export function Shell({ children }: { children: ReactNode }) {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Stake</span>
-                <span className="font-medium">${lastPlacedBet.stake.toFixed(2)}</span>
+                <span className="font-medium">{formatCurrency(lastPlacedBet.stake)}</span>
               </div>
               <Separator className="my-1" />
               <div className="flex justify-between font-bold">
                 <span>Potential Win</span>
-                <span className="text-primary">${lastPlacedBet.potentialWin.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span className="text-primary">{formatCurrency(lastPlacedBet.potentialWin)}</span>
               </div>
             </div>
 
@@ -711,7 +713,7 @@ export function Shell({ children }: { children: ReactNode }) {
               <Button
                 variant="outline"
                 className="h-11 gap-2"
-                onClick={() => { printBetSlip(lastPlacedBet); }}
+                onClick={() => { printBetSlip(lastPlacedBet, currency); }}
               >
                 <Printer className="w-4 h-4" />
                 Print / Save PDF

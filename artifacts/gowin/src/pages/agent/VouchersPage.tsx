@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
+import { useSiteSettings } from "../../contexts/SiteSettingsContext";
 import { Ticket, Printer, ShoppingCart, CheckCircle2 } from "lucide-react";
 
 interface Voucher {
@@ -15,6 +16,7 @@ interface Voucher {
 
 export default function AgentVouchersPage() {
   const qc = useQueryClient();
+  const { formatCurrency } = useSiteSettings();
   const [printedCode, setPrintedCode] = useState<{ code: string; value: number } | null>(null);
   const [filter, setFilter] = useState<"all" | "available" | "sold" | "printed">("all");
 
@@ -54,6 +56,7 @@ export default function AgentVouchersPage() {
   function printReceipt(code: string, value: number) {
     const w = window.open("", "_blank", "width=300,height=400");
     if (!w) return;
+    const displayValue = formatCurrency(value);
     w.document.write(`
       <html><head><title>Voucher Receipt</title>
       <style>body{font-family:monospace;text-align:center;padding:20px}
@@ -61,7 +64,7 @@ export default function AgentVouchersPage() {
       .value{font-size:20px;color:#16a34a}</style></head>
       <body>
         <h2>GoWin Voucher</h2>
-        <div class="value">$${value}</div>
+        <div class="value">${displayValue}</div>
         <div class="code">${code}</div>
         <p>Use this code at gowin.com to top up your wallet.</p>
         <p><small>${new Date().toLocaleString()}</small></p>
@@ -86,7 +89,7 @@ export default function AgentVouchersPage() {
           <Printer className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
           <div className="flex-1">
             <p className="font-semibold text-blue-300">Voucher Printed</p>
-            <p className="text-sm text-zinc-300 mt-1 font-mono">{printedCode.code} · ${printedCode.value}</p>
+            <p className="text-sm text-zinc-300 mt-1 font-mono">{printedCode.code} · {formatCurrency(printedCode.value)}</p>
             <button onClick={() => printReceipt(printedCode.code, printedCode.value)}
               className="mt-2 text-xs text-blue-400 hover:text-blue-300 underline">Print receipt again</button>
           </div>
@@ -142,7 +145,7 @@ export default function AgentVouchersPage() {
                 return (
                   <tr key={v.id} className="hover:bg-zinc-700/30">
                     <td className="px-5 py-3 font-mono text-white">{v.code}</td>
-                    <td className="px-5 py-3 text-emerald-400 font-semibold">${v.value}</td>
+                    <td className="px-5 py-3 text-emerald-400 font-semibold">{formatCurrency(v.value)}</td>
                     <td className="px-5 py-3">
                       {v.isRedeemed
                         ? <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-700 text-zinc-400">Redeemed</span>

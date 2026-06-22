@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import api from "../../lib/api";
+import { useSiteSettings } from "../../contexts/SiteSettingsContext";
 import { BarChart3, TrendingUp } from "lucide-react";
 
 export default function AgentReportsPage() {
+  const { formatCurrency, t } = useSiteSettings();
   interface DailyRow { date: string; bets: number; stake: number; commission: number; }
   interface AgentReports { dailyActivity: DailyRow[]; commissionRate: number; }
 
@@ -33,16 +35,16 @@ export default function AgentReportsPage() {
 
       <div className="grid grid-cols-3 gap-4 mb-8">
         <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-5">
-          <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Total Stake</p>
-          <p className="text-2xl font-bold text-emerald-400">${totalStake.toFixed(2)}</p>
+          <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">{t("agent.total_stake_label")}</p>
+          <p className="text-2xl font-bold text-emerald-400">{formatCurrency(totalStake)}</p>
         </div>
         <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-5">
           <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Total Bets</p>
           <p className="text-2xl font-bold text-blue-400">{totalBets}</p>
         </div>
         <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-5">
-          <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Commission Earned</p>
-          <p className="text-2xl font-bold text-yellow-400">${totalCommission.toFixed(2)}</p>
+          <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">{t("agent.commission_label")}</p>
+          <p className="text-2xl font-bold text-yellow-400">{formatCurrency(totalCommission)}</p>
         </div>
       </div>
 
@@ -55,9 +57,9 @@ export default function AgentReportsPage() {
               <div
                 className="w-full bg-emerald-600/70 hover:bg-emerald-500 rounded-t transition-all relative"
                 style={{ height: `${(d.stake / maxStake) * 100}%`, minHeight: d.stake > 0 ? "4px" : "0" }}
-                title={`${d.date}: $${d.stake.toFixed(2)}`}>
+                title={`${d.date}: ${formatCurrency(d.stake)}`}>
                 <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-zinc-900 border border-zinc-700 text-xs text-white px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-10">
-                  {d.date}<br />${d.stake.toFixed(2)} · {d.bets} bet{d.bets !== 1 ? "s" : ""}<br />💰 ${d.commission.toFixed(2)} comm
+                  {d.date}<br />{formatCurrency(d.stake)} · {d.bets} {d.bets !== 1 ? t("reports.bets_plural") : t("reports.bets")}<br />💰 {formatCurrency(d.commission)} {t("reports.comm")}
                 </div>
               </div>
             </div>
@@ -89,8 +91,8 @@ export default function AgentReportsPage() {
                 <tr key={d.date} className="hover:bg-zinc-700/30">
                   <td className="px-5 py-2.5 text-zinc-300">{d.date}</td>
                   <td className="px-5 py-2.5 text-right text-zinc-400">{d.bets}</td>
-                  <td className="px-5 py-2.5 text-right text-emerald-400">${d.stake.toFixed(2)}</td>
-                  <td className="px-5 py-2.5 text-right text-yellow-400">${d.commission.toFixed(2)}</td>
+                  <td className="px-5 py-2.5 text-right text-emerald-400">{formatCurrency(d.stake)}</td>
+                  <td className="px-5 py-2.5 text-right text-yellow-400">{formatCurrency(d.commission)}</td>
                 </tr>
               ))}
             </tbody>

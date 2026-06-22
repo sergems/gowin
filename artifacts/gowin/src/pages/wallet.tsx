@@ -11,6 +11,7 @@ import {
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 
 async function postWalletAction(path: string, token: string | null, body: object) {
   const res = await fetch(path, {
@@ -59,6 +60,7 @@ export default function Wallet() {
   const { data: transactionsData, isLoading: isTransactionsLoading } = useGetMyTransactions();
   const { token, user } = useAuth();
   const { toast } = useToast();
+  const { formatCurrency } = useSiteSettings();
   const queryClient = useQueryClient();
 
   const isRestrictedRole = ["agent", "branch_admin", "payout"].includes(user?.role ?? "");
@@ -89,7 +91,7 @@ export default function Wallet() {
     setIsWithdrawing(true);
     try {
       await postWalletAction("/api/wallet/withdrawal-request", token, { amount });
-      toast({ title: "Withdrawal requested", description: `$${amount.toFixed(2)} withdrawal submitted for review.` });
+      toast({ title: "Withdrawal requested", description: `${formatCurrency(amount)} withdrawal submitted for review.` });
       setWithdrawAmount("");
       queryClient.invalidateQueries({ queryKey: ["/api/wallet"] });
       queryClient.invalidateQueries({ queryKey: ["/api/wallet/withdrawals"] });
@@ -111,7 +113,7 @@ export default function Wallet() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Redemption failed");
-      toast({ title: "Voucher redeemed!", description: `$${data.amount.toFixed(2)} added to your wallet.` });
+      toast({ title: "Voucher redeemed!", description: `${formatCurrency(data.amount)} added to your wallet.` });
       setVoucherCode("");
       queryClient.invalidateQueries({ queryKey: ["/api/wallet"] });
       queryClient.invalidateQueries({ queryKey: ["/api/wallet/transactions"] });
@@ -144,7 +146,7 @@ export default function Wallet() {
                 <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-1">
                   {isRestrictedRole ? "Allocated Balance" : "Available Balance"}
                 </p>
-                <h2 className="text-5xl font-black tracking-tight">${wallet?.balance?.toFixed(2) ?? "0.00"}</h2>
+                <h2 className="text-5xl font-black tracking-tight">{formatCurrency(parseFloat(wallet?.balance ?? "0"))}</h2>
               </div>
             </div>
           </CardContent>
@@ -224,7 +226,7 @@ export default function Wallet() {
                     onClick={() => setWithdrawAmount(String(amt))}
                     className="px-3 py-1.5 rounded-md border border-border text-sm font-medium hover:bg-destructive/10 hover:border-destructive/40 transition-colors"
                   >
-                    ${amt}
+                    {formatCurrency(amt)}
                   </button>
                 ))}
               </div>
@@ -274,7 +276,7 @@ export default function Wallet() {
                 <div key={w.id} className="flex items-center justify-between p-4 rounded-xl border border-border bg-card">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-bold text-lg">${w.amount.toFixed(2)}</span>
+                      <span className="font-bold text-lg">{formatCurrency(w.amount)}</span>
                       <StatusBadge status={w.status} />
                     </div>
                     <p className="text-xs text-muted-foreground line-clamp-1">{w.bankDetails}</p>
@@ -337,7 +339,7 @@ export default function Wallet() {
                     </div>
                   </div>
                   <div className={`text-lg font-bold ${isCredit ? "text-primary" : ""}`}>
-                    {isCredit ? "+" : "-"}${Number(tx.amount).toFixed(2)}
+                    {isCredit ? "+" : "-"}{formatCurrency(Number(tx.amount))}
                   </div>
                 </div>
               );

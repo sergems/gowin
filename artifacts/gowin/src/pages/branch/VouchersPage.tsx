@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
+import { useSiteSettings } from "../../contexts/SiteSettingsContext";
 import { Ticket, RefreshCw, ChevronDown } from "lucide-react";
 
 interface Voucher {
@@ -23,6 +24,7 @@ interface Agent { id: number; username: string; firstName: string | null; lastNa
 
 export default function BranchVouchersPage() {
   const qc = useQueryClient();
+  const { formatCurrency } = useSiteSettings();
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [showAllocate, setShowAllocate] = useState(false);
   const [targetAgentId, setTargetAgentId] = useState<number | null>(null);
@@ -179,7 +181,7 @@ export default function BranchVouchersPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 font-mono text-white">{v.code}</td>
-                    <td className="px-4 py-3 text-emerald-400 font-semibold">${v.value}</td>
+                    <td className="px-4 py-3 text-emerald-400 font-semibold">{formatCurrency(v.value)}</td>
                     <td className="px-4 py-3">{statusBadge(v)}</td>
                     <td className="px-4 py-3 text-zinc-400 text-xs">
                       {v.agentFirstName || v.agentLastName

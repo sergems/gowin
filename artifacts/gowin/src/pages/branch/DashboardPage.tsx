@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import api from "../../lib/api";
+import { useSiteSettings } from "../../contexts/SiteSettingsContext";
 import { BarChart3, Users, TrendingUp, Ticket, DollarSign, AlertCircle } from "lucide-react";
 
 function StatCard({ label, value, sub, color = "emerald" }: { label: string; value: string | number; sub?: string; color?: string }) {
@@ -20,6 +21,7 @@ function StatCard({ label, value, sub, color = "emerald" }: { label: string; val
 }
 
 export default function BranchDashboardPage() {
+  const { formatCurrency, t } = useSiteSettings();
   interface BranchDash {
     totalAgents: number; activeAgents: number;
     totalBets: number; totalStake: number;
@@ -65,16 +67,16 @@ export default function BranchDashboardPage() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Total Agents" value={dash.totalAgents} sub={`${dash.activeAgents} active`} color="blue" />
-        <StatCard label="Total Bets" value={dash.totalBets?.toLocaleString()} sub={`$${dash.totalStake?.toFixed(2)} total stake`} />
-        <StatCard label="Today Revenue" value={`$${dash.dailyRevenue?.toFixed(2)}`} color="yellow" />
-        <StatCard label="Monthly Revenue" value={`$${dash.monthlyRevenue?.toFixed(2)}`} color="purple" />
+        <StatCard label={t("branch.total_agents")} value={dash.totalAgents} sub={`${dash.activeAgents} ${t("branch.active")}`} color="blue" />
+        <StatCard label={t("branch.total_bets")} value={dash.totalBets?.toLocaleString()} sub={`${formatCurrency(dash.totalStake)} ${t("branch.total_stake")}`} />
+        <StatCard label={t("branch.today_revenue")} value={formatCurrency(dash.dailyRevenue)} color="yellow" />
+        <StatCard label={t("branch.monthly_revenue")} value={formatCurrency(dash.monthlyRevenue)} color="purple" />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <StatCard label="Vouchers Sold" value={dash.voucherSales} sub={`$${dash.voucherSalesValue?.toFixed(2)} value`} color="emerald" />
-        <StatCard label="Allocated Vouchers" value={dash.allocatedVouchers} sub="Available in inventory" color="blue" />
-        <StatCard label="Pending Payouts" value={`$${dash.pendingPayouts?.toFixed(2)}`} sub="Won bets awaiting payout" color="red" />
+        <StatCard label={t("branch.vouchers_sold")} value={dash.voucherSales} sub={`${formatCurrency(dash.voucherSalesValue)} ${t("agent.value")}`} color="emerald" />
+        <StatCard label={t("branch.allocated_vouchers")} value={dash.allocatedVouchers} sub={t("branch.available_inventory")} color="blue" />
+        <StatCard label={t("branch.pending_payouts")} value={formatCurrency(dash.pendingPayouts)} sub={t("branch.won_bets_payout")} color="red" />
       </div>
     </div>
   );

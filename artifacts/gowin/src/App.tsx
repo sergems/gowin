@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { BetSlipProvider } from "@/contexts/BetSlipContext";
+import { SiteSettingsProvider } from "@/contexts/SiteSettingsContext";
 import { Shell } from "@/components/layout/Shell";
 import NotFound from "@/pages/not-found";
 
@@ -165,16 +166,18 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <BetSlipProvider>
-          <TooltipProvider>
-            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-              <Router />
-            </WouterRouter>
-            <Toaster />
-          </TooltipProvider>
-        </BetSlipProvider>
-      </AuthProvider>
+      <SiteSettingsProvider>
+        <AuthProvider>
+          <BetSlipProvider>
+            <TooltipProvider>
+              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                <Router />
+              </WouterRouter>
+              <Toaster />
+            </TooltipProvider>
+          </BetSlipProvider>
+        </AuthProvider>
+      </SiteSettingsProvider>
     </QueryClientProvider>
   );
 }

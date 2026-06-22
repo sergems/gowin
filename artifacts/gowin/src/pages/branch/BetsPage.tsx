@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -119,12 +120,12 @@ function BetVerifier() {
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">Stake</div>
-                  <div className="font-bold">${Number(result.stake).toFixed(2)}</div>
+                  <div className="font-bold">{formatCurrency(Number(result.stake))}</div>
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">{result.status === "won" ? "Won" : "To Win"}</div>
                   <div className={`font-black ${result.status === "won" ? "text-primary" : ""}`}>
-                    ${Number(result.potentialWin).toFixed(2)}
+                    {formatCurrency(Number(result.potentialWin))}
                   </div>
                 </div>
                 <div>
@@ -174,6 +175,7 @@ function BetVerifier() {
 export default function BranchBetsPage() {
   const { token } = useAuth();
   const { toast } = useToast();
+  const { formatCurrency } = useSiteSettings();
   const queryClient = useQueryClient();
 
   const headers = { Authorization: `Bearer ${token}` };
@@ -256,9 +258,9 @@ export default function BranchBetsPage() {
                     <TableCell className="text-muted-foreground text-sm">
                       {format(new Date(bet.createdAt), "MMM d, HH:mm")}
                     </TableCell>
-                    <TableCell className="text-right font-medium">${bet.stake.toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-medium">{formatCurrency(bet.stake)}</TableCell>
                     <TableCell className="text-right text-muted-foreground">{bet.totalOdds.toFixed(2)}</TableCell>
-                    <TableCell className="text-right font-bold text-primary">${bet.potentialWin.toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-bold text-primary">{formatCurrency(bet.potentialWin)}</TableCell>
                     <TableCell>
                       <Badge
                         variant={STATUS_VARIANT[bet.status] ?? "outline"}

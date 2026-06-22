@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -61,6 +62,7 @@ async function apiFetch(path: string, method: string, body: object, token: strin
 export default function AdminVouchers() {
   const { token } = useAuth();
   const { toast } = useToast();
+  const { formatCurrency } = useSiteSettings();
   const queryClient = useQueryClient();
 
   const [selectedValue, setSelectedValue] = useState<number>(10);
@@ -108,7 +110,7 @@ export default function AdminVouchers() {
     setIsCreating(true);
     try {
       await apiFetch("/api/admin/vouchers", "POST", { value: selectedValue, quantity }, token);
-      toast({ title: `${quantity} voucher${quantity > 1 ? "s" : ""} created`, description: `$${selectedValue} each` });
+      toast({ title: `${quantity} voucher${quantity > 1 ? "s" : ""} created`, description: `${formatCurrency(selectedValue)} each` });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/vouchers"] });
     } catch (e: any) {
       toast({ title: "Failed to create vouchers", description: e.message, variant: "destructive" });
@@ -190,7 +192,7 @@ export default function AdminVouchers() {
             <p className="text-2xl font-black">{stageCounts[key]}</p>
             {key === "unallocated" && stageCounts.unallocated > 0 && (
               <p className="text-xs text-zinc-500 mt-0.5">
-                ${vouchers.filter(v => getAllocationStage(v) === "unallocated").reduce((s,v) => s+v.value, 0).toFixed(0)} value
+                {formatCurrency(vouchers.filter(v => getAllocationStage(v) === "unallocated").reduce((s,v) => s+v.value, 0))} value
               </p>
             )}
           </button>
@@ -230,10 +232,10 @@ export default function AdminVouchers() {
           <div className="flex items-center gap-4 pt-1">
             <Button onClick={handleCreate} disabled={isCreating} className="gap-2">
               <Plus className="w-4 h-4" />
-              {isCreating ? "Generating..." : `Generate ${quantity} × $${selectedValue}`}
+              {isCreating ? "Generating..." : `Generate ${quantity} × ${formatCurrency(selectedValue)}`}
             </Button>
             <span className="text-sm text-muted-foreground">
-              Total value: <strong>${(quantity * selectedValue).toFixed(2)}</strong>
+              Total value: <strong>{formatCurrency(quantity * selectedValue)}</strong>
             </span>
           </div>
         </CardContent>
@@ -380,7 +382,7 @@ export default function AdminVouchers() {
 
                     {/* Value */}
                     <div className="flex items-center gap-3 shrink-0">
-                      <span className="text-xl font-black">${v.value.toFixed(0)}</span>
+                      <span className="text-xl font-black">{formatCurrency(v.value)}</span>
                     </div>
                   </div>
                 );
@@ -390,7 +392,7 @@ export default function AdminVouchers() {
 
           {filtered.length > 0 && (
             <p className="text-xs text-muted-foreground mt-4 text-right">
-              Showing {filtered.length} voucher{filtered.length !== 1 ? "s" : ""} · Total unredeemed value: <strong>${totalUnredeemedValue.toFixed(2)}</strong>
+              Showing {filtered.length} voucher{filtered.length !== 1 ? "s" : ""} · Total unredeemed value: <strong>{formatCurrency(totalUnredeemedValue)}</strong>
             </p>
           )}
         </CardContent>

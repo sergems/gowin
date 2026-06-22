@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChevronDown, ChevronUp, Trophy, Clock, CheckCircle2, XCircle, HelpCircle, Printer } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { printBetSlip, historyBetToPrintData } from "@/lib/printBetSlip";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
@@ -86,6 +87,7 @@ interface LiveFixtureData {
 }
 
 export default function History() {
+  const { formatCurrency, currency } = useSiteSettings();
   const [activeTab, setActiveTab] = useState<"pending" | "won" | "lost" | "void">("pending");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [liveFixtures, setLiveFixtures] = useState<Map<number, LiveFixtureData>>(new Map());
@@ -227,7 +229,7 @@ export default function History() {
                     <div className="flex items-center gap-6">
                       <div className="text-right hidden sm:block">
                         <div className="text-xs text-muted-foreground">Stake</div>
-                        <div className="font-bold text-sm">${Number(bet.stake).toFixed(2)}</div>
+                        <div className="font-bold text-sm">{formatCurrency(Number(bet.stake))}</div>
                       </div>
                       <div className="text-right">
                         <div className="text-xs text-muted-foreground">
@@ -351,7 +353,7 @@ export default function History() {
                             <div className="flex gap-6">
                               <div>
                                 <div className="text-xs text-muted-foreground mb-0.5">Stake</div>
-                                <div className="font-bold">${Number(bet.stake).toFixed(2)}</div>
+                                <div className="font-bold">{formatCurrency(Number(bet.stake))}</div>
                               </div>
                               <div>
                                 <div className="text-xs text-muted-foreground mb-0.5">Total Odds</div>
@@ -364,11 +366,11 @@ export default function History() {
                                   {bet.status === "won" ? "Won" : "Potential Win"}
                                 </div>
                                 <div className={`font-black text-lg ${bet.status === "won" ? "text-primary" : ""}`}>
-                                  ${Number(bet.potentialWin).toFixed(2)}
+                                  {formatCurrency(Number(bet.potentialWin))}
                                 </div>
                               </div>
                               <button
-                                onClick={() => printBetSlip(historyBetToPrintData(bet))}
+                                onClick={() => printBetSlip(historyBetToPrintData(bet), currency)}
                                 title="Print bet slip"
                                 className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border rounded-md px-3 py-2 hover:bg-accent transition-colors shrink-0"
                               >

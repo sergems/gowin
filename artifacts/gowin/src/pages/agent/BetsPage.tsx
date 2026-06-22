@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { useState, useMemo } from "react";
 import { History, ChevronDown, ChevronUp, Search, Filter } from "lucide-react";
 
@@ -18,6 +19,7 @@ const STATUS_STYLE: Record<string, string> = {
 
 export default function AgentBetsPage() {
   const { token } = useAuth();
+  const { formatCurrency } = useSiteSettings();
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -64,7 +66,7 @@ export default function AgentBetsPage() {
           <span>·</span>
           <span className="text-emerald-400">{won} won</span>
           <span>·</span>
-          <span>${totalStake.toFixed(2)} staked</span>
+          <span>{formatCurrency(totalStake)} staked</span>
         </div>
       </div>
 
@@ -124,9 +126,9 @@ export default function AgentBetsPage() {
                         <span className="text-[10px] text-zinc-500">{new Date(bet.createdAt).toLocaleDateString()} · {bet.selections.length} sel</span>
                       </div>
                     </div>
-                    <span className="text-xs font-semibold text-white text-right">${bet.stake.toFixed(2)}</span>
+                    <span className="text-xs font-semibold text-white text-right">{formatCurrency(bet.stake)}</span>
                     <span className="text-xs text-zinc-400 text-right">×{bet.totalOdds.toFixed(2)}</span>
-                    <span className="text-xs font-semibold text-emerald-400 text-right">${bet.potentialWin.toFixed(2)}</span>
+                    <span className="text-xs font-semibold text-emerald-400 text-right">{formatCurrency(bet.potentialWin)}</span>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border text-right ${STATUS_STYLE[bet.status]}`}>
                       {bet.status.charAt(0).toUpperCase() + bet.status.slice(1)}
                     </span>

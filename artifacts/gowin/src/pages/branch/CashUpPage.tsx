@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { DollarSign, Users, Plus, CheckCircle2, AlertTriangle, Clock, ChevronDown, ChevronUp, RefreshCw, X } from "lucide-react";
 import { format } from "date-fns";
 
@@ -32,15 +33,16 @@ async function apiFetch(path: string, method: string, body: object | null, token
 
 const SHIFT_LABELS = ["Morning", "Afternoon", "Evening", "Night", "Day"];
 
-function VariancePill({ v }: { v: number }) {
+function VariancePill({ v, fmt }: { v: number; fmt: (n: number) => string }) {
   if (Math.abs(v) < 0.01) return <span className="text-xs text-emerald-400 font-bold">✓ Balanced</span>;
-  if (v < 0) return <span className="text-xs text-red-400 font-bold">▼ Short ${Math.abs(v).toFixed(2)}</span>;
-  return <span className="text-xs text-amber-400 font-bold">▲ +${v.toFixed(2)}</span>;
+  if (v < 0) return <span className="text-xs text-red-400 font-bold">▼ Short {fmt(Math.abs(v))}</span>;
+  return <span className="text-xs text-amber-400 font-bold">▲ +{fmt(v)}</span>;
 }
 
 export default function CashUpPage() {
   const { token } = useAuth();
   const { toast } = useToast();
+  const { formatCurrency, currency } = useSiteSettings();
   const qc = useQueryClient();
 
   const today = new Date().toISOString().slice(0, 10);
@@ -101,8 +103,8 @@ export default function CashUpPage() {
         shiftDate, shiftLabel: allocForm.shiftLabel, notes: allocForm.notes || null,
       }, token);
       const msg = res.accumulated
-        ? `Added $${parseFloat(allocForm.amount).toFixed(2)} to existing float`
-        : `$${parseFloat(allocForm.amount).toFixed(2)} float allocated`;
+        ? `Added ${formatCurrency(parseFloat(allocForm.amount))} to existing float`
+        : `${formatCurrency(parseFloat(allocForm.amount))} float allocated`;
       toast({ title: "Float allocated", description: msg });
       qc.invalidateQueries({ queryKey: ["branch-floats"] });
       qc.invalidateQueries({ queryKey: ["branch-info-cashup"] });
@@ -135,7 +137,7 @@ export default function CashUpPage() {
         cashReturned: parseFloat(cashReturned), notes: cashUpNotes || null,
       }, token);
       const v = parseFloat(cashReturned) - cashUpPreview.totalBets;
-      toast({ title: "Cash up done", description: Math.abs(v) < 0.01 ? "Balanced." : v < 0 ? `Agent short $${Math.abs(v).toFixed(2)}` : `Surplus $${v.toFixed(2)}` });
+      toast({ title: "Cash up done", description: Math.abs(v) < 0.01 ? "Balanced." : v < 0 ? `Agent short ${formatCurrency(Math.abs(v))}` : `Surplus ${formatCurrency(v)}` });
       qc.invalidateQueries({ queryKey: ["branch-floats"] });
       qc.invalidateQueries({ queryKey: ["branch-cashups"] });
       qc.invalidateQueries({ queryKey: ["branch-info-cashup"] });
@@ -163,7 +165,7 @@ export default function CashUpPage() {
         <div className="flex items-center gap-2">
           <div className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-right">
             <p className="text-[10px] text-zinc-500">Branch Balance</p>
-            <p className="text-sm font-black text-emerald-400">${branchBalance.toFixed(2)}</p>
+            <p className="text-sm font-black text-emerald-400">{formatCurrency(branchBalance)}</p>
           </div>
           <input type="date" value={shiftDate} onChange={e => setShiftDate(e.target.value)}
             className="bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
@@ -177,7 +179,7 @@ export default function CashUpPage() {
       {/* Stats strip */}
       <div className="grid grid-cols-3 gap-2">
         {[
-          { label: "Total Allocated", val: `$${stats.totalAllocated.toFixed(2)}`, color: "text-emerald-400" },
+          { label: "Total Allocated", val: formatCurrency(stats.totalAllocated), color: "text-emerald-400" },
           { label: "Open Shifts",     val: stats.open,                             color: "text-amber-400" },
           { label: "Cashed Up",       val: stats.done,                             color: "text-blue-400" },
         ].map(({ label, val, color }) => (
@@ -216,7 +218,7 @@ export default function CashUpPage() {
                 </div>
                 <div className="text-right shrink-0 mr-2">
                   <p className="text-[10px] text-zinc-500">Float</p>
-                  <p className="text-sm font-black text-white">${f.amount.toFixed(2)}</p>
+                  <p className="text-sm font-black text-white">{formatCurrency(f.amount)}</p>
                 </div>
                 <button onClick={() => openCashUp(f.id)}
                   className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-md text-xs font-semibold transition-colors flex items-center gap-1 shrink-0">
@@ -245,7 +247,7 @@ export default function CashUpPage() {
                   <span className="text-[10px] text-zinc-500">{f.shiftLabel}</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs font-semibold text-zinc-300">${f.amount.toFixed(2)}</span>
+                  <span className="text-xs font-semibold text-zinc-300">{formatCurrency(f.amount)}</span>
                   <span className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full">Cashed Up</span>
                 </div>
               </div>
@@ -277,21 +279,21 @@ export default function CashUpPage() {
                       <span className="text-sm font-semibold text-white truncate">{s.agentName || s.agentUsername}</span>
                       <span className="text-[10px] text-zinc-500">{s.shiftLabel} · {format(new Date(s.shiftDate), "d MMM")}</span>
                     </div>
-                    <p className="text-[10px] text-zinc-500">Float ${s.openingFloat.toFixed(2)} · Bets ${s.totalBets.toFixed(2)}</p>
+                    <p className="text-[10px] text-zinc-500">Float {formatCurrency(s.openingFloat)} · Bets {formatCurrency(s.totalBets)}</p>
                   </div>
                   <div className="flex items-center gap-4 text-right shrink-0">
                     <div>
                       <p className="text-[10px] text-zinc-500">Expected</p>
-                      <p className="text-xs font-bold text-zinc-200">${s.expectedReturn.toFixed(2)}</p>
+                      <p className="text-xs font-bold text-zinc-200">{formatCurrency(s.expectedReturn)}</p>
                     </div>
                     <div>
                       <p className="text-[10px] text-zinc-500">Returned</p>
-                      <p className="text-xs font-bold text-zinc-200">${s.cashReturned.toFixed(2)}</p>
+                      <p className="text-xs font-bold text-zinc-200">{formatCurrency(s.cashReturned)}</p>
                     </div>
                     <div>
                       <p className="text-[10px] text-zinc-500">Variance</p>
                       <p className={`text-xs font-black ${isShort ? "text-red-400" : isSurplus ? "text-amber-400" : "text-emerald-400"}`}>
-                        {isShort ? "-" : isSurplus ? "+" : ""}${Math.abs(s.variance).toFixed(2)}
+                        {isShort ? "-" : isSurplus ? "+" : ""}{formatCurrency(Math.abs(s.variance))}
                       </p>
                     </div>
                   </div>
@@ -312,7 +314,7 @@ export default function CashUpPage() {
             </div>
             <div className="bg-zinc-800 rounded-lg px-3 py-1.5 mb-3 text-xs flex justify-between">
               <span className="text-zinc-400">Branch balance</span>
-              <span className="font-bold text-emerald-400">${branchBalance.toFixed(2)}</span>
+              <span className="font-bold text-emerald-400">{formatCurrency(branchBalance)}</span>
             </div>
             <form onSubmit={handleAllocate} className="space-y-3">
               <div>
@@ -393,34 +395,34 @@ export default function CashUpPage() {
                       <p className="text-sm font-medium text-zinc-200">Opening Float</p>
                       <p className="text-[10px] text-zinc-500">Float issued at start of shift</p>
                     </div>
-                    <p className="text-sm font-bold text-white">${cashUpPreview.openingFloat.toFixed(2)}</p>
+                    <p className="text-sm font-bold text-white">{formatCurrency(cashUpPreview.openingFloat)}</p>
                   </div>
                   <div className="flex justify-between items-center px-4 py-2.5 border-b border-zinc-700">
                     <div>
                       <p className="text-sm font-medium text-zinc-200">Cash Collected</p>
                       <p className="text-[10px] text-zinc-500">Bet stakes received from clients</p>
                     </div>
-                    <p className="text-sm font-bold text-emerald-400">+${cashUpPreview.totalBets.toFixed(2)}</p>
+                    <p className="text-sm font-bold text-emerald-400">+{formatCurrency(cashUpPreview.totalBets)}</p>
                   </div>
                   <div className="flex justify-between items-center px-4 py-2.5 border-b border-zinc-700 bg-zinc-700/20">
                     <div>
                       <p className="text-sm font-bold text-white">Expected Return to Branch</p>
                       <p className="text-[10px] text-zinc-500">Opening Float − Cash Collected (credited to branch, debited from agent)</p>
                     </div>
-                    <p className="text-base font-black text-white">${cashUpPreview.expectedReturn.toFixed(2)}</p>
+                    <p className="text-base font-black text-white">{formatCurrency(cashUpPreview.expectedReturn)}</p>
                   </div>
                   <div className="flex justify-between items-center px-4 py-2.5 bg-zinc-700/40">
                     <div>
                       <p className="text-sm font-bold text-amber-300">Cash Agent Must Return</p>
                       <p className="text-[10px] text-zinc-500">Equals Cash Collected — enter this below</p>
                     </div>
-                    <p className="text-base font-black text-amber-300">${cashUpPreview.totalBets.toFixed(2)}</p>
+                    <p className="text-base font-black text-amber-300">{formatCurrency(cashUpPreview.totalBets)}</p>
                   </div>
                 </div>
 
                 {/* Cash returned input */}
                 <div>
-                  <label className="text-xs font-semibold text-zinc-300 block mb-1.5">Actual Cash Returned ($)</label>
+                  <label className="text-xs font-semibold text-zinc-300 block mb-1.5">Actual Cash Returned ({currency})</label>
                   <input type="number" min="0" step="0.01" value={cashReturned}
                     onChange={e => setCashReturned(e.target.value)}
                     placeholder="0.00" autoFocus
@@ -439,13 +441,13 @@ export default function CashUpPage() {
                         {Math.abs(liveVariance) < 0.01
                           ? "✓ Balanced — matches Cash Collected"
                           : liveVariance < 0
-                          ? `⚠ Agent is short $${Math.abs(liveVariance).toFixed(2)} (returned less than collected)`
-                          : `Agent has surplus $${liveVariance.toFixed(2)} (returned more than collected)`}
+                          ? `⚠ Agent is short ${formatCurrency(Math.abs(liveVariance))} (returned less than collected)`
+                          : `Agent has surplus ${formatCurrency(liveVariance)} (returned more than collected)`}
                       </p>
-                      <p className="text-[10px] text-zinc-500 mt-0.5">Expected: ${cashUpPreview!.totalBets.toFixed(2)} · Actual: ${cashReturnedNum.toFixed(2)}</p>
+                      <p className="text-[10px] text-zinc-500 mt-0.5">Expected: {formatCurrency(cashUpPreview!.totalBets)} · Actual: {formatCurrency(cashReturnedNum)}</p>
                     </div>
                     <p className={`text-lg font-black shrink-0 ml-4 ${Math.abs(liveVariance) < 0.01 ? "text-emerald-400" : liveVariance < 0 ? "text-red-400" : "text-amber-400"}`}>
-                      {liveVariance >= 0 ? "+" : ""}{liveVariance.toFixed(2)}
+                      {liveVariance >= 0 ? "+" : ""}{formatCurrency(Math.abs(liveVariance))}
                     </p>
                   </div>
                 )}

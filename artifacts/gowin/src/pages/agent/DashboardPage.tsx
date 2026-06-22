@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import api from "../../lib/api";
 import { useGetMyWallet, getGetMyWalletQueryKey } from "@workspace/api-client-react";
 import { useAuth } from "../../contexts/AuthContext";
+import { useSiteSettings } from "../../contexts/SiteSettingsContext";
 import { BarChart3, TrendingUp, Ticket, DollarSign, AlertCircle } from "lucide-react";
 
 function StatCard({ label, value, sub, color = "emerald" }: { label: string; value: string | number; sub?: string; color?: string }) {
@@ -20,6 +21,7 @@ function StatCard({ label, value, sub, color = "emerald" }: { label: string; val
 
 export default function AgentDashboardPage() {
   const { user } = useAuth();
+  const { formatCurrency, t } = useSiteSettings();
   const { data: wallet } = useGetMyWallet({ query: { queryKey: getGetMyWalletQueryKey() } });
 
   interface AgentDash {
@@ -62,21 +64,21 @@ export default function AgentDashboardPage() {
       <div className="bg-gradient-to-r from-emerald-900/40 to-emerald-800/20 border border-emerald-800/50 rounded-xl p-5 mb-6 flex items-center justify-between">
         <div>
           <p className="text-xs text-emerald-300/70 uppercase tracking-wider mb-1">Wallet Balance</p>
-          <p className="text-3xl font-bold text-emerald-400">${parseFloat(wallet?.balance ?? "0").toFixed(2)}</p>
+          <p className="text-3xl font-bold text-emerald-400">{formatCurrency(parseFloat(wallet?.balance ?? "0"))}</p>
         </div>
         <DollarSign className="w-10 h-10 text-emerald-600/40" />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-        <StatCard label="Today Bets" value={dash.todayBets} sub={`$${dash.todayRevenue?.toFixed(2)}`} color="blue" />
-        <StatCard label="Monthly Bets" value={dash.monthBets} sub={`$${dash.monthRevenue?.toFixed(2)}`} color="purple" />
-        <StatCard label="Vouchers Sold" value={dash.vouchersSold} sub={`$${dash.voucherSalesValue?.toFixed(2)} value`} />
-        <StatCard label="Commission Earned" value={`$${dash.commissionEarned?.toFixed(2)}`} color="yellow" />
+        <StatCard label={t("agent.today_bets")} value={dash.todayBets} sub={formatCurrency(dash.todayRevenue)} color="blue" />
+        <StatCard label={t("agent.monthly_bets")} value={dash.monthBets} sub={formatCurrency(dash.monthRevenue)} color="purple" />
+        <StatCard label={t("agent.vouchers_sold")} value={dash.vouchersSold} sub={`${formatCurrency(dash.voucherSalesValue)} ${t("agent.value")}`} />
+        <StatCard label={t("agent.commission_earned")} value={formatCurrency(dash.commissionEarned)} color="yellow" />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <StatCard label="Total Bets Placed" value={dash.totalBetsPlaced} sub={`$${dash.totalStake?.toFixed(2)} total stake`} />
-        <StatCard label="Pending Payouts" value={`$${dash.pendingPayouts?.toFixed(2)}`} sub="Won bets" color="red" />
+        <StatCard label={t("agent.total_bets")} value={dash.totalBetsPlaced} sub={`${formatCurrency(dash.totalStake)} ${t("agent.total_stake")}`} />
+        <StatCard label={t("agent.pending_payouts")} value={formatCurrency(dash.pendingPayouts)} sub={t("agent.won_bets")} color="red" />
       </div>
     </div>
   );

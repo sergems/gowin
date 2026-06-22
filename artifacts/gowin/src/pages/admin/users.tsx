@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { format } from "date-fns";
 import { Pencil, Ban, CheckCircle2, KeyRound, Copy, Check, Search, X as XIcon, Building2 } from "lucide-react";
 
@@ -64,6 +65,7 @@ const ROLE_TABS = [
 type RoleTab = typeof ROLE_TABS[number]["key"];
 
 export default function AdminUsers() {
+  const { formatCurrency } = useSiteSettings();
   const [activeTab, setActiveTab] = useState<RoleTab>("all");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -554,7 +556,7 @@ export default function AdminUsers() {
             <form onSubmit={handleWalletAction} className="space-y-4 pt-4">
               <div className="p-3 bg-accent/20 rounded-md border border-border mb-4">
                 <div className="text-sm text-muted-foreground mb-1">User: <span className="font-bold text-foreground">{selectedUser.username}</span></div>
-                <div className="text-sm text-muted-foreground">Current Balance: <span className="font-bold text-foreground">${selectedUser.wallet?.balance.toFixed(2)}</span></div>
+                <div className="text-sm text-muted-foreground">Current Balance: <span className="font-bold text-foreground">{formatCurrency(parseFloat(selectedUser.wallet?.balance ?? "0"))}</span></div>
               </div>
               <div className="space-y-2">
                 <Label>Amount ($)</Label>

@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
+import { SUPPORTED_CURRENCIES, SUPPORTED_LANGUAGES } from "@/lib/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +15,7 @@ import {
   Key, RefreshCw, CheckCircle2, AlertTriangle,
   Eye, EyeOff, Database, Plug, PlugZap, Unplug, FlaskConical,
   Upload, FileText, Info, Download, Mail, Send, ShieldCheck, ShieldOff,
+  Globe,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -44,6 +47,11 @@ export default function AdminSettings() {
   const { token } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { currency: activeCurrency, language: activeLanguage } = useSiteSettings();
+
+  // ── Site Settings state ─────────────────────────────────────────────────────
+  const [siteCurrency, setSiteCurrency] = useState(activeCurrency);
+  const [siteLanguage, setSiteLanguage] = useState(activeLanguage);
 
   // ── API Key state ───────────────────────────────────────────────────────────
   const [newKey, setNewKey] = useState("");
@@ -316,6 +324,25 @@ export default function AdminSettings() {
     onError: (e: any) => toast({ title: "Import failed", description: e.message, variant: "destructive" }),
   });
 
+  // ── Site Settings mutation ──────────────────────────────────────────────────
+  const saveSiteSettingsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/admin/site-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ currency: siteCurrency, language: siteLanguage }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      toast({ title: "Site settings saved", description: "Currency and language updated site-wide." });
+      queryClient.invalidateQueries({ queryKey: ["/api/site-settings"] });
+    },
+    onError: (e: any) => toast({ title: "Save failed", description: e.message, variant: "destructive" }),
+  });
+
   // ── Helpers ─────────────────────────────────────────────────────────────────
   const isSyncing = syncMutation.isPending || settings?.syncStatus === "syncing";
   const maskedKey = (key: string) =>
@@ -344,6 +371,56 @@ export default function AdminSettings() {
         <h1 className="text-3xl font-black tracking-tight mb-2">Settings</h1>
         <p className="text-muted-foreground">Manage API integrations, data sync, and database connection</p>
       </div>
+
+      {/* ── Site Settings ──────────────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Globe className="w-4 h-4" /> Site Settings
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground uppercase tracking-wider">Currency</Label>
+              <select
+                value={siteCurrency}
+                onChange={(e) => setSiteCurrency(e.target.value)}
+                className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                {SUPPORTED_CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground uppercase tracking-wider">Language</Label>
+              <div className="flex gap-2 pt-1">
+                {SUPPORTED_LANGUAGES.map((lang) => (
+                  <button
+                    key={lang.code}
+                    onClick={() => setSiteLanguage(lang.code as "en" | "fr")}
+                    className={`flex-1 py-2 rounded-md text-sm font-semibold border transition-colors ${
+                      siteLanguage === lang.code
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-accent/50 text-muted-foreground border-border hover:bg-accent"
+                    }`}
+                  >
+                    {lang.flag} {lang.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <Button
+            onClick={() => saveSiteSettingsMutation.mutate()}
+            disabled={saveSiteSettingsMutation.isPending}
+            className="w-full gap-2"
+          >
+            {saveSiteSettingsMutation.isPending ? <><RefreshCw className="w-4 h-4 animate-spin" /> Saving…</> : "Save Site Settings"}
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* ── API Key ────────────────────────────────────────────────────────────── */}
       <Card>

@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import api from "../../lib/api";
+import { useSiteSettings } from "../../contexts/SiteSettingsContext";
 import { BarChart3, TrendingUp, Users, DollarSign } from "lucide-react";
 
 export default function BranchReportsPage() {
+  const { formatCurrency } = useSiteSettings();
   interface DailySale { date: string; bets: number; revenue: number; }
   interface AgentPerf { agentId: number; agentName: string; betsPlaced: number; totalStake: number; vouchersSold: number; commission: number; }
   interface BranchReports { dailySales: DailySale[]; agentPerformance: AgentPerf[]; }
@@ -34,7 +36,7 @@ export default function BranchReportsPage() {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
         <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-5">
           <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">30-Day Revenue</p>
-          <p className="text-2xl font-bold text-emerald-400">${totalRevenue.toFixed(2)}</p>
+          <p className="text-2xl font-bold text-emerald-400">{formatCurrency(totalRevenue)}</p>
         </div>
         <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-5">
           <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Total Bets</p>
@@ -55,10 +57,10 @@ export default function BranchReportsPage() {
               <div
                 className="w-full bg-emerald-600/70 hover:bg-emerald-500 rounded-t transition-all cursor-pointer relative"
                 style={{ height: `${(d.revenue / maxRevenue) * 100}%`, minHeight: d.revenue > 0 ? "4px" : "0" }}
-                title={`${d.date}: $${d.revenue.toFixed(2)}`}
+                title={`${d.date}: ${formatCurrency(d.revenue)}`}
               >
                 <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-zinc-900 border border-zinc-700 text-xs text-white px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                  {d.date}<br />${d.revenue.toFixed(2)} · {d.bets} bet{d.bets !== 1 ? "s" : ""}
+                  {d.date}<br />{formatCurrency(d.revenue)} · {d.bets} bet{d.bets !== 1 ? "s" : ""}
                 </div>
               </div>
             </div>
@@ -93,9 +95,9 @@ export default function BranchReportsPage() {
                 <tr key={a.agentId} className="hover:bg-zinc-700/30">
                   <td className="px-5 py-3 font-medium text-white">{a.agentName}</td>
                   <td className="px-5 py-3 text-right text-zinc-300">{a.betsPlaced}</td>
-                  <td className="px-5 py-3 text-right text-emerald-400">${a.totalStake.toFixed(2)}</td>
+                  <td className="px-5 py-3 text-right text-emerald-400">{formatCurrency(a.totalStake)}</td>
                   <td className="px-5 py-3 text-right text-zinc-300">{a.vouchersSold}</td>
-                  <td className="px-5 py-3 text-right text-yellow-400">${a.commission.toFixed(2)}</td>
+                  <td className="px-5 py-3 text-right text-yellow-400">{formatCurrency(a.commission)}</td>
                 </tr>
               ))}
             </tbody>

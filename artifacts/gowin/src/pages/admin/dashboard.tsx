@@ -4,8 +4,10 @@ import { Users, Activity, Trophy, DollarSign, ListTodo, Building2, Target } from
 import { format } from "date-fns";
 import { fmtUTCDateTimeAdmin } from "@/lib/formatUTC";
 import { Badge } from "@/components/ui/badge";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 
 export default function AdminDashboard() {
+  const { formatCurrency, t } = useSiteSettings();
   const { data: stats, isLoading: isStatsLoading } = useGetAdminStats();
   const { data: recentBets, isLoading: isBetsLoading } = useGetRecentBets();
   const { data: topFixtures, isLoading: isFixturesLoading } = useGetTopFixtures();
@@ -28,7 +30,7 @@ export default function AdminDashboard() {
             { label: "Branches",        value: (stats as any).totalBranches,        icon: Building2,  color: "bg-emerald-500/20 text-emerald-400" },
             { label: "Branch Admins",   value: (stats as any).totalBranchAdmins,    icon: Users,      color: "bg-blue-500/20 text-blue-400" },
             { label: "Agents",          value: (stats as any).totalAgents,          icon: Target,     color: "bg-violet-500/20 text-violet-400" },
-            { label: "Total Turnover",  value: `$${(stats as any).totalTurnover.toFixed(2)}`,  icon: DollarSign, color: "bg-primary/20 text-primary" },
+            { label: t("dashboard.total_turnover"),  value: formatCurrency((stats as any).totalTurnover),  icon: DollarSign, color: "bg-primary/20 text-primary" },
             { label: "Active Fixtures", value: (stats as any).totalActiveFixtures,  icon: Activity,   color: "bg-orange-500/20 text-orange-400" },
           ].map(({ label, value, icon: Icon, color }) => (
             <Card key={label} className="border-border bg-card">
@@ -77,8 +79,8 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-bold">${bet.stake.toFixed(2)}</div>
-                      <div className="text-xs text-muted-foreground">Win: ${bet.potentialWin.toFixed(2)}</div>
+                      <div className="font-bold">{formatCurrency(bet.stake)}</div>
+                      <div className="text-xs text-muted-foreground">Win: {formatCurrency(bet.potentialWin)}</div>
                     </div>
                   </div>
                 ))}
@@ -115,7 +117,7 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-bold text-primary">${item.totalStake.toFixed(2)}</div>
+                      <div className="font-bold text-primary">{formatCurrency(item.totalStake)}</div>
                       <div className="text-xs text-muted-foreground">{item.totalBets} bets</div>
                     </div>
                   </div>

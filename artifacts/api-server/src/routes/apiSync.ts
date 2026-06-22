@@ -177,6 +177,38 @@ async function insertAllMarkets(fixtureId: number, real: any | null, _seed: numb
   }
 }
 
+// ── GET /site-settings (public) ──────────────────────────────────────────────
+router.get("/site-settings", async (_req, res): Promise<void> => {
+  const currency = await getSetting("site_currency");
+  const language = await getSetting("site_language");
+  res.json({
+    currency: currency ?? "USD",
+    language: language ?? "en",
+  });
+});
+
+// ── GET /admin/site-settings ──────────────────────────────────────────────────
+router.get("/admin/site-settings", requireAdmin, async (_req, res): Promise<void> => {
+  const currency = await getSetting("site_currency");
+  const language = await getSetting("site_language");
+  res.json({
+    currency: currency ?? "USD",
+    language: language ?? "en",
+  });
+});
+
+// ── PUT /admin/site-settings ──────────────────────────────────────────────────
+router.put("/admin/site-settings", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+  const { currency, language } = req.body;
+  if (currency && typeof currency === "string" && currency.trim()) {
+    await setSetting("site_currency", currency.trim().toUpperCase());
+  }
+  if (language && typeof language === "string" && ["en", "fr"].includes(language)) {
+    await setSetting("site_language", language);
+  }
+  res.json({ ok: true });
+});
+
 // ── GET /admin/settings ──────────────────────────────────────────────────────
 router.get("/admin/settings", requireAdmin, async (_req, res): Promise<void> => {
   const apiKey = await getSetting("allsports_api_key");

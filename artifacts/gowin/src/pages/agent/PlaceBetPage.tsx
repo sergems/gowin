@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import api from "../../lib/api";
 import { useGetMyWallet, getGetMyWalletQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSiteSettings } from "../../contexts/SiteSettingsContext";
 import { Target, Plus, Trash2, CheckCircle2 } from "lucide-react";
 
 interface Fixture {
@@ -32,6 +33,7 @@ interface Selection {
 
 export default function AgentPlaceBetPage() {
   const qc = useQueryClient();
+  const { formatCurrency } = useSiteSettings();
   const { data: wallet, refetch: refetchWallet } = useGetMyWallet({ query: { queryKey: getGetMyWalletQueryKey() } });
   const [selections, setSelections] = useState<Selection[]>([]);
   const [stake, setStake] = useState("");
@@ -113,7 +115,7 @@ export default function AgentPlaceBetPage() {
           <Target className="w-7 h-7 text-emerald-400" />
           Place Bet
         </h1>
-        <p className="text-zinc-400 mt-0.5 text-sm">Balance: <span className="text-emerald-400 font-semibold">${balance.toFixed(2)}</span></p>
+        <p className="text-zinc-400 mt-0.5 text-sm">Balance: <span className="text-emerald-400 font-semibold">{formatCurrency(balance)}</span></p>
       </div>
 
       {lastBet && (
@@ -231,7 +233,7 @@ export default function AgentPlaceBetPage() {
                 {stakeNum > 0 && (
                   <div className="text-xs text-zinc-400 mb-3 flex justify-between">
                     <span>Potential Win</span>
-                    <span className="text-emerald-400 font-semibold">${potentialWin.toFixed(2)}</span>
+                    <span className="text-emerald-400 font-semibold">{formatCurrency(potentialWin)}</span>
                   </div>
                 )}
                 {error && <p className="text-red-400 text-xs mb-2">{error}</p>}
