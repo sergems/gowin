@@ -462,7 +462,7 @@ export function Shell({ children }: { children: ReactNode }) {
     <div className="flex h-screen overflow-hidden bg-background text-foreground dark">
 
       {/* ── Desktop Sidebar ─────────────────────────────────────────────────── */}
-      <aside className={`${sidebarOpen ? "w-56" : "w-14"} border-r border-border bg-card hidden md:flex flex-col shrink-0 transition-all duration-200`}>
+      <aside className={`${sidebarOpen ? "w-64" : "w-14"} border-r border-border bg-card hidden md:flex flex-col shrink-0 transition-all duration-200`}>
         <div className={`h-14 flex items-center border-b border-border shrink-0 ${sidebarOpen ? "px-4 gap-2" : "justify-center"}`}>
           {sidebarOpen && (
             <img src={gowinLogo} alt="GoWin" className="h-8 w-auto object-contain flex-1" />
@@ -521,7 +521,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <img src={gowinLogo} alt="GoWin" className="h-7 w-auto object-contain" />
           </div>
 
-          <p className={`flex-1 text-center text-xs text-muted-foreground/70 leading-snug px-2 line-clamp-2 ${user ? "hidden" : "hidden xl:block"}`}>
+          <p className={`flex-[3] text-center text-xs text-muted-foreground/70 leading-snug px-4 line-clamp-2 ${user ? "hidden" : "hidden xl:block"}`}>
             GOWIN SPORTSBOOK est un opérateur de paris agréé. GOWIN encourage le jeu responsable. Le jeu est interdit aux moins de 18 ans. Avertissement : le jeu peut engendrer une dépendance et être dangereux s'il n'est pas contrôlé et pratiqué avec modération. Les gagnants savent s'arrêter.
           </p>
 
@@ -573,7 +573,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
       {/* ── Desktop Bet Slip ─────────────────────────────────────────────────── */}
       {betSlipOpen && (
-        <aside className="w-72 border-l border-border bg-card hidden md:flex flex-col shrink-0">
+        <aside className="w-80 border-l border-border bg-card hidden md:flex flex-col shrink-0">
           <BetSlipBody onToggle={() => setBetSlipOpen(false)} />
         </aside>
       )}
