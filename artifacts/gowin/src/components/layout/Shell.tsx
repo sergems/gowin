@@ -44,7 +44,7 @@ function FlagImg({ src, alt }: { src: string | null | undefined; alt: string }) 
 
 export function Shell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
-  const { formatCurrency, currency } = useSiteSettings();
+  const { formatCurrency, currency, t } = useSiteSettings();
   const { data: wallet } = useGetMyWallet({ query: { enabled: !!user, queryKey: getGetMyWalletQueryKey() } });
   const [location, navigate] = useLocation();
   const { selections, stake, lastPlacedBet, clearLastPlacedBet } = useBetSlip();
@@ -114,39 +114,39 @@ export function Shell({ children }: { children: ReactNode }) {
   };
 
   const branchAdminLinks = isBranchAdmin ? [
-    { href: "/branch",          icon: LayoutDashboard, label: "Dashboard",  match: (l: string) => l === "/branch" },
-    { href: "/branch/agents",   icon: Users,           label: "Agents",     match: (l: string) => l === "/branch/agents" },
-    { href: "/branch/bets",     icon: History,         label: "Bets",       match: (l: string) => l === "/branch/bets" },
-    { href: "/branch/cashup",   icon: DollarSign,      label: "Cash Up",    match: (l: string) => l === "/branch/cashup" },
-    { href: "/branch/vouchers", icon: Ticket,          label: "Vouchers",   match: (l: string) => l === "/branch/vouchers" },
-    { href: "/branch/reports",  icon: BarChart3,       label: "Reports",    match: (l: string) => l === "/branch/reports" },
+    { href: "/branch",          icon: LayoutDashboard, label: t("nav.dashboard"), match: (l: string) => l === "/branch" },
+    { href: "/branch/agents",   icon: Users,           label: t("nav.agents"),    match: (l: string) => l === "/branch/agents" },
+    { href: "/branch/bets",     icon: History,         label: t("nav.bets"),      match: (l: string) => l === "/branch/bets" },
+    { href: "/branch/cashup",   icon: DollarSign,      label: t("nav.cashup"),    match: (l: string) => l === "/branch/cashup" },
+    { href: "/branch/vouchers", icon: Ticket,          label: t("nav.vouchers"),  match: (l: string) => l === "/branch/vouchers" },
+    { href: "/branch/reports",  icon: BarChart3,       label: t("nav.reports"),   match: (l: string) => l === "/branch/reports" },
   ] : [];
 
   const agentLinks = isAgent ? [
-    { href: "/agent",          icon: LayoutDashboard, label: "Dashboard",  match: (l: string) => l === "/agent" },
-    { href: "/agent/bets",     icon: History,         label: "My Bets",    match: (l: string) => l === "/agent/bets" },
-    { href: "/agent/vouchers", icon: Ticket,          label: "Vouchers",   match: (l: string) => l === "/agent/vouchers" },
-    { href: "/agent/reports",  icon: BarChart3,       label: "Reports",    match: (l: string) => l === "/agent/reports" },
+    { href: "/agent",          icon: LayoutDashboard, label: t("nav.dashboard"),    match: (l: string) => l === "/agent" },
+    { href: "/agent/bets",     icon: History,         label: t("nav.my_bets_short"), match: (l: string) => l === "/agent/bets" },
+    { href: "/agent/vouchers", icon: Ticket,          label: t("nav.vouchers"),     match: (l: string) => l === "/agent/vouchers" },
+    { href: "/agent/reports",  icon: BarChart3,       label: t("nav.reports"),      match: (l: string) => l === "/agent/reports" },
   ] : [];
 
   const payoutLinks = isPayout ? [
-    { href: "/payout",      icon: LayoutDashboard, label: "Dashboard",   match: (l: string) => l === "/payout" },
-    { href: "/payout/desk", icon: Banknote,        label: "Payout Desk", match: (l: string) => l === "/payout/desk" },
+    { href: "/payout",      icon: LayoutDashboard, label: t("nav.dashboard"),  match: (l: string) => l === "/payout" },
+    { href: "/payout/desk", icon: Banknote,        label: t("nav.payout_desk"), match: (l: string) => l === "/payout/desk" },
   ] : [];
 
   const adminLinks = user?.role === "admin" ? [
-    { href: "/admin",              icon: LayoutDashboard, label: "Dashboard",    match: (l: string) => l === "/admin" },
-    { href: "/admin/users",        icon: Users,           label: "Users",        match: (l: string) => l === "/admin/users" },
-    { href: "/admin/branches",     icon: Building2,       label: "Branches",     match: (l: string) => l.startsWith("/admin/branches") },
-    { href: "/admin/fixtures",     icon: Activity,        label: "Fixtures",     match: (l: string) => l === "/admin/fixtures" },
-    { href: "/admin/bets",         icon: Settings,        label: "Bets",         match: (l: string) => l === "/admin/bets" },
-    { href: "/admin/transactions", icon: ArrowLeftRight,  label: "Transactions", match: (l: string) => l === "/admin/transactions" },
-    { href: "/admin/vouchers",     icon: Ticket,          label: "Vouchers",     match: (l: string) => l === "/admin/vouchers" },
-    { href: "/admin/withdrawals",  icon: Banknote,        label: "Withdrawals",  match: (l: string) => l === "/admin/withdrawals" },
-    { href: "/admin/slides",          icon: Images,            label: "Slides",          match: (l: string) => l === "/admin/slides" },
-    { href: "/admin/fixture-update",  icon: Clock,             label: "Fixture Update",  match: (l: string) => l === "/admin/fixture-update" },
-    { href: "/admin/api-monitor",     icon: BarChart3,         label: "API Monitor",     match: (l: string) => l === "/admin/api-monitor" },
-    { href: "/admin/settings",        icon: SlidersHorizontal, label: "Settings",        match: (l: string) => l === "/admin/settings" },
+    { href: "/admin",              icon: LayoutDashboard, label: t("nav.dashboard"),      match: (l: string) => l === "/admin" },
+    { href: "/admin/users",        icon: Users,           label: t("nav.users"),          match: (l: string) => l === "/admin/users" },
+    { href: "/admin/branches",     icon: Building2,       label: t("nav.branches"),       match: (l: string) => l.startsWith("/admin/branches") },
+    { href: "/admin/fixtures",     icon: Activity,        label: t("nav.fixtures"),       match: (l: string) => l === "/admin/fixtures" },
+    { href: "/admin/bets",         icon: Settings,        label: t("nav.bets"),           match: (l: string) => l === "/admin/bets" },
+    { href: "/admin/transactions", icon: ArrowLeftRight,  label: t("nav.transactions"),   match: (l: string) => l === "/admin/transactions" },
+    { href: "/admin/vouchers",     icon: Ticket,          label: t("nav.vouchers"),       match: (l: string) => l === "/admin/vouchers" },
+    { href: "/admin/withdrawals",  icon: Banknote,        label: t("nav.withdrawals"),    match: (l: string) => l === "/admin/withdrawals" },
+    { href: "/admin/slides",          icon: Images,            label: t("nav.slides"),         match: (l: string) => l === "/admin/slides" },
+    { href: "/admin/fixture-update",  icon: Clock,             label: t("nav.fixture_update"), match: (l: string) => l === "/admin/fixture-update" },
+    { href: "/admin/api-monitor",     icon: BarChart3,         label: t("nav.api_monitor"),    match: (l: string) => l === "/admin/api-monitor" },
+    { href: "/admin/settings",        icon: SlidersHorizontal, label: t("nav.settings"),       match: (l: string) => l === "/admin/settings" },
   ] : [];
 
   // ── Sidebar nav content (shared desktop + mobile) ────────────────────────
@@ -157,27 +157,27 @@ export function Shell({ children }: { children: ReactNode }) {
           <nav className={`space-y-1 ${open ? "px-2" : "px-1"}`}>
 
             {!isPayout && (
-              <Link href="/" title={!open ? "Home" : undefined} onClick={onNav}
+              <Link href="/" title={!open ? t("nav.home") : undefined} onClick={onNav}
                 className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
                   ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
                   ${location === "/" ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
                 <Activity className="w-4 h-4 shrink-0" />
-                {open && <span className="flex-1">Home</span>}
+                {open && <span className="flex-1">{t("nav.home")}</span>}
               </Link>
             )}
 
 
             {!isStaffRole && isAdmin ? (
-              <Link href="/sports" title={!open ? "Sports" : undefined} onClick={onNav}
+              <Link href="/sports" title={!open ? t("nav.sports") : undefined} onClick={onNav}
                 className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
                   ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
                   ${location.startsWith("/sports") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
                 <Trophy className="w-4 h-4 shrink-0" />
-                {open && <span className="flex-1">Sports</span>}
+                {open && <span className="flex-1">{t("nav.sports")}</span>}
               </Link>
             ) : !isStaffRole ? (
               <> 
-                <button title={!open ? "Sports" : undefined}
+                <button title={!open ? t("nav.sports") : undefined}
                   onClick={() => {
                     if (!open) setSidebarOpen(true);
                     setSportsOpen((v) => !v);
@@ -186,7 +186,7 @@ export function Shell({ children }: { children: ReactNode }) {
                     ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
                     ${location.startsWith("/sports") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
                   <Trophy className="w-4 h-4 shrink-0" />
-                  {open && <span className="flex-1 text-left">Sports</span>}
+                  {open && <span className="flex-1 text-left">{t("nav.sports")}</span>}
                   {open && (sportsOpen ? <ChevronDown className="w-3.5 h-3.5 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 shrink-0" />)}
                 </button>
 
@@ -196,7 +196,7 @@ export function Shell({ children }: { children: ReactNode }) {
                       className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-xs transition-colors
                         ${location === "/sports" && !location.includes("leagueId") ? "text-primary font-medium" : "text-muted-foreground hover:bg-accent/30 hover:text-foreground"}`}>
                       <Globe className="w-3 h-3 shrink-0" />
-                      <span className="flex-1 text-left">All Fixtures</span>
+                      <span className="flex-1 text-left">{t("nav.all_fixtures")}</span>
                     </button>
 
                     {!footballData ? (
@@ -266,43 +266,43 @@ export function Shell({ children }: { children: ReactNode }) {
             ) : null}
 
             {!isAdmin && !isStaffRole && (
-              <Link href="/results" title={!open ? "Results" : undefined} onClick={onNav}
+              <Link href="/results" title={!open ? t("nav.results") : undefined} onClick={onNav}
                 className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
                   ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
                   ${location.startsWith("/results") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
-                {open && <span className="flex-1">Results</span>}
+                {open && <span className="flex-1">{t("nav.results")}</span>}
               </Link>
             )}
 
             {!isStaffRole && (
               <div
-                title={!open ? "Live In-Play (coming soon)" : undefined}
+                title={!open ? t("nav.live") : undefined}
                 className={`flex items-center gap-3 rounded-md text-sm font-medium cursor-not-allowed opacity-40 select-none
                   ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}`}>
                 <Radio className="w-4 h-4 shrink-0" />
-                {open && <span className="flex-1">Live In-Play</span>}
-                {open && <span className="text-[10px] font-semibold border border-muted-foreground/30 text-muted-foreground rounded px-1 py-0.5 leading-none">Soon</span>}
+                {open && <span className="flex-1">{t("nav.live")}</span>}
+                {open && <span className="text-[10px] font-semibold border border-muted-foreground/30 text-muted-foreground rounded px-1 py-0.5 leading-none">{t("nav.coming_soon")}</span>}
               </div>
             )}
 
             {user && !isStaffRole && (
-              <Link href="/history" title={!open ? "My Bets" : undefined} onClick={onNav}
+              <Link href="/history" title={!open ? t("nav.my_bets") : undefined} onClick={onNav}
                 className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
                   ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
                   ${location.startsWith("/history") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
                 <History className="w-4 h-4 shrink-0" />
-                {open && <span className="flex-1">My Bets</span>}
+                {open && <span className="flex-1">{t("nav.my_bets")}</span>}
               </Link>
             )}
 
             {user && !isStaffRole && (
-              <Link href="/wallet" title={!open ? "Wallet" : undefined} onClick={onNav}
+              <Link href="/wallet" title={!open ? t("nav.wallet") : undefined} onClick={onNav}
                 className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
                   ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
                   ${location.startsWith("/wallet") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
                 <Wallet className="w-4 h-4 shrink-0" />
-                {open && <span className="flex-1">Wallet</span>}
+                {open && <span className="flex-1">{t("nav.wallet")}</span>}
               </Link>
             )}
 
@@ -310,7 +310,7 @@ export function Shell({ children }: { children: ReactNode }) {
               <>
                 {open && (
                   <div className="pt-4 pb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Admin
+                    {t("nav.admin")}
                   </div>
                 )}
                 {!open && <div className="my-2 mx-1 border-t border-border" />}
@@ -330,7 +330,7 @@ export function Shell({ children }: { children: ReactNode }) {
               <>
                 {open && (
                   <div className="pt-4 pb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Branch
+                    {t("nav.branch")}
                   </div>
                 )}
                 {!open && <div className="my-2 mx-1 border-t border-border" />}
@@ -350,7 +350,7 @@ export function Shell({ children }: { children: ReactNode }) {
               <>
                 {open && (
                   <div className="pt-4 pb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Agent
+                    {t("nav.agent")}
                   </div>
                 )}
                 {!open && <div className="my-2 mx-1 border-t border-border" />}
@@ -370,7 +370,7 @@ export function Shell({ children }: { children: ReactNode }) {
               <>
                 {open && (
                   <div className="pt-4 pb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Payout
+                    {t("nav.payout")}
                   </div>
                 )}
                 {!open && <div className="my-2 mx-1 border-t border-border" />}
@@ -387,12 +387,12 @@ export function Shell({ children }: { children: ReactNode }) {
             )}
 
             {user && (
-              <Link href="/profile" title={!open ? "Profile" : undefined} onClick={onNav}
+              <Link href="/profile" title={!open ? t("nav.profile") : undefined} onClick={onNav}
                 className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors relative
                   ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
                   ${location.startsWith("/profile") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
                 <UserCircle className="w-4 h-4 shrink-0" />
-                {open && <span className="flex-1">Profile</span>}
+                {open && <span className="flex-1">{t("nav.profile")}</span>}
                 {open && !(user as any).phoneNumber && !isStaffRole && <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />}
                 {!open && !(user as any).phoneNumber && !isStaffRole && <span className="absolute w-1.5 h-1.5 rounded-full bg-amber-500 top-1 right-1" />}
               </Link>
@@ -434,14 +434,14 @@ export function Shell({ children }: { children: ReactNode }) {
             {open ? (
               <>
                 <Link href="/login" className="flex" onClick={onNav}>
-                  <Button variant="outline" className="w-full">Login</Button>
+                  <Button variant="outline" className="w-full">{t("auth.login")}</Button>
                 </Link>
                 <Link href="/register" className="flex" onClick={onNav}>
-                  <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90">Register</Button>
+                  <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90">{t("auth.register")}</Button>
                 </Link>
               </>
             ) : (
-              <Link href="/login" title="Login" onClick={onNav}
+              <Link href="/login" title={t("auth.login")} onClick={onNav}
                 className="flex justify-center text-muted-foreground hover:text-foreground p-2 rounded-md hover:bg-accent transition-colors">
                 <UserCircle className="w-4 h-4" />
               </Link>
@@ -602,13 +602,13 @@ export function Shell({ children }: { children: ReactNode }) {
               className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-md transition-colors
                 ${location.startsWith("/results") ? "text-primary" : "text-muted-foreground"}`}>
               <CheckCircle2 className="w-5 h-5" />
-              <span className="text-[10px] font-medium">Results</span>
+              <span className="text-[10px] font-medium">{t("nav.results")}</span>
             </Link>
             <Link href="/login"
               className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-md transition-colors
                 ${location.startsWith("/login") ? "text-primary" : "text-muted-foreground"}`}>
               <UserCircle className="w-5 h-5" />
-              <span className="text-[10px] font-medium">Login</span>
+              <span className="text-[10px] font-medium">{t("auth.login")}</span>
             </Link>
           </>
         )}
@@ -625,7 +625,7 @@ export function Shell({ children }: { children: ReactNode }) {
               </span>
             )}
           </div>
-          <span className="text-[10px] font-medium">Bet Slip</span>
+          <span className="text-[10px] font-medium">{t("betslip.title")}</span>
         </button>
 
         {/* Logout (logged-in only) */}
@@ -648,12 +648,12 @@ export function Shell({ children }: { children: ReactNode }) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("auth.logout_cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={handleLogout}
             >
-              Log out
+              {t("auth.logout_yes")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -679,7 +679,7 @@ export function Shell({ children }: { children: ReactNode }) {
                 <CheckCircle2 className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <p className="font-bold text-base">Bet Placed!</p>
+                <p className="font-bold text-base">{t("betslip.placed")}</p>
                 <p className="text-xs text-muted-foreground">
                   Code: <span className="font-mono font-bold">{lastPlacedBet.code || "—"}</span>
                 </p>
@@ -691,20 +691,20 @@ export function Shell({ children }: { children: ReactNode }) {
 
             <div className="bg-accent/30 rounded-lg p-3 space-y-1.5 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Selections</span>
+                <span className="text-muted-foreground">{t("betslip.selections")}</span>
                 <span className="font-medium">{lastPlacedBet.selections.length}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Total Odds</span>
+                <span className="text-muted-foreground">{t("betslip.total_odds")}</span>
                 <span className="font-medium">{lastPlacedBet.totalOdds.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Stake</span>
+                <span className="text-muted-foreground">{t("betslip.stake")}</span>
                 <span className="font-medium">{formatCurrency(lastPlacedBet.stake)}</span>
               </div>
               <Separator className="my-1" />
               <div className="flex justify-between font-bold">
-                <span>Potential Win</span>
+                <span>{t("betslip.potential_win")}</span>
                 <span className="text-primary">{formatCurrency(lastPlacedBet.potentialWin)}</span>
               </div>
             </div>
@@ -716,10 +716,10 @@ export function Shell({ children }: { children: ReactNode }) {
                 onClick={() => { printBetSlip(lastPlacedBet, currency); }}
               >
                 <Printer className="w-4 h-4" />
-                Print / Save PDF
+                {t("betslip.print")}
               </Button>
               <Button className="h-11" onClick={clearLastPlacedBet}>
-                Done
+                {t("common.done")}
               </Button>
             </div>
           </div>

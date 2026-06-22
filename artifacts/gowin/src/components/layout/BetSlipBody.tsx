@@ -132,7 +132,7 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
             <PanelRightClose className="w-5 h-5" />
           </button>
         )}
-        <span className="font-bold">Bet Slip</span>
+        <span className="font-bold">{t("betslip.title")}</span>
         <span className="ml-2 bg-primary/20 text-primary text-xs px-2 py-0.5 rounded-full">
           {selections.length}
         </span>
@@ -140,10 +140,10 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
           <button
             onClick={() => setShowLoadInput(v => !v)}
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-accent"
-            title="Load a booked bet"
+            title={t("betslip.load_booked")}
           >
             <Upload className="w-3.5 h-3.5" />
-            <span className="hidden lg:inline">Load</span>
+            <span className="hidden lg:inline">{t("betslip.load")}</span>
           </button>
           {onClose && (
             <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors p-1">
@@ -156,11 +156,11 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
       {/* Load Bet panel */}
       {showLoadInput && (
         <div className="px-4 pt-3 pb-2 border-b border-border bg-accent/10">
-          <p className="text-xs font-medium mb-2">Load Booked Bet</p>
+          <p className="text-xs font-medium mb-2">{t("betslip.load_panel_title")}</p>
           <div className="flex gap-2">
             <Input
               className="h-8 text-xs font-mono uppercase"
-              placeholder="Enter booking code"
+              placeholder={t("betslip.enter_booking_code")}
               value={loadCodeInput}
               onChange={e => { setLoadCodeInput(e.target.value.toUpperCase()); setLoadCodeError(""); }}
               onKeyDown={e => e.key === "Enter" && handleLoadCode()}
@@ -171,7 +171,7 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
               onClick={handleLoadCode}
               disabled={isLoadingCode || !loadCodeInput.trim()}
             >
-              {isLoadingCode ? "..." : "Load"}
+              {isLoadingCode ? "..." : t("betslip.load")}
             </Button>
           </div>
           {loadCodeError && <p className="text-xs text-destructive mt-1">{loadCodeError}</p>}
@@ -201,12 +201,12 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
             <div className="w-16 h-16 rounded-full bg-accent flex items-center justify-center">
               <Trophy className="w-8 h-8 opacity-50" />
             </div>
-            <p className="text-sm">Your bet slip is empty</p>
+            <p className="text-sm">{t("betslip.empty")}</p>
             <button
               onClick={() => setShowLoadInput(true)}
               className="text-xs text-primary hover:underline flex items-center gap-1"
             >
-              <Upload className="w-3 h-3" /> Load a booked bet
+              <Upload className="w-3 h-3" /> {t("betslip.load_booked")}
             </button>
           </div>
         ) : (

@@ -24,6 +24,15 @@ const translations = {
     "nav.reports": "Reports",
     "nav.my_bets_short": "My Bets",
     "nav.payout_desk": "Payout Desk",
+    "nav.users": "Users",
+    "nav.branches": "Branches",
+    "nav.fixtures": "Fixtures",
+    "nav.transactions": "Transactions",
+    "nav.withdrawals": "Withdrawals",
+    "nav.slides": "Slides",
+    "nav.fixture_update": "Fixture Update",
+    "nav.api_monitor": "API Monitor",
+    "nav.settings": "Settings",
 
     "auth.login": "Login",
     "auth.register": "Register",
@@ -89,6 +98,11 @@ const translations = {
     "betslip.complete_profile": "Tap to complete your profile",
     "betslip.enter_code": "Enter booking code",
     "betslip.bet_may_reject": "bet may be rejected",
+    "betslip.placed": "Bet Placed!",
+    "betslip.selections": "Selections",
+    "betslip.print": "Print / Save PDF",
+    "betslip.load_panel_title": "Load Booked Bet",
+    "betslip.enter_booking_code": "Enter booking code",
 
     "home.no_competitions": "No competitions available right now.",
     "home.check_back": "Check back later for upcoming matches.",
@@ -191,6 +205,15 @@ const translations = {
     "nav.reports": "Rapports",
     "nav.my_bets_short": "Mes paris",
     "nav.payout_desk": "Bureau de paiement",
+    "nav.users": "Utilisateurs",
+    "nav.branches": "Agences",
+    "nav.fixtures": "Matchs",
+    "nav.transactions": "Transactions",
+    "nav.withdrawals": "Retraits",
+    "nav.slides": "Diapositives",
+    "nav.fixture_update": "Mise à jour matchs",
+    "nav.api_monitor": "Moniteur API",
+    "nav.settings": "Paramètres",
 
     "auth.login": "Connexion",
     "auth.register": "Inscription",
@@ -256,6 +279,11 @@ const translations = {
     "betslip.complete_profile": "Appuyez pour compléter votre profil",
     "betslip.enter_code": "Entrez le code de réservation",
     "betslip.bet_may_reject": "pari peut être rejeté",
+    "betslip.placed": "Pari placé !",
+    "betslip.selections": "Sélections",
+    "betslip.print": "Imprimer / PDF",
+    "betslip.load_panel_title": "Charger un pari réservé",
+    "betslip.enter_booking_code": "Entrer le code de réservation",
 
     "home.no_competitions": "Aucune compétition disponible pour l'instant.",
     "home.check_back": "Revenez plus tard pour les prochains matchs.",
@@ -345,30 +373,24 @@ export function translate(key: TranslationKey, lang: Language): string {
 }
 
 export function formatCurrencyValue(amount: number, currency: string, language: Language): string {
-  try {
-    const locale = language === "fr" ? "fr-FR" : "en-US";
-    return new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  } catch {
-    return `${amount.toFixed(2)} ${currency}`;
+  const locale = language === "fr" ? "fr-FR" : "en-US";
+  const formatted = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+
+  if (currency === "USD") {
+    return `$${formatted}`;
   }
+  if (currency === "CDF") {
+    return `CDF ${formatted}`;
+  }
+  return `${currency} ${formatted}`;
 }
 
 export const SUPPORTED_CURRENCIES = [
-  { code: "USD", label: "US Dollar (USD)" },
-  { code: "EUR", label: "Euro (EUR)" },
-  { code: "GBP", label: "British Pound (GBP)" },
-  { code: "XAF", label: "CFA Franc BEAC (XAF)" },
-  { code: "XOF", label: "CFA Franc BCEAO (XOF)" },
-  { code: "NGN", label: "Nigerian Naira (NGN)" },
-  { code: "KES", label: "Kenyan Shilling (KES)" },
-  { code: "GHS", label: "Ghanaian Cedi (GHS)" },
-  { code: "ZAR", label: "South African Rand (ZAR)" },
-  { code: "MAD", label: "Moroccan Dirham (MAD)" },
+  { code: "USD", label: "Dollar ($)" },
+  { code: "CDF", label: "Franc Congolais (CDF)" },
 ];
 
 export const SUPPORTED_LANGUAGES: { code: Language; label: string; flag: string }[] = [

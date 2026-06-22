@@ -29,8 +29,10 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
       if (!res.ok) return { currency: "USD", language: "en" as Language };
       return res.json();
     },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: 0,
+    gcTime: 60 * 1000,
+    refetchOnWindowFocus: true,
+    refetchInterval: 30 * 1000,
   });
 
   const currency = data?.currency ?? "USD";
