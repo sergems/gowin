@@ -12,22 +12,18 @@
 
 ---
 
-## PART 1 — Push code to GitHub
+## PART 1 — Push latest code to GitHub
 
-> Do this from inside Replit (or your local computer if you have a clone).
+> The repository already exists at **https://github.com/sergems/gowin**. Just make sure it's up to date before deploying.
 
-1. Go to [github.com](https://github.com) → **New repository** → name it `gowin-sportsbook` → **Private** → **Create**.
+In Replit's Shell tab, run:
+```bash
+git add .
+git commit -m "deploy: latest build"
+git push origin main
+```
 
-2. In Replit's Shell tab, run:
-   ```bash
-   git remote add origin https://github.com/YOUR_USERNAME/gowin-sportsbook.git
-   git add .
-   git commit -m "initial commit"
-   git push -u origin main
-   ```
-   Replace `YOUR_USERNAME` with your GitHub username.
-
-3. Verify you can see your files on GitHub. ✅
+Verify you can see your latest files on GitHub at [github.com/sergems/gowin](https://github.com/sergems/gowin). ✅
 
 ---
 
@@ -145,7 +141,7 @@ Type `\q` to exit.
 
 ```bash
 cd /var/www
-git clone https://github.com/YOUR_USERNAME/gowin-sportsbook.git gowin
+git clone https://github.com/sergems/gowin.git gowin
 cd gowin
 ```
 
@@ -204,17 +200,13 @@ This creates all the tables in PostgreSQL.
 
 ## PART 10 — Import your data from the backup
 
-Upload `backup1.sql` from your computer to the server:
+`backup1.sql` is already included in the repository, so it was downloaded when you cloned in Part 6. Just run:
 
-```bash
-# Run this on YOUR COMPUTER (not the server):
-scp /path/to/backup1.sql root@45.79.10.123:/var/www/gowin/backup1.sql
-```
-
-Then back on the server:
 ```bash
 psql postgresql://gowin:CHOOSE_A_STRONG_PASSWORD@localhost:5432/gowindb -f /var/www/gowin/backup1.sql
 ```
+
+Replace `CHOOSE_A_STRONG_PASSWORD` with the password you created in Part 5.
 
 ---
 
