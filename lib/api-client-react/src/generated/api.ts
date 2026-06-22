@@ -21,6 +21,7 @@ import type {
 
 import type {
   AdminStats,
+  ApiMonitorPayload,
   AuthResponse,
   Bet,
   BetDetail,
@@ -44,6 +45,8 @@ import type {
   ListFixturesParams,
   ListLeaguesParams,
   ListUsersParams,
+  LiveFixtureList,
+  LiveFixtureMarketsPayload,
   LoginInput,
   Market,
   MarketInput,
@@ -2847,6 +2850,237 @@ export function useGetTopFixtures<TData = Awaited<ReturnType<typeof getTopFixtur
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetTopFixturesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetLiveFixturesUrl = () => {
+
+
+
+
+  return `/api/live/fixtures`
+}
+
+/**
+ * @summary Get all live fixtures with main markets (from in-memory cache)
+ */
+export const getLiveFixtures = async ( options?: RequestInit): Promise<LiveFixtureList> => {
+
+  return customFetch<LiveFixtureList>(getGetLiveFixturesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLiveFixturesQueryKey = () => {
+    return [
+    `/api/live/fixtures`
+    ] as const;
+    }
+
+
+export const getGetLiveFixturesQueryOptions = <TData = Awaited<ReturnType<typeof getLiveFixtures>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLiveFixtures>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLiveFixturesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLiveFixtures>>> = ({ signal }) => getLiveFixtures({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLiveFixtures>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLiveFixturesQueryResult = NonNullable<Awaited<ReturnType<typeof getLiveFixtures>>>
+export type GetLiveFixturesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get all live fixtures with main markets (from in-memory cache)
+ */
+
+export function useGetLiveFixtures<TData = Awaited<ReturnType<typeof getLiveFixtures>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLiveFixtures>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLiveFixturesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetLiveFixtureMarketsUrl = (id: number,) => {
+
+
+
+
+  return `/api/live/fixtures/${id}/markets`
+}
+
+/**
+ * @summary Get full market list for a live fixture
+ */
+export const getLiveFixtureMarkets = async (id: number, options?: RequestInit): Promise<LiveFixtureMarketsPayload> => {
+
+  return customFetch<LiveFixtureMarketsPayload>(getGetLiveFixtureMarketsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLiveFixtureMarketsQueryKey = (id: number,) => {
+    return [
+    `/api/live/fixtures/${id}/markets`
+    ] as const;
+    }
+
+
+export const getGetLiveFixtureMarketsQueryOptions = <TData = Awaited<ReturnType<typeof getLiveFixtureMarkets>>, TError = ErrorType<ErrorResponse | void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLiveFixtureMarkets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLiveFixtureMarketsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLiveFixtureMarkets>>> = ({ signal }) => getLiveFixtureMarkets(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLiveFixtureMarkets>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLiveFixtureMarketsQueryResult = NonNullable<Awaited<ReturnType<typeof getLiveFixtureMarkets>>>
+export type GetLiveFixtureMarketsQueryError = ErrorType<ErrorResponse | void>
+
+
+/**
+ * @summary Get full market list for a live fixture
+ */
+
+export function useGetLiveFixtureMarkets<TData = Awaited<ReturnType<typeof getLiveFixtureMarkets>>, TError = ErrorType<ErrorResponse | void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLiveFixtureMarkets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLiveFixtureMarketsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetApiMonitorStatsUrl = () => {
+
+
+
+
+  return `/api/admin/api-monitor`
+}
+
+/**
+ * @summary Live cache health — API request counters, sync timestamps, WS connections (admin only)
+ */
+export const getApiMonitorStats = async ( options?: RequestInit): Promise<ApiMonitorPayload> => {
+
+  return customFetch<ApiMonitorPayload>(getGetApiMonitorStatsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetApiMonitorStatsQueryKey = () => {
+    return [
+    `/api/admin/api-monitor`
+    ] as const;
+    }
+
+
+export const getGetApiMonitorStatsQueryOptions = <TData = Awaited<ReturnType<typeof getApiMonitorStats>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getApiMonitorStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetApiMonitorStatsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getApiMonitorStats>>> = ({ signal }) => getApiMonitorStats({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getApiMonitorStats>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetApiMonitorStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getApiMonitorStats>>>
+export type GetApiMonitorStatsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Live cache health — API request counters, sync timestamps, WS connections (admin only)
+ */
+
+export function useGetApiMonitorStats<TData = Awaited<ReturnType<typeof getApiMonitorStats>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getApiMonitorStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetApiMonitorStatsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

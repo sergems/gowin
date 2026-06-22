@@ -425,6 +425,71 @@ export interface AdminStats {
   totalLiveFixtures: number;
 }
 
+export interface LiveOdd {
+  id: number;
+  selection: string;
+  oddsValue: number;
+}
+
+export interface LiveMarket {
+  id: number;
+  marketType: string;
+  suspended: boolean;
+  odds: LiveOdd[];
+}
+
+export interface LiveTeam {
+  id: number;
+  name: string;
+  logo?: string | null;
+}
+
+export interface LiveFixture {
+  id: number;
+  externalId?: string | null;
+  homeTeam: LiveTeam;
+  awayTeam: LiveTeam;
+  leagueId: number;
+  leagueName: string;
+  leagueLogo?: string | null;
+  countryName?: string | null;
+  sportId: number;
+  sportName: string;
+  scoreHome?: number | null;
+  scoreAway?: number | null;
+  matchMinute?: string | null;
+  status: string;
+  startTime: string;
+  markets: LiveMarket[];
+  lastUpdated: number;
+}
+
+export interface LiveFixtureList {
+  fixtures: LiveFixture[];
+  dataWarning?: string | null;
+}
+
+export interface LiveFixtureMarketsPayload {
+  markets: LiveMarket[];
+}
+
+export interface ApiMonitorPayload {
+  hits: number;
+  misses: number;
+  hitRate: number;
+  apiRequestsToday: number;
+  apiRequestsThisMonth: number;
+  lastFixtureSync?: string | null;
+  lastOddsSync?: string | null;
+  lastStatsSync?: string | null;
+  lastResultsSync?: string | null;
+  lastError?: string | null;
+  lastErrorTime?: number | null;
+  failCount: number;
+  wsConnections: number;
+  todayKey?: string;
+}
+
 export type ListUsersParams = {
 page?: number;
 limit?: number;

@@ -61,6 +61,7 @@ export interface CacheStats {
   lastFixtureSync: string | null;
   lastOddsSync: string | null;
   lastStatsSync: string | null;
+  lastResultsSync: string | null;
   lastError: string | null;
   lastErrorTime: number | null;
   failCount: number;
@@ -79,6 +80,7 @@ class LiveCache {
     lastFixtureSync: null,
     lastOddsSync: null,
     lastStatsSync: null,
+    lastResultsSync: null,
     lastError: null,
     lastErrorTime: null,
     failCount: 0,
@@ -148,6 +150,10 @@ class LiveCache {
 
   setLastStatsSync(ts: string) {
     this._stats.lastStatsSync = ts;
+  }
+
+  setLastResultsSync(ts: string) {
+    this._stats.lastResultsSync = ts;
   }
 
   setWsConnections(n: number) {

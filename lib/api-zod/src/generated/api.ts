@@ -884,3 +884,89 @@ export const GetTopFixturesResponseItem = zod.object({
 export const GetTopFixturesResponse = zod.array(GetTopFixturesResponseItem)
 
 
+/**
+ * @summary Get all live fixtures with main markets (from in-memory cache)
+ */
+export const GetLiveFixturesResponse = zod.object({
+  "fixtures": zod.array(zod.object({
+  "id": zod.number(),
+  "externalId": zod.string().nullish(),
+  "homeTeam": zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "logo": zod.string().nullish()
+}),
+  "awayTeam": zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "logo": zod.string().nullish()
+}),
+  "leagueId": zod.number(),
+  "leagueName": zod.string(),
+  "leagueLogo": zod.string().nullish(),
+  "countryName": zod.string().nullish(),
+  "sportId": zod.number(),
+  "sportName": zod.string(),
+  "scoreHome": zod.number().nullish(),
+  "scoreAway": zod.number().nullish(),
+  "matchMinute": zod.string().nullish(),
+  "status": zod.string(),
+  "startTime": zod.coerce.date(),
+  "markets": zod.array(zod.object({
+  "id": zod.number(),
+  "marketType": zod.string(),
+  "suspended": zod.boolean(),
+  "odds": zod.array(zod.object({
+  "id": zod.number(),
+  "selection": zod.string(),
+  "oddsValue": zod.number()
+}))
+})),
+  "lastUpdated": zod.number()
+})),
+  "dataWarning": zod.string().nullish()
+})
+
+
+/**
+ * @summary Get full market list for a live fixture
+ */
+export const GetLiveFixtureMarketsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetLiveFixtureMarketsResponse = zod.object({
+  "markets": zod.array(zod.object({
+  "id": zod.number(),
+  "marketType": zod.string(),
+  "suspended": zod.boolean(),
+  "odds": zod.array(zod.object({
+  "id": zod.number(),
+  "selection": zod.string(),
+  "oddsValue": zod.number()
+}))
+}))
+})
+
+
+/**
+ * @summary Live cache health — API request counters, sync timestamps, WS connections (admin only)
+ */
+export const GetApiMonitorStatsResponse = zod.object({
+  "hits": zod.number(),
+  "misses": zod.number(),
+  "hitRate": zod.number(),
+  "apiRequestsToday": zod.number(),
+  "apiRequestsThisMonth": zod.number(),
+  "lastFixtureSync": zod.string().nullish(),
+  "lastOddsSync": zod.string().nullish(),
+  "lastStatsSync": zod.string().nullish(),
+  "lastResultsSync": zod.string().nullish(),
+  "lastError": zod.string().nullish(),
+  "lastErrorTime": zod.number().nullish(),
+  "failCount": zod.number(),
+  "wsConnections": zod.number(),
+  "todayKey": zod.string().optional()
+})
+
+

@@ -14,6 +14,7 @@ interface ApiMonitorStats {
   lastFixtureSync: string | null;
   lastOddsSync: string | null;
   lastStatsSync: string | null;
+  lastResultsSync: string | null;
   lastError: string | null;
   lastErrorTime: number | null;
   failCount: number;
@@ -198,6 +199,7 @@ export default function ApiMonitorPage() {
                   { label: "Live Fixtures", sub: "Every 15 s", ts: stats.lastFixtureSync, icon: Activity },
                   { label: "Live Odds (DB)", sub: "Every 10 s", ts: stats.lastOddsSync, icon: Database },
                   { label: "Match Statistics", sub: "Every 30 s", ts: stats.lastStatsSync, icon: TrendingUp },
+                  { label: "Settled Results", sub: "Every 60 s", ts: stats.lastResultsSync, icon: Clock },
                 ].map(({ label, sub, ts, icon: Icon }) => (
                   <div key={label} className="flex items-center justify-between py-3">
                     <div className="flex items-center gap-3">

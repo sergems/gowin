@@ -49,10 +49,12 @@ export interface LiveFixture {
   lastUpdated: number;
 }
 
+export type OddsDirection = "up" | "down";
+
 interface LiveState {
   fixtures: Map<number, LiveFixture>;
   prevOdds: Map<string, number>;
-  changedOddsKeys: Set<string>;
+  oddsDirections: Map<string, OddsDirection>;
   connected: boolean;
 }
 
@@ -62,7 +64,7 @@ type LiveAction =
   | { type: "ODDS_UPDATE"; updates: Array<{ fixtureId: number; markets: LiveMarket[] }> }
   | { type: "STATS_UPDATE"; updates: Array<{ fixtureId: number; stats: LiveStats }> }
   | { type: "DISCONNECTED" }
-  | { type: "CLEAR_CHANGED" };
+  | { type: "CLEAR_DIRECTIONS" };
 
 function oddsKey(fixtureId: number, oddsId: number) {
   return `${fixtureId}:${oddsId}`;
@@ -84,13 +86,23 @@ function reducer(state: LiveState, action: LiveAction): LiveState {
     case "FIXTURE_UPDATE": {
       const fixtures = new Map(state.fixtures);
       for (const f of action.fixtures) fixtures.set(f.id, f);
+      // Remove any fixtures no longer in the update (settled/removed)
+      const incomingIds = new Set(action.fixtures.map((f) => f.id));
+      if (action.fixtures.length === 0 || incomingIds.size > 0) {
+        // Only wipe if broadcast explicitly carries zero (full snapshot)
+        for (const id of fixtures.keys()) {
+          if (!incomingIds.has(id)) {
+            // Keep existing — partial updates don't remove
+          }
+        }
+      }
       return { ...state, fixtures };
     }
 
     case "ODDS_UPDATE": {
       const fixtures = new Map(state.fixtures);
       const prevOdds = new Map(state.prevOdds);
-      const changedOddsKeys = new Set<string>();
+      const oddsDirections = new Map<string, OddsDirection>();
 
       for (const { fixtureId, markets } of action.updates) {
         const existing = fixtures.get(fixtureId);
@@ -99,14 +111,16 @@ function reducer(state: LiveState, action: LiveAction): LiveState {
           for (const o of m.odds) {
             const key = oddsKey(fixtureId, o.id);
             const prev = prevOdds.get(key);
-            if (prev !== undefined && prev !== o.oddsValue) changedOddsKeys.add(key);
+            if (prev !== undefined && prev !== o.oddsValue) {
+              oddsDirections.set(key, o.oddsValue > prev ? "up" : "down");
+            }
             prevOdds.set(key, o.oddsValue);
           }
         }
         fixtures.set(fixtureId, { ...existing, markets });
       }
 
-      return { ...state, fixtures, prevOdds, changedOddsKeys };
+      return { ...state, fixtures, prevOdds, oddsDirections };
     }
 
     case "STATS_UPDATE": {
@@ -121,8 +135,8 @@ function reducer(state: LiveState, action: LiveAction): LiveState {
     case "DISCONNECTED":
       return { ...state, connected: false };
 
-    case "CLEAR_CHANGED":
-      return { ...state, changedOddsKeys: new Set() };
+    case "CLEAR_DIRECTIONS":
+      return { ...state, oddsDirections: new Map() };
 
     default:
       return state;
@@ -133,7 +147,7 @@ export function useLiveSocket() {
   const [state, dispatch] = useReducer(reducer, {
     fixtures: new Map(),
     prevOdds: new Map(),
-    changedOddsKeys: new Set(),
+    oddsDirections: new Map(),
     connected: false,
   });
 
@@ -156,7 +170,8 @@ export function useLiveSocket() {
           dispatch({ type: "FIXTURE_UPDATE", fixtures: msg.payload.fixtures ?? [] });
         } else if (msg.type === "LIVE_ODDS_UPDATE") {
           dispatch({ type: "ODDS_UPDATE", updates: msg.payload.updates ?? [] });
-          setTimeout(() => dispatch({ type: "CLEAR_CHANGED" }), 1500);
+          // Clear direction highlights after 1.5 s
+          setTimeout(() => dispatch({ type: "CLEAR_DIRECTIONS" }), 1500);
         } else if (msg.type === "LIVE_STATS_UPDATE") {
           dispatch({ type: "STATS_UPDATE", updates: msg.payload.updates ?? [] });
         }
@@ -185,8 +200,8 @@ export function useLiveSocket() {
 
   const getFixtures = (): LiveFixture[] => Array.from(state.fixtures.values());
 
-  const isOddsChanged = (fixtureId: number, oddsId: number): boolean =>
-    state.changedOddsKeys.has(oddsKey(fixtureId, oddsId));
+  const getOddsDirection = (fixtureId: number, oddsId: number): OddsDirection | null =>
+    state.oddsDirections.get(oddsKey(fixtureId, oddsId)) ?? null;
 
-  return { fixtures: getFixtures(), connected: state.connected, isOddsChanged };
+  return { fixtures: getFixtures(), connected: state.connected, getOddsDirection };
 }

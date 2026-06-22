@@ -896,6 +896,64 @@ paths:
                 items:
                   $ref: "#/components/schemas/FixtureBetSummary"
 
+  # ── Live Betting ────────────────────────────────────────────────────────────
+  /live/fixtures:
+    get:
+      operationId: getLiveFixtures
+      tags: [live]
+      summary: Get all live fixtures with main markets (from in-memory cache)
+      responses:
+        "200":
+          description: Live fixtures list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveFixtureList"
+
+  /live/fixtures/{id}/markets:
+    get:
+      operationId: getLiveFixtureMarkets
+      tags: [live]
+      summary: Get full market list for a live fixture
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Full market list for the fixture
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveFixtureMarketsPayload"
+        "400":
+          description: Invalid id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Fixture not found
+
+  /admin/api-monitor:
+    get:
+      operationId: getApiMonitorStats
+      tags: [admin, live]
+      summary: Live cache health — API request counters, sync timestamps, WS connections (admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Monitor stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMonitorPayload"
+        "401":
+          description: Unauthorized
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1584,3 +1642,153 @@ components:
           type: integer
         totalLiveFixtures:
           type: integer
+
+    # ── Live Betting ────────────────────────────────────────────────────────
+    LiveOdd:
+      type: object
+      required: [id, selection, oddsValue]
+      properties:
+        id:
+          type: integer
+        selection:
+          type: string
+        oddsValue:
+          type: number
+          format: double
+
+    LiveMarket:
+      type: object
+      required: [id, marketType, suspended, odds]
+      properties:
+        id:
+          type: integer
+        marketType:
+          type: string
+        suspended:
+          type: boolean
+        odds:
+          type: array
+          items:
+            $ref: "#/components/schemas/LiveOdd"
+
+    LiveTeam:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        logo:
+          type: string
+          nullable: true
+
+    LiveFixture:
+      type: object
+      required: [id, homeTeam, awayTeam, leagueId, leagueName, sportId, sportName, status, startTime, markets, lastUpdated]
+      properties:
+        id:
+          type: integer
+        externalId:
+          type: string
+          nullable: true
+        homeTeam:
+          $ref: "#/components/schemas/LiveTeam"
+        awayTeam:
+          $ref: "#/components/schemas/LiveTeam"
+        leagueId:
+          type: integer
+        leagueName:
+          type: string
+        leagueLogo:
+          type: string
+          nullable: true
+        countryName:
+          type: string
+          nullable: true
+        sportId:
+          type: integer
+        sportName:
+          type: string
+        scoreHome:
+          type: integer
+          nullable: true
+        scoreAway:
+          type: integer
+          nullable: true
+        matchMinute:
+          type: string
+          nullable: true
+        status:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+        markets:
+          type: array
+          items:
+            $ref: "#/components/schemas/LiveMarket"
+        lastUpdated:
+          type: integer
+          format: int64
+
+    LiveFixtureList:
+      type: object
+      required: [fixtures]
+      properties:
+        fixtures:
+          type: array
+          items:
+            $ref: "#/components/schemas/LiveFixture"
+        dataWarning:
+          type: string
+          nullable: true
+
+    LiveFixtureMarketsPayload:
+      type: object
+      required: [markets]
+      properties:
+        markets:
+          type: array
+          items:
+            $ref: "#/components/schemas/LiveMarket"
+
+    ApiMonitorPayload:
+      type: object
+      required: [hits, misses, hitRate, apiRequestsToday, apiRequestsThisMonth, wsConnections, failCount]
+      properties:
+        hits:
+          type: integer
+        misses:
+          type: integer
+        hitRate:
+          type: integer
+        apiRequestsToday:
+          type: integer
+        apiRequestsThisMonth:
+          type: integer
+        lastFixtureSync:
+          type: string
+          nullable: true
+        lastOddsSync:
+          type: string
+          nullable: true
+        lastStatsSync:
+          type: string
+          nullable: true
+        lastResultsSync:
+          type: string
+          nullable: true
+        lastError:
+          type: string
+          nullable: true
+        lastErrorTime:
+          type: integer
+          nullable: true
+          format: int64
+        failCount:
+          type: integer
+        wsConnections:
+          type: integer
+        todayKey:
+          type: string

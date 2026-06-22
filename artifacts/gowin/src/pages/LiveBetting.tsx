@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useBetSlip } from "@/contexts/BetSlipContext";
-import { useLiveSocket, type LiveFixture, type LiveMarket, type LiveOdd } from "@/hooks/useLiveSocket";
+import { useLiveSocket, type LiveFixture, type LiveMarket, type LiveOdd, type OddsDirection } from "@/hooks/useLiveSocket";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,11 +35,11 @@ interface OddsButtonProps {
   market: LiveMarket;
   odd: LiveOdd;
   suspended: boolean;
-  changed: boolean;
+  direction: OddsDirection | null;
   fixture: LiveFixture;
 }
 
-function OddsButton({ fixtureId, market, odd, suspended, changed, fixture }: OddsButtonProps) {
+function OddsButton({ fixtureId, market, odd, suspended, direction, fixture }: OddsButtonProps) {
   const { addSelection, selections } = useBetSlip();
   const isSelected = selections.some((s) => s.oddsId === odd.id);
 
@@ -61,6 +61,16 @@ function OddsButton({ fixtureId, market, odd, suspended, changed, fixture }: Odd
     });
   };
 
+  const driftCls = !suspended && !isSelected && direction === "up"
+    ? "ring-2 ring-green-400/60 bg-green-400/10"
+    : !suspended && !isSelected && direction === "down"
+      ? "ring-2 ring-red-400/60 bg-red-400/10"
+      : "";
+
+  const valueCls = direction === "up" ? "text-green-400"
+    : direction === "down" ? "text-red-400"
+    : "";
+
   return (
     <button
       onClick={handleClick}
@@ -72,20 +82,20 @@ function OddsButton({ fixtureId, market, odd, suspended, changed, fixture }: Odd
           : isSelected
             ? "border-primary bg-primary text-primary-foreground"
             : "border-border bg-card hover:border-primary hover:bg-primary/10 hover:text-primary cursor-pointer",
-        changed && !suspended && !isSelected ? "ring-2 ring-yellow-400/60 bg-yellow-400/10" : "",
+        driftCls,
       ].join(" ")}>
       <span className="text-[10px] leading-tight text-muted-foreground truncate max-w-[60px]">
         {suspended ? <Lock className="w-2.5 h-2.5" /> : odd.selection}
       </span>
-      <span className={["font-bold tabular-nums", changed && !suspended ? "text-yellow-400" : ""].join(" ")}>
+      <span className={["font-bold tabular-nums", valueCls].join(" ")}>
         {suspended ? "—" : odd.oddsValue.toFixed(2)}
       </span>
     </button>
   );
 }
 
-interface MarketRowProps { fixture: LiveFixture; market: LiveMarket; isOddsChanged: (fId: number, oId: number) => boolean }
-function MarketRow({ fixture, market, isOddsChanged }: MarketRowProps) {
+interface MarketRowProps { fixture: LiveFixture; market: LiveMarket; getOddsDirection: (fId: number, oId: number) => OddsDirection | null }
+function MarketRow({ fixture, market, getOddsDirection }: MarketRowProps) {
   return (
     <div className="flex flex-col gap-1">
       <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold">
@@ -99,7 +109,7 @@ function MarketRow({ fixture, market, isOddsChanged }: MarketRowProps) {
             market={market}
             odd={odd}
             suspended={market.suspended}
-            changed={isOddsChanged(fixture.id, odd.id)}
+            direction={getOddsDirection(fixture.id, odd.id)}
             fixture={fixture} />
         ))}
         {market.odds.length === 0 && (
@@ -110,8 +120,8 @@ function MarketRow({ fixture, market, isOddsChanged }: MarketRowProps) {
   );
 }
 
-interface FixtureCardProps { fixture: LiveFixture; isOddsChanged: (fId: number, oId: number) => boolean }
-function FixtureCard({ fixture, isOddsChanged }: FixtureCardProps) {
+interface FixtureCardProps { fixture: LiveFixture; getOddsDirection: (fId: number, oId: number) => OddsDirection | null }
+function FixtureCard({ fixture, getOddsDirection }: FixtureCardProps) {
   const [expanded, setExpanded] = useState(false);
   const mainMarkets = fixture.markets.filter((m) => MAIN_MARKETS.includes(m.marketType));
 
@@ -167,7 +177,7 @@ function FixtureCard({ fixture, isOddsChanged }: FixtureCardProps) {
         {mainMarkets.length > 0 && (
           <div className="px-3 pb-3 pt-2 border-t border-border/30 flex flex-col gap-2.5">
             {mainMarkets.map((m) => (
-              <MarketRow key={m.id} fixture={fixture} market={m} isOddsChanged={isOddsChanged} />
+              <MarketRow key={m.id} fixture={fixture} market={m} getOddsDirection={getOddsDirection} />
             ))}
           </div>
         )}
@@ -191,7 +201,7 @@ function FixtureCard({ fixture, isOddsChanged }: FixtureCardProps) {
             )}
 
             {!loadingMarkets && extraMarkets.map((m) => (
-              <MarketRow key={m.id} fixture={fixture} market={m as LiveMarket} isOddsChanged={isOddsChanged} />
+              <MarketRow key={m.id} fixture={fixture} market={m as LiveMarket} getOddsDirection={getOddsDirection} />
             ))}
 
             {!loadingMarkets && extraMarkets.length === 0 && (
@@ -241,7 +251,7 @@ function StatRow({ label, home, away }: { label: string; home: string; away: str
 }
 
 export default function LiveBetting() {
-  const { fixtures: wsFixtures, connected, isOddsChanged } = useLiveSocket();
+  const { fixtures: wsFixtures, connected, getOddsDirection } = useLiveSocket();
   const [dataWarning, setDataWarning] = useState<string | null>(null);
 
   const { data: initialData, isLoading } = useQuery<{ fixtures: LiveFixture[]; dataWarning?: string }>({
@@ -344,7 +354,7 @@ export default function LiveBetting() {
               </div>
               <div className="space-y-2">
                 {leagueFixtures.map((f) => (
-                  <FixtureCard key={f.id} fixture={f} isOddsChanged={isOddsChanged} />
+                  <FixtureCard key={f.id} fixture={f} getOddsDirection={getOddsDirection} />
                 ))}
               </div>
             </div>
