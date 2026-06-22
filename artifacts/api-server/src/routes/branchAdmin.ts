@@ -89,7 +89,7 @@ router.get("/branch/agents", requireBranchAdmin, async (req: AuthRequest, res): 
   if (!branchId) { res.status(403).json({ error: "No branch assigned" }); return; }
 
   const agents = await db.select().from(usersTable)
-    .where(and(eq(usersTable.branchId, branchId), eq(usersTable.role, "agent")))
+    .where(and(eq(usersTable.branchId, branchId), inArray(usersTable.role, ["agent", "payout"])))
     .orderBy(desc(usersTable.createdAt));
 
   const withStats = await Promise.all(agents.map(async (agent) => {
@@ -101,6 +101,7 @@ router.get("/branch/agents", requireBranchAdmin, async (req: AuthRequest, res): 
       id: agent.id, username: agent.username, email: agent.email,
       firstName: agent.firstName, lastName: agent.lastName,
       phoneNumber: agent.phoneNumber, disabled: agent.disabled,
+      role: agent.role,
       commissionRate: parseFloat(agent.commissionRate ?? "0"),
       createdAt: agent.createdAt,
       betsPlaced: betsPlaced.count,
@@ -112,16 +113,18 @@ router.get("/branch/agents", requireBranchAdmin, async (req: AuthRequest, res): 
   res.json({ agents: withStats });
 });
 
-// ── POST /branch/agents — create agent ───────────────────────────────────────
+// ── POST /branch/agents — create agent or payout user ────────────────────────
 router.post("/branch/agents", requireBranchAdmin, async (req: AuthRequest, res): Promise<void> => {
   const branchId = getBranchId(req);
   if (!branchId) { res.status(403).json({ error: "No branch assigned" }); return; }
 
-  const { username, email, firstName, lastName, phoneNumber, commissionRate } = req.body;
+  const { username, email, firstName, lastName, phoneNumber, commissionRate, role } = req.body;
   if (!username || !email) {
     res.status(400).json({ error: "Username and email are required" });
     return;
   }
+
+  const assignedRole = role === "payout" ? "payout" : "agent";
 
   const existing = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
   if (existing.length > 0) { res.status(409).json({ error: "Email already in use" }); return; }
@@ -134,7 +137,7 @@ router.post("/branch/agents", requireBranchAdmin, async (req: AuthRequest, res):
     username: username.trim(),
     email: email.trim(),
     passwordHash,
-    role: "agent",
+    role: assignedRole,
     publicId,
     firstName: firstName?.trim() || null,
     lastName: lastName?.trim() || null,
@@ -147,7 +150,7 @@ router.post("/branch/agents", requireBranchAdmin, async (req: AuthRequest, res):
   await db.insert(walletsTable).values({ userId: agent.id, balance: "0.00" });
 
   res.status(201).json({
-    agent: { id: agent.id, username: agent.username, email: agent.email, firstName: agent.firstName, lastName: agent.lastName },
+    agent: { id: agent.id, username: agent.username, email: agent.email, firstName: agent.firstName, lastName: agent.lastName, role: agent.role },
     tempPassword,
   });
 });
@@ -161,10 +164,10 @@ router.patch("/branch/agents/:id/suspend", requireBranchAdmin, async (req: AuthR
   const { disabled } = req.body as { disabled: boolean };
 
   const [agent] = await db.select().from(usersTable)
-    .where(and(eq(usersTable.id, agentId), eq(usersTable.branchId, branchId), eq(usersTable.role, "agent")))
+    .where(and(eq(usersTable.id, agentId), eq(usersTable.branchId, branchId), inArray(usersTable.role, ["agent", "payout"])))
     .limit(1);
 
-  if (!agent) { res.status(404).json({ error: "Agent not found in your branch" }); return; }
+  if (!agent) { res.status(404).json({ error: "Staff not found in your branch" }); return; }
 
   const [updated] = await db.update(usersTable).set({
     disabled: !!disabled,
