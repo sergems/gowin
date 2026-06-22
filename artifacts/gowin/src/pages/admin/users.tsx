@@ -18,6 +18,7 @@ const ROLE_LABELS: Record<string, { label: string; color: string }> = {
   admin:        { label: "Admin",         color: "bg-primary text-primary-foreground" },
   branch_admin: { label: "Branch Admin",  color: "bg-blue-600 text-white" },
   agent:        { label: "Agent",         color: "bg-violet-600 text-white" },
+  payout:       { label: "Payout Clerk",  color: "bg-amber-600 text-white" },
   user:         { label: "User",          color: "bg-muted text-muted-foreground" },
 };
 
@@ -56,6 +57,7 @@ const ROLE_TABS = [
   { key: "admin",        label: "Admins" },
   { key: "branch_admin", label: "Branch Admins" },
   { key: "agent",        label: "Agents" },
+  { key: "payout",       label: "Payout Clerks" },
   { key: "user",         label: "Users" },
 ] as const;
 
@@ -252,7 +254,7 @@ export default function AdminUsers() {
     }
   };
 
-  const needsBranch = editForm.role === "branch_admin" || editForm.role === "agent";
+  const needsBranch = editForm.role === "branch_admin" || editForm.role === "agent" || editForm.role === "payout";
 
   return (
     <div className="space-y-6">
