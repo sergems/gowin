@@ -13,7 +13,7 @@ function filterMainMarkets(markets: any[]) {
 
 // GET /live/fixtures — all live fixtures with main markets (from cache, DB fallback)
 router.get("/live/fixtures", async (_req, res): Promise<void> => {
-  const dataWarning = liveCache.isRecentError()
+  const dataWarning = liveCache.isRecentWorkerError("fixture")
     ? "Live data temporarily unavailable — showing last known state"
     : undefined;
 

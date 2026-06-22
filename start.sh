@@ -1,12 +1,6 @@
 #!/bin/bash
 set -e
 
-# Start API server in background
-pnpm --filter @workspace/api-server run dev &
-API_PID=$!
-
-# Start frontend (foreground — this is the webview process)
+# The API server is managed by its own workflow (artifacts/api-server).
+# This script only needs to start the frontend (webview) process.
 pnpm --filter @workspace/gowin run dev
-
-# If frontend exits, kill the API server too
-kill $API_PID 2>/dev/null || true

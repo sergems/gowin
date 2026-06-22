@@ -152,6 +152,13 @@ class LiveCache {
     return false;
   }
 
+  // True only if the named worker had an error in the last 5 minutes
+  isRecentWorkerError(worker: string): boolean {
+    const entry = this.workerErrors.get(worker);
+    if (!entry) return false;
+    return Date.now() - entry.time < 5 * 60 * 1000;
+  }
+
   setLastOddsSync(ts: string) { this._stats.lastOddsSync = ts; }
   setLastStatsSync(ts: string) { this._stats.lastStatsSync = ts; }
   setLastResultsSync(ts: string) { this._stats.lastResultsSync = ts; }

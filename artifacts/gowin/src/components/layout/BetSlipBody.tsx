@@ -86,7 +86,8 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
 
   const hasStartedSelections = selections.some((s) => {
     const d = liveData.get(s.fixtureId);
-    return d && d.status !== "upcoming";
+    // Only block for finished/cancelled games — live games are fine to bet on
+    return d && (d.status === "finished" || d.status === "cancelled");
   });
 
   async function handleBookBet() {
