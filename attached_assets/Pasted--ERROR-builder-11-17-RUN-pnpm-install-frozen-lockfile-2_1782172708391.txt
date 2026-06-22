@@ -1,0 +1,60 @@
+ => ERROR [builder 11/17] RUN pnpm install --frozen-lockfile                          23.9s
+------
+ > [builder 11/17] RUN pnpm install --frozen-lockfile:
+1.462 Scope: all 7 workspace projects
+1.801 ? Verifying lockfile against supply-chain policies (509 entries)...
+1.839 Lockfile is up to date, resolution step is skipped
+2.183 Progress: resolved 1, reused 0, downloaded 0, added 0
+2.309 Packages: +501
+2.309 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+3.193 Progress: resolved 501, reused 0, downloaded 0, added 0
+4.200 Progress: resolved 501, reused 0, downloaded 1, added 0
+5.211 Progress: resolved 501, reused 0, downloaded 8, added 0
+6.220 Progress: resolved 501, reused 0, downloaded 20, added 0
+7.223 Progress: resolved 501, reused 0, downloaded 35, added 0
+8.235 Progress: resolved 501, reused 0, downloaded 60, added 0
+9.235 Progress: resolved 501, reused 0, downloaded 65, added 4
+10.25 Progress: resolved 501, reused 0, downloaded 111, added 4
+11.26 Progress: resolved 501, reused 0, downloaded 152, added 8
+12.36 Progress: resolved 501, reused 0, downloaded 176, added 8
+12.90 ✓ Lockfile passes supply-chain policies (509 entries in 11.1s)
+13.36 Progress: resolved 501, reused 0, downloaded 257, added 16
+14.37 Progress: resolved 501, reused 0, downloaded 301, added 17
+15.37 Progress: resolved 501, reused 0, downloaded 321, added 20
+16.37 Progress: resolved 501, reused 0, downloaded 325, added 20
+17.37 Progress: resolved 501, reused 0, downloaded 330, added 20
+18.37 Progress: resolved 501, reused 0, downloaded 341, added 20
+19.37 Progress: resolved 501, reused 0, downloaded 414, added 24
+20.37 Progress: resolved 501, reused 0, downloaded 501, added 108
+21.38 Progress: resolved 501, reused 0, downloaded 501, added 326
+22.03 Progress: resolved 501, reused 0, downloaded 501, added 501, done
+22.92
+22.92 devDependencies:
+22.92 + prettier 3.8.3
+22.92 + typescript 5.9.3
+22.92
+22.95 . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+23.02 . preinstall: Done
+23.26 [ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: esbuild@0.27.3
+23.26
+23.26 Run "pnpm approve-builds" to pick which dependencies should be allowed to run scripts.
+------
+[+] build 0/1
+ ⠙ Image gowin-app Building                                                            28.0s
+Dockerfile:19
+
+--------------------
+
+  17 |     ENV PNPM_ENABLE_BUILD_DEPENDENCIES=1
+
+  18 |
+
+  19 | >>> RUN pnpm install --frozen-lockfile
+
+  20 |
+
+  21 |     COPY . .
+
+--------------------
+
+failed to solve: process "/bin/sh -c pnpm install --frozen-lockfile" did not complete successfully: exit code: 1
