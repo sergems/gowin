@@ -72,6 +72,12 @@ export function Shell({ children }: { children: ReactNode }) {
   const isBranchAdmin = user?.role === "branch_admin";
   const isAgent = user?.role === "agent";
   const isPayout = user?.role === "payout";
+
+  useEffect(() => {
+    if (isAdmin || isBranchAdmin || isAgent || isPayout) {
+      setBetSlipOpen(false);
+    }
+  }, [isAdmin, isBranchAdmin, isAgent, isPayout]);
   const isStaffRole = isBranchAdmin || isAgent || isPayout;
 
   const { data: footballData } = useQuery<FootballData>({
