@@ -75,6 +75,8 @@ router.post("/bets", requireAuth, async (req: AuthRequest, res): Promise<void> =
   const newBalance = parseFloat(wallet.balance) - stake;
   await db.update(walletsTable).set({ balance: newBalance.toFixed(2) }).where(eq(walletsTable.id, wallet.id));
 
+  const isAgent = userRecord.role === "agent";
+
   const [bet] = await db.insert(betsTable).values({
     code,
     userId: req.userId!,
@@ -82,6 +84,10 @@ router.post("/bets", requireAuth, async (req: AuthRequest, res): Promise<void> =
     totalOdds: totalOdds.toFixed(4),
     potentialWin: potentialWin.toFixed(2),
     status: "pending",
+    ...(isAgent && {
+      agentId: req.userId!,
+      branchId: userRecord.branchId ?? undefined,
+    }),
   }).returning();
 
   await db.insert(betSelectionsTable).values(
