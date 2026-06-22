@@ -3,12 +3,23 @@ import { useBetSlip } from "@/contexts/BetSlipContext";
 import { useLiveSocket, type LiveFixture, type LiveMarket, type LiveOdd, type OddsDirection } from "@/hooks/useLiveSocket";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronDown, Lock, Radio, Wifi, WifiOff, AlertTriangle, Shield } from "lucide-react";
+import { ChevronDown, Radio, Wifi, WifiOff, AlertTriangle, Shield, TrendingUp, TrendingDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import type { LiveMarket as ApiLiveMarket } from "@/hooks/useLiveSocket";
 import { sortOdds } from "@/lib/sortOdds";
 
 const MAIN_MARKETS = ["1X2", "Double Chance", "Over/Under 2.5"];
+
+// Same priority order as the sidebar in Shell.tsx
+const COUNTRY_PRIORITY = [
+  "England", "Spain", "Germany", "Italy", "France",
+  "Netherlands", "Portugal", "Turkey", "Congo DR",
+];
+
+function countryRank(countryName: string | null | undefined): number {
+  const idx = COUNTRY_PRIORITY.indexOf(countryName ?? "");
+  return idx === -1 ? COUNTRY_PRIORITY.length : idx;
+}
 
 /** A market has "value" if it is not suspended and has at least one odds value > 1 */
 function hasValue(market: LiveMarket): boolean {
@@ -37,7 +48,7 @@ interface OddsButtonProps {
   fixture: LiveFixture;
 }
 
-function OddsButton({ fixtureId, market, odd, direction, fixture }: OddsButtonProps) {
+function LiveOddsButton({ fixtureId, market, odd, direction, fixture }: OddsButtonProps) {
   const { addSelection, removeSelection, selections } = useBetSlip();
   const isSelected = selections.some((s) => s.oddsId === odd.id);
 
@@ -64,29 +75,34 @@ function OddsButton({ fixtureId, market, odd, direction, fixture }: OddsButtonPr
     }
   };
 
-  const driftRing =
-    !isSelected && direction === "up" ? "ring-2 ring-green-400/60 bg-green-400/10" :
-    !isSelected && direction === "down" ? "ring-2 ring-red-400/60 bg-red-400/10" : "";
-
-  const valueColor =
-    direction === "up" ? "text-green-400" :
-    direction === "down" ? "text-red-400" : "";
+  const selectedClass = isSelected ? "bg-primary text-primary-foreground border-primary" : "text-foreground";
 
   return (
     <button
       onClick={handleClick}
+      data-live-odds=""
+      {...(!isSelected && { "data-dir": direction ?? undefined })}
+      {...(isSelected && { "data-selected": "" })}
       className={[
-        "flex flex-col items-center justify-center px-3 py-2 rounded-lg text-xs font-semibold border transition-all flex-1 min-w-0",
-        isSelected
-          ? "bg-primary text-primary-foreground border-primary"
-          : "bg-background border-border hover:border-primary hover:text-primary text-foreground",
-        driftRing,
+        "relative flex flex-col items-center justify-center px-3 py-2 rounded-lg text-xs font-semibold border transition-all duration-200 flex-1 min-w-0",
+        selectedClass,
       ].join(" ")}
     >
+      {/* Direction arrow — top-right corner */}
+      {!isSelected && direction && (
+        <span className="absolute top-0.5 right-0.5">
+          {direction === "up"
+            ? <TrendingUp className="w-2.5 h-2.5 text-green-400" />
+            : <TrendingDown className="w-2.5 h-2.5 text-red-400" />}
+        </span>
+      )}
       <span className="text-[10px] font-normal text-muted-foreground leading-none mb-0.5 truncate w-full text-center">
         {odd.selection}
       </span>
-      <span className={["font-bold tabular-nums", isSelected ? "" : valueColor].join(" ")}>
+      <span
+        data-live-value=""
+        className="font-bold tabular-nums"
+      >
         {odd.oddsValue.toFixed(2)}
       </span>
     </button>
@@ -108,7 +124,7 @@ function MarketSection({ fixture, market, getOddsDirection }: MarketSectionProps
       </p>
       <div className="flex gap-2">
         {sorted.map((odd) => (
-          <OddsButton
+          <LiveOddsButton
             key={odd.id}
             fixtureId={fixture.id}
             market={market}
@@ -167,7 +183,7 @@ function FixtureCard({ fixture, getOddsDirection }: FixtureCardProps) {
         </div>
       </div>
 
-      {/* Teams + score — horizontal layout matching normal cards */}
+      {/* Teams + score */}
       <div className="px-4 pb-3 flex items-center gap-3">
         <div className="flex-1 flex items-center gap-2 min-w-0">
           <Logo src={fixture.homeTeam.logo} alt={fixture.homeTeam.name} size={28} />
@@ -272,6 +288,34 @@ function StatRow({ label, home, away }: { label: string; home: string; away?: st
   );
 }
 
+interface LeagueGroup {
+  leagueName: string;
+  countryName: string | null;
+  leagueLogo: string | null;
+  fixtures: LiveFixture[];
+}
+
+function buildSortedLeagueGroups(fixtures: LiveFixture[]): LeagueGroup[] {
+  const map = new Map<string, LeagueGroup>();
+  for (const f of fixtures) {
+    const key = `${f.leagueName}__${f.countryName ?? ""}`;
+    if (!map.has(key)) {
+      map.set(key, {
+        leagueName: f.leagueName,
+        countryName: f.countryName,
+        leagueLogo: f.leagueLogo,
+        fixtures: [],
+      });
+    }
+    map.get(key)!.fixtures.push(f);
+  }
+  return Array.from(map.values()).sort((a, b) => {
+    const rankDiff = countryRank(a.countryName) - countryRank(b.countryName);
+    if (rankDiff !== 0) return rankDiff;
+    return a.leagueName.localeCompare(b.leagueName);
+  });
+}
+
 export default function LiveBetting() {
   const { fixtures: wsFixtures, connected, getOddsDirection } = useLiveSocket();
   const [dataWarning, setDataWarning] = useState<string | null>(null);
@@ -288,14 +332,7 @@ export default function LiveBetting() {
   }, [initialData?.dataWarning]);
 
   const fixtures = wsFixtures.length > 0 ? wsFixtures : (initialData?.fixtures ?? []);
-
-  const bySport = new Map<string, Map<string, LiveFixture[]>>();
-  for (const f of fixtures) {
-    if (!bySport.has(f.sportName)) bySport.set(f.sportName, new Map());
-    const byLeague = bySport.get(f.sportName)!;
-    if (!byLeague.has(f.leagueName)) byLeague.set(f.leagueName, []);
-    byLeague.get(f.leagueName)!.push(f);
-  }
+  const leagueGroups = buildSortedLeagueGroups(fixtures);
 
   return (
     <div className="space-y-6">
@@ -352,31 +389,29 @@ export default function LiveBetting() {
         </div>
       )}
 
-      {/* Fixtures grouped by sport → league */}
-      {Array.from(bySport.entries()).map(([sportName, byLeague]) => (
-        <div key={sportName} className="space-y-4">
-          {bySport.size > 1 && (
-            <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">{sportName}</h2>
-          )}
-
-          {Array.from(byLeague.entries()).map(([leagueName, leagueFixtures]) => (
-            <div key={leagueName} className="space-y-2">
-              <div className="flex items-center gap-3 mb-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-wide">{leagueName}</span>
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-red-500/30 text-red-400">
-                    {leagueFixtures.length} Live
-                  </Badge>
-                </div>
-                <div className="flex-1 h-px bg-border/40" />
-              </div>
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                {leagueFixtures.map((f) => (
-                  <FixtureCard key={f.id} fixture={f} getOddsDirection={getOddsDirection} />
-                ))}
-              </div>
+      {/* Fixtures sorted by country priority → league name */}
+      {leagueGroups.map((group) => (
+        <div key={`${group.leagueName}__${group.countryName}`} className="space-y-2">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="flex items-center gap-2">
+              <Logo src={group.leagueLogo} alt={group.leagueName} size={14} />
+              <span className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-wide">
+                {group.leagueName}
+              </span>
+              {group.countryName && (
+                <span className="text-xs text-muted-foreground/40">{group.countryName}</span>
+              )}
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-red-500/30 text-red-400">
+                {group.fixtures.length} Live
+              </Badge>
             </div>
-          ))}
+            <div className="flex-1 h-px bg-border/40" />
+          </div>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            {group.fixtures.map((f) => (
+              <FixtureCard key={f.id} fixture={f} getOddsDirection={getOddsDirection} />
+            ))}
+          </div>
         </div>
       ))}
     </div>
