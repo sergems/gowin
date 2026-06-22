@@ -281,7 +281,7 @@ export function Shell({ children }: { children: ReactNode }) {
               </Link>
             )}
 
-            {user && (isAgent || !isStaffRole) && (
+            {user && !isStaffRole && (
               <Link href="/wallet" title={!open ? "Wallet" : undefined} onClick={onNav}
                 className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
                   ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}

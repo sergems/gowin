@@ -49,6 +49,10 @@ router.get("/wallet/transactions", requireAuth, async (req: AuthRequest, res): P
 });
 
 router.post("/wallet/deposit", requireAuth, async (req: AuthRequest, res): Promise<void> => {
+  if (["agent", "branch_admin", "payout"].includes(req.userRole!)) {
+    res.status(403).json({ error: "Staff accounts cannot deposit funds" });
+    return;
+  }
   const { amount } = req.body;
   const parsedAmount = parseFloat(amount);
   if (!parsedAmount || parsedAmount <= 0 || parsedAmount > 10000) {
@@ -75,6 +79,10 @@ router.post("/wallet/deposit", requireAuth, async (req: AuthRequest, res): Promi
 });
 
 router.post("/wallet/withdraw", requireAuth, async (req: AuthRequest, res): Promise<void> => {
+  if (["agent", "branch_admin", "payout"].includes(req.userRole!)) {
+    res.status(403).json({ error: "Staff accounts cannot withdraw funds" });
+    return;
+  }
   const { amount } = req.body;
   const parsedAmount = parseFloat(amount);
   if (!parsedAmount || parsedAmount <= 0) {
