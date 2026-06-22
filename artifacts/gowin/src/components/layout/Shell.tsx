@@ -521,7 +521,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <img src={gowinLogo} alt="GoWin" className="h-7 w-auto object-contain" />
           </div>
 
-          <p className={`flex-[18] text-center text-xs text-muted-foreground/70 leading-snug px-4 line-clamp-2 ${user ? "hidden" : "hidden xl:block"}`}>
+          <p className={`flex-[38] text-center text-xs text-muted-foreground/70 leading-snug px-4 line-clamp-2 ${user ? "hidden" : "hidden xl:block"}`}>
             GOWIN SPORTSBOOK est un opérateur de paris agréé. GOWIN encourage le jeu responsable. Le jeu est interdit aux moins de 18 ans. Avertissement : le jeu peut engendrer une dépendance et être dangereux s'il n'est pas contrôlé et pratiqué avec modération. Les gagnants savent s'arrêter.
           </p>
 
