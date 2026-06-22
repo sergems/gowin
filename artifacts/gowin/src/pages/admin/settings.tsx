@@ -15,7 +15,7 @@ import {
   Key, RefreshCw, CheckCircle2, AlertTriangle,
   Eye, EyeOff, Database, Plug, PlugZap, Unplug, FlaskConical,
   Upload, FileText, Info, Download, Mail, Send, ShieldCheck, ShieldOff,
-  Globe,
+  Globe, Lock,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -52,6 +52,10 @@ export default function AdminSettings() {
   // ── Site Settings state ─────────────────────────────────────────────────────
   const [siteCurrency, setSiteCurrency] = useState(activeCurrency);
   const [siteLanguage, setSiteLanguage] = useState(activeLanguage);
+
+  // ── JWT Secret state ────────────────────────────────────────────────────────
+  const [jwtSecretInput, setJwtSecretInput] = useState("");
+  const [showJwtSecret, setShowJwtSecret] = useState(false);
 
   // ── API Key state ───────────────────────────────────────────────────────────
   const [newKey, setNewKey] = useState("");
@@ -134,6 +138,16 @@ export default function AdminSettings() {
     refetchInterval: 3000,
   });
 
+  const { data: jwtStatus } = useQuery<{ isSet: boolean }>({
+    queryKey: ["/api/admin/jwt-secret"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/jwt-secret", { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      return data;
+    },
+  });
+
   const { data: emailSettings } = useQuery<EmailSettings>({
     queryKey: ["/api/admin/email-settings"],
     queryFn: async () => {
@@ -168,6 +182,25 @@ export default function AdminSettings() {
   });
 
   // ── Mutations ───────────────────────────────────────────────────────────────
+  const saveJwtSecretMutation = useMutation({
+    mutationFn: async (secret: string) => {
+      const res = await fetch("/api/admin/jwt-secret", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ secret }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      toast({ title: "Secret JWT enregistré", description: "Le secret a été mis à jour en mémoire et en base de données." });
+      setJwtSecretInput("");
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/jwt-secret"] });
+    },
+    onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+  });
+
   const saveKeyMutation = useMutation({
     mutationFn: async (apiKey: string) => {
       const res = await fetch("/api/admin/settings", {
@@ -462,6 +495,70 @@ export default function AdminSettings() {
             <p className="text-xs text-muted-foreground">
               API keys expire every 30 days. Get yours at{" "}
               <a href="https://allsportsapi.com" target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">allsportsapi.com</a>
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── JWT Secret ──────────────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Lock className="w-4 h-4" /> Secret JWT (Authentification)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between p-3 rounded-lg bg-accent/30 border border-border">
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Statut</p>
+              <p className="text-sm font-medium">
+                {jwtStatus?.isSet ? "Secret configuré" : "Non configuré"}
+              </p>
+            </div>
+            {jwtStatus?.isSet ? (
+              <Badge className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30 flex items-center gap-1.5">
+                <ShieldCheck className="w-3 h-3" /> Actif
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-amber-500 border-amber-500/40 flex items-center gap-1.5">
+                <AlertTriangle className="w-3 h-3" /> Requis
+              </Badge>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="jwtSecret" className="text-xs text-muted-foreground uppercase tracking-wider">
+              {jwtStatus?.isSet ? "Mettre à jour le secret" : "Définir le secret JWT"}
+            </Label>
+            <div className="flex gap-3">
+              <div className="relative flex-1">
+                <Input
+                  id="jwtSecret"
+                  type={showJwtSecret ? "text" : "password"}
+                  placeholder="Minimum 16 caractères"
+                  value={jwtSecretInput}
+                  onChange={(e) => setJwtSecretInput(e.target.value)}
+                  className="font-mono pr-10"
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  type="button"
+                  onClick={() => setShowJwtSecret(!showJwtSecret)}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                >
+                  {showJwtSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </Button>
+              </div>
+              <Button
+                onClick={() => saveJwtSecretMutation.mutate(jwtSecretInput)}
+                disabled={jwtSecretInput.trim().length < 16 || saveJwtSecretMutation.isPending}
+                className="shrink-0"
+              >
+                {saveJwtSecretMutation.isPending ? "Enregistrement…" : "Enregistrer"}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Clé secrète utilisée pour signer et vérifier les tokens JWT. Modifiez-la uniquement si nécessaire — cela invalide toutes les sessions actives.
             </p>
           </div>
         </CardContent>

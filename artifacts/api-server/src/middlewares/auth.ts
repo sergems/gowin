@@ -8,13 +8,22 @@ export interface AuthRequest extends Request {
   userBranchId?: number | null;
 }
 
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-  throw new Error("JWT_SECRET environment variable is required");
+// In-memory JWT secret — seeded from env at startup, then loaded from DB via setJwtSecret().
+// Use getJwtSecret() everywhere instead of reading process.env directly.
+let _jwtSecret: string = process.env.JWT_SECRET ?? "";
+
+export function setJwtSecret(secret: string): void {
+  _jwtSecret = secret;
+  logger.info("JWT secret updated in memory");
+}
+
+export function getJwtSecret(): string {
+  return _jwtSecret;
 }
 
 export function signToken(userId: number, role: string, branchId?: number | null): string {
-  return jwt.sign({ userId, role, branchId: branchId ?? null }, JWT_SECRET!, { expiresIn: "7d" });
+  if (!_jwtSecret) throw new Error("JWT secret not configured — set it in Admin → Settings");
+  return jwt.sign({ userId, role, branchId: branchId ?? null }, _jwtSecret, { expiresIn: "7d" });
 }
 
 export function requireAuth(req: AuthRequest, res: Response, next: NextFunction): void {
@@ -24,8 +33,12 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
     return;
   }
   const token = authHeader.slice(7);
+  if (!_jwtSecret) {
+    res.status(500).json({ error: "JWT secret not configured — contact administrator" });
+    return;
+  }
   try {
-    const payload = jwt.verify(token, JWT_SECRET!) as { userId: number; role: string; branchId?: number | null };
+    const payload = jwt.verify(token, _jwtSecret) as { userId: number; role: string; branchId?: number | null };
     req.userId = payload.userId;
     req.userRole = payload.role;
     req.userBranchId = payload.branchId ?? null;

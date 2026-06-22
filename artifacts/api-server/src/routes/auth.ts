@@ -3,14 +3,13 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { db, usersTable, walletsTable, passwordResetOtpsTable } from "@workspace/db";
 import { eq, and, gt, isNull } from "drizzle-orm";
-import { signToken, requireAuth, type AuthRequest } from "../middlewares/auth";
+import { signToken, requireAuth, getJwtSecret, type AuthRequest } from "../middlewares/auth";
 import { RegisterBody, LoginBody } from "@workspace/api-zod";
 import { sendOtpEmail, sendAccountLockedEmail } from "../lib/email";
 import { logger } from "../lib/logger";
 
 const router = Router();
 
-const JWT_SECRET = process.env.JWT_SECRET!;
 const MAX_LOGIN_ATTEMPTS = 3;
 
 function formatUser(user: any) {
@@ -217,7 +216,7 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
 
   await db.update(passwordResetOtpsTable).set({ usedAt: now }).where(eq(passwordResetOtpsTable.id, matchedRecord.id));
 
-  const resetToken = jwt.sign({ userId: user.id, type: "password_reset" }, JWT_SECRET, { expiresIn: "15m" });
+  const resetToken = jwt.sign({ userId: user.id, type: "password_reset" }, getJwtSecret(), { expiresIn: "15m" });
   res.json({ resetToken });
 });
 
@@ -230,7 +229,7 @@ router.post("/auth/reset-password", async (req, res): Promise<void> => {
   }
 
   let payload: any;
-  try { payload = jwt.verify(resetToken, JWT_SECRET); }
+  try { payload = jwt.verify(resetToken, getJwtSecret()); }
   catch { res.status(400).json({ error: "Invalid or expired reset token" }); return; }
 
   if (payload.type !== "password_reset") { res.status(400).json({ error: "Invalid reset token" }); return; }

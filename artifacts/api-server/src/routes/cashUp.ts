@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, branchesTable, usersTable, betsTable, walletsTable, transactionsTable } from "@workspace/db";
 import { branchFloatAllocationsTable, cashUpSessionsTable } from "@workspace/db";
 import { eq, and, gte, lte, sum, desc, or } from "drizzle-orm";
-import { requireAdmin, requireBranchAdmin, type AuthRequest } from "../middlewares/auth";
+import { requireAdmin, requireBranchAdmin, getJwtSecret, type AuthRequest } from "../middlewares/auth";
 
 const router = Router();
 
@@ -295,7 +295,7 @@ router.get("/agent/float", async (req: AuthRequest, res): Promise<void> => {
   if (!authHeader?.startsWith("Bearer ")) { res.status(401).json({ error: "Unauthorized" }); return; }
   const jwt = await import("jsonwebtoken");
   try {
-    const payload = jwt.default.verify(authHeader.slice(7), process.env.JWT_SECRET!) as any;
+    const payload = jwt.default.verify(authHeader.slice(7), getJwtSecret()) as any;
     if (payload.role !== "agent") { res.status(403).json({ error: "Agent access required" }); return; }
     req.userId = payload.userId;
     req.userRole = payload.role;

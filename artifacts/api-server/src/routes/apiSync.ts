@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, settingsTable, sportsTable, leaguesTable, teamsTable, fixturesTable, marketsTable, oddsTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
-import { requireAdmin, type AuthRequest } from "../middlewares/auth";
+import { requireAdmin, setJwtSecret, type AuthRequest } from "../middlewares/auth";
 import { refreshAllUpcomingOdds } from "../lib/oddsRefresh";
 import { sendTestEmail } from "../lib/email";
 
@@ -426,6 +426,25 @@ router.post("/admin/sync-fixtures", requireAdmin, async (_req, res): Promise<voi
   await setSetting("sync_summary", `${imported} imported, ${updated} updated, ${errors.length} errors out of ${events.length} total`);
 
   res.json({ ok: true, imported, updated, total: events.length, errors: errors.slice(0, 10), lastSync: timestamp });
+});
+
+// ── GET /admin/jwt-secret ─────────────────────────────────────────────────────
+router.get("/admin/jwt-secret", requireAdmin, async (_req, res): Promise<void> => {
+  const stored = await getSetting("jwt_secret");
+  res.json({ isSet: !!stored });
+});
+
+// ── PUT /admin/jwt-secret ─────────────────────────────────────────────────────
+router.put("/admin/jwt-secret", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+  const { secret } = req.body as { secret?: string };
+  if (!secret || typeof secret !== "string" || secret.trim().length < 16) {
+    res.status(400).json({ error: "Le secret JWT doit comporter au moins 16 caractères." });
+    return;
+  }
+  const trimmed = secret.trim();
+  await setSetting("jwt_secret", trimmed);
+  setJwtSecret(trimmed);
+  res.json({ ok: true });
 });
 
 export default router;

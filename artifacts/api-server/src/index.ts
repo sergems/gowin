@@ -6,7 +6,8 @@ import { syncFixtureResults } from "./lib/fixtureSync";
 import { autoSettleFinishedFixtures } from "./lib/autoSettle";
 import { autoExpireFixtures } from "./lib/fixtureExpiry";
 import { switchDatabase, db, fixturesTable } from "@workspace/db";
-import { getMetaSetting, CUSTOM_DB_KEY } from "./lib/metaDb";
+import { getMetaSetting, setMetaSetting, CUSTOM_DB_KEY } from "./lib/metaDb";
+import { setJwtSecret } from "./middlewares/auth";
 import { eq, sql } from "drizzle-orm";
 import { attachWebSocketServer } from "./lib/wsServer";
 import { startLiveSyncWorkers } from "./lib/liveSync";
@@ -39,6 +40,23 @@ server.listen(port, async () => {
     }
   } catch (err) {
     logger.warn({ err }, "Could not read custom DB setting — using default connection");
+  }
+
+  // Load JWT secret from DB (overrides env var; migrates env var into DB on first boot)
+  try {
+    const dbSecret = await getMetaSetting("jwt_secret");
+    if (dbSecret) {
+      setJwtSecret(dbSecret);
+      logger.info("JWT secret loaded from database");
+    } else if (process.env.JWT_SECRET) {
+      await setMetaSetting("jwt_secret", process.env.JWT_SECRET);
+      setJwtSecret(process.env.JWT_SECRET);
+      logger.info("JWT secret seeded from env var into database");
+    } else {
+      logger.warn("JWT_SECRET not configured — set it in Admin → Settings to enable authentication");
+    }
+  } catch (err) {
+    logger.warn({ err }, "Could not load JWT secret from DB — falling back to env var");
   }
 
   // Start live betting sync workers after server is ready

@@ -1,0 +1,44 @@
+# Version control
+.git
+.gitignore
+
+# Dependencies (reinstalled in Docker)
+node_modules
+**/node_modules
+
+# Build outputs (rebuilt in Docker)
+**/dist
+!lib/api-spec
+
+# Dev/config files not needed in image
+.env
+.env.*
+*.local
+.npmrc
+
+# Editor and OS
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Test files
+**/*.test.ts
+**/*.spec.ts
+**/__tests__
+
+# Replit-specific
+.replit
+replit.nix
+.upm
+.cache
+.local
+.agents
+
+# Docs
+*.md
+DEPLOYMENT_GUIDE.md

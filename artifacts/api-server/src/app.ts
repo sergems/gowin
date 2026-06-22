@@ -38,4 +38,15 @@ app.use(express.urlencoded({ extended: true, limit: "100mb" }));
 
 app.use("/api", router);
 
+// In production (Docker), serve the built frontend and handle SPA routing
+if (process.env.NODE_ENV === "production") {
+  const frontendDist = join(process.cwd(), "artifacts/gowin/dist/public");
+  if (existsSync(frontendDist)) {
+    app.use(express.static(frontendDist));
+    app.get("*", (_req, res) => {
+      res.sendFile(join(frontendDist, "index.html"));
+    });
+  }
+}
+
 export default app;
