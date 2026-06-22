@@ -47,7 +47,7 @@ const ROLE_META: Record<string, { label: string; color: string; icon: typeof Shi
 };
 
 function MembersList({ branchId, token }: { branchId: number; token: string | null }) {
-  const { formatCurrency } = useSiteSettings();
+  const { formatCurrency, t } = useSiteSettings();
   const { data, isLoading } = useQuery<{ members: BranchMember[] }>({
     queryKey: ["branch-members", branchId],
     queryFn: () => fetch(`/api/admin/branches/${branchId}/members`, {
@@ -58,15 +58,15 @@ function MembersList({ branchId, token }: { branchId: number; token: string | nu
   const members = data?.members ?? [];
 
   if (isLoading) {
-    return <div className="px-5 py-4 text-sm text-zinc-400">Loading members…</div>;
+    return <div className="px-5 py-4 text-sm text-zinc-400">{t("branches.loading_members")}</div>;
   }
 
   if (members.length === 0) {
     return (
       <div className="px-5 py-4 text-sm text-zinc-500 text-center">
-        No members assigned to this branch yet.
+        {t("branches.no_members")}
         <br />
-        <span className="text-xs">Assign users from the <strong>Users</strong> page by editing their role and branch.</span>
+        <span className="text-xs">{t("branches.members_assign_hint")}</span>
       </div>
     );
   }
@@ -78,13 +78,12 @@ function MembersList({ branchId, token }: { branchId: number; token: string | nu
 
   return (
     <div className="border-t border-zinc-700">
-      {/* Summary strip */}
       <div className="grid grid-cols-4 gap-px bg-zinc-700">
         {[
-          { label: "Branch Admins", value: branchAdmins.length, icon: ShieldCheck, color: "text-blue-400" },
-          { label: "Agents",        value: agents.length,        icon: Target,      color: "text-violet-400" },
-          { label: "Bets Placed",   value: totalBets,            icon: BarChart3,   color: "text-yellow-400" },
-          { label: "Total Turnover",value: formatCurrency(totalTurnover), icon: DollarSign, color: "text-emerald-400" },
+          { label: t("branches.branch_admins"), value: branchAdmins.length, icon: ShieldCheck, color: "text-blue-400" },
+          { label: t("branches.agents"),        value: agents.length,        icon: Target,      color: "text-violet-400" },
+          { label: t("branches.bets_placed"),   value: totalBets,            icon: BarChart3,   color: "text-yellow-400" },
+          { label: t("branches.total_turnover"), value: formatCurrency(totalTurnover), icon: DollarSign, color: "text-emerald-400" },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-zinc-800/80 px-4 py-3 flex items-center gap-3">
             <Icon className={`w-4 h-4 ${color} shrink-0`} />
@@ -96,7 +95,6 @@ function MembersList({ branchId, token }: { branchId: number; token: string | nu
         ))}
       </div>
 
-      {/* Member rows */}
       <div className="divide-y divide-zinc-700/50">
         {members.map((m) => {
           const meta = ROLE_META[m.role] ?? { label: m.role, color: "bg-zinc-600 text-white", icon: Users };
@@ -110,27 +108,27 @@ function MembersList({ branchId, token }: { branchId: number; token: string | nu
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-white truncate">{displayName}</span>
                   <Badge className={`text-[10px] px-1.5 py-0.5 ${meta.color}`}>{meta.label}</Badge>
-                  {m.disabled && <Badge variant="destructive" className="text-[10px] px-1.5 py-0.5">Blocked</Badge>}
+                  {m.disabled && <Badge variant="destructive" className="text-[10px] px-1.5 py-0.5">{t("branches.blocked")}</Badge>}
                 </div>
                 <p className="text-xs text-zinc-400 truncate">{m.email}</p>
               </div>
               <div className="hidden md:flex items-center gap-6 text-right shrink-0">
                 {m.role === "agent" && (
                   <div>
-                    <p className="text-xs text-zinc-500">Commission</p>
+                    <p className="text-xs text-zinc-500">{t("branches.commission")}</p>
                     <p className="text-sm font-semibold text-zinc-200">{m.commissionRate}%</p>
                   </div>
                 )}
                 <div>
-                  <p className="text-xs text-zinc-500">Bets</p>
+                  <p className="text-xs text-zinc-500">{t("branches.bets")}</p>
                   <p className="text-sm font-semibold text-zinc-200">{m.betsPlaced}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-zinc-500">Turnover</p>
+                  <p className="text-xs text-zinc-500">{t("branches.turnover")}</p>
                   <p className="text-sm font-semibold text-emerald-400">{formatCurrency(m.turnover)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-zinc-500">Since</p>
+                  <p className="text-xs text-zinc-500">{t("branches.since")}</p>
                   <p className="text-xs text-zinc-400">{format(new Date(m.createdAt), "MMM d, yyyy")}</p>
                 </div>
               </div>
@@ -140,9 +138,7 @@ function MembersList({ branchId, token }: { branchId: number; token: string | nu
       </div>
 
       <div className="px-5 py-2.5 bg-zinc-800/30 border-t border-zinc-700/50">
-        <p className="text-xs text-zinc-500">
-          To add or remove members, go to <strong className="text-zinc-300">Users</strong> and edit a user's role and branch assignment.
-        </p>
+        <p className="text-xs text-zinc-500">{t("branches.members_footer")}</p>
       </div>
     </div>
   );
@@ -151,7 +147,7 @@ function MembersList({ branchId, token }: { branchId: number; token: string | nu
 export default function BranchesPage() {
   const qc = useQueryClient();
   const { token } = useAuth();
-  const { formatCurrency } = useSiteSettings();
+  const { formatCurrency, t } = useSiteSettings();
   const [showCreate, setShowCreate] = useState(false);
   const [editBranch, setEditBranch] = useState<Branch | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -211,33 +207,49 @@ export default function BranchesPage() {
 
   const toggleExpand = (id: number) => setExpandedId(prev => prev === id ? null : id);
 
+  const formFields = [
+    { key: "name",    label: t("branches.branch_name"), placeholder: "Lagos Central" },
+    { key: "code",    label: t("branches.branch_code"), placeholder: "LGS001", disabled: !!editBranch },
+    { key: "country", label: t("branches.country"),     placeholder: "Nigeria" },
+    { key: "city",    label: t("branches.city"),        placeholder: "Lagos" },
+    { key: "address", label: t("branches.address"),     placeholder: "123 Main Street" },
+    { key: "phone",   label: t("branches.phone"),       placeholder: "+234 800 000 0000" },
+    { key: "email",   label: t("common.email"),         placeholder: "lagos@gowin.com" },
+  ];
+
+  const adminFormFields = [
+    { key: "username",  label: t("register.username"),   placeholder: "lagos_admin" },
+    { key: "email",     label: t("common.email"),        placeholder: "admin@branch.com" },
+    { key: "firstName", label: t("profile.first_name"),  placeholder: "John" },
+    { key: "lastName",  label: t("profile.last_name"),   placeholder: "Doe" },
+  ];
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <Building2 className="w-7 h-7 text-emerald-400" />
-            Branch Management
+            {t("branches.title")}
           </h1>
-          <p className="text-zinc-400 mt-1">Create and manage branches, admins, and agents</p>
+          <p className="text-zinc-400 mt-1">{t("branches.desc")}</p>
         </div>
         <button
           onClick={() => { setShowCreate(true); setForm(emptyForm); setError(""); }}
           className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-          <Plus className="w-4 h-4" /> New Branch
+          <Plus className="w-4 h-4" /> {t("branches.new")}
         </button>
       </div>
 
-      {/* Temp credential display */}
       {tempCred && (
         <div className="bg-emerald-900/30 border border-emerald-700 rounded-xl p-4 mb-6">
           <div className="flex justify-between items-start">
             <div>
-              <p className="font-semibold text-emerald-300 mb-2">Branch Admin Account Created</p>
+              <p className="font-semibold text-emerald-300 mb-2">{t("branches.admin_created")}</p>
               <p className="text-sm text-zinc-300">Username: <span className="font-mono text-white">{tempCred.username}</span></p>
               <p className="text-sm text-zinc-300">Email: <span className="font-mono text-white">{tempCred.email}</span></p>
               <p className="text-sm text-zinc-300">Temp Password: <span className="font-mono text-yellow-300 text-base">{tempCred.tempPassword}</span></p>
-              <p className="text-xs text-zinc-500 mt-1">Share these credentials securely. Admin must change password on first login.</p>
+              <p className="text-xs text-zinc-500 mt-1">{t("branches.share_hint")}</p>
             </div>
             <button onClick={() => setTempCred(null)} className="text-zinc-400 hover:text-white">✕</button>
           </div>
@@ -245,24 +257,21 @@ export default function BranchesPage() {
       )}
 
       {isLoading ? (
-        <div className="text-zinc-400 text-center py-16">Loading branches…</div>
+        <div className="text-zinc-400 text-center py-16">{t("branches.loading")}</div>
       ) : branches.length === 0 ? (
         <div className="text-center py-16 text-zinc-500">
           <Building2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p>No branches yet. Create your first one.</p>
+          <p>{t("branches.none")}</p>
         </div>
       ) : (
         <div className="space-y-2">
           {branches.map((b) => (
             <div key={b.id} className="bg-zinc-800/80 border border-zinc-700/60 rounded-xl overflow-hidden hover:border-zinc-600/80 transition-colors">
-              {/* Compact branch row */}
               <div className="px-4 py-3 flex items-center gap-3">
-                {/* Icon */}
                 <div className="w-9 h-9 rounded-lg bg-zinc-700/60 flex items-center justify-center shrink-0">
                   <Building2 className="w-4 h-4 text-emerald-400" />
                 </div>
 
-                {/* Name + badges */}
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <h3 className="font-semibold text-white text-sm truncate">{b.name}</h3>
                   <span className="font-mono text-[10px] bg-zinc-700 text-zinc-400 px-1.5 py-0.5 rounded shrink-0">{b.code}</span>
@@ -271,40 +280,41 @@ export default function BranchesPage() {
                   </span>
                 </div>
 
-                {/* Stats strip */}
                 <div className="hidden md:flex items-center gap-4 shrink-0 text-xs text-zinc-400 mr-2">
                   <span className="flex items-center gap-1">
                     <span className="text-emerald-400 font-bold text-sm">{formatCurrency(parseFloat(String(b.balance ?? "0")))}</span>
                   </span>
                   <span className="text-zinc-600">|</span>
                   <span className="flex items-center gap-1">
-                    <Users className="w-3 h-3" /> {b.agentCount} member{b.agentCount !== 1 ? "s" : ""}
+                    <Users className="w-3 h-3" />
+                    {b.agentCount !== 1
+                      ? t("branches.member_count_plural").replace("{n}", String(b.agentCount))
+                      : t("branches.member_count").replace("{n}", String(b.agentCount))}
                   </span>
                   <span className="text-zinc-600">|</span>
                   <span className="text-zinc-500 truncate max-w-[140px]">{b.city}, {b.country}</span>
                 </div>
 
-                {/* Actions */}
                 <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={() => { setCreditBranch(b); setCreditAmount(""); setCreditNotes(""); }}
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-medium transition-colors border border-emerald-500/20"
-                    title="Credit branch balance"
+                    title={t("branches.credit")}
                   >
-                    <DollarSign className="w-3 h-3" /> Credit
+                    <DollarSign className="w-3 h-3" /> {t("branches.credit")}
                   </button>
                   <button
                     onClick={() => toggleExpand(b.id)}
                     className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors border ${expandedId === b.id ? "bg-zinc-600/60 border-zinc-500/40 text-zinc-200" : "bg-zinc-700/40 border-zinc-600/40 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"}`}
-                    title="View members"
+                    title={t("branches.members")}
                   >
-                    <Users className="w-3 h-3" /> Members
+                    <Users className="w-3 h-3" /> {t("branches.members")}
                     {expandedId === b.id ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
                   </button>
                   <div className="w-px h-5 bg-zinc-700 mx-0.5" />
                   <button
                     onClick={() => setShowAddAdmin(b.id)}
-                    className="p-1.5 rounded-lg hover:bg-zinc-700 text-zinc-500 hover:text-emerald-400 transition-colors" title="Create Branch Admin">
+                    className="p-1.5 rounded-lg hover:bg-zinc-700 text-zinc-500 hover:text-emerald-400 transition-colors" title={t("branches.create_admin")}>
                     <UserPlus className="w-3.5 h-3.5" />
                   </button>
                   <button onClick={() => openEdit(b)}
@@ -318,7 +328,6 @@ export default function BranchesPage() {
                 </div>
               </div>
 
-              {/* Secondary info row */}
               <div className="px-4 pb-2.5 flex items-center gap-4 text-xs text-zinc-500 border-t border-zinc-700/40 pt-2">
                 <span>📍 {b.city}, {b.country}</span>
                 {b.phone && <span>📞 {b.phone}</span>}
@@ -326,7 +335,6 @@ export default function BranchesPage() {
                 {b.address && <span className="text-zinc-600 truncate">{b.address}</span>}
               </div>
 
-              {/* Expandable members section */}
               {expandedId === b.id && <MembersList branchId={b.id} token={token} />}
             </div>
           ))}
@@ -337,18 +345,12 @@ export default function BranchesPage() {
       {(showCreate || editBranch) && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold text-white mb-4">{editBranch ? "Edit Branch" : "New Branch"}</h2>
+            <h2 className="text-xl font-bold text-white mb-4">
+              {editBranch ? t("branches.edit_title") : t("branches.new_title")}
+            </h2>
             {error && <p className="text-red-400 text-sm mb-3 bg-red-900/20 rounded-lg px-3 py-2">{error}</p>}
             <div className="space-y-3">
-              {[
-                { key: "name",    label: "Branch Name", placeholder: "Lagos Central" },
-                { key: "code",    label: "Branch Code", placeholder: "LGS001", disabled: !!editBranch },
-                { key: "country", label: "Country",     placeholder: "Nigeria" },
-                { key: "city",    label: "City",        placeholder: "Lagos" },
-                { key: "address", label: "Address",     placeholder: "123 Main Street" },
-                { key: "phone",   label: "Phone",       placeholder: "+234 800 000 0000" },
-                { key: "email",   label: "Email",       placeholder: "lagos@gowin.com" },
-              ].map(({ key, label, placeholder, disabled }) => (
+              {formFields.map(({ key, label, placeholder, disabled }) => (
                 <div key={key}>
                   <label className="text-xs text-zinc-400 mb-1 block">{label}</label>
                   <input
@@ -362,7 +364,7 @@ export default function BranchesPage() {
               ))}
               {editBranch && (
                 <div>
-                  <label className="text-xs text-zinc-400 mb-1 block">Status</label>
+                  <label className="text-xs text-zinc-400 mb-1 block">{t("branches.status")}</label>
                   <select
                     className="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-white"
                     value={editBranch.status}
@@ -377,7 +379,7 @@ export default function BranchesPage() {
             <div className="flex gap-3 mt-5">
               <button onClick={() => { setShowCreate(false); setEditBranch(null); setError(""); }}
                 className="flex-1 px-4 py-2 rounded-lg border border-zinc-600 text-zinc-300 hover:bg-zinc-800 text-sm">
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 onClick={() => {
@@ -386,7 +388,7 @@ export default function BranchesPage() {
                 }}
                 disabled={createMut.isPending || updateMut.isPending}
                 className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50">
-                {editBranch ? "Save Changes" : "Create Branch"}
+                {editBranch ? t("branches.save") : t("branches.create")}
               </button>
             </div>
           </div>
@@ -397,13 +399,13 @@ export default function BranchesPage() {
       {creditBranch && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold text-white mb-1">Credit Branch Balance</h2>
-            <p className="text-sm text-zinc-400 mb-1">Branch: <span className="text-white font-medium">{creditBranch.name}</span></p>
-            <p className="text-sm text-zinc-400 mb-4">Current balance: <span className="text-emerald-400 font-bold">{formatCurrency(parseFloat(String(creditBranch.balance ?? "0")))}</span></p>
+            <h2 className="text-xl font-bold text-white mb-1">{t("branches.credit_title")}</h2>
+            <p className="text-sm text-zinc-400 mb-1">{t("branches.branch_label")}: <span className="text-white font-medium">{creditBranch.name}</span></p>
+            <p className="text-sm text-zinc-400 mb-4">{t("branches.current_balance")}: <span className="text-emerald-400 font-bold">{formatCurrency(parseFloat(String(creditBranch.balance ?? "0")))}</span></p>
             {error && <p className="text-red-400 text-sm mb-3 bg-red-900/20 rounded-lg px-3 py-2">{error}</p>}
             <div className="space-y-3">
               <div>
-                <label className="text-xs text-zinc-400 mb-1 block">Amount</label>
+                <label className="text-xs text-zinc-400 mb-1 block">{t("branches.amount")}</label>
                 <input
                   type="number"
                   min="0.01"
@@ -415,7 +417,7 @@ export default function BranchesPage() {
                 />
               </div>
               <div>
-                <label className="text-xs text-zinc-400 mb-1 block">Notes (optional)</label>
+                <label className="text-xs text-zinc-400 mb-1 block">{t("branches.notes")}</label>
                 <input
                   type="text"
                   placeholder="e.g. Weekly float allocation"
@@ -429,7 +431,7 @@ export default function BranchesPage() {
               <button
                 onClick={() => { setCreditBranch(null); setError(""); }}
                 className="flex-1 px-4 py-2 rounded-lg border border-zinc-600 text-zinc-300 hover:bg-zinc-800 text-sm">
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 disabled={creditLoading || !creditAmount || parseFloat(creditAmount) <= 0}
@@ -453,7 +455,7 @@ export default function BranchesPage() {
                   }
                 }}
                 className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50">
-                {creditLoading ? "Crediting…" : "Credit Balance"}
+                {creditLoading ? t("branches.crediting") : t("branches.credit_balance")}
               </button>
             </div>
           </div>
@@ -464,21 +466,16 @@ export default function BranchesPage() {
       {showAddAdmin !== null && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold text-white mb-1">Create Branch Admin</h2>
+            <h2 className="text-xl font-bold text-white mb-1">{t("branches.create_admin")}</h2>
             <p className="text-sm text-zinc-400 mb-4">
-              For: <span className="text-white">{branches.find((b) => b.id === showAddAdmin)?.name}</span>
+              {t("branches.for_branch")}: <span className="text-white">{branches.find((b) => b.id === showAddAdmin)?.name}</span>
             </p>
             <p className="text-xs text-zinc-500 mb-4 bg-zinc-800 rounded-lg p-3">
               This creates a <strong className="text-zinc-300">new</strong> branch admin account. To assign an existing user as branch admin or agent, go to the <strong className="text-zinc-300">Users</strong> page and edit their role.
             </p>
             {error && <p className="text-red-400 text-sm mb-3 bg-red-900/20 rounded-lg px-3 py-2">{error}</p>}
             <div className="space-y-3">
-              {[
-                { key: "username",  label: "Username",   placeholder: "lagos_admin" },
-                { key: "email",     label: "Email",      placeholder: "admin@branch.com" },
-                { key: "firstName", label: "First Name", placeholder: "John" },
-                { key: "lastName",  label: "Last Name",  placeholder: "Doe" },
-              ].map(({ key, label, placeholder }) => (
+              {adminFormFields.map(({ key, label, placeholder }) => (
                 <div key={key}>
                   <label className="text-xs text-zinc-400 mb-1 block">{label}</label>
                   <input
@@ -493,13 +490,13 @@ export default function BranchesPage() {
             <div className="flex gap-3 mt-5">
               <button onClick={() => { setShowAddAdmin(null); setError(""); }}
                 className="flex-1 px-4 py-2 rounded-lg border border-zinc-600 text-zinc-300 hover:bg-zinc-800 text-sm">
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 onClick={() => addAdminMut.mutate({ branchId: showAddAdmin!, body: adminForm })}
                 disabled={addAdminMut.isPending}
                 className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50">
-                Create Admin
+                {t("branches.create_admin")}
               </button>
             </div>
           </div>
