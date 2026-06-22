@@ -164,20 +164,6 @@ export function Shell({ children }: { children: ReactNode }) {
               </Link>
             )}
 
-            {!isStaffRole && (
-              <Link href="/live" title={!open ? "Live" : undefined} onClick={onNav}
-                className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
-                  ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
-                  ${location.startsWith("/live") ? "bg-red-500/10 text-red-400" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
-                <div className="relative shrink-0">
-                  <Radio className="w-4 h-4" />
-                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
-                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-red-500" />
-                </div>
-                {open && <span className="flex-1">Live In-Play</span>}
-                {open && <span className="text-[10px] font-bold bg-red-500 text-white rounded px-1 py-0.5 leading-none">LIVE</span>}
-              </Link>
-            )}
 
             {!isStaffRole && isAdmin ? (
               <Link href="/sports" title={!open ? "Sports" : undefined} onClick={onNav}
@@ -285,6 +271,17 @@ export function Shell({ children }: { children: ReactNode }) {
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
                 {open && <span className="flex-1">Results</span>}
               </Link>
+            )}
+
+            {!isStaffRole && (
+              <div
+                title={!open ? "Live In-Play (coming soon)" : undefined}
+                className={`flex items-center gap-3 rounded-md text-sm font-medium cursor-not-allowed opacity-40 select-none
+                  ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}`}>
+                <Radio className="w-4 h-4 shrink-0" />
+                {open && <span className="flex-1">Live In-Play</span>}
+                {open && <span className="text-[10px] font-semibold border border-muted-foreground/30 text-muted-foreground rounded px-1 py-0.5 leading-none">Soon</span>}
+              </div>
             )}
 
             {user && !isStaffRole && (
