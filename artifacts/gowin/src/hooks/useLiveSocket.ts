@@ -84,18 +84,9 @@ function reducer(state: LiveState, action: LiveAction): LiveState {
     }
 
     case "FIXTURE_UPDATE": {
-      const fixtures = new Map(state.fixtures);
-      for (const f of action.fixtures) fixtures.set(f.id, f);
-      // Remove any fixtures no longer in the update (settled/removed)
-      const incomingIds = new Set(action.fixtures.map((f) => f.id));
-      if (action.fixtures.length === 0 || incomingIds.size > 0) {
-        // Only wipe if broadcast explicitly carries zero (full snapshot)
-        for (const id of fixtures.keys()) {
-          if (!incomingIds.has(id)) {
-            // Keep existing — partial updates don't remove
-          }
-        }
-      }
+      // LIVE_FIXTURE_UPDATE is always a full snapshot of all current live
+      // fixtures — replace the map entirely so settled fixtures are removed
+      const fixtures = new Map(action.fixtures.map((f) => [f.id, f]));
       return { ...state, fixtures };
     }
 

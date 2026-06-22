@@ -82,7 +82,7 @@ router.get("/live/fixtures", async (_req, res): Promise<void> => {
       marketsMap.get(market.fixtureId)!.push({
         id: market.id,
         marketType: market.marketType,
-        suspended: false,
+        suspended: market.suspended,
         odds: (oddsMap.get(market.id) ?? []).map((o) => ({
           id: o.id,
           selection: o.selection,
@@ -154,7 +154,7 @@ router.get("/live/fixtures/:id/markets", async (req, res): Promise<void> => {
     const result = markets.map((m) => ({
       id: m.id,
       marketType: m.marketType,
-      suspended: false,
+      suspended: m.suspended,
       odds: (oddsMap.get(m.id) ?? []).map((o) => ({
         id: o.id,
         selection: o.selection,

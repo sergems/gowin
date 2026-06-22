@@ -81,7 +81,7 @@ async function buildLiveFixturesFromDb(): Promise<LiveFixture[]> {
     marketsMap.get(market.fixtureId)!.push({
       id: market.id,
       marketType: market.marketType,
-      suspended: false,
+      suspended: market.suspended,
       odds: (oddsMap.get(market.id) ?? []).map((o) => ({
         id: o.id,
         selection: o.selection,
@@ -239,7 +239,7 @@ export async function syncLiveOdds(): Promise<void> {
       marketsMap.get(market.fixtureId)!.push({
         id: market.id,
         marketType: market.marketType,
-        suspended: false,
+        suspended: market.suspended,
         odds: (oddsMap.get(market.id) ?? []).map((o) => ({
           id: o.id,
           selection: o.selection,

@@ -54,6 +54,7 @@ export const marketsTable = pgTable("markets", {
   id: serial("id").primaryKey(),
   fixtureId: integer("fixture_id").notNull().references(() => fixturesTable.id, { onDelete: "cascade" }),
   marketType: text("market_type").notNull(),
+  suspended: boolean("suspended").notNull().default(false),
 });
 
 export const oddsTable = pgTable("odds", {
