@@ -134,8 +134,8 @@ export default function CashUpPage() {
       await apiFetch(`/api/branch/floats/${cashUpId}/cashup`, "POST", {
         cashReturned: parseFloat(cashReturned), notes: cashUpNotes || null,
       }, token);
-      const v = parseFloat(cashReturned) - cashUpPreview.expectedReturn;
-      toast({ title: "Cash up done", description: Math.abs(v) < 0.01 ? "Balanced." : v < 0 ? `Short $${Math.abs(v).toFixed(2)}` : `Surplus $${v.toFixed(2)}` });
+      const v = parseFloat(cashReturned) - cashUpPreview.totalBets;
+      toast({ title: "Cash up done", description: Math.abs(v) < 0.01 ? "Balanced." : v < 0 ? `Agent short $${Math.abs(v).toFixed(2)}` : `Surplus $${v.toFixed(2)}` });
       qc.invalidateQueries({ queryKey: ["branch-floats"] });
       qc.invalidateQueries({ queryKey: ["branch-cashups"] });
       qc.invalidateQueries({ queryKey: ["branch-info-cashup"] });
@@ -147,7 +147,8 @@ export default function CashUpPage() {
   };
 
   const cashReturnedNum = parseFloat(cashReturned) || 0;
-  const liveVariance = cashUpPreview ? cashReturnedNum - cashUpPreview.expectedReturn : 0;
+  // Variance = actual cash handed back vs what was collected from bettors (must match Cash Collected)
+  const liveVariance = cashUpPreview ? cashReturnedNum - cashUpPreview.totalBets : 0;
 
   return (
     <div className="p-4 max-w-4xl mx-auto space-y-4">
@@ -390,20 +391,30 @@ export default function CashUpPage() {
                   <div className="flex justify-between items-center px-4 py-2.5 border-b border-zinc-700">
                     <div>
                       <p className="text-sm font-medium text-zinc-200">Opening Float</p>
-                      <p className="text-[10px] text-zinc-500">Float given at start of shift</p>
+                      <p className="text-[10px] text-zinc-500">Float issued at start of shift</p>
                     </div>
                     <p className="text-sm font-bold text-white">${cashUpPreview.openingFloat.toFixed(2)}</p>
                   </div>
                   <div className="flex justify-between items-center px-4 py-2.5 border-b border-zinc-700">
                     <div>
                       <p className="text-sm font-medium text-zinc-200">Cash Collected</p>
-                      <p className="text-[10px] text-zinc-500">Client bets placed</p>
+                      <p className="text-[10px] text-zinc-500">Bet stakes received from clients</p>
                     </div>
-                    <p className="text-sm font-bold text-red-400">-${cashUpPreview.totalBets.toFixed(2)}</p>
+                    <p className="text-sm font-bold text-emerald-400">+${cashUpPreview.totalBets.toFixed(2)}</p>
+                  </div>
+                  <div className="flex justify-between items-center px-4 py-2.5 border-b border-zinc-700 bg-zinc-700/20">
+                    <div>
+                      <p className="text-sm font-bold text-white">Expected Return to Branch</p>
+                      <p className="text-[10px] text-zinc-500">Opening Float − Cash Collected (credited to branch, debited from agent)</p>
+                    </div>
+                    <p className="text-base font-black text-white">${cashUpPreview.expectedReturn.toFixed(2)}</p>
                   </div>
                   <div className="flex justify-between items-center px-4 py-2.5 bg-zinc-700/40">
-                    <p className="text-sm font-bold text-white">Expected Return</p>
-                    <p className="text-base font-black text-white">${cashUpPreview.expectedReturn.toFixed(2)}</p>
+                    <div>
+                      <p className="text-sm font-bold text-amber-300">Cash Agent Must Return</p>
+                      <p className="text-[10px] text-zinc-500">Equals Cash Collected — enter this below</p>
+                    </div>
+                    <p className="text-base font-black text-amber-300">${cashUpPreview.totalBets.toFixed(2)}</p>
                   </div>
                 </div>
 
@@ -423,12 +434,17 @@ export default function CashUpPage() {
                     : liveVariance < 0 ? "bg-red-900/20 border-red-700"
                     : "bg-amber-900/20 border-amber-700"
                   }`}>
-                    <p className="text-xs text-zinc-300">
-                      {Math.abs(liveVariance) < 0.01 ? "✓ Perfectly balanced"
-                       : liveVariance < 0 ? "⚠ Agent is short"
-                       : "Agent has surplus"}
-                    </p>
-                    <p className={`text-lg font-black ${Math.abs(liveVariance) < 0.01 ? "text-emerald-400" : liveVariance < 0 ? "text-red-400" : "text-amber-400"}`}>
+                    <div>
+                      <p className="text-xs text-zinc-300">
+                        {Math.abs(liveVariance) < 0.01
+                          ? "✓ Balanced — matches Cash Collected"
+                          : liveVariance < 0
+                          ? `⚠ Agent is short $${Math.abs(liveVariance).toFixed(2)} (returned less than collected)`
+                          : `Agent has surplus $${liveVariance.toFixed(2)} (returned more than collected)`}
+                      </p>
+                      <p className="text-[10px] text-zinc-500 mt-0.5">Expected: ${cashUpPreview!.totalBets.toFixed(2)} · Actual: ${cashReturnedNum.toFixed(2)}</p>
+                    </div>
+                    <p className={`text-lg font-black shrink-0 ml-4 ${Math.abs(liveVariance) < 0.01 ? "text-emerald-400" : liveVariance < 0 ? "text-red-400" : "text-amber-400"}`}>
                       {liveVariance >= 0 ? "+" : ""}{liveVariance.toFixed(2)}
                     </p>
                   </div>

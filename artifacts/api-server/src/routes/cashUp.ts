@@ -193,8 +193,10 @@ router.post("/branch/floats/:id/cashup", requireBranchAdmin, async (req: AuthReq
     .where(and(cashUpBetFilter, gte(betsTable.createdAt, shiftStart), lte(betsTable.createdAt, now)));
 
   const totalBets = parseFloat(betStats?.total as any ?? "0") || 0;
+  // Expected Return = what accounting credits back to the branch (Opening Float - Cash Collected)
   const expectedReturn = Math.max(0, openingFloat - totalBets);
-  const variance = cashReturned - expectedReturn;
+  // Variance = how much the agent physically handed back vs what they collected from bettors
+  const variance = cashReturned - totalBets;
 
   // Save session
   await db.insert(cashUpSessionsTable).values({
@@ -216,29 +218,29 @@ router.post("/branch/floats/:id/cashup", requireBranchAdmin, async (req: AuthReq
     .set({ status: "cashed_up" })
     .where(eq(branchFloatAllocationsTable.id, id));
 
-  // Return cash to branch balance
+  // Credit branch balance with Expected Return (Opening Float − Cash Collected)
   const [branch] = await db.select().from(branchesTable).where(eq(branchesTable.id, branchId)).limit(1);
   const currentBalance = parseFloat(branch?.balance as any ?? "0");
   await db.update(branchesTable)
-    .set({ balance: String(currentBalance + cashReturned) } as any)
+    .set({ balance: String((currentBalance + expectedReturn).toFixed(2)) } as any)
     .where(eq(branchesTable.id, branchId));
 
-  // Debit agent's wallet for the cash they're physically returning
+  // Debit agent's wallet by Expected Return (mirrors the branch credit)
   const [agentWallet] = await db.select().from(walletsTable).where(eq(walletsTable.userId, alloc.agentId)).limit(1);
-  if (agentWallet && cashReturned > 0) {
-    const remaining = Math.max(0, parseFloat(agentWallet.balance) - cashReturned);
+  if (agentWallet && expectedReturn > 0) {
+    const remaining = Math.max(0, parseFloat(agentWallet.balance) - expectedReturn);
     await db.update(walletsTable)
       .set({ balance: String(remaining.toFixed(2)) })
       .where(eq(walletsTable.userId, alloc.agentId));
     await db.insert(transactionsTable).values({
       walletId: agentWallet.id,
-      amount: String(cashReturned),
+      amount: String(expectedReturn),
       type: "debit",
       description: `Float return – cash up (shift ${alloc.shiftDate})`,
     });
   }
 
-  res.json({ ok: true, variance, expectedReturn, cashReturned });
+  res.json({ ok: true, variance, expectedReturn, totalBets, cashReturned });
 });
 
 // ── GET /api/branch/cashups — history ─────────────────────────────────────────
