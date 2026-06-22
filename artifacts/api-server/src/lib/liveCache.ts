@@ -53,6 +53,11 @@ export interface LiveFixture {
   lastUpdated: number;
 }
 
+export interface WorkerErrorEntry {
+  msg: string;
+  time: number;
+}
+
 export interface CacheStats {
   hits: number;
   misses: number;
@@ -62,6 +67,7 @@ export interface CacheStats {
   lastOddsSync: string | null;
   lastStatsSync: string | null;
   lastResultsSync: string | null;
+  workerErrors: Record<string, WorkerErrorEntry>;
   lastError: string | null;
   lastErrorTime: number | null;
   failCount: number;
@@ -72,7 +78,8 @@ export interface CacheStats {
 
 class LiveCache {
   private fixtures: Map<number, LiveFixture> = new Map();
-  private _stats: Omit<CacheStats, "hitRate"> = {
+  private workerErrors: Map<string, WorkerErrorEntry> = new Map();
+  private _stats: Omit<CacheStats, "hitRate" | "workerErrors" | "lastError" | "lastErrorTime" | "failCount"> = {
     hits: 0,
     misses: 0,
     apiRequestsToday: 0,
@@ -81,16 +88,12 @@ class LiveCache {
     lastOddsSync: null,
     lastStatsSync: null,
     lastResultsSync: null,
-    lastError: null,
-    lastErrorTime: null,
-    failCount: 0,
     wsConnections: 0,
     todayKey: new Date().toISOString().split("T")[0]!,
   };
 
   setFixtures(fixtures: LiveFixture[]) {
-    const next = new Map(fixtures.map((f) => [f.id, f]));
-    this.fixtures = next;
+    this.fixtures = new Map(fixtures.map((f) => [f.id, f]));
     this._stats.lastFixtureSync = new Date().toISOString();
   }
 
@@ -114,13 +117,8 @@ class LiveCache {
     return this.fixtures.size === 0;
   }
 
-  recordHit() {
-    this._stats.hits++;
-  }
-
-  recordMiss() {
-    this._stats.misses++;
-  }
+  recordHit() { this._stats.hits++; }
+  recordMiss() { this._stats.misses++; }
 
   recordApiRequest() {
     const todayKey = new Date().toISOString().split("T")[0]!;
@@ -132,43 +130,57 @@ class LiveCache {
     this._stats.apiRequestsThisMonth++;
   }
 
-  recordError(msg: string) {
-    this._stats.lastError = msg;
-    this._stats.lastErrorTime = Date.now();
-    this._stats.failCount++;
+  // ── Per-worker error tracking ─────────────────────────────────────────────
+  recordWorkerError(worker: string, msg: string) {
+    this.workerErrors.set(worker, { msg, time: Date.now() });
   }
 
-  clearError() {
-    this._stats.lastError = null;
-    this._stats.lastErrorTime = null;
-    this._stats.failCount = 0;
+  clearWorkerError(worker: string) {
+    this.workerErrors.delete(worker);
   }
 
-  setLastOddsSync(ts: string) {
-    this._stats.lastOddsSync = ts;
-  }
+  // Legacy compatibility wrappers — delegate to the "fixture" worker slot
+  recordError(msg: string) { this.recordWorkerError("fixture", msg); }
+  clearError() { this.clearWorkerError("fixture"); }
 
-  setLastStatsSync(ts: string) {
-    this._stats.lastStatsSync = ts;
-  }
-
-  setLastResultsSync(ts: string) {
-    this._stats.lastResultsSync = ts;
-  }
-
-  setWsConnections(n: number) {
-    this._stats.wsConnections = n;
-  }
-
+  // True if ANY worker had an error in the last 5 minutes
   isRecentError(): boolean {
-    if (!this._stats.lastErrorTime) return false;
-    return Date.now() - this._stats.lastErrorTime < 5 * 60 * 1000;
+    const now = Date.now();
+    for (const entry of this.workerErrors.values()) {
+      if (now - entry.time < 5 * 60 * 1000) return true;
+    }
+    return false;
   }
+
+  setLastOddsSync(ts: string) { this._stats.lastOddsSync = ts; }
+  setLastStatsSync(ts: string) { this._stats.lastStatsSync = ts; }
+  setLastResultsSync(ts: string) { this._stats.lastResultsSync = ts; }
+  setWsConnections(n: number) { this._stats.wsConnections = n; }
 
   getStats(): CacheStats {
     const total = this._stats.hits + this._stats.misses;
     const hitRate = total > 0 ? Math.round((this._stats.hits / total) * 100) : 0;
-    return { ...this._stats, hitRate };
+
+    // Aggregate per-worker errors for the legacy fields (most-recent across workers)
+    let lastError: string | null = null;
+    let lastErrorTime: number | null = null;
+    let failCount = 0;
+    for (const entry of this.workerErrors.values()) {
+      failCount++;
+      if (lastErrorTime === null || entry.time > lastErrorTime) {
+        lastError = entry.msg;
+        lastErrorTime = entry.time;
+      }
+    }
+
+    return {
+      ...this._stats,
+      hitRate,
+      workerErrors: Object.fromEntries(this.workerErrors),
+      lastError,
+      lastErrorTime,
+      failCount,
+    };
   }
 }
 

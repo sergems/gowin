@@ -1,5 +1,5 @@
 import { db, settingsTable, fixturesTable, marketsTable, oddsTable, leaguesTable, sportsTable, teamsTable } from "@workspace/db";
-import { eq, inArray, not } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { logger } from "./logger";
 import { liveCache, type LiveFixture, type LiveMarket, type LiveStats } from "./liveCache";
 import { broadcast } from "./wsServer";
@@ -22,6 +22,10 @@ function parseMatchMinute(eventStatus: string | null | undefined): string | null
   const minuteMatch = s.match(/^(\d+)(\+\d+)?'?$/);
   if (minuteMatch) return `${minuteMatch[1]}${minuteMatch[2] ?? ""}'`;
   return s || null;
+}
+
+function validOdd(v: any): boolean {
+  return v != null && isFinite(Number(v)) && Number(v) > 1;
 }
 
 async function buildLiveFixturesFromDb(): Promise<LiveFixture[]> {
@@ -49,12 +53,7 @@ async function buildLiveFixturesFromDb(): Promise<LiveFixture[]> {
 
   if (dbFixtures.length === 0) return [];
 
-  const allTeamIds = [
-    ...new Set([
-      ...dbFixtures.map((f) => f.homeTeamId),
-      ...dbFixtures.map((f) => f.awayTeamId),
-    ]),
-  ];
+  const allTeamIds = [...new Set([...dbFixtures.map((f) => f.homeTeamId), ...dbFixtures.map((f) => f.awayTeamId)])];
   const teamRows = allTeamIds.length > 0
     ? await db.select().from(teamsTable).where(inArray(teamsTable.id, allTeamIds))
     : [];
@@ -120,7 +119,6 @@ async function buildLiveFixturesFromDb(): Promise<LiveFixture[]> {
 }
 
 // ── Fetch match minutes from AllSports livescore ──────────────────────────────
-// Returns the minute map AND whether the fetch itself succeeded
 async function fetchLiveScoreData(apiKey: string): Promise<{ minuteMap: Map<string, string>; ok: boolean }> {
   const minuteMap = new Map<string, string>();
   try {
@@ -183,20 +181,101 @@ async function fetchFixtureStats(apiKey: string, externalId: string): Promise<Li
   }
 }
 
+// ── Fetch odds from AllSports API for a single fixture and update DB in-place ─
+// Updates existing odds rows by selection name — preserves IDs for client
+// direction tracking. Only updates 1X2 / Double Chance / Over-Under markets.
+async function fetchAndUpdateLiveOdds(apiKey: string, fixtureId: number, externalId: string): Promise<boolean> {
+  try {
+    liveCache.recordApiRequest();
+    const resp = await fetch(
+      `https://apiv2.allsportsapi.com/football/?met=Odds&APIkey=${apiKey}&matchId=${externalId}`,
+      { signal: AbortSignal.timeout(8_000) },
+    );
+    const data = await resp.json() as any;
+    if (data?.success !== 1 || !data?.result?.[externalId]) return false;
+
+    const bks: any[] = data.result[externalId];
+    const bk =
+      bks.find((b: any) => b.odd_bookmakers === "bet365") ??
+      bks.find((b: any) => b.odd_bookmakers === "1xBet") ??
+      bks[0] ??
+      null;
+    if (!bk) return false;
+
+    // Fetch existing markets + odds for this fixture
+    const markets = await db.select().from(marketsTable).where(eq(marketsTable.fixtureId, fixtureId));
+    if (markets.length === 0) return false;
+
+    const marketIds = markets.map((m) => m.id);
+    const allOdds = await db.select().from(oddsTable).where(inArray(oddsTable.marketId, marketIds));
+
+    // Build lookup: marketId → array of odds rows
+    const oddsForMarket = new Map<number, typeof allOdds>();
+    for (const o of allOdds) {
+      if (!oddsForMarket.has(o.marketId)) oddsForMarket.set(o.marketId, []);
+      oddsForMarket.get(o.marketId)!.push(o);
+    }
+
+    // Selection → new value mapping per market type
+    const selectionValue = (market: typeof markets[number]): Map<string, string> => {
+      const m = new Map<string, string>();
+      switch (market.marketType) {
+        case "1X2":
+          if (validOdd(bk.odd_1)) m.set("Home", Number(bk.odd_1).toFixed(2));
+          if (validOdd(bk.odd_x)) m.set("Draw", Number(bk.odd_x).toFixed(2));
+          if (validOdd(bk.odd_2)) m.set("Away", Number(bk.odd_2).toFixed(2));
+          break;
+        case "Double Chance":
+          if (validOdd(bk.odd_1x)) m.set("1X", Number(bk.odd_1x).toFixed(2));
+          if (validOdd(bk.odd_12)) m.set("12", Number(bk.odd_12).toFixed(2));
+          if (validOdd(bk.odd_x2)) m.set("X2", Number(bk.odd_x2).toFixed(2));
+          break;
+        default:
+          if (market.marketType.startsWith("Over/Under ")) {
+            const line = market.marketType.replace("Over/Under ", "");
+            const overKey = `o+${line}`;
+            const underKey = `u+${line}`;
+            if (validOdd(bk[overKey])) m.set(`Over ${line}`, Number(bk[overKey]).toFixed(2));
+            if (validOdd(bk[underKey])) m.set(`Under ${line}`, Number(bk[underKey]).toFixed(2));
+          }
+          break;
+      }
+      return m;
+    };
+
+    // Update each existing odds row in-place (preserving IDs)
+    let updated = false;
+    for (const market of markets) {
+      const newValues = selectionValue(market);
+      if (newValues.size === 0) continue;
+      const rows = oddsForMarket.get(market.id) ?? [];
+      for (const o of rows) {
+        const newVal = newValues.get(o.selection);
+        if (newVal && newVal !== o.oddsValue) {
+          await db.update(oddsTable).set({ oddsValue: newVal }).where(eq(oddsTable.id, o.id));
+          updated = true;
+        }
+      }
+    }
+    return updated;
+  } catch (err) {
+    logger.warn({ err, fixtureId }, "LiveSync: live odds API fetch failed for fixture");
+    return false;
+  }
+}
+
 // ── Sync worker: Live fixtures (every 15 s) ────────────────────────────────
 export async function syncLiveFixtures(): Promise<void> {
   try {
     const fixtures = await buildLiveFixturesFromDb();
-    // DB read succeeded — primary data is available
-    liveCache.clearError();
+    // DB read succeeded — clear this worker's error only (not other workers')
+    liveCache.clearWorkerError("fixture");
 
     const apiKey = await getApiKey();
     if (apiKey) {
       const { minuteMap, ok } = await fetchLiveScoreData(apiKey);
       if (!ok) {
-        // External API unavailable — record so monitor can show warning, but
-        // primary fixture data is still valid so we don't treat this as fatal
-        liveCache.recordError("AllSports livescore API temporarily unavailable");
+        liveCache.recordWorkerError("fixture", "AllSports livescore API temporarily unavailable");
       }
       for (const f of fixtures) {
         if (f.externalId && minuteMap.has(f.externalId)) {
@@ -210,16 +289,34 @@ export async function syncLiveFixtures(): Promise<void> {
   } catch (err: any) {
     const msg = err?.message ?? "Unknown error";
     logger.error({ err }, "LiveSync: fixture sync failed");
-    liveCache.recordError(msg);
+    liveCache.recordWorkerError("fixture", msg);
   }
 }
 
-// ── Sync worker: Live odds from DB (every 10 s) ────────────────────────────
+// ── Sync worker: Live odds — DB read + AllSports API refresh (every 10 s) ──
 export async function syncLiveOdds(): Promise<void> {
   try {
     const currentFixtures = liveCache.getFixtures();
     if (currentFixtures.length === 0) return;
 
+    const apiKey = await getApiKey();
+
+    // Phase 1: fetch fresh odds from AllSports API and update DB in-place
+    if (apiKey) {
+      const liveWithExtId = currentFixtures.filter((f) => f.externalId);
+      let anyApiSuccess = false;
+      for (const fixture of liveWithExtId) {
+        const ok = await fetchAndUpdateLiveOdds(apiKey, fixture.id, fixture.externalId!);
+        if (ok) anyApiSuccess = true;
+      }
+      if (!anyApiSuccess && liveWithExtId.length > 0) {
+        liveCache.recordWorkerError("odds", "AllSports odds API returned no data for live fixtures");
+      } else {
+        liveCache.clearWorkerError("odds");
+      }
+    }
+
+    // Phase 2: read (now-fresh) odds from DB and push to cache + clients
     const fixtureIds = currentFixtures.map((f) => f.id);
     const allMarkets = await db.select().from(marketsTable).where(inArray(marketsTable.fixtureId, fixtureIds));
     const marketIds = allMarkets.map((m) => m.id);
@@ -261,7 +358,7 @@ export async function syncLiveOdds(): Promise<void> {
   } catch (err: any) {
     const msg = err?.message ?? "Unknown error";
     logger.error({ err }, "LiveSync: odds sync failed");
-    liveCache.recordError(msg);
+    liveCache.recordWorkerError("odds", msg);
   }
 }
 
@@ -288,7 +385,9 @@ export async function syncLiveStats(): Promise<void> {
     }
 
     if (!fetchOk && fixtures.length > 0) {
-      liveCache.recordError("AllSports statistics API returned no data");
+      liveCache.recordWorkerError("stats", "AllSports statistics API returned no data");
+    } else {
+      liveCache.clearWorkerError("stats");
     }
 
     liveCache.setLastStatsSync(new Date().toISOString());
@@ -296,7 +395,7 @@ export async function syncLiveStats(): Promise<void> {
   } catch (err: any) {
     const msg = err?.message ?? "Unknown error";
     logger.error({ err }, "LiveSync: stats sync failed");
-    liveCache.recordError(msg);
+    liveCache.recordWorkerError("stats", msg);
   }
 }
 
@@ -324,6 +423,7 @@ export async function syncSettledFixtures(): Promise<void> {
       }
     }
 
+    liveCache.clearWorkerError("results");
     liveCache.setLastResultsSync(new Date().toISOString());
 
     if (changed) {
@@ -332,7 +432,7 @@ export async function syncSettledFixtures(): Promise<void> {
   } catch (err: any) {
     const msg = err?.message ?? "Unknown error";
     logger.warn({ err }, "LiveSync: settled results sync failed");
-    liveCache.recordError(msg);
+    liveCache.recordWorkerError("results", msg);
   }
 }
 
@@ -341,25 +441,17 @@ export function startLiveSyncWorkers(): void {
   // Initial sync
   syncLiveFixtures().catch(() => {});
 
-  // Live fixtures from DB + AllSports livescore (match minutes) every 15 s
-  setInterval(() => {
-    syncLiveFixtures().catch(() => {});
-  }, 15_000);
+  // Fixtures from DB + AllSports livescore (match minutes) every 15 s
+  setInterval(() => { syncLiveFixtures().catch(() => {}); }, 15_000);
 
-  // Live odds from DB every 10 s
-  setInterval(() => {
-    syncLiveOdds().catch(() => {});
-  }, 10_000);
+  // Odds: AllSports API update + DB read + broadcast every 10 s
+  setInterval(() => { syncLiveOdds().catch(() => {}); }, 10_000);
 
-  // Live stats from AllSports statistics API every 30 s
-  setInterval(() => {
-    syncLiveStats().catch(() => {});
-  }, 30_000);
+  // Stats from AllSports statistics API every 30 s
+  setInterval(() => { syncLiveStats().catch(() => {}); }, 30_000);
 
   // Settled results: remove finished fixtures from cache every 60 s
-  setInterval(() => {
-    syncSettledFixtures().catch(() => {});
-  }, 60_000);
+  setInterval(() => { syncSettledFixtures().catch(() => {}); }, 60_000);
 
-  logger.info("Live sync workers started (fixture:15s, odds:10s, stats:30s, settled:60s)");
+  logger.info("Live sync workers started (fixture:15s, odds:10s API+DB, stats:30s, settled:60s)");
 }

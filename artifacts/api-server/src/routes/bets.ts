@@ -48,9 +48,11 @@ router.post("/bets", requireAuth, async (req: AuthRequest, res): Promise<void> =
     return;
   }
 
-  const nonUpcoming = fixtures.filter((f) => f.status !== "upcoming");
-  if (nonUpcoming.length > 0) {
-    res.status(400).json({ error: "One or more events have already started or finished and are no longer open for betting." });
+  // Allow betting on both upcoming (pre-match) and live fixtures;
+  // odds are frozen at submission time from the client-supplied value
+  const closedFixtures = fixtures.filter((f) => f.status !== "upcoming" && f.status !== "live");
+  if (closedFixtures.length > 0) {
+    res.status(400).json({ error: "One or more events have already finished and are no longer open for betting." });
     return;
   }
 
