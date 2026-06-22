@@ -1,2 +1,10 @@
 User-agent: *
 Allow: /
+Disallow: /admin/
+Disallow: /admin
+Disallow: /api/
+Disallow: /branch/
+Disallow: /agent/
+Disallow: /payout/
+
+Sitemap: https://gowinrdc.com/sitemap.xml
