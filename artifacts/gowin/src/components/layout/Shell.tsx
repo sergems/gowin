@@ -49,7 +49,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const [location, navigate] = useLocation();
   const { selections, stake, lastPlacedBet, clearLastPlacedBet } = useBetSlip();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [betSlipOpen, setBetSlipOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 768);
+  const [betSlipOpen, setBetSlipOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1280);
   const [sportsOpen, setSportsOpen] = useState(false);
   const [openCountries, setOpenCountries] = useState<Set<string>>(new Set());
   const [intlOpen, setIntlOpen] = useState(false);
