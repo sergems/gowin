@@ -406,7 +406,7 @@ const translations = {
     "status.lost": "Perdu",
     "status.void": "Annulé",
 
-    "betslip.title": "Coupon de pari",
+    "betslip.title": "Coupon",
     "betslip.load": "Charger",
     "betslip.empty": "Votre coupon est vide",
     "betslip.load_booked": "Charger un pari réservé",
