@@ -1,14 +1,15 @@
 # GoWin Sportsbook — Deployment Guide
-## Linode (Akamai Cloud) · Docker · gowinrdc.com
+## Linode (Akamai Cloud) · Docker · IP-first setup
 
 ---
 
 ## What you will have at the end
-- App running 24/7 on a Linode server behind HTTPS
-- Domain `gowinrdc.com` with a free SSL certificate (Let's Encrypt)
+- App running 24/7 at **http://139.162.152.66**
 - PostgreSQL database managed by Docker Compose
 - Schema created automatically on every deploy — no manual SQL needed
 - One-command deploys: `git pull && docker compose up --build -d`
+
+> **Note:** HTTPS and a custom domain can be added later — see the last section of this guide.
 
 ---
 
@@ -26,33 +27,19 @@ Confirm you can see the files at **https://github.com/sergems/gowin**. ✅
 
 ---
 
-## PART 2 — Create your Linode server
-
-1. Log in at [cloud.linode.com](https://cloud.linode.com).
-2. Click **Create → Linode**.
-3. Choose:
-   - **Image**: Ubuntu 22.04 LTS
-   - **Region**: closest to your users (e.g. Johannesburg or Frankfurt)
-   - **Plan**: Shared CPU → **Linode 2 GB** (recommended minimum for Docker builds)
-   - **Root Password**: choose a strong password and save it
-4. Click **Create Linode** and wait until it shows **Running**.
-5. Note the **IP address** (e.g. `45.79.10.123`).
-
----
-
-## PART 3 — Connect to your server
+## PART 2 — Connect to your server
 
 ```bash
-ssh root@45.79.10.123
+ssh root@139.162.152.66
 ```
 
-Replace `45.79.10.123` with your actual IP. Type `yes` when prompted, then enter your root password.
+Type `yes` when prompted, then enter your root password.
 
 ---
 
-## PART 4 — Install Docker & Docker Compose
+## PART 3 — Install Docker & Nginx
 
-Run the following in one go:
+Run these commands:
 
 ```bash
 apt update && apt upgrade -y
@@ -63,17 +50,17 @@ curl -fsSL https://get.docker.com | sh
 # Install Docker Compose plugin
 apt install -y docker-compose-plugin
 
-# Install Nginx and Certbot
-apt install -y nginx certbot python3-certbot-nginx
+# Install Nginx (reverse proxy)
+apt install -y nginx
 
-# Verify
+# Verify installs
 docker --version
 docker compose version
 ```
 
 ---
 
-## PART 5 — Clone your repository
+## PART 4 — Clone your repository
 
 ```bash
 git clone https://github.com/sergems/gowin.git /var/www/gowin
@@ -82,20 +69,20 @@ cd /var/www/gowin
 
 ---
 
-## PART 6 — Create the environment file
+## PART 5 — Create the environment file
 
 ```bash
 nano /var/www/gowin/.env
 ```
 
-Paste this, filling in your values:
+Paste this, replacing `CHOOSE_A_STRONG_PASSWORD` with a real password (use the same password in both places):
 
 ```env
 # ── Required ─────────────────────────────────────────
 NODE_ENV=production
 PORT=8080
 
-# Postgres credentials — must match the values in docker-compose.yml below
+# Postgres — same password in both lines below
 POSTGRES_USER=gowin
 POSTGRES_PASSWORD=CHOOSE_A_STRONG_PASSWORD
 POSTGRES_DB=gowindb
@@ -107,16 +94,14 @@ SMTP_PORT=
 SMTP_USER=
 SMTP_PASS=
 SMTP_FROM=
-APP_URL=https://gowinrdc.com
+APP_URL=http://139.162.152.66
 ```
-
-> ⚠️ Replace `CHOOSE_A_STRONG_PASSWORD` with a real password (same in both `POSTGRES_PASSWORD` and `DATABASE_URL`).
 
 Save: `Ctrl+X` → `Y` → `Enter`.
 
 ---
 
-## PART 7 — Create docker-compose.yml
+## PART 6 — Create docker-compose.yml
 
 ```bash
 nano /var/www/gowin/docker-compose.yml
@@ -161,7 +146,7 @@ Save: `Ctrl+X` → `Y` → `Enter`.
 
 ---
 
-## PART 8 — Build and start the application
+## PART 7 — Build and start the application
 
 ```bash
 cd /var/www/gowin
@@ -171,7 +156,7 @@ docker compose up --build -d
 This will:
 1. Pull the Postgres image and start the database
 2. Build the GoWin image (installs dependencies, compiles TypeScript, builds React)
-3. Start the app container — which waits for Postgres, applies the schema automatically, then starts the server
+3. Start the app — waits for Postgres, applies the schema automatically, then starts the server
 
 **First build takes 5–10 minutes.** Watch the logs:
 
@@ -190,10 +175,10 @@ Server listening  port: 8080
 
 ---
 
-## PART 9 — Configure Nginx (reverse proxy)
+## PART 8 — Configure Nginx
 
 ```bash
-nano /etc/nginx/sites-available/gowinrdc.com
+nano /etc/nginx/sites-available/gowin
 ```
 
 Paste:
@@ -201,9 +186,8 @@ Paste:
 ```nginx
 server {
     listen 80;
-    server_name gowinrdc.com www.gowinrdc.com;
+    server_name 139.162.152.66;
 
-    # Frontend static files (built inside Docker, served by the API server)
     location / {
         proxy_pass http://localhost:8080;
         proxy_http_version 1.1;
@@ -213,7 +197,6 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # API
     location /api/ {
         proxy_pass http://localhost:8080;
         proxy_http_version 1.1;
@@ -223,7 +206,6 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # WebSocket
     location /ws {
         proxy_pass http://localhost:8080;
         proxy_http_version 1.1;
@@ -232,7 +214,6 @@ server {
         proxy_set_header Host $host;
     }
 
-    # Slide images
     location /slides-images/ {
         proxy_pass http://localhost:8080;
         proxy_set_header Host $host;
@@ -243,57 +224,28 @@ server {
 Enable it:
 
 ```bash
-ln -s /etc/nginx/sites-available/gowinrdc.com /etc/nginx/sites-enabled/
+ln -s /etc/nginx/sites-available/gowin /etc/nginx/sites-enabled/
 nginx -t          # should print "syntax is ok"
 systemctl reload nginx
 ```
 
 ---
 
-## PART 10 — Point your domain to the server
+## PART 9 — Verify everything works
 
-Log in to your domain registrar and set these DNS records:
+Open **http://139.162.152.66** in your browser. You should see the GoWin homepage.
 
-| Type | Name | Value |
-|------|------|-------|
-| A | @ | `45.79.10.123` |
-| A | www | `45.79.10.123` |
-
-Replace `45.79.10.123` with your actual Linode IP.
-
-DNS can take 5–60 minutes to propagate. Check at [dnschecker.org](https://dnschecker.org).
-
----
-
-## PART 11 — Enable HTTPS (free SSL)
-
-Once DNS is pointing correctly:
+Try logging in and navigating around. If anything looks wrong:
 
 ```bash
-certbot --nginx -d gowinrdc.com -d www.gowinrdc.com
+docker compose -f /var/www/gowin/docker-compose.yml logs -f app
 ```
-
-- Enter your email, agree to terms, and Certbot will update Nginx automatically.
-
-Test auto-renewal:
-
-```bash
-certbot renew --dry-run
-```
-
----
-
-## PART 12 — Verify everything works
-
-1. Open `https://gowinrdc.com` — you should see the GoWin homepage with the green padlock.
-2. Try logging in.
-3. Check logs if anything looks wrong: `docker compose -f /var/www/gowin/docker-compose.yml logs -f app`
 
 ---
 
 ## Deploying updates (day-to-day workflow)
 
-Every time you push new code from Replit to GitHub, run this on the server:
+Every time you push new code from Replit to GitHub, SSH into the server and run:
 
 ```bash
 cd /var/www/gowin
@@ -301,7 +253,7 @@ git pull
 docker compose up --build -d
 ```
 
-Docker rebuilds only what changed, applies any schema updates automatically, and restarts the app with zero downtime for the database.
+Docker rebuilds only what changed, applies any schema updates automatically, and restarts the app.
 
 ---
 
@@ -324,7 +276,7 @@ Docker rebuilds only what changed, applies any schema updates automatically, and
 
 ## Auto-start after server reboot
 
-Docker is already configured to restart containers automatically (`restart: always` in `docker-compose.yml`). To make sure Docker itself starts on boot:
+The containers already restart automatically (`restart: always`). Make sure Docker itself starts on boot:
 
 ```bash
 systemctl enable docker
@@ -335,23 +287,88 @@ systemctl enable docker
 ## Troubleshooting
 
 **502 Bad Gateway**
-→ The app container isn't running. Check: `docker compose ps` and `docker compose logs app`.
+→ App container isn't running. Check: `docker compose ps` and `docker compose logs app`.
 
 **Schema / table errors on startup**
-→ The entrypoint script applies `scripts/schema.sql` automatically. If it fails, check: `docker compose logs app | grep entrypoint`.
+→ The entrypoint applies the schema automatically. Check: `docker compose logs app | grep entrypoint`.
 
 **Database connection refused**
-→ The `db` container may still be starting. The app waits for it automatically via the healthcheck — if it keeps failing, check: `docker compose logs db`.
-
-**Domain not resolving**
-→ DNS hasn't propagated yet. Wait 30 minutes and try [dnschecker.org](https://dnschecker.org).
-
-**HTTPS not working**
-→ DNS must be pointing correctly before running Certbot. Verify DNS first, then re-run `certbot --nginx`.
+→ The `db` container may still be starting up. Check: `docker compose logs db`.
 
 **Out of disk space**
 → Clean old Docker images: `docker system prune -af`
 
 ---
 
-*GoWin Sportsbook — gowinrdc.com*
+## Later: switching to a custom domain + HTTPS
+
+When you register a domain (e.g. `gowinrdc.com`), do the following:
+
+**1. Point DNS to your server**
+
+At your domain registrar, add:
+
+| Type | Name | Value |
+|------|------|-------|
+| A | @ | `139.162.152.66` |
+| A | www | `139.162.152.66` |
+
+Wait 5–60 minutes for DNS to propagate ([dnschecker.org](https://dnschecker.org)).
+
+**2. Install Certbot**
+
+```bash
+apt install -y certbot python3-certbot-nginx
+```
+
+**3. Update the Nginx config**
+
+```bash
+nano /etc/nginx/sites-available/gowin
+```
+
+Change the `server_name` line from:
+```nginx
+server_name 139.162.152.66;
+```
+to:
+```nginx
+server_name gowinrdc.com www.gowinrdc.com;
+```
+
+Save, then reload Nginx:
+```bash
+nginx -t && systemctl reload nginx
+```
+
+**4. Get the SSL certificate**
+
+```bash
+certbot --nginx -d gowinrdc.com -d www.gowinrdc.com
+```
+
+Follow the prompts. Certbot updates Nginx automatically — your site will now be at **https://gowinrdc.com**.
+
+**5. Update APP_URL in .env**
+
+```bash
+nano /var/www/gowin/.env
+```
+
+Change:
+```env
+APP_URL=http://139.162.152.66
+```
+to:
+```env
+APP_URL=https://gowinrdc.com
+```
+
+Then restart the app:
+```bash
+docker compose restart app
+```
+
+---
+
+*GoWin Sportsbook — 139.162.152.66*
