@@ -1,3 +1,44 @@
-<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="180" height="180" rx="36" fill="#FF3C00"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" width="180" height="180">
+  <!-- Dark circular background -->
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="45%" r="50%">
+      <stop offset="0%" stop-color="#1e2d1e"/>
+      <stop offset="100%" stop-color="#0d150d"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#f5d060"/>
+      <stop offset="45%" stop-color="#e8a020"/>
+      <stop offset="100%" stop-color="#a06010"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4cdc50"/>
+      <stop offset="100%" stop-color="#1a8c1e"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Outer ring -->
+  <circle cx="90" cy="90" r="88" fill="url(#bg)" stroke="#2a4a2a" stroke-width="2"/>
+
+  <!-- G letter (gold) -->
+  <text x="30" y="122"
+        font-family="Arial Black, Arial, sans-serif"
+        font-weight="900"
+        font-size="90"
+        fill="url(#gold)"
+        stroke="#7a5010"
+        stroke-width="1.5">G</text>
+
+  <!-- W letter (green) -->
+  <text x="82" y="122"
+        font-family="Arial Black, Arial, sans-serif"
+        font-weight="900"
+        font-size="90"
+        fill="url(#green)"
+        stroke="#0d4d10"
+        stroke-width="1.5">W</text>
+
+  <!-- Sparkle star top-right of G -->
+  <g transform="translate(76, 42)" fill="#ffe060">
+    <polygon points="0,-6 1.4,-1.4 6,0 1.4,1.4 0,6 -1.4,1.4 -6,0 -1.4,-1.4" opacity="0.9"/>
+  </g>
 </svg>
