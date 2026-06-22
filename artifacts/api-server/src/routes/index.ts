@@ -19,6 +19,7 @@ import branchAdminRouter from "./branchAdmin";
 import agentRouter from "./agentRoutes";
 import cashUpRouter from "./cashUp";
 import payoutRouter from "./payout";
+import liveRouter from "./live";
 
 const router: IRouter = Router();
 
@@ -42,5 +43,6 @@ router.use(branchAdminRouter);
 router.use(agentRouter);
 router.use(cashUpRouter);
 router.use(payoutRouter);
+router.use(liveRouter);
 
 export default router;

@@ -2,6 +2,8 @@ import { Router } from "express";
 import { db, usersTable, betsTable, fixturesTable, walletsTable, betSelectionsTable, branchesTable } from "@workspace/db";
 import { eq, count, sum, desc, sql, and, inArray } from "drizzle-orm";
 import { requireAdmin, type AuthRequest } from "../middlewares/auth";
+import { liveCache } from "../lib/liveCache";
+import { getWsClientCount } from "../lib/wsServer";
 
 const router = Router();
 
@@ -93,6 +95,12 @@ router.get("/admin/top-fixtures", requireAdmin, async (_req, res): Promise<void>
     totalBets: d.totalBets,
     totalStake: parseFloat(d.totalStake ?? "0"),
   })));
+});
+
+router.get("/admin/api-monitor", requireAdmin, async (_req, res): Promise<void> => {
+  const stats = liveCache.getStats();
+  const wsConnections = getWsClientCount();
+  res.json({ ...stats, wsConnections });
 });
 
 export default router;

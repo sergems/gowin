@@ -19,7 +19,7 @@ import {
   Activity, LayoutDashboard, History, Wallet, Trophy, LogOut, Users, Settings, X,
   ArrowLeftRight, Ticket, UserCircle, AlertTriangle, Banknote, SlidersHorizontal,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, ChevronDown, ChevronRight, Globe, Shield, CheckCircle2,
-  Home, Menu, Images, Printer, Clock, Building2, Target, BarChart3, FileText, DollarSign,
+  Home, Menu, Images, Printer, Clock, Building2, Target, BarChart3, FileText, DollarSign, Radio,
 } from "lucide-react";
 import type { PlacedBetDetails } from "@/contexts/BetSlipContext";
 import { printBetSlip } from "@/lib/printBetSlip";
@@ -143,6 +143,7 @@ export function Shell({ children }: { children: ReactNode }) {
     { href: "/admin/withdrawals",  icon: Banknote,        label: "Withdrawals",  match: (l: string) => l === "/admin/withdrawals" },
     { href: "/admin/slides",          icon: Images,            label: "Slides",          match: (l: string) => l === "/admin/slides" },
     { href: "/admin/fixture-update",  icon: Clock,             label: "Fixture Update",  match: (l: string) => l === "/admin/fixture-update" },
+    { href: "/admin/api-monitor",     icon: BarChart3,         label: "API Monitor",     match: (l: string) => l === "/admin/api-monitor" },
     { href: "/admin/settings",        icon: SlidersHorizontal, label: "Settings",        match: (l: string) => l === "/admin/settings" },
   ] : [];
 
@@ -160,6 +161,21 @@ export function Shell({ children }: { children: ReactNode }) {
                   ${location === "/" ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
                 <Activity className="w-4 h-4 shrink-0" />
                 {open && <span className="flex-1">Home</span>}
+              </Link>
+            )}
+
+            {!isStaffRole && (
+              <Link href="/live" title={!open ? "Live" : undefined} onClick={onNav}
+                className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                  ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
+                  ${location.startsWith("/live") ? "bg-red-500/10 text-red-400" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
+                <div className="relative shrink-0">
+                  <Radio className="w-4 h-4" />
+                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-red-500" />
+                </div>
+                {open && <span className="flex-1">Live</span>}
+                {open && <span className="text-[10px] font-bold bg-red-500 text-white rounded px-1 py-0.5 leading-none">LIVE</span>}
               </Link>
             )}
 

@@ -1,3 +1,4 @@
+import { createServer } from "http";
 import app from "./app";
 import { logger } from "./lib/logger";
 import { refreshAllUpcomingOdds } from "./lib/oddsRefresh";
@@ -7,6 +8,8 @@ import { autoExpireFixtures } from "./lib/fixtureExpiry";
 import { switchDatabase, db, fixturesTable } from "@workspace/db";
 import { getMetaSetting, CUSTOM_DB_KEY } from "./lib/metaDb";
 import { eq, sql } from "drizzle-orm";
+import { attachWebSocketServer } from "./lib/wsServer";
+import { startLiveSyncWorkers } from "./lib/liveSync";
 
 const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
@@ -15,12 +18,16 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, async (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
+const server = createServer(app);
 
+attachWebSocketServer(server);
+
+server.on("error", (err) => {
+  logger.error({ err }, "HTTP server error");
+  process.exit(1);
+});
+
+server.listen(port, async () => {
   logger.info({ port }, "Server listening");
 
   // Check for a saved custom DB URL and switch to it if present
@@ -33,6 +40,9 @@ app.listen(port, async (err) => {
   } catch (err) {
     logger.warn({ err }, "Could not read custom DB setting — using default connection");
   }
+
+  // Start live betting sync workers after server is ready
+  startLiveSyncWorkers();
 });
 
 // ── Result sync helper ────────────────────────────────────────────────────────

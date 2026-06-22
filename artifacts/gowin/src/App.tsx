@@ -22,6 +22,9 @@ import Results from "@/pages/results";
 import Wallet from "@/pages/wallet";
 import Profile from "@/pages/profile";
 
+// Live Betting
+import LiveBetting from "@/pages/LiveBetting";
+
 // Admin Pages
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminUsers from "@/pages/admin/users";
@@ -34,6 +37,7 @@ import AdminSettings from "@/pages/admin/settings";
 import AdminSlides from "@/pages/admin/slides";
 import AdminFixtureUpdate from "@/pages/admin/fixture-update";
 import AdminBranches from "@/pages/admin/BranchesPage";
+import ApiMonitorPage from "@/pages/admin/ApiMonitorPage";
 
 // Branch Admin Pages
 import BranchDashboard from "@/pages/branch/DashboardPage";
@@ -111,6 +115,7 @@ function Router() {
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password" component={ResetPassword} />
         <Route path="/change-password" component={() => <ProtectedRoute component={ChangePassword} />} />
+        <Route path="/live" component={LiveBetting} />
         <Route path="/sports" component={SportsHub} />
         <Route path="/sports/:sportId" component={SportsHub} />
         <Route path="/fixtures/:id" component={FixtureDetail} />
@@ -131,6 +136,7 @@ function Router() {
         <Route path="/admin/slides" component={() => <ProtectedRoute component={AdminSlides} adminOnly />} />
         <Route path="/admin/fixture-update" component={() => <ProtectedRoute component={AdminFixtureUpdate} adminOnly />} />
         <Route path="/admin/branches" component={() => <ProtectedRoute component={AdminBranches} adminOnly />} />
+        <Route path="/admin/api-monitor" component={() => <ProtectedRoute component={ApiMonitorPage} adminOnly />} />
 
         {/* Branch Admin Routes */}
         <Route path="/branch" component={() => <ProtectedRoute component={BranchDashboard} allowedRoles={["branch_admin"]} />} />
