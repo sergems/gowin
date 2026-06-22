@@ -87,7 +87,7 @@ interface LiveFixtureData {
 }
 
 export default function History() {
-  const { formatCurrency, currency } = useSiteSettings();
+  const { formatCurrency, currency, t } = useSiteSettings();
   const [activeTab, setActiveTab] = useState<"pending" | "won" | "lost" | "void">("pending");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [liveFixtures, setLiveFixtures] = useState<Map<number, LiveFixtureData>>(new Map());
@@ -98,7 +98,6 @@ export default function History() {
 
   const bets = betsData?.bets?.filter((b) => b.status === activeTab) || [];
 
-  // Collect all unique fixture IDs from pending bets
   const pendingFixtureIds = activeTab === "pending"
     ? [...new Set(
         bets.flatMap((b: any) => (b.selections ?? []).map((s: any) => s.fixture?.id).filter(Boolean))
@@ -107,7 +106,6 @@ export default function History() {
 
   const fixtureIdsKey = pendingFixtureIds.slice().sort().join(",");
 
-  // Poll live fixture status every 30s for pending bets
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
     if (!fixtureIdsKey) {
@@ -153,16 +151,16 @@ export default function History() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-black tracking-tight mb-2">My Bets</h1>
-        <p className="text-muted-foreground">View your bet history and track pending wagers</p>
+        <h1 className="text-3xl font-black tracking-tight mb-2">{t("bets.title")}</h1>
+        <p className="text-muted-foreground">{t("bets.desc")}</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={(v: any) => { setActiveTab(v); setExpanded(new Set()); }} className="w-full">
         <TabsList className="grid grid-cols-4 mb-8">
-          <TabsTrigger value="pending">Pending</TabsTrigger>
-          <TabsTrigger value="won">Won</TabsTrigger>
-          <TabsTrigger value="lost">Lost</TabsTrigger>
-          <TabsTrigger value="void">Void</TabsTrigger>
+          <TabsTrigger value="pending">{t("bets.pending")}</TabsTrigger>
+          <TabsTrigger value="won">{t("bets.won")}</TabsTrigger>
+          <TabsTrigger value="lost">{t("bets.lost")}</TabsTrigger>
+          <TabsTrigger value="void">{t("bets.void")}</TabsTrigger>
         </TabsList>
 
         <div className="space-y-3">
@@ -173,15 +171,14 @@ export default function History() {
           ) : bets.length === 0 ? (
             <div className="py-16 text-center border border-dashed border-border rounded-xl">
               <Trophy className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-muted-foreground">No {activeTab} bets found.</p>
+              <p className="text-muted-foreground">{t("bets.no_bets")}</p>
             </div>
           ) : (
             bets.map((bet: any) => {
               const isOpen = expanded.has(bet.id);
               const selCount = bet.selections?.length ?? 0;
-              const label = selCount === 1 ? "Single" : `${selCount}-Fold Accumulator`;
+              const label = selCount === 1 ? t("bets.single") : `${selCount}-Fold Accumulator`;
 
-              // Check if any selection is live for this pending bet
               const hasLiveSelection = activeTab === "pending" && (bet.selections ?? []).some((s: any) => {
                 const live = liveFixtures.get(s.fixture?.id);
                 return live?.status === "live";
@@ -194,7 +191,6 @@ export default function History() {
                     hasLiveSelection ? "border-red-500/30" : "border-border"
                   }`}
                 >
-                  {/* Collapsed header */}
                   <button
                     onClick={() => toggle(bet.id)}
                     className="w-full flex items-center justify-between p-4 hover:bg-accent/20 transition-colors text-left"
@@ -228,15 +224,15 @@ export default function History() {
 
                     <div className="flex items-center gap-6">
                       <div className="text-right hidden sm:block">
-                        <div className="text-xs text-muted-foreground">Stake</div>
+                        <div className="text-xs text-muted-foreground">{t("betslip.stake")}</div>
                         <div className="font-bold text-sm">{formatCurrency(Number(bet.stake))}</div>
                       </div>
                       <div className="text-right">
                         <div className="text-xs text-muted-foreground">
-                          {bet.status === "won" ? "Won" : "To Win"}
+                          {bet.status === "won" ? t("bets.won") : t("bets.to_win")}
                         </div>
                         <div className={`font-black text-sm ${bet.status === "won" ? "text-primary" : ""}`}>
-                          ${Number(bet.potentialWin).toFixed(2)}
+                          {formatCurrency(Number(bet.potentialWin))}
                         </div>
                       </div>
                       <div className="text-muted-foreground ml-1">
@@ -245,7 +241,6 @@ export default function History() {
                     </div>
                   </button>
 
-                  {/* Expanded body */}
                   <AnimatePresence initial={false}>
                     {isOpen && (
                       <motion.div
@@ -267,7 +262,6 @@ export default function History() {
                                 const isFinishedLive = live?.status === "finished";
                                 const hasLiveScore = live != null && (live.scoreHome != null || live.scoreAway != null);
 
-                                // Use live score if available, otherwise fall back to static fixture score
                                 const score =
                                   hasLiveScore
                                     ? `${live!.scoreHome ?? 0} – ${live!.scoreAway ?? 0}`
@@ -337,7 +331,7 @@ export default function History() {
                                       </div>
                                     </div>
                                     <div className="text-right ml-4 shrink-0">
-                                      <div className="text-xs text-muted-foreground mb-0.5">Odds</div>
+                                      <div className="text-xs text-muted-foreground mb-0.5">{t("bets.odds")}</div>
                                       <div className="font-bold text-primary">{Number(sel.odds).toFixed(2)}</div>
                                     </div>
                                   </div>
@@ -345,25 +339,24 @@ export default function History() {
                               })}
                             </div>
                           ) : (
-                            <div className="px-5 py-4 text-sm text-muted-foreground">No selections found.</div>
+                            <div className="px-5 py-4 text-sm text-muted-foreground">{t("bets.no_selections")}</div>
                           )}
 
-                          {/* Footer summary */}
                           <div className="flex items-center justify-between px-5 py-3.5 bg-accent/10 border-t border-border/60 text-sm">
                             <div className="flex gap-6">
                               <div>
-                                <div className="text-xs text-muted-foreground mb-0.5">Stake</div>
+                                <div className="text-xs text-muted-foreground mb-0.5">{t("betslip.stake")}</div>
                                 <div className="font-bold">{formatCurrency(Number(bet.stake))}</div>
                               </div>
                               <div>
-                                <div className="text-xs text-muted-foreground mb-0.5">Total Odds</div>
+                                <div className="text-xs text-muted-foreground mb-0.5">{t("betslip.total_odds")}</div>
                                 <div className="font-bold">{Number(bet.totalOdds).toFixed(2)}</div>
                               </div>
                             </div>
                             <div className="flex items-center gap-4">
                               <div className="text-right">
                                 <div className="text-xs text-muted-foreground mb-0.5">
-                                  {bet.status === "won" ? "Won" : "Potential Win"}
+                                  {bet.status === "won" ? t("bets.won") : t("betslip.potential_win")}
                                 </div>
                                 <div className={`font-black text-lg ${bet.status === "won" ? "text-primary" : ""}`}>
                                   {formatCurrency(Number(bet.potentialWin))}
@@ -371,11 +364,11 @@ export default function History() {
                               </div>
                               <button
                                 onClick={() => printBetSlip(historyBetToPrintData(bet), currency)}
-                                title="Print bet slip"
+                                title={t("bets.print")}
                                 className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border rounded-md px-3 py-2 hover:bg-accent transition-colors shrink-0"
                               >
                                 <Printer className="w-3.5 h-3.5" />
-                                <span className="hidden sm:inline">Print</span>
+                                <span className="hidden sm:inline">{t("bets.print")}</span>
                               </button>
                             </div>
                           </div>

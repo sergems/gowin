@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { ChevronDown, ChevronRight, Shield, Globe, Trophy, ChevronLeft } from "lucide-react";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 
 interface LeagueEntry { id: number; name: string; logo: string | null; fixtureCount: number; }
 interface CountryEntry { name: string; logo: string | null; leagues: LeagueEntry[]; }
@@ -141,6 +142,7 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
 
 export default function Home() {
   const [, navigate] = useLocation();
+  const { t } = useSiteSettings();
   const [openCountries, setOpenCountries] = useState<Set<string>>(new Set());
   const [intlOpen, setIntlOpen] = useState(false);
 
@@ -204,7 +206,7 @@ export default function Home() {
       {/* UEFA Featured Competitions */}
       {uefaLeagues.length > 0 && (
         <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <SectionHeader>⭐ UEFA Competitions</SectionHeader>
+          <SectionHeader>⭐ {t("home.uefa_competitions")}</SectionHeader>
           {uefaLeagues.map((league) => (
             <LeagueRow key={league.id} league={league} onClick={() => goToLeague(league.id, league.name)} />
           ))}
@@ -219,7 +221,7 @@ export default function Home() {
             className="w-full flex items-center gap-3 px-4 py-3 hover:bg-accent/30 transition-colors"
           >
             <Globe className="w-4 h-4 text-primary shrink-0" />
-            <span className="flex-1 text-sm font-semibold text-left">International</span>
+            <span className="flex-1 text-sm font-semibold text-left">{t("home.international")}</span>
             <div className="flex items-center gap-2">
               {intlFixtures > 0 && (
                 <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full tabular-nums">
@@ -246,8 +248,8 @@ export default function Home() {
       {sortedCountries.length === 0 && uefaLeagues.length === 0 && (
         <div className="py-14 text-center border border-dashed border-border rounded-xl">
           <Trophy className="w-9 h-9 text-muted-foreground/40 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground font-medium">No competitions available right now.</p>
-          <p className="text-xs text-muted-foreground/60 mt-1">Check back later for upcoming matches.</p>
+          <p className="text-sm text-muted-foreground font-medium">{t("home.no_competitions")}</p>
+          <p className="text-xs text-muted-foreground/60 mt-1">{t("home.check_back")}</p>
         </div>
       )}
 

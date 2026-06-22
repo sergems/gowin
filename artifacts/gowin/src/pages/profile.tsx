@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { User, Phone, Lock, CheckCircle, AlertTriangle, Hash } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 
 interface ProfileData {
   id: number;
@@ -44,7 +45,7 @@ async function patchProfile(token: string | null, body: object): Promise<Profile
   return data;
 }
 
-function LockedField({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
+function LockedField({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <Label className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5 block">{label}</Label>
@@ -59,6 +60,7 @@ function LockedField({ label, value, icon }: { label: string; value: string; ico
 export default function Profile() {
   const { token } = useAuth();
   const { toast } = useToast();
+  const { t } = useSiteSettings();
   const queryClient = useQueryClient();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -89,7 +91,7 @@ export default function Profile() {
       if (!profile.phoneNumber && phoneNumber.trim()) updates.phoneNumber = phoneNumber.trim();
 
       if (Object.keys(updates).length === 0) {
-        toast({ title: "No changes to save" });
+        toast({ title: t("profile.no_changes") });
         setIsSaving(false);
         return;
       }
@@ -100,9 +102,9 @@ export default function Profile() {
       setLastName(updated.lastName ?? "");
       setPhoneNumber(updated.phoneNumber ?? "");
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-      toast({ title: "Profile updated", description: "Your profile has been saved." });
+      toast({ title: t("profile.updated"), description: t("profile.saved") });
     } catch (e: any) {
-      toast({ title: "Update failed", description: e.message, variant: "destructive" });
+      toast({ title: t("profile.update_failed"), description: e.message, variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
@@ -124,18 +126,16 @@ export default function Profile() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h1 className="text-3xl font-black tracking-tight mb-2">My Profile</h1>
-        <p className="text-muted-foreground">Manage your account details</p>
+        <h1 className="text-3xl font-black tracking-tight mb-2">{t("profile.title")}</h1>
+        <p className="text-muted-foreground">{t("profile.desc")}</p>
       </div>
 
       {!phoneLocked && (
         <div className="flex items-start gap-3 p-4 rounded-xl border border-amber-500/40 bg-amber-500/10">
           <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
           <div>
-            <p className="font-semibold text-amber-500">Complete your profile to place bets</p>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Your name and phone number are required before you can place any bets. These can only be set once — contact support if you need to change them.
-            </p>
+            <p className="font-semibold text-amber-500">{t("profile.complete_warning")}</p>
+            <p className="text-sm text-muted-foreground mt-0.5">{t("profile.complete_warning_desc")}</p>
           </div>
         </div>
       )}
@@ -169,14 +169,14 @@ export default function Profile() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <User className="w-4 h-4" /> Account Info
+            <User className="w-4 h-4" /> {t("profile.account_info")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <LockedField label="Email" value={profile?.email ?? ""} />
+            <LockedField label={t("common.email")} value={profile?.email ?? ""} />
             <div>
-              <Label className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5 block">User ID</Label>
+              <Label className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5 block">{t("profile.user_id")}</Label>
               <div className="relative">
                 <Input value={profile?.publicId?.toString() ?? "—"} disabled className="opacity-70 font-mono pr-10" />
                 <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
@@ -185,11 +185,11 @@ export default function Profile() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             {firstNameLocked ? (
-              <LockedField label="First Name" value={profile?.firstName ?? ""} />
+              <LockedField label={t("profile.first_name")} value={profile?.firstName ?? ""} />
             ) : (
               <div>
                 <Label htmlFor="firstName" className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5 block">
-                  First Name
+                  {t("profile.first_name")}
                 </Label>
                 <Input
                   id="firstName"
@@ -200,11 +200,11 @@ export default function Profile() {
               </div>
             )}
             {lastNameLocked ? (
-              <LockedField label="Last Name" value={profile?.lastName ?? ""} />
+              <LockedField label={t("profile.last_name")} value={profile?.lastName ?? ""} />
             ) : (
               <div>
                 <Label htmlFor="lastName" className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5 block">
-                  Last Name
+                  {t("profile.last_name")}
                 </Label>
                 <Input
                   id="lastName"
@@ -218,7 +218,7 @@ export default function Profile() {
           {(firstNameLocked || lastNameLocked) && (
             <p className="text-xs text-muted-foreground flex items-center gap-1.5">
               <Lock className="w-3 h-3 shrink-0" />
-              Name is locked. Contact support if you need to change it.
+              {t("profile.name_locked")}
             </p>
           )}
         </CardContent>
@@ -229,10 +229,10 @@ export default function Profile() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Phone className="w-4 h-4" />
-            Mobile Number
+            {t("profile.mobile_number")}
             {phoneLocked && (
               <span className="flex items-center gap-1 text-xs font-normal text-muted-foreground ml-auto">
-                <Lock className="w-3 h-3" /> Contact support to change
+                <Lock className="w-3 h-3" /> {t("profile.contact_support")}
               </span>
             )}
           </CardTitle>
@@ -253,7 +253,7 @@ export default function Profile() {
           {!phoneLocked && (
             <p className="text-xs text-amber-500/90 flex items-center gap-1.5">
               <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-              This can only be set once. Make sure it's correct before saving.
+              {t("profile.phone_once")}
             </p>
           )}
         </CardContent>
@@ -262,11 +262,11 @@ export default function Profile() {
       {(!firstNameLocked || !lastNameLocked || !phoneLocked) && (
         <div className="flex items-center gap-3">
           <Button onClick={handleSave} disabled={isSaving} className="px-8">
-            {isSaving ? "Saving..." : "Save Changes"}
+            {isSaving ? t("common.saving") : t("profile.save")}
           </Button>
           {profileComplete && (
             <span className="flex items-center gap-1.5 text-sm text-primary">
-              <CheckCircle className="w-4 h-4" /> Profile complete
+              <CheckCircle className="w-4 h-4" /> {t("profile.complete")}
             </span>
           )}
         </div>
@@ -274,7 +274,7 @@ export default function Profile() {
 
       {profileComplete && (
         <div className="flex items-center gap-2 text-sm text-primary">
-          <CheckCircle className="w-4 h-4" /> Profile complete — you're all set to place bets
+          <CheckCircle className="w-4 h-4" /> {t("profile.complete_desc")}
         </div>
       )}
     </div>

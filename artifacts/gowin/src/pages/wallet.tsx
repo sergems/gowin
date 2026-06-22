@@ -38,19 +38,17 @@ interface Withdrawal {
   createdAt: string;
 }
 
-const STATUS_CONFIG = {
-  pending:  { label: "Pending",  cls: "bg-amber-500/15 text-amber-500 border-amber-500/30",        Icon: Clock },
-  approved: { label: "Approved", cls: "bg-blue-500/15 text-blue-500 border-blue-500/30",           Icon: CheckCircle2 },
-  rejected: { label: "Rejected", cls: "bg-destructive/15 text-destructive border-destructive/30",  Icon: XCircle },
-  paid:     { label: "Paid",     cls: "bg-primary/15 text-primary border-primary/30",              Icon: Banknote },
-};
-
-function StatusBadge({ status }: { status: Withdrawal["status"] }) {
-  const cfg = STATUS_CONFIG[status];
+function StatusBadge({ status, t }: { status: Withdrawal["status"]; t: (k: string) => string }) {
+  const cfg = {
+    pending:  { key: "wallet.status_pending",  cls: "bg-amber-500/15 text-amber-500 border-amber-500/30",       Icon: Clock },
+    approved: { key: "wallet.status_approved", cls: "bg-blue-500/15 text-blue-500 border-blue-500/30",          Icon: CheckCircle2 },
+    rejected: { key: "wallet.status_rejected", cls: "bg-destructive/15 text-destructive border-destructive/30", Icon: XCircle },
+    paid:     { key: "wallet.status_paid",     cls: "bg-primary/15 text-primary border-primary/30",             Icon: Banknote },
+  }[status];
   const Icon = cfg.Icon;
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${cfg.cls}`}>
-      <Icon className="w-3 h-3" /> {cfg.label}
+      <Icon className="w-3 h-3" /> {t(cfg.key)}
     </span>
   );
 }
@@ -60,7 +58,7 @@ export default function Wallet() {
   const { data: transactionsData, isLoading: isTransactionsLoading } = useGetMyTransactions();
   const { token, user } = useAuth();
   const { toast } = useToast();
-  const { formatCurrency } = useSiteSettings();
+  const { formatCurrency, t } = useSiteSettings();
   const queryClient = useQueryClient();
 
   const isRestrictedRole = ["agent", "branch_admin", "payout"].includes(user?.role ?? "");
@@ -91,12 +89,12 @@ export default function Wallet() {
     setIsWithdrawing(true);
     try {
       await postWalletAction("/api/wallet/withdrawal-request", token, { amount });
-      toast({ title: "Withdrawal requested", description: `${formatCurrency(amount)} withdrawal submitted for review.` });
+      toast({ title: t("wallet.withdrawal_requested"), description: `${formatCurrency(amount)} ${t("wallet.submitted_for_review")}.` });
       setWithdrawAmount("");
       queryClient.invalidateQueries({ queryKey: ["/api/wallet"] });
       queryClient.invalidateQueries({ queryKey: ["/api/wallet/withdrawals"] });
     } catch (e: any) {
-      toast({ title: "Request failed", description: e.message, variant: "destructive" });
+      toast({ title: t("wallet.request_failed"), description: e.message, variant: "destructive" });
     } finally {
       setIsWithdrawing(false);
     }
@@ -113,12 +111,12 @@ export default function Wallet() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Redemption failed");
-      toast({ title: "Voucher redeemed!", description: `${formatCurrency(data.amount)} added to your wallet.` });
+      toast({ title: t("wallet.voucher_redeemed"), description: `${formatCurrency(data.amount)} ${t("wallet.added_to_wallet")}.` });
       setVoucherCode("");
       queryClient.invalidateQueries({ queryKey: ["/api/wallet"] });
       queryClient.invalidateQueries({ queryKey: ["/api/wallet/transactions"] });
     } catch (e: any) {
-      toast({ title: "Redemption failed", description: e.message, variant: "destructive" });
+      toast({ title: t("wallet.redemption_failed"), description: e.message, variant: "destructive" });
     } finally {
       setIsRedeeming(false);
     }
@@ -127,9 +125,9 @@ export default function Wallet() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-black tracking-tight mb-2">Wallet</h1>
+        <h1 className="text-3xl font-black tracking-tight mb-2">{t("wallet.title")}</h1>
         <p className="text-muted-foreground">
-          {isRestrictedRole ? "View your allocated balance and transaction history" : "Manage your funds and view transaction history"}
+          {isRestrictedRole ? t("wallet.desc_restricted") : t("wallet.desc")}
         </p>
       </div>
 
@@ -144,7 +142,7 @@ export default function Wallet() {
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-1">
-                  {isRestrictedRole ? "Allocated Balance" : "Available Balance"}
+                  {isRestrictedRole ? t("wallet.balance_allocated") : t("wallet.balance")}
                 </p>
                 <h2 className="text-5xl font-black tracking-tight">{formatCurrency(parseFloat(wallet?.balance ?? "0"))}</h2>
               </div>
@@ -162,13 +160,13 @@ export default function Wallet() {
               onClick={() => setActiveTab("voucher")}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${activeTab === "voucher" ? "bg-amber-500 text-white" : "bg-accent/50 text-muted-foreground hover:bg-accent"}`}
             >
-              <Ticket className="w-4 h-4" /> Deposit Voucher
+              <Ticket className="w-4 h-4" /> {t("wallet.deposit_voucher")}
             </button>
             <button
               onClick={() => setActiveTab("withdraw")}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${activeTab === "withdraw" ? "bg-destructive text-destructive-foreground" : "bg-accent/50 text-muted-foreground hover:bg-accent"}`}
             >
-              <Minus className="w-4 h-4" /> Withdraw
+              <Minus className="w-4 h-4" /> {t("wallet.withdraw")}
             </button>
           </div>
         </CardHeader>
@@ -179,12 +177,12 @@ export default function Wallet() {
                 <Ticket className="w-8 h-8 text-amber-500" />
               </div>
               <div className="text-center">
-                <p className="font-semibold mb-1">Redeem a Deposit Voucher</p>
-                <p className="text-sm text-muted-foreground">Enter your 12-character voucher code to credit your wallet instantly</p>
+                <p className="font-semibold mb-1">{t("wallet.redeem_title")}</p>
+                <p className="text-sm text-muted-foreground">{t("wallet.redeem_desc")}</p>
               </div>
               <div className="flex gap-3 w-full max-w-sm">
                 <Input
-                  placeholder="XXXX-XXXX-XXXX"
+                  placeholder={t("wallet.voucher_placeholder")}
                   value={voucherCode}
                   onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
                   onKeyDown={(e) => e.key === "Enter" && handleRedeemVoucher()}
@@ -196,7 +194,7 @@ export default function Wallet() {
                   disabled={isRedeeming || !voucherCode.trim()}
                   className="bg-amber-500 hover:bg-amber-600 text-white px-6"
                 >
-                  {isRedeeming ? "..." : "Redeem"}
+                  {isRedeeming ? t("wallet.redeeming") : t("wallet.redeem")}
                 </Button>
               </div>
             </div>
@@ -208,11 +206,11 @@ export default function Wallet() {
                   <Phone className="w-4 h-4 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">Payment will be sent to</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">{t("wallet.payment_to")}</p>
                   <p className="font-semibold">
                     {(user as any)?.phoneNumber ?? (
                       <span className="text-amber-500 text-sm flex items-center gap-1.5">
-                        <AlertTriangle className="w-3.5 h-3.5" /> No phone number set — go to Profile first
+                        <AlertTriangle className="w-3.5 h-3.5" /> {t("wallet.phone_missing")}
                       </span>
                     )}
                   </p>
@@ -233,7 +231,7 @@ export default function Wallet() {
               <div className="flex gap-3">
                 <Input
                   type="number" min="1"
-                  placeholder="Enter amount"
+                  placeholder={t("wallet.withdrawal_amount")}
                   value={withdrawAmount}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
                   className="text-lg font-semibold"
@@ -246,10 +244,10 @@ export default function Wallet() {
                 disabled={isWithdrawing || !withdrawAmount || !(user as any)?.phoneNumber}
                 className="w-full"
               >
-                {isWithdrawing ? "Submitting..." : "Request Withdrawal"}
+                {isWithdrawing ? t("wallet.submitting") : t("wallet.request_withdrawal")}
               </Button>
               <p className="text-xs text-muted-foreground">
-                Your balance is reserved immediately. An admin will review and process your request.
+                {t("wallet.withdrawal_desc")}
               </p>
             </div>
           )}
@@ -262,13 +260,13 @@ export default function Wallet() {
         <div>
           <div className="flex items-center gap-2 mb-5">
             <Banknote className="w-5 h-5 text-primary" />
-            <h2 className="text-2xl font-bold tracking-tight">My Withdrawals</h2>
+            <h2 className="text-2xl font-bold tracking-tight">{t("wallet.my_withdrawals")}</h2>
           </div>
           {isWithdrawalsLoading ? (
             <div className="space-y-3">{[1, 2].map((i) => <div key={i} className="h-20 bg-accent/50 rounded-lg animate-pulse" />)}</div>
           ) : withdrawals.length === 0 ? (
             <div className="py-10 text-center border border-dashed border-border rounded-xl">
-              <p className="text-muted-foreground">No withdrawal requests yet.</p>
+              <p className="text-muted-foreground">{t("wallet.no_withdrawals")}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -277,15 +275,15 @@ export default function Wallet() {
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-bold text-lg">{formatCurrency(w.amount)}</span>
-                      <StatusBadge status={w.status} />
+                      <StatusBadge status={w.status} t={t} />
                     </div>
                     <p className="text-xs text-muted-foreground line-clamp-1">{w.bankDetails}</p>
                     <p className="text-xs text-muted-foreground">{format(new Date(w.createdAt), "PPP p")}</p>
                     {w.status === "rejected" && w.adminNote && (
-                      <p className="text-xs text-destructive mt-1">Reason: {w.adminNote}</p>
+                      <p className="text-xs text-destructive mt-1">{t("wallet.withdrawal_reason")}: {w.adminNote}</p>
                     )}
                     {w.status === "rejected" && (
-                      <p className="text-xs text-primary mt-1 font-medium">✓ Amount refunded to your wallet</p>
+                      <p className="text-xs text-primary mt-1 font-medium">{t("wallet.refunded")}</p>
                     )}
                   </div>
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
@@ -310,14 +308,14 @@ export default function Wallet() {
       {!isRestrictedRole && <div className="mt-4">
         <div className="flex items-center gap-2 mb-6">
           <HistoryIcon className="w-5 h-5 text-primary" />
-          <h2 className="text-2xl font-bold tracking-tight">Transaction History</h2>
+          <h2 className="text-2xl font-bold tracking-tight">{t("wallet.transaction_history")}</h2>
         </div>
         {isTransactionsLoading ? (
           <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-16 bg-accent/50 rounded-lg animate-pulse" />)}</div>
         ) : transactions.length === 0 ? (
           <div className="py-12 text-center border border-dashed border-border rounded-xl">
             <p className="text-muted-foreground">
-              {isRestrictedRole ? "No transactions yet." : "No transactions yet. Redeem a voucher to get started!"}
+              {isRestrictedRole ? t("wallet.no_transactions") : t("wallet.no_tx_get_started")}
             </p>
           </div>
         ) : (
