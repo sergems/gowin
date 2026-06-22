@@ -128,7 +128,8 @@ export function Shell({ children }: { children: ReactNode }) {
   ] : [];
 
   const payoutLinks = isPayout ? [
-    { href: "/payout", icon: Banknote, label: "Payout Desk", match: (l: string) => l === "/payout" },
+    { href: "/payout",      icon: LayoutDashboard, label: "Dashboard",   match: (l: string) => l === "/payout" },
+    { href: "/payout/desk", icon: Banknote,        label: "Payout Desk", match: (l: string) => l === "/payout/desk" },
   ] : [];
 
   const adminLinks = user?.role === "admin" ? [
@@ -152,13 +153,15 @@ export function Shell({ children }: { children: ReactNode }) {
         <ScrollArea className="flex-1 py-3">
           <nav className={`space-y-1 ${open ? "px-2" : "px-1"}`}>
 
-            <Link href="/" title={!open ? "Home" : undefined} onClick={onNav}
-              className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
-                ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
-                ${location === "/" ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
-              <Activity className="w-4 h-4 shrink-0" />
-              {open && <span className="flex-1">Home</span>}
-            </Link>
+            {!isPayout && (
+              <Link href="/" title={!open ? "Home" : undefined} onClick={onNav}
+                className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                  ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
+                  ${location === "/" ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
+                <Activity className="w-4 h-4 shrink-0" />
+                {open && <span className="flex-1">Home</span>}
+              </Link>
+            )}
 
             {!isStaffRole && isAdmin ? (
               <Link href="/sports" title={!open ? "Sports" : undefined} onClick={onNav}

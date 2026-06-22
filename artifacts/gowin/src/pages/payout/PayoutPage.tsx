@@ -4,7 +4,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Search, CheckCircle2, XCircle, Clock, AlertTriangle, Banknote, Receipt, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
 
-interface BetSelection { id: number; market: string; selection: string; odds: number; fixtureId: number; }
+interface BetSelection {
+  id: number; market: string; selection: string; odds: number; fixtureId: number;
+  homeTeam: string | null; awayTeam: string | null;
+  fixtureStatus: string | null; scoreHome: number | null; scoreAway: number | null;
+}
 interface BetInfo {
   id: number; code: string; stake: number; totalOdds: number; potentialWin: number;
   status: "pending" | "won" | "lost" | "void"; createdAt: string; branchId: number | null;
@@ -170,18 +174,44 @@ export default function PayoutPage() {
           </button>
 
           {showSelections && (
-            <div className="px-5 pb-1 pt-1 bg-zinc-900/40 border-b border-zinc-700/50">
-              <table className="w-full text-xs">
-                <tbody className="divide-y divide-zinc-700/30">
-                  {bet.selections.map(s => (
-                    <tr key={s.id} className="text-zinc-300">
-                      <td className="py-1.5 text-zinc-400">{s.market}</td>
-                      <td className="py-1.5 font-medium text-white">{s.selection}</td>
-                      <td className="py-1.5 text-right text-emerald-400">@{Number(s.odds).toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="bg-zinc-900/40 border-b border-zinc-700/50 divide-y divide-zinc-700/30">
+              {bet.selections.map(s => {
+                const settled = s.fixtureStatus === "finished";
+                const live    = s.fixtureStatus === "live";
+                const hasScore = s.scoreHome !== null && s.scoreAway !== null;
+                return (
+                  <div key={s.id} className="px-5 py-2.5">
+                    {/* Fixture header */}
+                    {s.homeTeam && s.awayTeam && (
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs font-semibold text-zinc-300">{s.homeTeam} vs {s.awayTeam}</p>
+                        <div className="flex items-center gap-1.5">
+                          {settled && hasScore && (
+                            <span className="text-xs font-bold text-white bg-zinc-700 px-2 py-0.5 rounded-md">
+                              {s.scoreHome} – {s.scoreAway}
+                            </span>
+                          )}
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                            settled ? "bg-zinc-600 text-zinc-200" :
+                            live    ? "bg-emerald-900/60 text-emerald-400" :
+                            "bg-amber-900/40 text-amber-400"
+                          }`}>
+                            {settled ? "FT" : live ? "LIVE" : "Upcoming"}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {/* Selection row */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] text-zinc-500 uppercase tracking-wider">{s.market}</span>
+                        <p className="text-sm font-semibold text-white">{s.selection}</p>
+                      </div>
+                      <span className="text-sm font-bold text-emerald-400">@{Number(s.odds).toFixed(2)}</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 

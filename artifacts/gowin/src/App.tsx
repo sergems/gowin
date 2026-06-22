@@ -1,4 +1,5 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -49,6 +50,7 @@ import AgentReports from "@/pages/agent/ReportsPage";
 import AgentBets from "@/pages/agent/BetsPage";
 
 // Payout Pages
+import PayoutDashboard from "@/pages/payout/DashboardPage";
 import PayoutPage from "@/pages/payout/PayoutPage";
 
 const queryClient = new QueryClient({
@@ -82,18 +84,28 @@ function ProtectedRoute({ component: Component, allowedRoles, adminOnly = false,
     if (user.role === "admin") return <AdminDashboard />;
     if (user.role === "branch_admin") return <BranchDashboard />;
     if (user.role === "agent") return <AgentDashboard />;
-    if (user.role === "payout") return <PayoutPage />;
+    if (user.role === "payout") return <PayoutDashboard />;
     return <Home />;
   }
 
   return <Component {...rest} />;
 }
 
+function RootPage() {
+  const { user, isLoading } = useAuth();
+  const [, navigate] = useLocation();
+  useEffect(() => {
+    if (!isLoading && user?.role === "payout") navigate("/payout");
+  }, [user?.role, isLoading]);
+  if (user?.role === "payout") return null;
+  return <Home />;
+}
+
 function Router() {
   return (
     <Shell>
       <Switch>
-        <Route path="/" component={Home} />
+        <Route path="/" component={RootPage} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
         <Route path="/forgot-password" component={ForgotPassword} />
@@ -135,7 +147,8 @@ function Router() {
         <Route path="/agent/reports" component={() => <ProtectedRoute component={AgentReports} allowedRoles={["agent"]} />} />
 
         {/* Payout Routes */}
-        <Route path="/payout" component={() => <ProtectedRoute component={PayoutPage} allowedRoles={["payout", "admin"]} />} />
+        <Route path="/payout" component={() => <ProtectedRoute component={PayoutDashboard} allowedRoles={["payout"]} />} />
+        <Route path="/payout/desk" component={() => <ProtectedRoute component={PayoutPage} allowedRoles={["payout", "admin"]} />} />
 
         <Route component={NotFound} />
       </Switch>
