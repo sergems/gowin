@@ -30,6 +30,9 @@ RUN pnpm --filter @workspace/api-server run build
 # ── Stage 2: production runtime ──────────────────────────────────────────────
 FROM node:24-alpine AS runner
 
+# Install postgresql-client so the entrypoint can run psql + pg_isready
+RUN apk add --no-cache postgresql-client
+
 WORKDIR /app
 
 ENV NODE_ENV=production \
@@ -56,6 +59,12 @@ COPY --from=builder /app/artifacts/api-server/package.json ./artifacts/api-serve
 # Frontend static files (served by Express in production)
 COPY --from=builder /app/artifacts/gowin/dist/public ./artifacts/gowin/dist/public
 
+# Schema migration script + entrypoint
+COPY scripts/schema.sql          ./scripts/schema.sql
+COPY scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
+RUN chmod +x /app/scripts/docker-entrypoint.sh
+
 EXPOSE 8080
 
-CMD ["node", "--enable-source-maps", "artifacts/api-server/dist/index.mjs"]
+# Entrypoint: waits for Postgres, applies schema (idempotent), then starts the server
+ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]

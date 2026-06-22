@@ -1,37 +1,48 @@
-# Version control
+# ── Version control ───────────────────────────────────────────────────────────
 .git
 .gitignore
+.gitattributes
 
-# Dependencies (reinstalled in Docker)
+# ── Node dependencies (reinstalled inside Docker) ────────────────────────────
 node_modules
 **/node_modules
 
-# Build outputs (rebuilt in Docker)
+# ── Build outputs (rebuilt inside Docker) ────────────────────────────────────
 **/dist
 !lib/api-spec
 
-# Dev/config files not needed in image
+# ── Environment / secrets ─────────────────────────────────────────────────────
 .env
 .env.*
 *.local
 .npmrc
 
-# Editor and OS
+# ── Database dumps (not needed in image) ─────────────────────────────────────
+backup.sql
+*.sql.gz
+*.dump
+
+# ── Editor & OS artefacts ─────────────────────────────────────────────────────
 .vscode
 .idea
+*.swp
+*.swo
 .DS_Store
 Thumbs.db
 
-# Logs
+# ── Logs ──────────────────────────────────────────────────────────────────────
 *.log
 logs/
 
-# Test files
+# ── Test files ────────────────────────────────────────────────────────────────
 **/*.test.ts
+**/*.test.js
 **/*.spec.ts
+**/*.spec.js
 **/__tests__
+**/__mocks__
 
-# Replit-specific
+# ── Replit-specific ───────────────────────────────────────────────────────────
 .replit
 replit.nix
 .upm
@@ -39,6 +50,10 @@ replit.nix
 .local
 .agents
 
-# Docs
-*.md
+# ── CI / misc docs ────────────────────────────────────────────────────────────
+.github
+.husky
 DEPLOYMENT_GUIDE.md
+
+# ── pnpm store cache ──────────────────────────────────────────────────────────
+.pnpm-store
