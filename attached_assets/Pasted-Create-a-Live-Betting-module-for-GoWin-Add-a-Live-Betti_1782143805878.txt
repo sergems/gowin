@@ -1,0 +1,155 @@
+Create a Live Betting module for GoWin. Add a Live Betting menu item. Build a dedicated Live Betting page showing all live fixtures from an external API. Group events by sport. Display live scores, match minute, statistics, and live odds. Refresh odds automatically every 5 seconds. Support suspended markets. Store accepted odds at the moment a bet is placed. Integrate with the existing bet slip, wallet, and settlement systems. Use Redis caching for live odds and match data. Follow the existing GoWin color scheme and UI design.
+Live Betting Performance & API Cost Optimization
+IMPORTANT
+
+The platform must be designed to minimize third-party API costs and prevent excessive API usage.
+
+The frontend must NEVER call external sports APIs directly.
+
+All external API requests must go through the GoWin backend.
+
+Architecture:
+
+External Sports API
+↓
+GoWin Backend
+↓
+Redis Cache
+↓
+WebSocket Server
+↓
+Frontend Clients
+
+Live Odds Cache System
+
+Implement Redis caching for:
+
+Live Fixtures
+Live Scores
+Live Odds
+Match Statistics
+Market Status
+
+Cache keys:
+
+live
+live
+live
+live
+
+Background Sync Workers
+
+Create background jobs that fetch data from the sports API instead of allowing each user to make requests.
+
+Live Fixtures
+
+Refresh every 15 seconds.
+
+Live Odds
+
+Refresh every 10 seconds.
+
+Match Statistics
+
+Refresh every 30 seconds.
+
+Settled Results
+
+Refresh every 60 seconds.
+
+All users must consume cached data instead of generating new API requests.
+
+WebSocket Broadcasting
+
+Implement WebSocket support.
+
+When odds update:
+
+Fetch updated odds once.
+Save to Redis.
+Broadcast changes to connected users.
+
+Do NOT make separate API calls per user.
+
+Example:
+
+10,000 users watching Liverpool vs Arsenal
+
+BAD:
+10,000 API requests
+
+GOOD:
+1 API request
+10,000 WebSocket broadcasts
+Smart Refresh Logic
+
+Do not refresh every match constantly.
+
+Only update:
+
+Matches currently live
+Matches starting within 30 minutes
+Markets currently visible to users
+
+Reduce unnecessary API traffic.
+
+On-Demand Market Loading
+
+Do not load all betting markets initially.
+
+Load:
+
+Main Match Odds
+Over/Under
+Double Chance
+
+Load additional markets only when a user expands the match.
+
+Database Storage Rules
+
+Do NOT store every odds update permanently.
+
+Store only:
+
+Accepted bet odds
+Final match results
+Settlement records
+
+Live odds should remain in Redis cache.
+
+This prevents database bloat and improves performance.
+
+API Usage Monitoring
+
+Create an Admin Monitoring Page showing:
+
+API Requests Today
+API Requests This Month
+Current Cache Hit Rate
+Active WebSocket Users
+Estimated API Cost
+
+Display warnings when approaching API limits.
+
+Scalability Target
+
+The architecture should support:
+
+50,000 concurrent users
+10,000+ live betting users
+Thousands of odds updates per minute
+
+Without increasing external API calls proportionally.
+
+The system should fetch data once and distribute it internally.
+
+Failover Protection
+
+If the sports API fails:
+
+Continue serving cached odds
+Mark markets as temporarily unavailable
+Retry synchronization automatically
+Prevent platform crashes
+
+Implement graceful degradation throughout the live betting module.
