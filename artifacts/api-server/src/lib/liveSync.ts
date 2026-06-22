@@ -119,8 +119,9 @@ async function buildLiveFixturesFromDb(): Promise<LiveFixture[]> {
 }
 
 // ── Fetch match minutes from AllSports livescore ──────────────────────────────
-async function fetchLiveScoreData(apiKey: string): Promise<{ minuteMap: Map<string, string>; ok: boolean }> {
+async function fetchLiveScoreData(apiKey: string): Promise<{ minuteMap: Map<string, string>; scoreMap: Map<string, { home: number; away: number }>; ok: boolean }> {
   const minuteMap = new Map<string, string>();
+  const scoreMap = new Map<string, { home: number; away: number }>();
   try {
     liveCache.recordApiRequest();
     const resp = await fetch(
@@ -133,13 +134,16 @@ async function fetchLiveScoreData(apiKey: string): Promise<{ minuteMap: Map<stri
         const extId = String(event.event_key);
         const minute = parseMatchMinute(event.event_status);
         if (minute) minuteMap.set(extId, minute);
+        const home = parseInt(event.event_final_result?.split(" - ")?.[0] ?? "", 10);
+        const away = parseInt(event.event_final_result?.split(" - ")?.[1] ?? "", 10);
+        if (!isNaN(home) && !isNaN(away)) scoreMap.set(extId, { home, away });
       }
-      return { minuteMap, ok: true };
+      return { minuteMap, scoreMap, ok: true };
     }
-    return { minuteMap, ok: false };
+    return { minuteMap, scoreMap, ok: false };
   } catch (err) {
     logger.warn({ err }, "LiveSync: livescore fetch failed");
-    return { minuteMap, ok: false };
+    return { minuteMap, scoreMap, ok: false };
   }
 }
 
@@ -265,27 +269,72 @@ async function fetchAndUpdateLiveOdds(apiKey: string, fixtureId: number, externa
 }
 
 // ── Sync worker: Live fixtures (every 15 s) ────────────────────────────────
+// Detects goals and halftime — triggers immediate odds refresh on those events
 export async function syncLiveFixtures(): Promise<void> {
   try {
+    // Snapshot previous state for event detection BEFORE rebuilding
+    const prevMap = new Map(liveCache.getFixtures().map((f) => [f.id, f]));
+
     const fixtures = await buildLiveFixturesFromDb();
     // DB read succeeded — clear this worker's error only (not other workers')
     liveCache.clearWorkerError("fixture");
 
     const apiKey = await getApiKey();
     if (apiKey) {
-      const { minuteMap, ok } = await fetchLiveScoreData(apiKey);
+      const { minuteMap, scoreMap, ok } = await fetchLiveScoreData(apiKey);
       if (!ok) {
         liveCache.recordWorkerError("fixture", "AllSports livescore API temporarily unavailable");
       }
       for (const f of fixtures) {
-        if (f.externalId && minuteMap.has(f.externalId)) {
-          f.matchMinute = minuteMap.get(f.externalId)!;
+        if (f.externalId) {
+          if (minuteMap.has(f.externalId)) {
+            f.matchMinute = minuteMap.get(f.externalId)!;
+          }
+          // Use authoritative scores from livescore API when available
+          if (scoreMap.has(f.externalId)) {
+            const s = scoreMap.get(f.externalId)!;
+            f.scoreHome = s.home;
+            f.scoreAway = s.away;
+          }
+        }
+      }
+    }
+
+    // ── Event detection: goal or halftime → immediate odds refresh ──────────
+    let significantEvent = false;
+    for (const f of fixtures) {
+      const prev = prevMap.get(f.id);
+      if (!prev) continue;
+
+      // Goal scored
+      if (
+        (f.scoreHome !== null && f.scoreHome !== (prev.scoreHome ?? 0)) ||
+        (f.scoreAway !== null && f.scoreAway !== (prev.scoreAway ?? 0))
+      ) {
+        logger.info(
+          { fixtureId: f.id, score: `${f.scoreHome}-${f.scoreAway}`, prev: `${prev.scoreHome}-${prev.scoreAway}` },
+          "LiveSync: goal detected — triggering immediate odds refresh",
+        );
+        significantEvent = true;
+      }
+
+      // Halftime kick-off
+      if (f.matchMinute !== prev.matchMinute) {
+        if (f.matchMinute === "HT" || f.matchMinute === "2H") {
+          logger.info({ fixtureId: f.id, minute: f.matchMinute }, "LiveSync: period change — triggering immediate odds refresh");
+          significantEvent = true;
         }
       }
     }
 
     liveCache.setFixtures(fixtures);
     broadcast("LIVE_FIXTURE_UPDATE", { fixtures });
+
+    // Fire-and-forget immediate odds + stats refresh on significant events
+    if (significantEvent) {
+      syncLiveOdds().catch(() => {});
+      syncLiveStats().catch(() => {});
+    }
   } catch (err: any) {
     const msg = err?.message ?? "Unknown error";
     logger.error({ err }, "LiveSync: fixture sync failed");
@@ -363,6 +412,7 @@ export async function syncLiveOdds(): Promise<void> {
 }
 
 // ── Sync worker: Live stats from API (every 30 s) ─────────────────────────
+// Detects red cards → triggers immediate odds refresh
 export async function syncLiveStats(): Promise<void> {
   try {
     const apiKey = await getApiKey();
@@ -373,10 +423,25 @@ export async function syncLiveStats(): Promise<void> {
 
     const statsUpdates: Array<{ fixtureId: number; stats: LiveStats }> = [];
     let fetchOk = false;
+    let redCardEvent = false;
 
     for (const fixture of fixtures) {
       const stats = await fetchFixtureStats(apiKey, fixture.externalId!);
       if (stats) {
+        // Detect red card events by comparing with cached stats
+        const prevStats = fixture.stats;
+        if (prevStats) {
+          const prevRed = (prevStats.redCardsHome ?? 0) + (prevStats.redCardsAway ?? 0);
+          const newRed = (stats.redCardsHome ?? 0) + (stats.redCardsAway ?? 0);
+          if (newRed > prevRed) {
+            logger.info(
+              { fixtureId: fixture.id, prevRed, newRed },
+              "LiveSync: red card detected — triggering immediate odds refresh",
+            );
+            redCardEvent = true;
+          }
+        }
+
         const updated: LiveFixture = { ...fixture, stats };
         liveCache.updateFixture(updated);
         statsUpdates.push({ fixtureId: fixture.id, stats });
@@ -392,6 +457,11 @@ export async function syncLiveStats(): Promise<void> {
 
     liveCache.setLastStatsSync(new Date().toISOString());
     if (statsUpdates.length > 0) broadcast("LIVE_STATS_UPDATE", { updates: statsUpdates });
+
+    // Immediate odds refresh on red card
+    if (redCardEvent) {
+      syncLiveOdds().catch(() => {});
+    }
   } catch (err: any) {
     const msg = err?.message ?? "Unknown error";
     logger.error({ err }, "LiveSync: stats sync failed");

@@ -3,17 +3,26 @@ import { useBetSlip } from "@/contexts/BetSlipContext";
 import { useLiveSocket, type LiveFixture, type LiveMarket, type LiveOdd, type OddsDirection } from "@/hooks/useLiveSocket";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronDown, Radio, Wifi, WifiOff, AlertTriangle, Shield, TrendingUp, TrendingDown } from "lucide-react";
+import { ChevronDown, Radio, Wifi, WifiOff, AlertTriangle, Shield, TrendingUp, TrendingDown, Lock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import type { LiveMarket as ApiLiveMarket } from "@/hooks/useLiveSocket";
 import { sortOdds } from "@/lib/sortOdds";
 
 const MAIN_MARKETS = ["1X2", "Double Chance", "Over/Under 2.5"];
 
-// Same priority order as the sidebar in Shell.tsx
+// World Cup / international tournaments first, then top European leagues
 const COUNTRY_PRIORITY = [
-  "England", "Spain", "Germany", "Italy", "France",
-  "Netherlands", "Portugal", "Turkey", "Congo DR",
+  "World",           // FIFA World Cup, Nations League, etc.
+  "Europe",          // UEFA Champions League, Europa League, etc.
+  "England",
+  "Spain",
+  "Germany",
+  "Italy",
+  "France",
+  "Netherlands",
+  "Portugal",
+  "Turkey",
+  "Congo DR",
 ];
 
 function countryRank(countryName: string | null | undefined): number {
@@ -46,15 +55,17 @@ interface OddsButtonProps {
   odd: LiveOdd;
   direction: OddsDirection | null;
   fixture: LiveFixture;
+  suspended?: boolean;
 }
 
-function LiveOddsButton({ fixtureId, market, odd, direction, fixture }: OddsButtonProps) {
+function LiveOddsButton({ fixtureId, market, odd, direction, fixture, suspended }: OddsButtonProps) {
   const { addSelection, removeSelection, selections } = useBetSlip();
   const isSelected = selections.some((s) => s.oddsId === odd.id);
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (suspended) return;
     if (isSelected) {
       removeSelection(odd.id);
     } else {
@@ -74,6 +85,17 @@ function LiveOddsButton({ fixtureId, market, odd, direction, fixture }: OddsButt
       });
     }
   };
+
+  if (suspended) {
+    return (
+      <div className="flex flex-col items-center justify-center px-3 py-2 rounded-lg text-xs border border-border/30 bg-muted/20 flex-1 min-w-0 cursor-not-allowed opacity-50">
+        <span className="text-[10px] font-normal text-muted-foreground/60 leading-none mb-1 truncate w-full text-center">
+          {odd.selection}
+        </span>
+        <Lock className="w-3 h-3 text-muted-foreground/50" />
+      </div>
+    );
+  }
 
   const selectedClass = isSelected ? "bg-primary text-primary-foreground border-primary" : "text-foreground";
 
@@ -113,9 +135,10 @@ interface MarketSectionProps {
   fixture: LiveFixture;
   market: LiveMarket;
   getOddsDirection: (fId: number, oId: number) => OddsDirection | null;
+  suspended?: boolean;
 }
 
-function MarketSection({ fixture, market, getOddsDirection }: MarketSectionProps) {
+function MarketSection({ fixture, market, getOddsDirection, suspended }: MarketSectionProps) {
   const sorted = sortOdds(market.odds, market.marketType);
   return (
     <div>
@@ -129,8 +152,9 @@ function MarketSection({ fixture, market, getOddsDirection }: MarketSectionProps
             fixtureId={fixture.id}
             market={market}
             odd={odd}
-            direction={getOddsDirection(fixture.id, odd.id)}
+            direction={suspended ? null : getOddsDirection(fixture.id, odd.id)}
             fixture={fixture}
+            suspended={suspended}
           />
         ))}
       </div>
@@ -141,9 +165,10 @@ function MarketSection({ fixture, market, getOddsDirection }: MarketSectionProps
 interface FixtureCardProps {
   fixture: LiveFixture;
   getOddsDirection: (fId: number, oId: number) => OddsDirection | null;
+  allSuspended: boolean;
 }
 
-function FixtureCard({ fixture, getOddsDirection }: FixtureCardProps) {
+function FixtureCard({ fixture, getOddsDirection, allSuspended }: FixtureCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   const mainMarkets = fixture.markets
@@ -206,7 +231,13 @@ function FixtureCard({ fixture, getOddsDirection }: FixtureCardProps) {
       {mainMarkets.length > 0 && (
         <div className="border-t border-border/50 px-3 pt-3 pb-1 space-y-3">
           {mainMarkets.map((m) => (
-            <MarketSection key={m.id} fixture={fixture} market={m} getOddsDirection={getOddsDirection} />
+            <MarketSection
+              key={m.id}
+              fixture={fixture}
+              market={m}
+              getOddsDirection={getOddsDirection}
+              suspended={allSuspended}
+            />
           ))}
         </div>
       )}
@@ -239,7 +270,13 @@ function FixtureCard({ fixture, getOddsDirection }: FixtureCardProps) {
           {!loadingMarkets && extraMarkets.length > 0 && (
             <div className="space-y-3 pt-2">
               {extraMarkets.map((m) => (
-                <MarketSection key={m.id} fixture={fixture} market={m as LiveMarket} getOddsDirection={getOddsDirection} />
+                <MarketSection
+                  key={m.id}
+                  fixture={fixture}
+                  market={m as LiveMarket}
+                  getOddsDirection={getOddsDirection}
+                  suspended={allSuspended}
+                />
               ))}
             </div>
           )}
@@ -268,6 +305,9 @@ function FixtureCard({ fixture, getOddsDirection }: FixtureCardProps) {
                 )}
                 {stats.yellowCardsHome != null && (
                   <StatRow label="Yellow Cards" home={String(stats.yellowCardsHome)} away={String(stats.yellowCardsAway ?? 0)} />
+                )}
+                {stats.redCardsHome != null && (
+                  <StatRow label="Red Cards" home={String(stats.redCardsHome)} away={String(stats.redCardsAway ?? 0)} />
                 )}
               </div>
             </div>
@@ -317,7 +357,7 @@ function buildSortedLeagueGroups(fixtures: LiveFixture[]): LeagueGroup[] {
 }
 
 export default function LiveBetting() {
-  const { fixtures: wsFixtures, connected, getOddsDirection } = useLiveSocket();
+  const { fixtures: wsFixtures, connected, allSuspended, getOddsDirection } = useLiveSocket();
   const [dataWarning, setDataWarning] = useState<string | null>(null);
 
   const { data: initialData, isLoading } = useQuery<{ fixtures: LiveFixture[]; dataWarning?: string }>({
@@ -356,12 +396,21 @@ export default function LiveBetting() {
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           {connected
             ? <><Wifi className="w-3.5 h-3.5 text-green-400" /><span>Live updates</span></>
-            : <><WifiOff className="w-3.5 h-3.5 text-muted-foreground/50" /><span>Connecting…</span></>}
+            : <><WifiOff className="w-3.5 h-3.5 text-muted-foreground/50" /><span>Reconnecting…</span></>}
         </div>
       </div>
 
-      {/* Data warning */}
-      {dataWarning && (
+      {/* Suspension banner — shown immediately on disconnect */}
+      {allSuspended && (
+        <div className="flex items-center gap-2 rounded-md border border-orange-500/40 bg-orange-500/10 px-3 py-2.5 text-sm text-orange-400">
+          <Lock className="w-4 h-4 shrink-0 animate-pulse" />
+          <span className="font-medium">All odds suspended — reconnecting to live feed…</span>
+          <WifiOff className="w-3.5 h-3.5 ml-auto shrink-0 opacity-60" />
+        </div>
+      )}
+
+      {/* Data warning (from server) */}
+      {!allSuspended && dataWarning && (
         <div className="flex items-center gap-2 rounded-md border border-yellow-400/30 bg-yellow-400/10 px-3 py-2 text-sm text-yellow-400">
           <AlertTriangle className="w-4 h-4 shrink-0" />
           <span>{dataWarning}</span>
@@ -389,7 +438,7 @@ export default function LiveBetting() {
         </div>
       )}
 
-      {/* Fixtures sorted by country priority → league name */}
+      {/* Fixtures sorted by country priority (World/Europe first) → league name */}
       {leagueGroups.map((group) => (
         <div key={`${group.leagueName}__${group.countryName}`} className="space-y-2">
           <div className="flex items-center gap-3 mb-1">
@@ -409,7 +458,12 @@ export default function LiveBetting() {
           </div>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {group.fixtures.map((f) => (
-              <FixtureCard key={f.id} fixture={f} getOddsDirection={getOddsDirection} />
+              <FixtureCard
+                key={f.id}
+                fixture={f}
+                getOddsDirection={getOddsDirection}
+                allSuspended={allSuspended}
+              />
             ))}
           </div>
         </div>

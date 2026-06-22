@@ -56,6 +56,8 @@ interface LiveState {
   prevOdds: Map<string, number>;
   oddsDirections: Map<string, OddsDirection>;
   connected: boolean;
+  /** True while disconnected — all odds must be shown as suspended */
+  allSuspended: boolean;
 }
 
 type LiveAction =
@@ -80,7 +82,7 @@ function reducer(state: LiveState, action: LiveAction): LiveState {
           for (const o of m.odds) prevOdds.set(oddsKey(f.id, o.id), o.oddsValue);
         }
       }
-      return { ...state, fixtures, prevOdds, connected: true };
+      return { ...state, fixtures, prevOdds, connected: true, allSuspended: false };
     }
 
     case "FIXTURE_UPDATE": {
@@ -124,7 +126,8 @@ function reducer(state: LiveState, action: LiveAction): LiveState {
     }
 
     case "DISCONNECTED":
-      return { ...state, connected: false };
+      // Mark allSuspended=true — the UI will lock all odds buttons immediately
+      return { ...state, connected: false, allSuspended: true };
 
     case "CLEAR_DIRECTIONS":
       return { ...state, oddsDirections: new Map() };
@@ -140,6 +143,7 @@ export function useLiveSocket() {
     prevOdds: new Map(),
     oddsDirections: new Map(),
     connected: false,
+    allSuspended: false,
   });
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -194,5 +198,10 @@ export function useLiveSocket() {
   const getOddsDirection = (fixtureId: number, oddsId: number): OddsDirection | null =>
     state.oddsDirections.get(oddsKey(fixtureId, oddsId)) ?? null;
 
-  return { fixtures: getFixtures(), connected: state.connected, getOddsDirection };
+  return {
+    fixtures: getFixtures(),
+    connected: state.connected,
+    allSuspended: state.allSuspended,
+    getOddsDirection,
+  };
 }
