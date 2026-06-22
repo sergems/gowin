@@ -116,7 +116,7 @@ function Router() {
         <Route path="/fixtures/:id" component={FixtureDetail} />
         <Route path="/results" component={Results} />
         <Route path="/history" component={() => <ProtectedRoute component={History} />} />
-        <Route path="/wallet" component={() => <ProtectedRoute component={Wallet} />} />
+        <Route path="/wallet" component={() => <ProtectedRoute component={Wallet} allowedRoles={["user", "admin"]} />} />
         <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
 
         {/* Super Admin Routes */}

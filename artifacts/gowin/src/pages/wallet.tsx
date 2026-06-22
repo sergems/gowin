@@ -61,7 +61,7 @@ export default function Wallet() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const isRestrictedRole = user?.role === "agent" || user?.role === "branch_admin";
+  const isRestrictedRole = ["agent", "branch_admin", "payout"].includes(user?.role ?? "");
 
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [isWithdrawing, setIsWithdrawing] = useState(false);
@@ -304,8 +304,8 @@ export default function Wallet() {
         </div>
       )}
 
-      {/* Transaction History */}
-      <div className="mt-4">
+      {/* Transaction History — hidden for staff */}
+      {!isRestrictedRole && <div className="mt-4">
         <div className="flex items-center gap-2 mb-6">
           <HistoryIcon className="w-5 h-5 text-primary" />
           <h2 className="text-2xl font-bold tracking-tight">Transaction History</h2>
@@ -344,7 +344,7 @@ export default function Wallet() {
             })}
           </div>
         )}
-      </div>
+      </div>}
     </div>
   );
 }

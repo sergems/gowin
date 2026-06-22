@@ -117,6 +117,10 @@ router.post("/admin/vouchers/allocate-to-branch", requireAdmin, async (req, res)
 
 // ── POST /wallet/redeem-voucher — user redeems voucher ───────────────────────
 router.post("/wallet/redeem-voucher", requireAuth, async (req: AuthRequest, res): Promise<void> => {
+  if (["agent", "branch_admin", "payout"].includes(req.userRole!)) {
+    res.status(403).json({ error: "Staff accounts cannot redeem vouchers" });
+    return;
+  }
   const rawCode = req.body?.code;
   if (!rawCode || typeof rawCode !== "string") {
     res.status(400).json({ error: "Invalid voucher code" });

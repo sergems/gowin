@@ -7,6 +7,10 @@ const router = Router();
 
 // ── User: request a withdrawal ──────────────────────────────────────────────
 router.post("/wallet/withdrawal-request", requireAuth, async (req: AuthRequest, res): Promise<void> => {
+  if (["agent", "branch_admin", "payout"].includes(req.userRole!)) {
+    res.status(403).json({ error: "Staff accounts cannot request withdrawals" });
+    return;
+  }
   const { amount } = req.body;
   const parsedAmount = parseFloat(amount);
 
