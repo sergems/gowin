@@ -174,7 +174,7 @@ export function Shell({ children }: { children: ReactNode }) {
                   <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
                   <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-red-500" />
                 </div>
-                {open && <span className="flex-1">Live</span>}
+                {open && <span className="flex-1">Live In-Play</span>}
                 {open && <span className="text-[10px] font-bold bg-red-500 text-white rounded px-1 py-0.5 leading-none">LIVE</span>}
               </Link>
             )}
