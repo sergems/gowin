@@ -1,0 +1,589 @@
+root@localhost:/var/www/gowin# docker compose logs -f app
+app-1  | [entrypoint] Waiting for PostgreSQL to be ready...
+app-1  | [entrypoint] PostgreSQL is ready.
+app-1  | [entrypoint] Applying database schema...
+app-1  | SET
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | INSERT 0 8
+app-1  | INSERT 0 1
+app-1  | [entrypoint] Schema applied.
+app-1  | [entrypoint] Starting API server...
+app-1  | /app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:218
+app-1  |           throw new PathError(`Missing parameter name at index ${index}`, str);
+app-1  |                 ^
+app-1  |
+app-1  | PathError [TypeError]: Missing parameter name at index 1: *; visit https://git.new/pathToRegexpError for info
+app-1  |     at consumeUntil (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:218:17)
+app-1  |     at parse (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:262:24)
+app-1  |     at process (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:466:52)
+app-1  |     at pathToRegexp (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:478:3)
+app-1  |     at Object.match (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:416:28)
+app-1  |     at matcher (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:86:23)
+app-1  |     at new Layer (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:93:62)
+app-1  |     at router23.route (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/index.js:428:17)
+app-1  |     at app2.route (/app/node_modules/.pnpm/express@5.2.1/node_modules/express/lib/application.js:257:22)
+app-1  |     at app2.app2.<computed> (/app/node_modules/.pnpm/express@5.2.1/node_modules/express/lib/application.js:478:22) {
+app-1  |   originalPath: '*'
+app-1  | }
+app-1  |
+app-1  | Node.js v24.17.0
+app-1  | [entrypoint] Waiting for PostgreSQL to be ready...
+app-1  | [entrypoint] PostgreSQL is ready.
+app-1  | [entrypoint] Applying database schema...
+app-1  | SET
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | INSERT 0 0
+app-1  | INSERT 0 1
+app-1  | [entrypoint] Schema applied.
+app-1  | [entrypoint] Starting API server...
+app-1  | /app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:218
+app-1  |           throw new PathError(`Missing parameter name at index ${index}`, str);
+app-1  |                 ^
+app-1  |
+app-1  | PathError [TypeError]: Missing parameter name at index 1: *; visit https://git.new/pathToRegexpError for info
+app-1  |     at consumeUntil (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:218:17)
+app-1  |     at parse (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:262:24)
+app-1  |     at process (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:466:52)
+app-1  |     at pathToRegexp (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:478:3)
+app-1  |     at Object.match (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:416:28)
+app-1  |     at matcher (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:86:23)
+app-1  |     at new Layer (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:93:62)
+app-1  |     at router23.route (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/index.js:428:17)
+app-1  |     at app2.route (/app/node_modules/.pnpm/express@5.2.1/node_modules/express/lib/application.js:257:22)
+app-1  |     at app2.app2.<computed> (/app/node_modules/.pnpm/express@5.2.1/node_modules/express/lib/application.js:478:22) {
+app-1  |   originalPath: '*'
+app-1  | }
+app-1  |
+app-1  | Node.js v24.17.0
+app-1  | [entrypoint] Waiting for PostgreSQL to be ready...
+app-1  | [entrypoint] PostgreSQL is ready.
+app-1  | [entrypoint] Applying database schema...
+app-1  | SET
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | INSERT 0 0
+app-1  | INSERT 0 1
+app-1  | [entrypoint] Schema applied.
+app-1  | [entrypoint] Starting API server...
+app-1  | /app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:218
+app-1  |           throw new PathError(`Missing parameter name at index ${index}`, str);
+app-1  |                 ^
+app-1  |
+app-1  | PathError [TypeError]: Missing parameter name at index 1: *; visit https://git.new/pathToRegexpError for info
+app-1  |     at consumeUntil (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:218:17)
+app-1  |     at parse (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:262:24)
+app-1  |     at process (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:466:52)
+app-1  |     at pathToRegexp (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:478:3)
+app-1  |     at Object.match (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:416:28)
+app-1  |     at matcher (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:86:23)
+app-1  |     at new Layer (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:93:62)
+app-1  |     at router23.route (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/index.js:428:17)
+app-1  |     at app2.route (/app/node_modules/.pnpm/express@5.2.1/node_modules/express/lib/application.js:257:22)
+app-1  |     at app2.app2.<computed> (/app/node_modules/.pnpm/express@5.2.1/node_modules/express/lib/application.js:478:22) {
+app-1  |   originalPath: '*'
+app-1  | }
+app-1  |
+app-1  | Node.js v24.17.0
+app-1  | [entrypoint] Waiting for PostgreSQL to be ready...
+app-1  | [entrypoint] PostgreSQL is ready.
+app-1  | [entrypoint] Applying database schema...
+app-1  | SET
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | INSERT 0 0
+app-1  | INSERT 0 1
+app-1  | [entrypoint] Schema applied.
+app-1  | [entrypoint] Starting API server...
+app-1  | /app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:218
+app-1  |           throw new PathError(`Missing parameter name at index ${index}`, str);
+app-1  |                 ^
+app-1  |
+app-1  | PathError [TypeError]: Missing parameter name at index 1: *; visit https://git.new/pathToRegexpError for info
+app-1  |     at consumeUntil (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:218:17)
+app-1  |     at parse (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:262:24)
+app-1  |     at process (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:466:52)
+app-1  |     at pathToRegexp (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:478:3)
+app-1  |     at Object.match (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:416:28)
+app-1  |     at matcher (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:86:23)
+app-1  |     at new Layer (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:93:62)
+app-1  |     at router23.route (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/index.js:428:17)
+app-1  |     at app2.route (/app/node_modules/.pnpm/express@5.2.1/node_modules/express/lib/application.js:257:22)
+app-1  |     at app2.app2.<computed> (/app/node_modules/.pnpm/express@5.2.1/node_modules/express/lib/application.js:478:22) {
+app-1  |   originalPath: '*'
+app-1  | }
+app-1  |
+app-1  | Node.js v24.17.0
+app-1  | [entrypoint] Waiting for PostgreSQL to be ready...
+app-1  | [entrypoint] PostgreSQL is ready.
+app-1  | [entrypoint] Applying database schema...
+app-1  | SET
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | INSERT 0 0
+app-1  | INSERT 0 1
+app-1  | [entrypoint] Schema applied.
+app-1  | [entrypoint] Starting API server...
+app-1  | /app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:218
+app-1  |           throw new PathError(`Missing parameter name at index ${index}`, str);
+app-1  |                 ^
+app-1  |
+app-1  | PathError [TypeError]: Missing parameter name at index 1: *; visit https://git.new/pathToRegexpError for info
+app-1  |     at consumeUntil (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:218:17)
+app-1  |     at parse (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:262:24)
+app-1  |     at process (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:466:52)
+app-1  |     at pathToRegexp (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:478:3)
+app-1  |     at Object.match (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:416:28)
+app-1  |     at matcher (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:86:23)
+app-1  |     at new Layer (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:93:62)
+app-1  |     at router23.route (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/index.js:428:17)
+app-1  |     at app2.route (/app/node_modules/.pnpm/express@5.2.1/node_modules/express/lib/application.js:257:22)
+app-1  |     at app2.app2.<computed> (/app/node_modules/.pnpm/express@5.2.1/node_modules/express/lib/application.js:478:22) {
+app-1  |   originalPath: '*'
+app-1  | }
+app-1  |
+app-1  | Node.js v24.17.0
+app-1  | [entrypoint] Waiting for PostgreSQL to be ready...
+app-1  | [entrypoint] PostgreSQL is ready.
+app-1  | [entrypoint] Applying database schema...
+app-1  | SET
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | INSERT 0 0
+app-1  | INSERT 0 1
+app-1  | [entrypoint] Schema applied.
+app-1  | [entrypoint] Starting API server...
+app-1  | /app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:218
+app-1  |           throw new PathError(`Missing parameter name at index ${index}`, str);
+app-1  |                 ^
+app-1  |
+app-1  | PathError [TypeError]: Missing parameter name at index 1: *; visit https://git.new/pathToRegexpError for info
+app-1  |     at consumeUntil (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:218:17)
+app-1  |     at parse (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:262:24)
+app-1  |     at process (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:466:52)
+app-1  |     at pathToRegexp (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:478:3)
+app-1  |     at Object.match (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:416:28)
+app-1  |     at matcher (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:86:23)
+app-1  |     at new Layer (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:93:62)
+app-1  |     at router23.route (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/index.js:428:17)
+app-1  |     at app2.route (/app/node_modules/.pnpm/express@5.2.1/node_modules/express/lib/application.js:257:22)
+app-1  |     at app2.app2.<computed> (/app/node_modules/.pnpm/express@5.2.1/node_modules/express/lib/application.js:478:22) {
+app-1  |   originalPath: '*'
+app-1  | }
+app-1  |
+app-1  | Node.js v24.17.0
+app-1  | [entrypoint] Waiting for PostgreSQL to be ready...
+app-1  | [entrypoint] PostgreSQL is ready.
+app-1  | [entrypoint] Applying database schema...
+app-1  | SET
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | INSERT 0 0
+app-1  | INSERT 0 1
+app-1  | [entrypoint] Schema applied.
+app-1  | [entrypoint] Starting API server...
+app-1  | /app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:218
+app-1  |           throw new PathError(`Missing parameter name at index ${index}`, str);
+app-1  |                 ^
+app-1  |
+app-1  | PathError [TypeError]: Missing parameter name at index 1: *; visit https://git.new/pathToRegexpError for info
+app-1  |     at consumeUntil (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:218:17)
+app-1  |     at parse (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:262:24)
+app-1  |     at process (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:466:52)
+app-1  |     at pathToRegexp (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:478:3)
+app-1  |     at Object.match (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:416:28)
+app-1  |     at matcher (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:86:23)
+app-1  |     at new Layer (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:93:62)
+app-1  |     at router23.route (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/index.js:428:17)
+app-1  |     at app2.route (/app/node_modules/.pnpm/express@5.2.1/node_modules/express/lib/application.js:257:22)
+app-1  |     at app2.app2.<computed> (/app/node_modules/.pnpm/express@5.2.1/node_modules/express/lib/application.js:478:22) {
+app-1  |   originalPath: '*'
+app-1  | }
+app-1  |
+app-1  | Node.js v24.17.0
+app-1 exited with code 1 (restarting)
+app-1  | [entrypoint] Waiting for PostgreSQL to be ready...
+app-1  | [entrypoint] PostgreSQL is ready.
+app-1  | [entrypoint] Applying database schema...
+app-1  | SET
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | INSERT 0 0
+app-1  | INSERT 0 1
+app-1  | [entrypoint] Schema applied.
+app-1  | [entrypoint] Starting API server...
+app-1  | /app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:218
+app-1  |           throw new PathError(`Missing parameter name at index ${index}`, str);
+app-1  |                 ^
+app-1  |
+app-1  | PathError [TypeError]: Missing parameter name at index 1: *; visit https://git.new/pathToRegexpError for info
+app-1  |     at consumeUntil (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:218:17)
+app-1  |     at parse (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:262:24)
+app-1  |     at process (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:466:52)
+app-1  |     at pathToRegexp (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:478:3)
+app-1  |     at Object.match (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:416:28)
+app-1  |     at matcher (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:86:23)
+app-1  |     at new Layer (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:93:62)
+app-1  |     at router23.route (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/index.js:428:17)
+app-1  |     at app2.route (/app/node_modules/.pnpm/express@5.2.1/node_modules/express/lib/application.js:257:22)
+app-1  |     at app2.app2.<computed> (/app/node_modules/.pnpm/express@5.2.1/node_modules/express/lib/application.js:478:22) {
+app-1  |   originalPath: '*'
+app-1  | }
+app-1  |
+app-1  | Node.js v24.17.0
+app-1 exited with code 1 (restarting)
+app-1  | [entrypoint] Waiting for PostgreSQL to be ready...
+app-1  | [entrypoint] PostgreSQL is ready.
+app-1  | [entrypoint] Applying database schema...
+app-1  | SET
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | INSERT 0 0
+app-1  | INSERT 0 1
+app-1  | [entrypoint] Schema applied.
+app-1  | [entrypoint] Starting API server...
+app-1  | /app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:218
+app-1  |           throw new PathError(`Missing parameter name at index ${index}`, str);
+app-1  |                 ^
+app-1  |
+app-1  | PathError [TypeError]: Missing parameter name at index 1: *; visit https://git.new/pathToRegexpError for info
+app-1  |     at consumeUntil (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:218:17)
+app-1  |     at parse (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:262:24)
+app-1  |     at process (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:466:52)
+app-1  |     at pathToRegexp (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:478:3)
+app-1  |     at Object.match (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:416:28)
+app-1  |     at matcher (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:86:23)
+app-1  |     at new Layer (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:93:62)
+app-1  |     at router23.route (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/index.js:428:17)
+app-1  |     at app2.route (/app/node_modules/.pnpm/express@5.2.1/node_modules/express/lib/application.js:257:22)
+app-1  |     at app2.app2.<computed> (/app/node_modules/.pnpm/express@5.2.1/node_modules/express/lib/application.js:478:22) {
+app-1  |   originalPath: '*'
+app-1  | }
+app-1  |
+app-1  | Node.js v24.17.0
+app-1 exited with code 1 (restarting)
+app-1  | [entrypoint] Waiting for PostgreSQL to be ready...
+app-1  | [entrypoint] PostgreSQL is ready.
+app-1  | [entrypoint] Applying database schema...
+app-1  | SET
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | INSERT 0 0
+app-1  | INSERT 0 1
+app-1  | [entrypoint] Schema applied.
+app-1  | [entrypoint] Starting API server...
+app-1  | /app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:218
+app-1  |           throw new PathError(`Missing parameter name at index ${index}`, str);
+app-1  |                 ^
+app-1  |
+app-1  | PathError [TypeError]: Missing parameter name at index 1: *; visit https://git.new/pathToRegexpError for info
+app-1  |     at consumeUntil (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:218:17)
+app-1  |     at parse (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:262:24)
+app-1  |     at process (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:466:52)
+app-1  |     at pathToRegexp (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:478:3)
+app-1  |     at Object.match (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:416:28)
+app-1  |     at matcher (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:86:23)
+app-1  |     at new Layer (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:93:62)
+app-1  |     at router23.route (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/index.js:428:17)
+app-1  |     at app2.route (/app/node_modules/.pnpm/express@5.2.1/node_modules/express/lib/application.js:257:22)
+app-1  |     at app2.app2.<computed> (/app/node_modules/.pnpm/express@5.2.1/node_modules/express/lib/application.js:478:22) {
+app-1  |   originalPath: '*'
+app-1  | }
+app-1  |
+app-1  | Node.js v24.17.0
+app-1 exited with code 1 (restarting)
+app-1  | [entrypoint] Waiting for PostgreSQL to be ready...
+app-1  | [entrypoint] PostgreSQL is ready.
+app-1  | [entrypoint] Applying database schema...
+app-1  | SET
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | DO
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | CREATE TABLE
+app-1  | INSERT 0 0
+app-1  | INSERT 0 1
+app-1  | [entrypoint] Schema applied.
+app-1  | [entrypoint] Starting API server...
+app-1  | /app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:218
+app-1  |           throw new PathError(`Missing parameter name at index ${index}`, str);
+app-1  |                 ^
+app-1  |
+app-1  | PathError [TypeError]: Missing parameter name at index 1: *; visit https://git.new/pathToRegexpError for info
+app-1  |     at consumeUntil (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:218:17)
+app-1  |     at parse (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:262:24)
+app-1  |     at process (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:466:52)
+app-1  |     at pathToRegexp (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:478:3)
+app-1  |     at Object.match (/app/node_modules/.pnpm/path-to-regexp@8.4.2/node_modules/path-to-regexp/src/index.ts:416:28)
+app-1  |     at matcher (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:86:23)
+app-1  |     at new Layer (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/lib/layer.js:93:62)
+app-1  |     at router23.route (/app/node_modules/.pnpm/router@2.2.0/node_modules/router/index.js:428:17)
+app-1  |     at app2.route (/app/node_modules/.pnpm/express@5.2.1/node_modules/express/lib/application.js:257:22)
+app-1  |     at app2.app2.<computed> (/app/node_modules/.pnpm/express@5.2.1/node_modules/express/lib/application.js:478:22) {
+app-1  |   originalPath: '*'
+app-1  | }
+app-1  |
+app-1  | Node.js v24.17.0
+app-1 exited with code 1 (restarting)
