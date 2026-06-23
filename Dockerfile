@@ -1,7 +1,7 @@
 # ── Stage 1: build ──────────────────────────────────────────────────────────
 FROM node:24-slim AS builder
 
-RUN corepack enable && corepack prepare pnpm@10.26.1 --activate
+RUN corepack enable && corepack prepare pnpm@11.8.0 --activate
 
 WORKDIR /app
 

@@ -8,7 +8,7 @@
 | Layer | Version |
 |-------|---------|
 | Node.js | 24 (slim) |
-| pnpm | **10.26.1** (pinned — do not use `@latest`, it pulls v11 which breaks the lockfile) |
+| pnpm | **11.8.0** (Docker/production) · 10.26.1 (Replit dev — Node 20 constraint, pnpm v11 requires Node ≥ 22.13) |
 | Express | 5.x |
 | PostgreSQL | 16-alpine |
 
@@ -300,11 +300,8 @@ systemctl enable docker
 **502 Bad Gateway**
 → App container isn't running. Check: `docker compose ps` and `docker compose logs app`.
 
-**`ERR_PNPM_UNSUPPORTED_ENGINE` or lockfile format errors during build**
-→ The Dockerfile pins `pnpm@10.26.1`. If you see pnpm v11 being pulled, make sure the Dockerfile line reads:
-```dockerfile
-RUN corepack enable && corepack prepare pnpm@10.26.1 --activate
-```
+**`ERR_PNPM_UNSUPPORTED_ENGINE` during build**
+→ pnpm v11 requires Node.js ≥ 22.13. The Dockerfile uses `node:24-slim` which satisfies this. If you see this error, confirm the base image hasn't been changed to an older Node version.
 
 **Express 5 middleware errors (`router.param` / `res.json` signature changes)**
 → Express 5 drops some legacy APIs. All route handlers in `artifacts/api-server/src/routes/` are written for Express 5 — do not downgrade to Express 4.
