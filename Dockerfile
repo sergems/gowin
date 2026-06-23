@@ -18,11 +18,6 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-# Build workspace libs (db schema types, generated API hooks)
-RUN pnpm --filter @workspace/db run build             2>/dev/null || true
-RUN pnpm --filter @workspace/api-zod run build        2>/dev/null || true
-RUN pnpm --filter @workspace/api-client-react run build 2>/dev/null || true
-
 # Build the frontend SPA and the API server bundle
 RUN pnpm --filter @workspace/gowin run build
 RUN pnpm --filter @workspace/api-server run build
@@ -43,13 +38,15 @@ COPY --from=builder /app/node_modules          ./node_modules
 COPY --from=builder /app/package.json          ./
 COPY --from=builder /app/pnpm-workspace.yaml   ./
 
-# Workspace lib packages referenced by pnpm symlinks at runtime
+# Workspace lib packages — these export TypeScript src directly (no build step)
+# esbuild bundles them into the api-server, but package.json + src are needed
+# to satisfy pnpm workspace symlinks at runtime
 COPY --from=builder /app/lib/db/package.json               ./lib/db/
-COPY --from=builder /app/lib/db/dist                       ./lib/db/dist
+COPY --from=builder /app/lib/db/src                        ./lib/db/src
 COPY --from=builder /app/lib/api-zod/package.json          ./lib/api-zod/
-COPY --from=builder /app/lib/api-zod/dist                  ./lib/api-zod/dist
+COPY --from=builder /app/lib/api-zod/src                   ./lib/api-zod/src
 COPY --from=builder /app/lib/api-client-react/package.json ./lib/api-client-react/
-COPY --from=builder /app/lib/api-client-react/dist         ./lib/api-client-react/dist
+COPY --from=builder /app/lib/api-client-react/src          ./lib/api-client-react/src
 COPY --from=builder /app/lib/api-spec                      ./lib/api-spec
 
 # API server bundle + package.json

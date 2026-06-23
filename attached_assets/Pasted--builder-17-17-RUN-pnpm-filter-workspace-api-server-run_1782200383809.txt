@@ -1,0 +1,38 @@
+ => [builder 17/17] RUN pnpm --filter @workspace/api-server run build                  2.2s
+ => CANCELED [runner  4/19] COPY --from=builder /app/node_modules          ./node_mod  0.3s
+ => CACHED [runner  5/19] COPY --from=builder /app/package.json          ./            0.0s
+ => CACHED [runner  6/19] COPY --from=builder /app/pnpm-workspace.yaml   ./            0.0s
+ => CACHED [runner  7/19] COPY --from=builder /app/lib/db/package.json                 0.0s
+ => ERROR [runner  8/19] COPY --from=builder /app/lib/db/dist                       .  0.0s
+ => CACHED [runner  9/19] COPY --from=builder /app/lib/api-zod/package.json            0.0s
+ => ERROR [runner 10/19] COPY --from=builder /app/lib/api-zod/dist                  .  0.0s
+ => CACHED [runner 11/19] COPY --from=builder /app/lib/api-client-react/package.json   0.0s
+ => ERROR [runner 12/19] COPY --from=builder /app/lib/api-client-react/dist         .  0.0s
+------
+ > [runner  8/19] COPY --from=builder /app/lib/db/dist                       ./lib/db/dist:
+------
+------
+ > [runner 10/19] COPY --from=builder /app/lib/api-zod/dist                  ./lib/api-zod/dist:
+------
+------
+ > [runner 12/19] COPY --from=builder /app/lib/api-client-react/dist         ./lib/api-client-react/dist:
+------
+[+] up 0/1
+ ⠙ Image gowin-app Building                                                            62.4s
+Dockerfile:52
+
+--------------------
+
+  50 |     COPY --from=builder /app/lib/api-zod/dist                  ./lib/api-zod/dist
+
+  51 |     COPY --from=builder /app/lib/api-client-react/package.json ./lib/api-client-react/
+
+  52 | >>> COPY --from=builder /app/lib/api-client-react/dist         ./lib/api-client-react/dist
+
+  53 |     COPY --from=builder /app/lib/api-spec                      ./lib/api-spec
+
+  54 |
+
+--------------------
+
+failed to solve: failed to compute cache key: failed to calculate checksum of ref w46ovaeag9xme2imgs3e39wg7::btmoijfurn4ithrgfd4pp7z31: "/app/lib/api-client-react/dist": not found
