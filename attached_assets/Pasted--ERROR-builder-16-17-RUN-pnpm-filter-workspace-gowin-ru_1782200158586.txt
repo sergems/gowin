@@ -1,0 +1,68 @@
+ => ERROR [builder 16/17] RUN pnpm --filter @workspace/gowin run build                 1.1s
+------
+ > [builder 16/17] RUN pnpm --filter @workspace/gowin run build:
+0.787
+0.787 > @workspace/gowin@0.0.0 build /app/artifacts/gowin
+0.787 > vite build --config vite.config.ts
+0.787
+1.022 /app/node_modules/.pnpm/rollup@4.60.3/node_modules/rollup/dist/native.js:115
+1.022           throw new Error(
+1.022                 ^
+1.022
+1.022 Error: Cannot find module @rollup/rollup-linux-x64-musl. npm has a bug related to optional dependencies (https://github.com/npm/cli/issues/4828). Please try `npm i` again after removing both package-lock.json and node_modules directory.
+1.022     at requireWithFriendlyError (/app/node_modules/.pnpm/rollup@4.60.3/node_modules/rollup/dist/native.js:115:9)
+1.022     at Object.<anonymous> (/app/node_modules/.pnpm/rollup@4.60.3/node_modules/rollup/dist/native.js:124:76)
+1.022     at Module._compile (node:internal/modules/cjs/loader:1854:14)
+1.022     at Object..js (node:internal/modules/cjs/loader:1985:10)
+1.022     at Module.load (node:internal/modules/cjs/loader:1577:32)
+1.022     at Module._load (node:internal/modules/cjs/loader:1379:12)
+1.022     at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+1.022     at loadCJSModuleWithModuleLoad (node:internal/modules/esm/translators:326:3)
+1.022     at ModuleWrap.<anonymous> (node:internal/modules/esm/translators:231:7)
+1.022     at ModuleJob.run (node:internal/modules/esm/module_job:439:25) {
+1.022   [cause]: Error: Cannot find module '@rollup/rollup-linux-x64-musl'
+1.022   Require stack:
+1.022   - /app/node_modules/.pnpm/rollup@4.60.3/node_modules/rollup/dist/native.js
+1.022       at Module._resolveFilename (node:internal/modules/cjs/loader:1500:15)
+1.022       at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)
+1.022       at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)
+1.022       at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1116:12)
+1.022       at Module._load (node:internal/modules/cjs/loader:1285:25)
+1.022       at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+1.022       at Module.require (node:internal/modules/cjs/loader:1600:12)
+1.022       at require (node:internal/modules/helpers:153:16)
+1.022       at requireWithFriendlyError (/app/node_modules/.pnpm/rollup@4.60.3/node_modules/rollup/dist/native.js:97:10)
+1.022       at Object.<anonymous> (/app/node_modules/.pnpm/rollup@4.60.3/node_modules/rollup/dist/native.js:124:76) {
+1.022     code: 'MODULE_NOT_FOUND',
+1.022     requireStack: [
+1.022       '/app/node_modules/.pnpm/rollup@4.60.3/node_modules/rollup/dist/native.js'
+1.022     ]
+1.022   }
+1.022 }
+1.022
+1.022 Node.js v24.17.0
+1.051 /app/artifacts/gowin:
+1.051  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/gowin@0.0.0 build: `vite build --config vite.config.ts`
+1.051 Exit status 1
+------
+[+] up 0/1
+ ⠙ Image gowin-app Building                                                            24.9s
+Dockerfile:27
+
+--------------------
+
+  25 |
+
+  26 |     # Build the frontend SPA and the API server bundle
+
+  27 | >>> RUN pnpm --filter @workspace/gowin run build
+
+  28 |     RUN pnpm --filter @workspace/api-server run build
+
+  29 |
+
+--------------------
+
+failed to solve: process "/bin/sh -c pnpm --filter @workspace/gowin run build" did not complete successfully: exit code: 1
+
+root@localhost:/var/www/gowin#

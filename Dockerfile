@@ -1,5 +1,5 @@
 # ── Stage 1: build ──────────────────────────────────────────────────────────
-FROM node:24-alpine AS builder
+FROM node:24-slim AS builder
 
 RUN corepack enable && corepack prepare pnpm@10.26.1 --activate
 
@@ -28,10 +28,10 @@ RUN pnpm --filter @workspace/gowin run build
 RUN pnpm --filter @workspace/api-server run build
 
 # ── Stage 2: production runtime ──────────────────────────────────────────────
-FROM node:24-alpine AS runner
+FROM node:24-slim AS runner
 
 # Install postgresql-client so the entrypoint can run psql + pg_isready
-RUN apk add --no-cache postgresql-client
+RUN apt-get update && apt-get install -y --no-install-recommends postgresql-client && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
