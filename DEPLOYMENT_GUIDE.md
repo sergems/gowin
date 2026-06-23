@@ -3,6 +3,17 @@
 
 ---
 
+## Stack at a glance
+
+| Layer | Version |
+|-------|---------|
+| Node.js | 24 (slim) |
+| pnpm | **10.26.1** (pinned — do not use `@latest`, it pulls v11 which breaks the lockfile) |
+| Express | 5.x |
+| PostgreSQL | 16-alpine |
+
+---
+
 ## What you will have at the end
 - App running 24/7 at **http://45.79.221.163**
 - PostgreSQL database managed by Docker Compose
@@ -155,8 +166,8 @@ docker compose up --build -d
 
 This will:
 1. Pull the Postgres image and start the database
-2. Build the GoWin image (installs dependencies, compiles TypeScript, builds React)
-3. Start the app — waits for Postgres, applies the schema automatically, then starts the server
+2. Build the GoWin image using **pnpm 10.26.1** (pinned in the Dockerfile — installs deps, compiles TypeScript, builds React)
+3. Start the app — waits for Postgres, applies the schema automatically, then starts the Express 5 server
 
 **First build takes 5–10 minutes.** Watch the logs:
 
@@ -288,6 +299,15 @@ systemctl enable docker
 
 **502 Bad Gateway**
 → App container isn't running. Check: `docker compose ps` and `docker compose logs app`.
+
+**`ERR_PNPM_UNSUPPORTED_ENGINE` or lockfile format errors during build**
+→ The Dockerfile pins `pnpm@10.26.1`. If you see pnpm v11 being pulled, make sure the Dockerfile line reads:
+```dockerfile
+RUN corepack enable && corepack prepare pnpm@10.26.1 --activate
+```
+
+**Express 5 middleware errors (`router.param` / `res.json` signature changes)**
+→ Express 5 drops some legacy APIs. All route handlers in `artifacts/api-server/src/routes/` are written for Express 5 — do not downgrade to Express 4.
 
 **Schema / table errors on startup**
 → The entrypoint applies the schema automatically. Check: `docker compose logs app | grep entrypoint`.
