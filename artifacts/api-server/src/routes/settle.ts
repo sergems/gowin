@@ -27,12 +27,6 @@ router.post("/fixtures/:id/settle", requireAdmin, async (req: AuthRequest, res):
     scoreAway,
   }).where(eq(fixturesTable.id, params.data.id));
 
-  // Determine result
-  let winningSelection: string;
-  if (scoreHome > scoreAway) winningSelection = "Home Win";
-  else if (scoreAway > scoreHome) winningSelection = "Away Win";
-  else winningSelection = "Draw";
-
   // Find pending bet selections for this fixture
   const selections = await db
     .select()
@@ -55,17 +49,37 @@ router.post("/fixtures/:id/settle", requireAdmin, async (req: AuthRequest, res):
   let betsLost = 0;
   let totalPayout = 0;
 
+  function selectionWon(sel: string, market: string): boolean {
+    const total = scoreHome + scoreAway;
+    if (market === "1X2" || market === "Match Result") {
+      if (scoreHome > scoreAway) return sel === "Home" || sel === "Home Win";
+      if (scoreAway > scoreHome) return sel === "Away" || sel === "Away Win";
+      return sel === "Draw";
+    }
+    if (market === "Double Chance") {
+      if (sel === "1X") return scoreHome >= scoreAway;
+      if (sel === "X2") return scoreAway >= scoreHome;
+      if (sel === "12") return scoreHome !== scoreAway;
+      return false;
+    }
+    if (market === "Both Teams To Score") {
+      const both = scoreHome > 0 && scoreAway > 0;
+      return sel === "Yes" ? both : !both;
+    }
+    const ou = market.match(/^Over\/Under (\d+(?:\.\d+)?)$/);
+    if (ou) {
+      const line = parseFloat(ou[1]!);
+      if (sel.startsWith("Over")) return total > line;
+      if (sel.startsWith("Under")) return total < line;
+    }
+    return false;
+  }
+
   for (const bet of pendingBets) {
     const betSelections = selections.filter((s) => s.betId === bet.id);
-    
-    // A bet wins if ALL selections are correct (accumulator logic)
-    const allWon = betSelections.every((s) => {
-      if (s.market === "Match Result" || s.market === "1X2") {
-        return s.selection === winningSelection;
-      }
-      // For other markets, check exact selection match
-      return s.selection === winningSelection;
-    });
+
+    // A bet wins only if ALL selections are correct (accumulator logic)
+    const allWon = betSelections.every((s) => selectionWon(s.selection, s.market));
 
     if (allWon) {
       await db.update(betsTable).set({ status: "won" }).where(eq(betsTable.id, bet.id));

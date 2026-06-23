@@ -84,7 +84,7 @@ function StatusBadge({ status }: { status: Withdrawal["status"] }) {
   );
 }
 
-function WithdrawalRow({ w, onAction }: { w: Withdrawal; onAction: (id: number, status: string) => void }) {
+function WithdrawalRow({ w, onAction, formatCurrency }: { w: Withdrawal; onAction: (id: number, status: string) => void; formatCurrency: (n: number) => string }) {
   const isPending = w.status === "pending";
   const isApproved = w.status === "approved";
   return (
@@ -213,7 +213,7 @@ export default function AdminWithdrawals() {
       ) : (
         <div className="space-y-3">
           {data.map((w) => (
-            <WithdrawalRow key={w.id} w={w} onAction={handleAction} />
+            <WithdrawalRow key={w.id} w={w} onAction={handleAction} formatCurrency={formatCurrency} />
           ))}
         </div>
       )}

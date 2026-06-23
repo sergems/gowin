@@ -1,7 +1,7 @@
 # ── Stage 1: build ──────────────────────────────────────────────────────────
 FROM node:24-slim AS builder
 
-RUN corepack enable && corepack prepare pnpm@10.26.1 --activate
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
@@ -14,7 +14,7 @@ COPY lib/api-spec/package.json          ./lib/api-spec/
 COPY lib/api-client-react/package.json  ./lib/api-client-react/
 COPY lib/api-zod/package.json           ./lib/api-zod/
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 COPY . .
 
