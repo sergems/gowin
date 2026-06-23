@@ -6,7 +6,7 @@ RUN corepack enable && corepack prepare pnpm@11.8.0 --activate
 WORKDIR /app
 
 # Copy manifests first for layer caching
-COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json .npmrc ./
 COPY artifacts/api-server/package.json ./artifacts/api-server/
 COPY artifacts/gowin/package.json       ./artifacts/gowin/
 COPY lib/db/package.json                ./lib/db/

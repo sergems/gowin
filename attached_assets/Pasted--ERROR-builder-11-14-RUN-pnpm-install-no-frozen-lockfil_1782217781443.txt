@@ -1,0 +1,80 @@
+ => ERROR [builder 11/14] RUN pnpm install --no-frozen-lockfile                       43.8s
+------
+ > [builder 11/14] RUN pnpm install --no-frozen-lockfile:
+3.841 Scope: all 7 workspace projects
+4.741 ? Verifying lockfile against supply-chain policies (509 entries)...
+6.129 Progress: resolved 1, reused 0, downloaded 0, added 0
+6.240 artifacts/api-server                     | [WARN] deprecated @types/bcryptjs@3.0.0
+7.150 Progress: resolved 19, reused 0, downloaded 10, added 0
+8.172 Progress: resolved 33, reused 0, downloaded 24, added 0
+9.547 Progress: resolved 45, reused 0, downloaded 31, added 0
+10.59 Progress: resolved 54, reused 0, downloaded 31, added 0
+11.64 Progress: resolved 63, reused 0, downloaded 37, added 0
+11.72 artifacts/gowin                          | [WARN] deprecated recharts@2.15.4
+12.73 Progress: resolved 74, reused 0, downloaded 37, added 0
+13.75 Progress: resolved 77, reused 0, downloaded 37, added 0
+14.77 Progress: resolved 79, reused 0, downloaded 46, added 0
+15.31 [WARN] Request took 11453ms: https://registry.npmjs.org/pnpm
+15.78 Progress: resolved 81, reused 0, downloaded 64, added 0
+16.19 [WARN] Request took 10743ms: https://registry.npmjs.org/@types%2Fnode
+16.82 Progress: resolved 85, reused 0, downloaded 76, added 0
+18.22 [WARN] Request took 10834ms: https://registry.npmjs.org/tailwindcss
+18.66 Progress: resolved 85, reused 0, downloaded 77, added 0
+19.89 [WARN] Request took 14306ms: https://registry.npmjs.org/typescript
+20.10 Progress: resolved 86, reused 0, downloaded 80, added 0
+21.25 Progress: resolved 86, reused 0, downloaded 84, added 0
+22.31 Progress: resolved 88, reused 0, downloaded 86, added 0
+22.70 ✓ Lockfile passes supply-chain policies (509 entries in 17.9s)
+23.31 Progress: resolved 89, reused 0, downloaded 89, added 0
+25.51 Progress: resolved 90, reused 0, downloaded 89, added 0
+26.50 Progress: resolved 185, reused 0, downloaded 89, added 0
+27.51 Progress: resolved 186, reused 0, downloaded 141, added 0
+28.54 Progress: resolved 229, reused 0, downloaded 154, added 0
+29.54 Progress: resolved 259, reused 0, downloaded 183, added 0
+30.57 Progress: resolved 264, reused 0, downloaded 191, added 0
+31.58 Progress: resolved 277, reused 0, downloaded 198, added 0
+32.63 Progress: resolved 370, reused 0, downloaded 198, added 0
+33.63 Progress: resolved 457, reused 0, downloaded 200, added 0
+34.83 Progress: resolved 498, reused 0, downloaded 210, added 0
+35.33 [WARN] 1 deprecated subdependencies found: tsconfck@3.1.6
+35.36 Packages: +504
+35.36 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+35.83 Progress: resolved 506, reused 0, downloaded 244, added 0
+36.83 Progress: resolved 506, reused 0, downloaded 279, added 4
+37.83 Progress: resolved 506, reused 0, downloaded 417, added 12
+38.84 Progress: resolved 506, reused 0, downloaded 448, added 16
+39.84 Progress: resolved 506, reused 0, downloaded 504, added 175
+40.84 Progress: resolved 506, reused 0, downloaded 504, added 243
+41.34 Progress: resolved 506, reused 0, downloaded 504, added 504, done
+42.75 . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+42.83 . preinstall: Done
+42.90
+42.90 devDependencies:
+42.90 + prettier 3.8.3 (3.8.4 is available)
+42.90 + typescript 5.9.3 (6.0.3 is available)
+42.90
+43.04 [ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: esbuild@0.27.3
+43.04
+43.04 Run "pnpm approve-builds" to pick which dependencies should be allowed to run scripts.
+------
+[+] up 0/1
+ ⠙ Image gowin-app Building                                                            45.8s
+Dockerfile:17
+
+--------------------
+
+  15 |     COPY lib/api-zod/package.json           ./lib/api-zod/
+
+  16 |
+
+  17 | >>> RUN pnpm install --no-frozen-lockfile
+
+  18 |
+
+  19 |     COPY . .
+
+--------------------
+
+failed to solve: process "/bin/sh -c pnpm install --no-frozen-lockfile" did not complete successfully: exit code: 1
+
+root@localhost:/var/www/gowin#
