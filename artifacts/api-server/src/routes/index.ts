@@ -20,6 +20,7 @@ import agentRouter from "./agentRoutes";
 import cashUpRouter from "./cashUp";
 import payoutRouter from "./payout";
 import liveRouter from "./live";
+import fixturesPdfRouter from "./fixturesPdf";
 
 const router: IRouter = Router();
 
@@ -44,5 +45,6 @@ router.use(agentRouter);
 router.use(cashUpRouter);
 router.use(payoutRouter);
 router.use(liveRouter);
+router.use(fixturesPdfRouter);
 
 export default router;

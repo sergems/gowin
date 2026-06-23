@@ -1,6 +1,7 @@
 import { createServer } from "http";
 import app from "./app";
 import { logger } from "./lib/logger";
+import { generateFixturesPdf } from "./lib/pdfGenerator";
 import { refreshAllUpcomingOdds } from "./lib/oddsRefresh";
 import { syncFixtureResults } from "./lib/fixtureSync";
 import { autoSettleFinishedFixtures } from "./lib/autoSettle";
@@ -149,3 +150,33 @@ async function runLiveSync() {
 setTimeout(() => {
   setInterval(runLiveSync, 60_000);
 }, 90_000);
+
+// ── Daily fixtures PDF (8:00 and 13:00) ──────────────────────────────────────
+// Tracks which slot (date + hour band) was last generated so we regenerate
+// whenever the slot changes without relying on exact-minute polling.
+let lastPdfSlot = "";
+
+function getPdfSlot(): string {
+  const now = new Date();
+  const d = now.toISOString().slice(0, 10);
+  const h = now.getHours();
+  if (h >= 13) return `${d}_13`;
+  if (h >= 8) return `${d}_08`;
+  return ""; // before 8 AM — no generation yet
+}
+
+async function maybeGeneratePdf() {
+  const slot = getPdfSlot();
+  if (!slot || slot === lastPdfSlot) return;
+  lastPdfSlot = slot;
+  try {
+    await generateFixturesPdf();
+  } catch (err) {
+    logger.error({ err }, "Scheduled fixtures PDF generation failed");
+  }
+}
+
+// Generate once 10 s after startup (catches the current slot on first boot)
+setTimeout(maybeGeneratePdf, 10_000);
+// Check every minute whether the slot has changed
+setInterval(maybeGeneratePdf, 60_000);

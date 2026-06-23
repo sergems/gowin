@@ -305,6 +305,19 @@ export function Shell({ children }: { children: ReactNode }) {
               </div>
             )}
 
+            {!isStaffRole && (
+              <a
+                href="/api/fixtures-pdf/download"
+                title={!open ? "Download Fixtures PDF" : undefined}
+                className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                  ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
+                  hover:bg-accent hover:text-accent-foreground text-muted-foreground`}
+              >
+                <FileText className="w-4 h-4 shrink-0" />
+                {open && <span className="flex-1">Daily Fixtures PDF</span>}
+              </a>
+            )}
+
             {user && !isStaffRole && (
               <Link href="/history" title={!open ? t("nav.my_bets") : undefined} onClick={onNav}
                 className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
