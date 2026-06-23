@@ -15,7 +15,7 @@ COPY lib/api-client-react/package.json  ./lib/api-client-react/
 COPY lib/api-zod/package.json           ./lib/api-zod/
 
 RUN pnpm install --no-frozen-lockfile --ignore-scripts && \
-    node node_modules/esbuild/install.js
+    pnpm rebuild esbuild
 
 COPY . .
 
