@@ -99,14 +99,11 @@ async function fetchFixtureData(): Promise<LeagueGroup[]> {
   const todayStart = new Date(now);
   todayStart.setHours(0, 0, 0, 0);
 
-  const endToday = new Date(now);
-  endToday.setHours(23, 59, 59, 999);
-
   const end7days = new Date(now);
   end7days.setDate(end7days.getDate() + 7);
   end7days.setHours(23, 59, 59, 999);
 
-  const rows: any[] = await db
+  const filtered: any[] = await db
     .select({
       id: fixturesTable.id,
       startTime: fixturesTable.startTime,
@@ -119,12 +116,6 @@ async function fetchFixtureData(): Promise<LeagueGroup[]> {
     .leftJoin(leaguesTable, eq(leaguesTable.id, fixturesTable.leagueId))
     .where(and(eq(fixturesTable.status, "upcoming"), gte(fixturesTable.startTime, todayStart), lte(fixturesTable.startTime, end7days)))
     .orderBy(asc(fixturesTable.startTime));
-
-  const filtered = rows.filter((r) => {
-    const major = isMajorLeague(r.leagueName ?? "");
-    if (major) return true;
-    return r.startTime <= endToday;
-  });
 
   if (filtered.length === 0) return [];
 
@@ -157,7 +148,10 @@ async function fetchFixtureData(): Promise<LeagueGroup[]> {
 
   function fmtTime(d: Date): string {
     const utc2 = new Date(d.getTime() + 2 * 60 * 60 * 1000);
-    return utc2.toTimeString().slice(0, 5);
+    const dd = String(utc2.getDate()).padStart(2, "0");
+    const mm = String(utc2.getMonth() + 1).padStart(2, "0");
+    const hh = utc2.toTimeString().slice(0, 5);
+    return `${dd}/${mm}\n${hh}`;
   }
 
   const leagueMap = new Map<string, LeagueGroup>();
@@ -314,7 +308,7 @@ export async function generateFixturesPdf(): Promise<string> {
     },
     { canvas: [{ type: "line", x1: 80, y1: 0, x2: 720, y2: 0, lineWidth: 1, lineColor: C.gold }], margin: [0, 0, 0, 30] },
     { text: "\u201cPari ya mayele, mbongo ya solo!\u201d", fontSize: 18, italics: true, color: C.gold, alignment: "center", margin: [0, 0, 0, 14] },
-    { text: "www.gowin.com", fontSize: 12, color: "#99ccaa", alignment: "center" },
+    { text: "www.gowinrdc.com", fontSize: 12, color: "#99ccaa", alignment: "center" },
   );
 
   // ── Document definition ───────────────────────────────────────────────────
@@ -345,7 +339,7 @@ export async function generateFixturesPdf(): Promise<string> {
           { text: "", width: "*" },
           {
             stack: [
-              { text: "www.gowin.com", fontSize: 8.5, bold: true, color: C.primary },
+              { text: "www.gowinrdc.com", fontSize: 8.5, bold: true, color: C.primary },
               { text: dateLabel, fontSize: 7.5, color: C.muted },
             ],
             alignment: "right",
@@ -372,7 +366,7 @@ export async function generateFixturesPdf(): Promise<string> {
       {
         table: {
           headerRows: 2,
-          widths: [36, 30, "*", 28, 28, 28, 28, 28, 28, 28, 24, 24, 26, 26, 26],
+          widths: [36, 38, "*", 28, 28, 28, 28, 28, 28, 28, 24, 24, 26, 26, 26],
           body: tableBody,
           keepWithHeaderRows: true,
           dontBreakRows: false,
