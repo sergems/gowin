@@ -4,7 +4,7 @@
 ---
 
 ## What you will have at the end
-- App running 24/7 at **http://139.162.152.66**
+- App running 24/7 at **http://45.79.221.163**
 - PostgreSQL database managed by Docker Compose
 - Schema created automatically on every deploy — no manual SQL needed
 - One-command deploys: `git pull && docker compose up --build -d`
@@ -30,7 +30,7 @@ Confirm you can see the files at **https://github.com/sergems/gowin**. ✅
 ## PART 2 — Connect to your server
 
 ```bash
-ssh root@139.162.152.66
+ssh root@45.79.221.163
 ```
 
 Type `yes` when prompted, then enter your root password.
@@ -94,7 +94,7 @@ SMTP_PORT=
 SMTP_USER=
 SMTP_PASS=
 SMTP_FROM=
-APP_URL=http://139.162.152.66
+APP_URL=http://45.79.221.163
 ```
 
 Save: `Ctrl+X` → `Y` → `Enter`.
@@ -186,7 +186,7 @@ Paste:
 ```nginx
 server {
     listen 80;
-    server_name 139.162.152.66;
+    server_name 45.79.221.163;
 
     location / {
         proxy_pass http://localhost:8080;
@@ -233,7 +233,7 @@ systemctl reload nginx
 
 ## PART 9 — Verify everything works
 
-Open **http://139.162.152.66** in your browser. You should see the GoWin homepage.
+Open **http://45.79.221.163** in your browser. You should see the GoWin homepage.
 
 Try logging in and navigating around. If anything looks wrong:
 
@@ -310,8 +310,8 @@ At your domain registrar, add:
 
 | Type | Name | Value |
 |------|------|-------|
-| A | @ | `139.162.152.66` |
-| A | www | `139.162.152.66` |
+| A | @ | `45.79.221.163` |
+| A | www | `45.79.221.163` |
 
 Wait 5–60 minutes for DNS to propagate ([dnschecker.org](https://dnschecker.org)).
 
@@ -329,7 +329,7 @@ nano /etc/nginx/sites-available/gowin
 
 Change the `server_name` line from:
 ```nginx
-server_name 139.162.152.66;
+server_name 45.79.221.163;
 ```
 to:
 ```nginx
@@ -357,7 +357,7 @@ nano /var/www/gowin/.env
 
 Change:
 ```env
-APP_URL=http://139.162.152.66
+APP_URL=http://45.79.221.163
 ```
 to:
 ```env
@@ -371,4 +371,4 @@ docker compose restart app
 
 ---
 
-*GoWin Sportsbook — 139.162.152.66*
+*GoWin Sportsbook — 45.79.221.163*
