@@ -338,6 +338,9 @@ All containers use `restart: always` and Docker is enabled on boot (`systemctl e
 **SSL certificate errors / Certbot fails**
 → DNS hasn't propagated yet. Check [dnschecker.org](https://dnschecker.org) for `gowinrdc.com` → `172.105.149.205`. Wait a few more minutes and retry.
 
+**`ERR_PNPM_IGNORED_BUILDS` — `Ignored build scripts: esbuild`**
+→ pnpm v11 no longer reads the `pnpm` field in `package.json`. The `onlyBuiltDependencies` setting must live in `.npmrc` instead. The fix is already applied (`only-built-dependencies[]=esbuild` in `.npmrc`). If you see this error again after pulling, confirm `.npmrc` contains that line.
+
 **`ERR_PNPM_UNSUPPORTED_ENGINE` during build**
 → pnpm v11 requires Node.js ≥ 22.13. The Dockerfile uses `node:24-slim` which satisfies this. If you see this error, confirm the base image hasn't been changed to an older Node version.
 
