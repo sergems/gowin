@@ -1,0 +1,73 @@
+ => ERROR [builder 11/14] RUN pnpm install --no-frozen-lockfile                       37.7s
+------
+ > [builder 11/14] RUN pnpm install --no-frozen-lockfile:
+1.609 Scope: all 7 workspace projects
+1.899 ? Verifying lockfile against supply-chain policies (509 entries)...
+2.729 Progress: resolved 1, reused 0, downloaded 0, added 0
+2.898 artifacts/api-server                     | [WARN] deprecated @types/bcryptjs@3.0.0
+3.742 Progress: resolved 20, reused 0, downloaded 15, added 0
+4.775 Progress: resolved 38, reused 0, downloaded 30, added 0
+5.895 Progress: resolved 49, reused 0, downloaded 36, added 0
+6.965 Progress: resolved 56, reused 0, downloaded 36, added 0
+8.054 artifacts/gowin                          | [WARN] deprecated recharts@2.15.4
+8.122 Progress: resolved 68, reused 0, downloaded 38, added 0
+9.156 Progress: resolved 75, reused 0, downloaded 38, added 0
+10.20 Progress: resolved 78, reused 0, downloaded 39, added 0
+11.22 Progress: resolved 80, reused 0, downloaded 48, added 0
+12.23 Progress: resolved 84, reused 0, downloaded 65, added 0
+13.25 Progress: resolved 85, reused 0, downloaded 76, added 0
+13.99 [WARN] Request took 10168ms: https://registry.npmjs.org/tailwindcss
+15.18 [WARN] Request took 12916ms: https://registry.npmjs.org/typescript
+15.25 Progress: resolved 86, reused 0, downloaded 76, added 0
+16.31 Progress: resolved 87, reused 0, downloaded 78, added 0
+17.57 Progress: resolved 88, reused 0, downloaded 81, added 0
+17.83 ✓ Lockfile passes supply-chain policies (509 entries in 15.9s)
+18.60 Progress: resolved 89, reused 0, downloaded 83, added 0
+20.85 Progress: resolved 90, reused 0, downloaded 86, added 0
+21.86 Progress: resolved 185, reused 0, downloaded 88, added 0
+22.86 Progress: resolved 199, reused 0, downloaded 155, added 0
+23.87 Progress: resolved 259, reused 0, downloaded 183, added 0
+24.89 Progress: resolved 262, reused 0, downloaded 203, added 0
+26.15 Progress: resolved 265, reused 0, downloaded 204, added 0
+27.15 Progress: resolved 368, reused 0, downloaded 220, added 0
+28.67 Progress: resolved 408, reused 0, downloaded 221, added 0
+29.66 Progress: resolved 480, reused 0, downloaded 242, added 0
+30.62 [WARN] 1 deprecated subdependencies found: tsconfck@3.1.6
+30.67 Packages: +504
+30.67 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+30.68 Progress: resolved 506, reused 0, downloaded 258, added 0
+31.68 Progress: resolved 506, reused 0, downloaded 279, added 4
+32.69 Progress: resolved 506, reused 0, downloaded 429, added 12
+33.69 Progress: resolved 506, reused 0, downloaded 504, added 158
+34.69 Progress: resolved 506, reused 0, downloaded 504, added 189
+35.50 Progress: resolved 506, reused 0, downloaded 504, added 504, done
+36.61 . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+36.71 . preinstall: Done
+36.88
+36.88 devDependencies:
+36.88 + prettier 3.8.3 (3.8.4 is available)
+36.88 + typescript 5.9.3 (6.0.3 is available)
+36.88
+37.04 [ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: esbuild@0.27.3
+37.04
+37.04 Run "pnpm approve-builds" to pick which dependencies should be allowed to run scripts.
+------
+[+] up 0/1
+ ⠙ Image gowin-app Building                                                            39.1s
+Dockerfile:17
+
+--------------------
+
+  15 |     COPY lib/api-zod/package.json           ./lib/api-zod/
+
+  16 |
+
+  17 | >>> RUN pnpm install --no-frozen-lockfile
+
+  18 |
+
+  19 |     COPY . .
+
+--------------------
+
+failed to solve: process "/bin/sh -c pnpm install --no-frozen-lockfile" did not complete successfully: exit code: 1
