@@ -69,16 +69,17 @@ export function Shell({ children }: { children: ReactNode }) {
   }, [selections.length]);
 
   const isAdmin = user?.role === "admin";
+  const isManager = user?.role === "manager";
   const isBranchAdmin = user?.role === "branch_admin";
   const isAgent = user?.role === "agent";
   const isPayout = user?.role === "payout";
 
   useEffect(() => {
-    if (isAdmin || isBranchAdmin || isAgent || isPayout) {
+    if (isAdmin || isManager || isBranchAdmin || isAgent || isPayout) {
       setBetSlipOpen(false);
     }
-  }, [isAdmin, isBranchAdmin, isAgent, isPayout]);
-  const isStaffRole = isBranchAdmin || isAgent || isPayout;
+  }, [isAdmin, isManager, isBranchAdmin, isAgent, isPayout]);
+  const isStaffRole = isManager || isBranchAdmin || isAgent || isPayout;
 
   const { data: footballData } = useQuery<FootballData>({
     queryKey: ["football-countries"],
@@ -153,6 +154,18 @@ export function Shell({ children }: { children: ReactNode }) {
     { href: "/admin/fixture-update",  icon: Clock,             label: t("nav.fixture_update"), match: (l: string) => l === "/admin/fixture-update" },
     { href: "/admin/api-monitor",     icon: BarChart3,         label: t("nav.api_monitor"),    match: (l: string) => l === "/admin/api-monitor" },
     { href: "/admin/settings",        icon: SlidersHorizontal, label: t("nav.settings"),       match: (l: string) => l === "/admin/settings" },
+  ] : [];
+
+  const managerLinks = user?.role === "manager" ? [
+    { href: "/admin",                 icon: LayoutDashboard, label: t("nav.dashboard"),      match: (l: string) => l === "/admin" },
+    { href: "/admin/users",           icon: Users,           label: t("nav.users"),          match: (l: string) => l === "/admin/users" },
+    { href: "/admin/branches",        icon: Building2,       label: t("nav.branches"),       match: (l: string) => l.startsWith("/admin/branches") },
+    { href: "/admin/fixtures",        icon: Activity,        label: t("nav.fixtures"),       match: (l: string) => l === "/admin/fixtures" },
+    { href: "/admin/bets",            icon: Settings,        label: t("nav.bets"),           match: (l: string) => l === "/admin/bets" },
+    { href: "/admin/transactions",    icon: ArrowLeftRight,  label: t("nav.transactions"),   match: (l: string) => l === "/admin/transactions" },
+    { href: "/admin/vouchers",        icon: Ticket,          label: t("nav.vouchers"),       match: (l: string) => l === "/admin/vouchers" },
+    { href: "/admin/withdrawals",     icon: Banknote,        label: t("nav.withdrawals"),    match: (l: string) => l === "/admin/withdrawals" },
+    { href: "/admin/fixture-update",  icon: Clock,           label: t("nav.fixture_update"), match: (l: string) => l === "/admin/fixture-update" },
   ] : [];
 
   // ── Sidebar nav content (shared desktop + mobile) ────────────────────────
@@ -321,6 +334,26 @@ export function Shell({ children }: { children: ReactNode }) {
                 )}
                 {!open && <div className="my-2 mx-1 border-t border-border" />}
                 {adminLinks.map(({ href, icon: Icon, label, match }) => (
+                  <Link key={href} href={href} title={!open ? label : undefined} onClick={onNav}
+                    className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                      ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
+                      ${match(location) ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
+                    <Icon className="w-4 h-4 shrink-0" />
+                    {open && label}
+                  </Link>
+                ))}
+              </>
+            )}
+
+            {managerLinks.length > 0 && (
+              <>
+                {open && (
+                  <div className="pt-4 pb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    {t("nav.admin")}
+                  </div>
+                )}
+                {!open && <div className="my-2 mx-1 border-t border-border" />}
+                {managerLinks.map(({ href, icon: Icon, label, match }) => (
                   <Link key={href} href={href} title={!open ? label : undefined} onClick={onNav}
                     className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
                       ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}

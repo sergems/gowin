@@ -1,12 +1,12 @@
 import { Router } from "express";
 import { db, fixturesTable, betsTable, betSelectionsTable, walletsTable, transactionsTable } from "@workspace/db";
 import { eq, and, inArray } from "drizzle-orm";
-import { requireAdmin, type AuthRequest } from "../middlewares/auth";
+import { requireAdminOrManager, type AuthRequest } from "../middlewares/auth";
 import { SettleFixtureParams, SettleFixtureBody } from "@workspace/api-zod";
 
 const router = Router();
 
-router.post("/fixtures/:id/settle", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+router.post("/fixtures/:id/settle", requireAdminOrManager, async (req: AuthRequest, res): Promise<void> => {
   const params = SettleFixtureParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });

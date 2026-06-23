@@ -1,13 +1,13 @@
 import { Router } from "express";
 import { db, usersTable, betsTable, fixturesTable, walletsTable, betSelectionsTable, branchesTable } from "@workspace/db";
 import { eq, count, sum, desc, sql, and, inArray } from "drizzle-orm";
-import { requireAdmin, type AuthRequest } from "../middlewares/auth";
+import { requireAdmin, requireAdminOrManager, type AuthRequest } from "../middlewares/auth";
 import { liveCache } from "../lib/liveCache";
 import { getWsClientCount } from "../lib/wsServer";
 
 const router = Router();
 
-router.get("/admin/stats", requireAdmin, async (_req, res): Promise<void> => {
+router.get("/admin/stats", requireAdminOrManager, async (_req, res): Promise<void> => {
   const [totalUsers] = await db.select({ count: count() }).from(usersTable);
   const [totalBranches] = await db.select({ count: count() }).from(branchesTable);
   const [totalBranchAdmins] = await db.select({ count: count() }).from(usersTable).where(eq(usersTable.role, "branch_admin"));
@@ -39,7 +39,7 @@ router.get("/admin/stats", requireAdmin, async (_req, res): Promise<void> => {
   });
 });
 
-router.get("/admin/recent-bets", requireAdmin, async (_req, res): Promise<void> => {
+router.get("/admin/recent-bets", requireAdminOrManager, async (_req, res): Promise<void> => {
   const rows = await db
     .select({
       bet: betsTable,
@@ -68,7 +68,7 @@ router.get("/admin/recent-bets", requireAdmin, async (_req, res): Promise<void> 
   })));
 });
 
-router.get("/admin/top-fixtures", requireAdmin, async (_req, res): Promise<void> => {
+router.get("/admin/top-fixtures", requireAdminOrManager, async (_req, res): Promise<void> => {
   const topFixtureData = await db
     .select({
       fixtureId: betSelectionsTable.fixtureId,

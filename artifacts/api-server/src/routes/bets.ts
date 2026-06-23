@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, betsTable, betSelectionsTable, walletsTable, transactionsTable, fixturesTable, usersTable, teamsTable, leaguesTable } from "@workspace/db";
 import { eq, desc, and, count, inArray, ne } from "drizzle-orm";
-import { requireAuth, requireAdmin, type AuthRequest } from "../middlewares/auth";
+import { requireAuth, requireAdmin, requireAdminOrManager, type AuthRequest } from "../middlewares/auth";
 import {
   PlaceBetBody,
   ListAllBetsQueryParams,
@@ -197,7 +197,7 @@ router.get("/bets/my", requireAuth, async (req: AuthRequest, res): Promise<void>
 });
 
 // ── Admin: lookup bet by code ─────────────────────────────────────────────────
-router.get("/admin/bets/lookup/:code", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+router.get("/admin/bets/lookup/:code", requireAdminOrManager, async (req: AuthRequest, res): Promise<void> => {
   const code = req.params.code.toUpperCase().trim();
 
   const [bet] = await db.select().from(betsTable).where(eq(betsTable.code, code)).limit(1);
@@ -243,7 +243,7 @@ router.get("/admin/bets/lookup/:code", requireAdmin, async (req: AuthRequest, re
 });
 
 // ── Admin: list all bets ──────────────────────────────────────────────────────
-router.get("/bets", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+router.get("/bets", requireAdminOrManager, async (req: AuthRequest, res): Promise<void> => {
   const qp = ListAllBetsQueryParams.safeParse(req.query);
   const page = qp.success ? (qp.data.page ?? 1) : 1;
   const limit = qp.success ? (qp.data.limit ?? 20) : 20;
@@ -314,7 +314,7 @@ router.get("/bets/:id", requireAuth, async (req: AuthRequest, res): Promise<void
 });
 
 // ── Void bet ──────────────────────────────────────────────────────────────────
-router.patch("/bets/:id/void", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+router.patch("/bets/:id/void", requireAdminOrManager, async (req: AuthRequest, res): Promise<void> => {
   const params = VoidBetParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });

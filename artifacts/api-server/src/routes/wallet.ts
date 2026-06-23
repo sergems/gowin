@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, walletsTable, transactionsTable, usersTable } from "@workspace/db";
 import { eq, desc, count, sql, and, ilike, or } from "drizzle-orm";
-import { requireAuth, requireAdmin, type AuthRequest } from "../middlewares/auth";
+import { requireAuth, requireAdmin, requireAdminOrManager, type AuthRequest } from "../middlewares/auth";
 import { CreditWalletBody, DebitWalletBody, GetMyTransactionsQueryParams, GetUserWalletParams } from "@workspace/api-zod";
 
 const router = Router();
@@ -49,7 +49,7 @@ router.get("/wallet/transactions", requireAuth, async (req: AuthRequest, res): P
 });
 
 router.post("/wallet/deposit", requireAuth, async (req: AuthRequest, res): Promise<void> => {
-  if (["agent", "branch_admin", "payout"].includes(req.userRole!)) {
+  if (["agent", "branch_admin", "payout", "manager"].includes(req.userRole!)) {
     res.status(403).json({ error: "Staff accounts cannot deposit funds" });
     return;
   }
@@ -113,7 +113,7 @@ router.post("/wallet/withdraw", requireAuth, async (req: AuthRequest, res): Prom
   res.json({ id: wallet.id, userId: wallet.userId, balance: newBalance });
 });
 
-router.post("/wallet/credit", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+router.post("/wallet/credit", requireAdminOrManager, async (req: AuthRequest, res): Promise<void> => {
   const parsed = CreditWalletBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -139,7 +139,7 @@ router.post("/wallet/credit", requireAdmin, async (req: AuthRequest, res): Promi
   res.json({ id: wallet.id, userId: wallet.userId, balance: newBalance });
 });
 
-router.post("/wallet/debit", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+router.post("/wallet/debit", requireAdminOrManager, async (req: AuthRequest, res): Promise<void> => {
   const parsed = DebitWalletBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -170,7 +170,7 @@ router.post("/wallet/debit", requireAdmin, async (req: AuthRequest, res): Promis
   res.json({ id: wallet.id, userId: wallet.userId, balance: newBalance });
 });
 
-router.get("/wallet/user/:userId", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+router.get("/wallet/user/:userId", requireAdminOrManager, async (req: AuthRequest, res): Promise<void> => {
   const params = GetUserWalletParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -189,7 +189,7 @@ router.get("/wallet/user/:userId", requireAdmin, async (req: AuthRequest, res): 
   res.json({ id: wallet.id, userId: wallet.userId, balance: parseFloat(wallet.balance) });
 });
 
-router.get("/admin/transactions", requireAdmin, async (_req, res): Promise<void> => {
+router.get("/admin/transactions", requireAdminOrManager, async (_req, res): Promise<void> => {
   const req = _req as AuthRequest;
   const page = parseInt(String(req.query.page ?? "1"));
   const limit = 25;

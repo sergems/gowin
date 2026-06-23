@@ -8,7 +8,8 @@ DO $$ BEGIN CREATE TYPE public.bet_status       AS ENUM ('pending','won','lost',
 DO $$ BEGIN CREATE TYPE public.branch_status    AS ENUM ('active','suspended');                    EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE TYPE public.fixture_status   AS ENUM ('upcoming','live','finished','cancelled'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE TYPE public.transaction_type AS ENUM ('credit','debit','bet_placed','bet_won','bet_refund','voucher_redeem'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE TYPE public.user_role        AS ENUM ('user','admin','branch_admin','agent','payout'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE TYPE public.user_role        AS ENUM ('user','admin','manager','branch_admin','agent','payout'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'manager'; EXCEPTION WHEN others THEN NULL; END $$;
 DO $$ BEGIN CREATE TYPE public.withdrawal_status AS ENUM ('pending','approved','rejected','paid'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ── Tables ───────────────────────────────────────────────────────────────────

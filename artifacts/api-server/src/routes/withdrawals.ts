@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, usersTable, walletsTable, withdrawalsTable, branchesTable } from "@workspace/db";
 import { eq, desc, and, sql } from "drizzle-orm";
-import { requireAuth, requireAdmin, type AuthRequest } from "../middlewares/auth";
+import { requireAuth, requireAdmin, requireAdminOrManager, type AuthRequest } from "../middlewares/auth";
 
 const router = Router();
 
@@ -66,7 +66,7 @@ router.get("/wallet/withdrawals", requireAuth, async (req: AuthRequest, res): Pr
 });
 
 // ── Admin: list all withdrawals (optional ?status= filter) ──────────────────
-router.get("/admin/withdrawals", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+router.get("/admin/withdrawals", requireAdminOrManager, async (req: AuthRequest, res): Promise<void> => {
   const statusFilter = req.query.status as string | undefined;
 
   const rows = await db
@@ -96,7 +96,7 @@ router.get("/admin/withdrawals", requireAdmin, async (req: AuthRequest, res): Pr
 });
 
 // ── Admin: update withdrawal status ─────────────────────────────────────────
-router.patch("/admin/withdrawals/:id", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+router.patch("/admin/withdrawals/:id", requireAdminOrManager, async (req: AuthRequest, res): Promise<void> => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid ID" });

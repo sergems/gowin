@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, sportsTable, leaguesTable, teamsTable, fixturesTable, marketsTable, oddsTable } from "@workspace/db";
 import { eq, and, desc, count, sql, inArray, gte, lte, asc } from "drizzle-orm";
-import { requireAdmin, type AuthRequest } from "../middlewares/auth";
+import { requireAdmin, requireAdminOrManager, type AuthRequest } from "../middlewares/auth";
 import {
   ListLeaguesQueryParams,
   ListFixturesQueryParams,
@@ -380,7 +380,7 @@ router.get("/fixtures/:id", async (req, res): Promise<void> => {
   });
 });
 
-router.patch("/fixtures/:id", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+router.patch("/fixtures/:id", requireAdminOrManager, async (req: AuthRequest, res): Promise<void> => {
   const params = UpdateFixtureParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, vouchersTable, walletsTable, transactionsTable, usersTable, branchesTable } from "@workspace/db";
 import { eq, desc, and, isNull } from "drizzle-orm";
-import { requireAuth, requireAdmin, requireBranchAdmin, type AuthRequest } from "../middlewares/auth";
+import { requireAuth, requireAdmin, requireAdminOrManager, requireBranchAdmin, type AuthRequest } from "../middlewares/auth";
 import { randomBytes } from "crypto";
 
 const router = Router();
@@ -19,7 +19,7 @@ function generateVoucherCode(): string {
 }
 
 // ── POST /admin/vouchers — create batch (super admin) ────────────────────────
-router.post("/admin/vouchers", requireAdmin, async (req, res): Promise<void> => {
+router.post("/admin/vouchers", requireAdminOrManager, async (req, res): Promise<void> => {
   const { value, quantity = 1 } = req.body;
 
   if (typeof value !== "number" || !ALLOWED_VALUES.includes(value)) {
@@ -53,7 +53,7 @@ router.post("/admin/vouchers", requireAdmin, async (req, res): Promise<void> => 
 });
 
 // ── GET /admin/vouchers — list all (super admin) ──────────────────────────────
-router.get("/admin/vouchers", requireAdmin, async (_req, res): Promise<void> => {
+router.get("/admin/vouchers", requireAdminOrManager, async (_req, res): Promise<void> => {
   const vouchers = await db
     .select({
       id: vouchersTable.id,
@@ -89,7 +89,7 @@ router.get("/admin/vouchers", requireAdmin, async (_req, res): Promise<void> => 
 });
 
 // ── POST /admin/vouchers/allocate-to-branch ───────────────────────────────────
-router.post("/admin/vouchers/allocate-to-branch", requireAdmin, async (req, res): Promise<void> => {
+router.post("/admin/vouchers/allocate-to-branch", requireAdminOrManager, async (req, res): Promise<void> => {
   const { voucherIds, branchId } = req.body as { voucherIds: number[]; branchId: number };
 
   if (!Array.isArray(voucherIds) || voucherIds.length === 0) {

@@ -87,6 +87,7 @@ function ProtectedRoute({ component: Component, allowedRoles, adminOnly = false,
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     if (user.role === "admin") return <AdminDashboard />;
+    if (user.role === "manager") return <AdminDashboard />;
     if (user.role === "branch_admin") return <BranchDashboard />;
     if (user.role === "agent") return <AgentDashboard />;
     if (user.role === "payout") return <PayoutDashboard />;
@@ -101,8 +102,9 @@ function RootPage() {
   const [, navigate] = useLocation();
   useEffect(() => {
     if (!isLoading && user?.role === "payout") navigate("/payout");
+    if (!isLoading && user?.role === "manager") navigate("/admin");
   }, [user?.role, isLoading]);
-  if (user?.role === "payout") return null;
+  if (user?.role === "payout" || user?.role === "manager") return null;
   return <Home />;
 }
 
@@ -125,18 +127,19 @@ function Router() {
         <Route path="/wallet" component={() => <ProtectedRoute component={Wallet} allowedRoles={["user", "admin"]} />} />
         <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
 
-        {/* Super Admin Routes */}
-        <Route path="/admin" component={() => <ProtectedRoute component={AdminDashboard} adminOnly />} />
-        <Route path="/admin/users" component={() => <ProtectedRoute component={AdminUsers} adminOnly />} />
-        <Route path="/admin/fixtures" component={() => <ProtectedRoute component={AdminFixtures} adminOnly />} />
-        <Route path="/admin/bets" component={() => <ProtectedRoute component={AdminBets} adminOnly />} />
-        <Route path="/admin/transactions" component={() => <ProtectedRoute component={AdminTransactions} adminOnly />} />
-        <Route path="/admin/vouchers" component={() => <ProtectedRoute component={AdminVouchers} adminOnly />} />
-        <Route path="/admin/withdrawals" component={() => <ProtectedRoute component={AdminWithdrawals} adminOnly />} />
+        {/* Admin + Manager Routes */}
+        <Route path="/admin" component={() => <ProtectedRoute component={AdminDashboard} allowedRoles={["admin", "manager"]} />} />
+        <Route path="/admin/users" component={() => <ProtectedRoute component={AdminUsers} allowedRoles={["admin", "manager"]} />} />
+        <Route path="/admin/fixtures" component={() => <ProtectedRoute component={AdminFixtures} allowedRoles={["admin", "manager"]} />} />
+        <Route path="/admin/bets" component={() => <ProtectedRoute component={AdminBets} allowedRoles={["admin", "manager"]} />} />
+        <Route path="/admin/transactions" component={() => <ProtectedRoute component={AdminTransactions} allowedRoles={["admin", "manager"]} />} />
+        <Route path="/admin/vouchers" component={() => <ProtectedRoute component={AdminVouchers} allowedRoles={["admin", "manager"]} />} />
+        <Route path="/admin/withdrawals" component={() => <ProtectedRoute component={AdminWithdrawals} allowedRoles={["admin", "manager"]} />} />
+        <Route path="/admin/fixture-update" component={() => <ProtectedRoute component={AdminFixtureUpdate} allowedRoles={["admin", "manager"]} />} />
+        <Route path="/admin/branches" component={() => <ProtectedRoute component={AdminBranches} allowedRoles={["admin", "manager"]} />} />
+        {/* Super Admin Only Routes */}
         <Route path="/admin/settings" component={() => <ProtectedRoute component={AdminSettings} adminOnly />} />
         <Route path="/admin/slides" component={() => <ProtectedRoute component={AdminSlides} adminOnly />} />
-        <Route path="/admin/fixture-update" component={() => <ProtectedRoute component={AdminFixtureUpdate} adminOnly />} />
-        <Route path="/admin/branches" component={() => <ProtectedRoute component={AdminBranches} adminOnly />} />
         <Route path="/admin/api-monitor" component={() => <ProtectedRoute component={ApiMonitorPage} adminOnly />} />
 
         {/* Branch Admin Routes */}

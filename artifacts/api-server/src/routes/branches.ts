@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, branchesTable, usersTable, walletsTable, betsTable } from "@workspace/db";
 import { eq, count, desc, sum, inArray, or, sql } from "drizzle-orm";
-import { requireAdmin, type AuthRequest } from "../middlewares/auth";
+import { requireAdmin, requireAdminOrManager, type AuthRequest } from "../middlewares/auth";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 
@@ -24,7 +24,7 @@ async function generatePublicId(): Promise<number> {
 }
 
 // ── GET /admin/branches ───────────────────────────────────────────────────────
-router.get("/admin/branches", requireAdmin, async (_req, res): Promise<void> => {
+router.get("/admin/branches", requireAdminOrManager, async (_req, res): Promise<void> => {
   const branches = await db.select().from(branchesTable).orderBy(desc(branchesTable.createdAt));
 
   const withCounts = await Promise.all(branches.map(async (branch) => {
@@ -140,7 +140,7 @@ router.post("/admin/branches/:id/admins", requireAdmin, async (req: AuthRequest,
 });
 
 // ── GET /admin/branches/:id/members ──────────────────────────────────────────
-router.get("/admin/branches/:id/members", requireAdmin, async (req, res): Promise<void> => {
+router.get("/admin/branches/:id/members", requireAdminOrManager, async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid branch ID" }); return; }
 
@@ -232,7 +232,7 @@ router.patch("/admin/users/:id/assign-branch", requireAdmin, async (req, res): P
     }
   }
 
-  if (role && ["admin", "branch_admin", "agent", "user"].includes(role)) {
+  if (role && ["admin", "manager", "branch_admin", "agent", "payout", "user"].includes(role)) {
     updates.role = role;
   }
 

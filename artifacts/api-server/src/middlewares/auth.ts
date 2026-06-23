@@ -97,3 +97,13 @@ export function requirePayout(req: AuthRequest, res: Response, next: NextFunctio
     next();
   });
 }
+
+export function requireAdminOrManager(req: AuthRequest, res: Response, next: NextFunction): void {
+  requireAuth(req, res, () => {
+    if (req.userRole !== "admin" && req.userRole !== "manager") {
+      res.status(403).json({ error: "Admin or manager access required" });
+      return;
+    }
+    next();
+  });
+}

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, branchesTable, usersTable, betsTable, walletsTable, transactionsTable } from "@workspace/db";
 import { branchFloatAllocationsTable, cashUpSessionsTable } from "@workspace/db";
 import { eq, and, gte, lte, sum, desc, or } from "drizzle-orm";
-import { requireAdmin, requireBranchAdmin, getJwtSecret, type AuthRequest } from "../middlewares/auth";
+import { requireAdmin, requireAdminOrManager, requireBranchAdmin, getJwtSecret, type AuthRequest } from "../middlewares/auth";
 
 const router = Router();
 
@@ -324,7 +324,7 @@ router.get("/agent/float", async (req: AuthRequest, res): Promise<void> => {
 });
 
 // ── GET /api/admin/branches/:id/cashup-summary ── super admin overview ────────
-router.get("/admin/branches/:id/cashup-summary", requireAdmin, async (req, res): Promise<void> => {
+router.get("/admin/branches/:id/cashup-summary", requireAdminOrManager, async (req, res): Promise<void> => {
   const branchId = parseInt(req.params.id);
   const [branch] = await db.select().from(branchesTable).where(eq(branchesTable.id, branchId)).limit(1);
   if (!branch) { res.status(404).json({ error: "Branch not found" }); return; }

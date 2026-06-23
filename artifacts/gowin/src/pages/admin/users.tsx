@@ -17,6 +17,7 @@ import { Pencil, Ban, CheckCircle2, KeyRound, Copy, Check, Search, X as XIcon, B
 
 const ROLE_LABELS: Record<string, { label: string; color: string }> = {
   admin:        { label: "Admin",         color: "bg-primary text-primary-foreground" },
+  manager:      { label: "Manager",       color: "bg-emerald-600 text-white" },
   branch_admin: { label: "Branch Admin",  color: "bg-blue-600 text-white" },
   agent:        { label: "Agent",         color: "bg-violet-600 text-white" },
   payout:       { label: "Payout Clerk",  color: "bg-amber-600 text-white" },
@@ -56,6 +57,7 @@ interface Branch { id: number; name: string; code: string; }
 const ROLE_TABS = [
   { key: "all",          label: "All Users" },
   { key: "admin",        label: "Admins" },
+  { key: "manager",      label: "Managers" },
   { key: "branch_admin", label: "Branch Admins" },
   { key: "agent",        label: "Agents" },
   { key: "payout",       label: "Payout Clerks" },
@@ -445,15 +447,17 @@ export default function AdminUsers() {
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Role & Access</p>
                 <div className="space-y-2">
                   <Label>Role</Label>
-                  <Select value={editForm.role} onValueChange={(v) => setEditForm(f => ({ ...f, role: v, branchId: ["branch_admin","agent"].includes(v) ? f.branchId : "" }))}>
+                  <Select value={editForm.role} onValueChange={(v) => setEditForm(f => ({ ...f, role: v, branchId: ["branch_admin","agent","payout"].includes(v) ? f.branchId : "" }))}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="user">User</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="manager">Manager</SelectItem>
                       <SelectItem value="branch_admin">Branch Admin</SelectItem>
                       <SelectItem value="agent">Agent</SelectItem>
+                      <SelectItem value="payout">Payout Clerk</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
