@@ -1,0 +1,59 @@
+ => ERROR [builder 11/17] RUN pnpm install --frozen-lockfile                          19.2s
+------
+ > [builder 11/17] RUN pnpm install --frozen-lockfile:
+1.162 [WARN] The "pnpm" field in package.json is no longer read by pnpm. The following keys were ignored: "pnpm.onlyBuiltDependencies". See https://pnpm.io/settings for the new home of each setting.
+1.228 Scope: all 7 workspace projects
+1.502 ? Verifying lockfile against supply-chain policies (509 entries)...
+1.547 Lockfile is up to date, resolution step is skipped
+1.854 Progress: resolved 1, reused 0, downloaded 0, added 0
+1.960 Packages: +501
+1.960 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+2.867 Progress: resolved 501, reused 0, downloaded 0, added 0
+3.880 Progress: resolved 501, reused 0, downloaded 2, added 0
+4.891 Progress: resolved 501, reused 0, downloaded 26, added 0
+5.925 Progress: resolved 501, reused 0, downloaded 27, added 0
+6.929 Progress: resolved 501, reused 0, downloaded 43, added 0
+8.021 Progress: resolved 501, reused 0, downloaded 58, added 0
+9.032 Progress: resolved 501, reused 0, downloaded 135, added 8
+10.04 Progress: resolved 501, reused 0, downloaded 167, added 8
+10.31 ✓ Lockfile passes supply-chain policies (509 entries in 8.7s)
+11.05 Progress: resolved 501, reused 0, downloaded 270, added 16
+12.05 Progress: resolved 501, reused 0, downloaded 315, added 20
+13.05 Progress: resolved 501, reused 0, downloaded 321, added 20
+14.05 Progress: resolved 501, reused 0, downloaded 327, added 20
+15.05 Progress: resolved 501, reused 0, downloaded 344, added 20
+16.06 Progress: resolved 501, reused 0, downloaded 440, added 28
+17.06 Progress: resolved 501, reused 0, downloaded 501, added 316
+17.90 Progress: resolved 501, reused 0, downloaded 501, added 501, done
+18.46
+18.46 devDependencies:
+18.46 + prettier 3.8.3
+18.46 + typescript 5.9.3
+18.46
+18.48 . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+18.55 . preinstall: Done
+18.73 [ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: esbuild@0.27.3
+18.73
+18.73 Run "pnpm approve-builds" to pick which dependencies should be allowed to run scripts.
+------
+[+] build 0/1
+ ⠙ Image gowin-app Building                                                            22.8s
+Dockerfile:17
+
+--------------------
+
+  15 |     COPY lib/api-zod/package.json           ./lib/api-zod/
+
+  16 |
+
+  17 | >>> RUN pnpm install --frozen-lockfile
+
+  18 |
+
+  19 |     COPY . .
+
+--------------------
+
+failed to solve: process "/bin/sh -c pnpm install --frozen-lockfile" did not complete successfully: exit code: 1
+
+root@localhost:/var/www/gowin#
