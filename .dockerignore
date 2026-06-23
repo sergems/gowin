@@ -15,7 +15,6 @@ node_modules
 .env
 .env.*
 *.local
-.npmrc
 
 # ── Database dumps (not needed in image) ─────────────────────────────────────
 backup.sql
