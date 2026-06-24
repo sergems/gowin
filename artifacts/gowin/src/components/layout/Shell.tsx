@@ -314,7 +314,7 @@ export function Shell({ children }: { children: ReactNode }) {
                   hover:bg-accent hover:text-accent-foreground text-muted-foreground`}
               >
                 <FileText className="w-4 h-4 shrink-0" />
-                {open && <span className="flex-1">Daily Fixtures PDF</span>}
+                {open && <span className="flex-1">Fixtures</span>}
               </a>
             )}
 

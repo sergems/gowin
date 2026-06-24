@@ -103,7 +103,7 @@ async function fetchFixtureData(): Promise<LeagueGroup[]> {
   end7days.setDate(end7days.getDate() + 7);
   end7days.setHours(23, 59, 59, 999);
 
-  const filtered: any[] = await db
+  const allRows: any[] = await db
     .select({
       id: fixturesTable.id,
       startTime: fixturesTable.startTime,
@@ -116,6 +116,20 @@ async function fetchFixtureData(): Promise<LeagueGroup[]> {
     .leftJoin(leaguesTable, eq(leaguesTable.id, fixturesTable.leagueId))
     .where(and(eq(fixturesTable.status, "upcoming"), gte(fixturesTable.startTime, todayStart), lte(fixturesTable.startTime, end7days)))
     .orderBy(asc(fixturesTable.startTime));
+
+  if (allRows.length === 0) return [];
+
+  // Keep only fixtures that have at least one odd
+  const allRowIds = allRows.map((r) => r.id) as number[];
+  const fixturesWithOdds = allRowIds.length > 0
+    ? await db
+        .selectDistinct({ fixtureId: marketsTable.fixtureId })
+        .from(marketsTable)
+        .innerJoin(oddsTable, eq(oddsTable.marketId, marketsTable.id))
+        .where(inArray(marketsTable.fixtureId, allRowIds))
+    : [];
+  const fixtureIdsWithOdds = new Set(fixturesWithOdds.map((r) => r.fixtureId));
+  const filtered = allRows.filter((r) => fixtureIdsWithOdds.has(r.id));
 
   if (filtered.length === 0) return [];
 

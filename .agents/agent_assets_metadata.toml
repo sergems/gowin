@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "TNTlIWCDwQ61KTTjCkThh"
+uri = "file://DEPLOY-UPDATES.md"
+type = "text"
+title = "How to Deploy Updates to Production"
