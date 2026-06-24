@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 
 function getEmailFromUrl(): string {
   const params = new URLSearchParams(window.location.search);
@@ -15,6 +16,7 @@ function getEmailFromUrl(): string {
 export default function ResetPassword() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { t } = useSiteSettings();
 
   const [email, setEmail] = useState(getEmailFromUrl);
   const [otp, setOtp] = useState("");
@@ -34,10 +36,10 @@ export default function ResetPassword() {
         body: JSON.stringify({ email, otp }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Invalid code");
+      if (!res.ok) throw new Error(data.error || t("reset.invalid_code"));
       setResetToken(data.resetToken);
     } catch (err: any) {
-      toast({ title: "Invalid code", description: err.message, variant: "destructive" });
+      toast({ title: t("reset.invalid_code"), description: err.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -46,7 +48,7 @@ export default function ResetPassword() {
   const handleSetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      toast({ title: "Passwords don't match", description: "Please make sure both passwords are the same.", variant: "destructive" });
+      toast({ title: t("reset.mismatch_title"), description: t("reset.mismatch_desc"), variant: "destructive" });
       return;
     }
     setLoading(true);
@@ -57,10 +59,10 @@ export default function ResetPassword() {
         body: JSON.stringify({ resetToken, newPassword }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Reset failed");
+      if (!res.ok) throw new Error(data.error || t("reset.failed"));
       setDone(true);
     } catch (err: any) {
-      toast({ title: "Reset failed", description: err.message, variant: "destructive" });
+      toast({ title: t("reset.failed"), description: err.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -72,7 +74,7 @@ export default function ResetPassword() {
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-2xl font-bold">GoWin</CardTitle>
           <CardDescription>
-            {done ? "Password updated" : resetToken ? "Set new password" : "Enter your code"}
+            {done ? t("reset.done_title") : resetToken ? t("reset.set_password_title") : t("reset.enter_code")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -84,21 +86,21 @@ export default function ResetPassword() {
                 </div>
               </div>
               <p className="text-sm text-muted-foreground">
-                Your password has been reset successfully. You can now log in with your new password.
+                {t("reset.done_desc")}
               </p>
               <Button className="w-full" onClick={() => setLocation("/login")}>
-                Go to login
+                {t("reset.go_to_login")}
               </Button>
             </div>
           ) : resetToken ? (
             <form onSubmit={handleSetPassword} className="space-y-4">
-              <p className="text-sm text-muted-foreground">Choose a new password for your account.</p>
+              <p className="text-sm text-muted-foreground">{t("reset.set_password_instruction")}</p>
               <div className="space-y-2">
-                <Label htmlFor="newPassword">New password</Label>
+                <Label htmlFor="newPassword">{t("reset.new_password")}</Label>
                 <Input
                   id="newPassword"
                   type="password"
-                  placeholder="At least 6 characters"
+                  placeholder={t("reset.new_password_ph")}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   minLength={6}
@@ -106,27 +108,27 @@ export default function ResetPassword() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm password</Label>
+                <Label htmlFor="confirmPassword">{t("reset.confirm_password")}</Label>
                 <Input
                   id="confirmPassword"
                   type="password"
-                  placeholder="Repeat your new password"
+                  placeholder={t("reset.confirm_password_ph")}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                 />
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Saving…" : "Set new password"}
+                {loading ? t("reset.saving") : t("reset.set_btn")}
               </Button>
             </form>
           ) : (
             <form onSubmit={handleVerifyOtp} className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Enter the 6-digit code sent to your email address.
+                {t("reset.instruction")}
               </p>
               <div className="space-y-2">
-                <Label htmlFor="email">Email address</Label>
+                <Label htmlFor="email">{t("reset.email_label")}</Label>
                 <Input
                   id="email"
                   type="email"
@@ -136,7 +138,7 @@ export default function ResetPassword() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="otp">6-digit code</Label>
+                <Label htmlFor="otp">{t("reset.code_label")}</Label>
                 <Input
                   id="otp"
                   type="text"
@@ -150,11 +152,11 @@ export default function ResetPassword() {
                 />
               </div>
               <Button type="submit" className="w-full" disabled={loading || otp.length !== 6}>
-                {loading ? "Verifying…" : "Verify code"}
+                {loading ? t("reset.verifying") : t("reset.verify")}
               </Button>
               <Link href="/forgot-password">
                 <Button variant="ghost" className="w-full gap-2 text-muted-foreground">
-                  <ArrowLeft className="w-4 h-4" /> Request a new code
+                  <ArrowLeft className="w-4 h-4" /> {t("reset.request_new")}
                 </Button>
               </Link>
             </form>

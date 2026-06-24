@@ -6,12 +6,14 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Mail } from "lucide-react";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const { toast } = useToast();
+  const { t } = useSiteSettings();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +30,7 @@ export default function ForgotPassword() {
       }
       setSent(true);
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({ title: t("forgot.error_title"), description: err.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -40,7 +42,7 @@ export default function ForgotPassword() {
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-2xl font-bold">GoWin</CardTitle>
           <CardDescription>
-            {sent ? "Check your email" : "Reset your password"}
+            {sent ? t("forgot.check_email") : t("forgot.title")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -52,26 +54,26 @@ export default function ForgotPassword() {
                 </div>
               </div>
               <p className="text-sm text-muted-foreground">
-                If an account with <strong>{email}</strong> exists, we've sent a 6-digit code to that address. Check your inbox and enter the code on the next page.
+                {t("forgot.sent_desc").replace("{email}", email)}
               </p>
               <Link href={`/reset-password?email=${encodeURIComponent(email)}`}>
-                <Button className="w-full">Enter the code</Button>
+                <Button className="w-full">{t("forgot.enter_code_btn")}</Button>
               </Link>
               <button
                 type="button"
                 className="text-sm text-muted-foreground hover:text-foreground underline"
                 onClick={() => setSent(false)}
               >
-                Use a different email
+                {t("forgot.different_email")}
               </button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Enter your account email and we'll send you a one-time code to reset your password.
+                {t("forgot.instruction")}
               </p>
               <div className="space-y-2">
-                <Label htmlFor="email">Email address</Label>
+                <Label htmlFor="email">{t("forgot.email_label")}</Label>
                 <Input
                   id="email"
                   type="email"
@@ -82,11 +84,11 @@ export default function ForgotPassword() {
                 />
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Sending…" : "Send reset code"}
+                {loading ? t("forgot.sending") : t("forgot.send_code")}
               </Button>
               <Link href="/login">
                 <Button variant="ghost" className="w-full gap-2 text-muted-foreground">
-                  <ArrowLeft className="w-4 h-4" /> Back to login
+                  <ArrowLeft className="w-4 h-4" /> {t("forgot.back_to_login")}
                 </Button>
               </Link>
             </form>
