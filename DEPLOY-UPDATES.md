@@ -1,76 +1,119 @@
-# GoWin — Deploying Updates to Production
+# GoWin — Pushing Updates to Production (Linode)
 
-This guide covers how to push code changes to an **already-deployed** GoWin instance on Replit.
-For the initial deployment setup, see the existing deployment guide in your project docs.
-
----
-
-## What changed in this update
-
-- **Fixtures PDF** — generated twice daily (08:00 & 13:00); only fixtures with at least one odd are included; 7-day window for all leagues; DD/MM date shown on every row; website updated to www.gowinrdc.com
-- **Sidebar** — "Daily Fixtures PDF" link renamed to "Fixtures"
+This guide covers the day-to-day process of deploying code changes from Replit to the live site at **gowinrdc.com** (Linode `172.105.149.205`).  
+For the initial server setup (Docker, Nginx, SSL, database), see **DEPLOYMENT_GUIDE.md**.
 
 ---
 
-## How to deploy
-
-### 1. Make sure the dev app is working
-
-Open the preview pane and confirm the app loads, the sidebar shows "Fixtures", and clicking it downloads a PDF.
-
-### 2. Click Publish / Redeploy
-
-In Replit, click the **Deploy** button (top-right, looks like a rocket 🚀).  
-If the project was already published, you will see a **Redeploy** button instead — click it.
-
-Replit will:
-1. Run the build command (`bash start.sh` / `pnpm build`)
-2. Bundle and push the new code to the production VM
-3. Restart the production server
-
-This typically takes 1–3 minutes.
-
-### 3. Verify production
-
-Once redeployment finishes, visit your production URL (e.g. `https://gowin.replit.app`) and confirm:
-
-- [ ] The sidebar shows **Fixtures** (not "Daily Fixtures PDF")
-- [ ] Clicking **Fixtures** downloads a PDF
-- [ ] The PDF cover page shows **www.gowinrdc.com**
-- [ ] Every fixture row in the PDF has at least one odd value (no blank rows)
-- [ ] The Time column shows the date (`DD/MM`) above the kick-off time
-
-### 4. Force a fresh PDF on production
-
-The production server generates the PDF automatically 10 seconds after startup and then at 08:00 and 13:00 daily. After a redeploy the server restarts, so the first PDF is regenerated automatically within 10 seconds.
-
-If you ever need to regenerate immediately (admin-only, requires server access):
+## How the pipeline works
 
 ```
-POST https://your-production-url/api/fixtures-pdf/regenerate
-Authorization: Bearer <admin-jwt-token>
+Replit (dev)  →  GitHub (sergems/gowin)  →  Linode server  →  gowinrdc.com
 ```
 
 ---
 
-## Rollback
+## Step 1 — Push from Replit to GitHub
 
-If something goes wrong after redeployment, use Replit **Checkpoints** to revert:
+In the Replit **Shell** tab:
 
-1. Open the project on Replit
-2. Click the clock / history icon to see checkpoints
-3. Select the last known-good checkpoint and click **Restore**
-4. Redeploy again from the restored state
+```bash
+git add .
+git commit -m "feat: describe what changed"
+git push origin main
+```
 
----
-
-## Environment variables
-
-No new environment variables were introduced in this update. The existing `DATABASE_URL` (and optional SMTP vars) are sufficient.
+Confirm the changes appear at **https://github.com/sergems/gowin**.
 
 ---
 
-## Notes
+## Step 2 — SSH into the Linode server
 
-- The PDF is cached on disk (`uploads/fixtures/daily-fixtures.pdf`). In production this file lives inside the VM's ephemeral storage and is regenerated on every server restart and at the two daily slots.
-- PDF generation takes 30–90 seconds depending on the number of fixtures. The download endpoint waits for generation to complete on the first request after a restart.
+```bash
+ssh root@172.105.149.205
+```
+
+---
+
+## Step 3 — Pull and rebuild
+
+```bash
+cd /var/www/gowin
+git pull
+docker compose up --build -d
+```
+
+Docker rebuilds only the layers that changed (subsequent builds are much faster than the first), applies any schema changes automatically, and restarts the container with zero manual steps.
+
+Watch the logs while it starts:
+
+```bash
+docker compose logs -f app
+```
+
+You should see:
+```
+[entrypoint] PostgreSQL is ready.
+[entrypoint] Applying database schema...
+[entrypoint] Schema applied.
+[entrypoint] Starting API server...
+Server listening  port: 8080
+```
+
+---
+
+## Step 4 — Verify
+
+Open **https://gowinrdc.com** and confirm the update is live.
+
+---
+
+## What changed in the latest update (June 2026)
+
+| Area | Change |
+|------|--------|
+| **Fixtures PDF** | New "Fixtures" link in sidebar — downloads a PDF coupon with all upcoming matches for 7 days, generated at 08:00 and 13:00 daily. Only fixtures with at least one odd are included. Cover page shows date, fixture count, slogan, and www.gowinrdc.com. |
+| **Password reset** | Forgot-password and reset-password pages are now fully translated into French when the site language is set to French. |
+| **Odds filter** | Fixtures with no odds are excluded from the public fixtures list and the PDF. |
+
+---
+
+## If something goes wrong
+
+**Rollback to the previous working commit:**
+
+```bash
+cd /var/www/gowin
+git log --oneline -5          # find the last good commit hash
+git checkout <commit-hash>
+docker compose up --build -d
+```
+
+**View live error logs:**
+
+```bash
+docker compose logs -f app
+```
+
+**Restart without rebuilding (e.g. after an env var change):**
+
+```bash
+docker compose restart app
+```
+
+---
+
+## Updating environment variables on the server
+
+If you need to add or change a setting (e.g. SMTP credentials):
+
+```bash
+nano /var/www/gowin/.env      # edit the value
+docker compose restart app    # apply without rebuild
+```
+
+The `.env` file is **not** committed to Git — it stays on the server only.
+
+---
+
+*GoWin Sportsbook — gowinrdc.com · 172.105.149.205*
