@@ -1219,7 +1219,7 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
     return () => clearTimeout(t);
   }, [pollCountdown, testResult?.depositId]);
 
-  const scenarios = DRC_TEST_SCENARIOS[testOperator] ?? [];
+  const scenarios = DRC_TEST_REF[testOperator] ?? [];
 
   return (
     <Card>
@@ -1397,7 +1397,7 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
                       value={testOperator}
                       onChange={(e) => {
                         setTestOperator(e.target.value);
-                        const first = DRC_TEST_SCENARIOS[e.target.value]?.[0]?.phone ?? "";
+                        const first = DRC_TEST_REF[e.target.value]?.[0]?.phone ?? "";
                         setTestPhone(first);
                       }}
                       className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
