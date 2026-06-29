@@ -211,7 +211,8 @@ router.get("/pawapay/deposits/:depositId", requireAuth, async (req: AuthRequest,
 
   try {
     const result = await getDepositStatus(config, depositId);
-    const apiStatus: string = result.data?.status ?? deposit.status;
+    // v2 status check returns { status: "FOUND", data: { status: "COMPLETED", ... } }
+    const apiStatus: string = result.data?.data?.status ?? deposit.status;
 
     // Update local record
     await db
@@ -264,15 +265,18 @@ router.get("/pawapay/deposits/:depositId", requireAuth, async (req: AuthRequest,
 router.post("/pawapay/webhook", async (req, res): Promise<void> => {
   const payload = req.body;
 
+  // v2 callbacks have no "type" field — detect by depositId vs payoutId presence
+  const eventType = payload?.depositId ? "DEPOSIT" : payload?.payoutId ? "PAYOUT" : "UNKNOWN";
+
   // Log all webhook events
   await db.insert(webhookLogsTable).values({
-    eventType: payload?.type ?? "UNKNOWN",
+    eventType,
     payload: payload as any,
     processed: false,
   });
 
   try {
-    if (payload?.type === "DEPOSIT") {
+    if (eventType === "DEPOSIT") {
       const { depositId, status } = payload;
       if (depositId && status) {
         const [deposit] = await db
@@ -314,7 +318,7 @@ router.post("/pawapay/webhook", async (req, res): Promise<void> => {
       }
     }
 
-    if (payload?.type === "PAYOUT") {
+    if (eventType === "PAYOUT") {
       const { payoutId, status } = payload;
       if (payoutId && status) {
         const [withdrawal] = await db
@@ -363,7 +367,7 @@ router.post("/pawapay/webhook", async (req, res): Promise<void> => {
     await db
       .update(webhookLogsTable)
       .set({ processed: true })
-      .where(eq(webhookLogsTable.eventType, payload?.type ?? "UNKNOWN"));
+      .where(eq(webhookLogsTable.eventType, eventType));
   } catch (err: any) {
     logger.error({ err }, "Webhook processing error");
   }
