@@ -113,17 +113,18 @@ export async function initiateDeposit(
   operator: string,
   description: string = "GoWin Deposit"
 ): Promise<{ ok: boolean; status: number; data: any }> {
-  return pawapayRequest(config, "POST", "/deposits", {
+  return pawapayRequest(config, "POST", "/v2/deposits", {
     depositId,
-    statementDescription: description.slice(0, 22),
+    customerMessage: description.slice(0, 22),
     amount: amount.toFixed(2),
     currency,
-    correspondent: operator,
     payer: {
-      type: "MSISDN",
-      address: { value: phoneNumber },
+      type: "MMO",
+      accountDetails: {
+        phoneNumber,
+        provider: operator,
+      },
     },
-    customerTimestamp: new Date().toISOString(),
   });
 }
 
@@ -131,7 +132,7 @@ export async function getDepositStatus(
   config: PawapayConfig,
   depositId: string
 ): Promise<{ ok: boolean; status: number; data: any }> {
-  return pawapayRequest(config, "GET", `/deposits/${depositId}`);
+  return pawapayRequest(config, "GET", `/v2/deposits/${depositId}`);
 }
 
 export async function initiatePayout(
@@ -143,17 +144,18 @@ export async function initiatePayout(
   operator: string,
   description: string = "GoWin Payout"
 ): Promise<{ ok: boolean; status: number; data: any }> {
-  return pawapayRequest(config, "POST", "/payouts", {
+  return pawapayRequest(config, "POST", "/v2/payouts", {
     payoutId,
-    statementDescription: description.slice(0, 22),
+    customerMessage: description.slice(0, 22),
     amount: amount.toFixed(2),
     currency,
-    correspondent: operator,
     recipient: {
-      type: "MSISDN",
-      address: { value: phoneNumber },
+      type: "MMO",
+      accountDetails: {
+        phoneNumber,
+        provider: operator,
+      },
     },
-    customerTimestamp: new Date().toISOString(),
   });
 }
 
@@ -161,11 +163,11 @@ export async function getPayoutStatus(
   config: PawapayConfig,
   payoutId: string
 ): Promise<{ ok: boolean; status: number; data: any }> {
-  return pawapayRequest(config, "GET", `/payouts/${payoutId}`);
+  return pawapayRequest(config, "GET", `/v2/payouts/${payoutId}`);
 }
 
 export async function checkAvailability(
   config: PawapayConfig
 ): Promise<{ ok: boolean; status: number; data: any }> {
-  return pawapayRequest(config, "GET", "/availability");
+  return pawapayRequest(config, "GET", "/v2/toolkit/availability");
 }
