@@ -167,6 +167,130 @@ router.patch("/admin/withdrawals/:id", requireAdminOrManager, async (req: AuthRe
   res.json({ ...updated, amount: parseFloat(updated.amount) });
 });
 
+// ── Admin: directly trigger PawaPay payout for an approved withdrawal ───────
+router.post("/admin/withdrawals/:id/pawapay-payout", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+  const id = parseInt(req.params.id as string);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+
+  const [withdrawal] = await db.select().from(withdrawalsTable).where(eq(withdrawalsTable.id, id)).limit(1);
+  if (!withdrawal) { res.status(404).json({ error: "Withdrawal not found" }); return; }
+  if (withdrawal.status !== "approved") {
+    res.status(400).json({ error: `Withdrawal must be in 'approved' state (currently '${withdrawal.status}')` });
+    return;
+  }
+
+  const operator = req.body.operator ?? withdrawal.operator;
+  const phoneNumber = withdrawal.phoneNumber ?? withdrawal.bankDetails;
+  if (!operator) { res.status(400).json({ error: "operator is required" }); return; }
+  if (!phoneNumber) { res.status(400).json({ error: "No phone number on this withdrawal" }); return; }
+
+  const config = await getPawapayConfig();
+  if (!config || !config.withdrawalsEnabled) {
+    res.status(503).json({ error: "Mobile money payouts are not currently available" });
+    return;
+  }
+
+  const payoutId = crypto.randomUUID();
+
+  await db.update(withdrawalsTable).set({
+    status: "processing",
+    pawapayPayoutId: payoutId,
+    operator,
+    updatedAt: new Date(),
+  }).where(eq(withdrawalsTable.id, id));
+
+  try {
+    const result = await initiatePayout(
+      config, payoutId,
+      parseFloat(withdrawal.amount),
+      withdrawal.currency ?? "USD",
+      phoneNumber, operator,
+      "GoWin Payout"
+    );
+
+    const pawapayStatus = result.data?.status ?? (result.ok ? "ACCEPTED" : "FAILED");
+
+    if (!result.ok) {
+      // Restore wallet and revert to approved
+      const wallets = await db.select().from(walletsTable).where(eq(walletsTable.userId, withdrawal.userId));
+      const wallet = wallets.find((w) => w.currency === (withdrawal.currency ?? "USD")) ?? wallets[0];
+      if (wallet) {
+        const restored = parseFloat(wallet.balance) + parseFloat(withdrawal.amount);
+        await db.update(walletsTable).set({ balance: restored.toFixed(2) }).where(eq(walletsTable.id, wallet.id));
+      }
+      await db.update(withdrawalsTable).set({
+        status: "failed", pawapayStatus, pawapayResponse: result.data as any, updatedAt: new Date(),
+      }).where(eq(withdrawalsTable.id, id));
+
+      const errMsg = result.data?.message ?? result.data?.errorMessage ?? "PawaPay rejected the payout";
+      res.status(400).json({ error: errMsg, details: result.data });
+      return;
+    }
+
+    await db.update(withdrawalsTable).set({
+      pawapayStatus, pawapayResponse: result.data as any, updatedAt: new Date(),
+    }).where(eq(withdrawalsTable.id, id));
+
+    const [updated] = await db.select().from(withdrawalsTable).where(eq(withdrawalsTable.id, id)).limit(1);
+    res.json({ ...updated, amount: parseFloat(updated.amount) });
+  } catch (err: any) {
+    logger.error({ err }, "Admin PawaPay payout failed");
+    const wallets = await db.select().from(walletsTable).where(eq(walletsTable.userId, withdrawal.userId));
+    const wallet = wallets.find((w) => w.currency === (withdrawal.currency ?? "USD")) ?? wallets[0];
+    if (wallet) {
+      const restored = parseFloat(wallet.balance) + parseFloat(withdrawal.amount);
+      await db.update(walletsTable).set({ balance: restored.toFixed(2) }).where(eq(walletsTable.id, wallet.id));
+    }
+    await db.update(withdrawalsTable).set({ status: "failed", updatedAt: new Date() }).where(eq(withdrawalsTable.id, id));
+    res.status(502).json({ error: "Payment provider unreachable. Balance restored." });
+  }
+});
+
+// ── Admin: poll PawaPay payout status for a withdrawal ──────────────────────
+router.get("/admin/withdrawals/:id/payout-status", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+  const id = parseInt(req.params.id as string);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+
+  const [withdrawal] = await db.select().from(withdrawalsTable).where(eq(withdrawalsTable.id, id)).limit(1);
+  if (!withdrawal || !withdrawal.pawapayPayoutId) {
+    res.status(404).json({ error: "No PawaPay payout found" });
+    return;
+  }
+
+  const config = await getPawapayConfig();
+  if (!config) {
+    res.json({ status: withdrawal.status, pawapayStatus: withdrawal.pawapayStatus });
+    return;
+  }
+
+  try {
+    const result = await getPayoutStatus(config, withdrawal.pawapayPayoutId);
+    const apiStatus: string = result.data?.data?.status ?? withdrawal.pawapayStatus;
+
+    let newStatus = withdrawal.status;
+    if (apiStatus === "COMPLETED") newStatus = "completed";
+    else if (apiStatus === "FAILED" || apiStatus === "TIMED_OUT") newStatus = "failed";
+
+    await db.update(withdrawalsTable).set({
+      status: newStatus as any, pawapayStatus: apiStatus, pawapayResponse: result.data as any, updatedAt: new Date(),
+    }).where(eq(withdrawalsTable.id, id));
+
+    if ((apiStatus === "FAILED" || apiStatus === "TIMED_OUT") && withdrawal.status === "processing") {
+      const wallets = await db.select().from(walletsTable).where(eq(walletsTable.userId, withdrawal.userId));
+      const wallet = wallets.find((w) => w.currency === (withdrawal.currency ?? "USD")) ?? wallets[0];
+      if (wallet) {
+        const restored = parseFloat(wallet.balance) + parseFloat(withdrawal.amount);
+        await db.update(walletsTable).set({ balance: restored.toFixed(2) }).where(eq(walletsTable.id, wallet.id));
+      }
+    }
+
+    res.json({ status: newStatus, pawapayStatus: apiStatus });
+  } catch (err: any) {
+    logger.error({ err }, "Admin payout status check failed");
+    res.json({ status: withdrawal.status, pawapayStatus: withdrawal.pawapayStatus });
+  }
+});
+
 // ── Payment Clerk: list approved withdrawals ────────────────────────────────
 router.get("/clerk/withdrawals", requirePaymentClerk, async (req: AuthRequest, res): Promise<void> => {
   const statusFilter = (req.query.status as string) || "approved";
@@ -367,7 +491,8 @@ router.get("/clerk/withdrawals/:id/payout-status", requirePaymentClerk, async (r
 
   try {
     const result = await getPayoutStatus(config, withdrawal.pawapayPayoutId);
-    const apiStatus: string = result.data?.status ?? withdrawal.pawapayStatus;
+    // v2 wraps status check: { status: "FOUND", data: { status: "COMPLETED", ... } }
+    const apiStatus: string = result.data?.data?.status ?? withdrawal.pawapayStatus;
 
     let newStatus = withdrawal.status;
     if (apiStatus === "COMPLETED") newStatus = "completed";
