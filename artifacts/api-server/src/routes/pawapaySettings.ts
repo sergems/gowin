@@ -2,7 +2,7 @@ import { Router } from "express";
 import crypto from "crypto";
 import { requireAdmin } from "../middlewares/auth";
 import { getMetaSetting, setMetaSetting } from "../lib/metaDb";
-import { getPawapayConfig, initiateDeposit, DRC_TEST_NUMBERS } from "../lib/pawapay";
+import { getPawapayConfig, initiateDeposit, initiatePayout, getPayoutStatus, DRC_TEST_NUMBERS } from "../lib/pawapay";
 
 const router = Router();
 
@@ -134,17 +134,57 @@ router.post("/admin/pawapay/test", requireAdmin, async (req, res): Promise<void>
   }
 });
 
-// ── GET /admin/pawapay/test/:depositId — poll final status ───────────────────
-router.get("/admin/pawapay/test/:depositId", requireAdmin, async (req, res): Promise<void> => {
+// ── GET /admin/pawapay/test/deposit/:depositId — poll deposit final status ────
+router.get("/admin/pawapay/test/deposit/:depositId", requireAdmin, async (req, res): Promise<void> => {
   const { depositId } = req.params;
   const config = await getPawapayConfig();
-  if (!config) {
-    res.status(503).json({ error: "PawaPay not configured" });
-    return;
-  }
+  if (!config) { res.status(503).json({ error: "PawaPay not configured" }); return; }
   try {
     const { getDepositStatus } = await import("../lib/pawapay.js");
     const result = await getDepositStatus(config, depositId);
+    res.json({ httpStatus: result.status, ok: result.ok, response: result.data });
+  } catch (err: any) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// ── POST /admin/pawapay/test-payout — fire a sandbox test payout ──────────────
+router.post("/admin/pawapay/test-payout", requireAdmin, async (req, res): Promise<void> => {
+  const { phone, operator, amount, currency } = req.body;
+  if (!phone || !operator) { res.status(400).json({ error: "phone and operator are required" }); return; }
+  const config = await getPawapayConfig();
+  if (!config) { res.status(503).json({ error: "PawaPay is not configured — add an API token first" }); return; }
+  if (!config.isSandbox) { res.status(400).json({ error: "Test payouts can only be fired in sandbox mode" }); return; }
+
+  const payoutId = crypto.randomUUID();
+  const testAmount = parseFloat(amount ?? "5");
+  const testCurrency = currency ?? "USD";
+
+  try {
+    const result = await initiatePayout(config, payoutId, testAmount, testCurrency, phone, operator, "GoWin Sandbox Test");
+    res.json({
+      payoutId,
+      phone,
+      operator,
+      amount: testAmount,
+      currency: testCurrency,
+      httpStatus: result.status,
+      ok: result.ok,
+      pawapayStatus: result.data?.status ?? null,
+      response: result.data,
+    });
+  } catch (err: any) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// ── GET /admin/pawapay/test/payout/:payoutId — poll payout final status ───────
+router.get("/admin/pawapay/test/payout/:payoutId", requireAdmin, async (req, res): Promise<void> => {
+  const { payoutId } = req.params;
+  const config = await getPawapayConfig();
+  if (!config) { res.status(503).json({ error: "PawaPay not configured" }); return; }
+  try {
+    const result = await getPayoutStatus(config, payoutId);
     res.json({ httpStatus: result.status, ok: result.ok, response: result.data });
   } catch (err: any) {
     res.status(502).json({ error: err.message });

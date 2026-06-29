@@ -1047,28 +1047,30 @@ export default function AdminSettings() {
 }
 
 // ── PawaPay Settings Card ─────────────────────────────────────────────────────
-const DRC_TEST_SCENARIOS: Record<string, { phone: string; label: string; color: string }[]> = {
+type TestRef = { phone: string; depositStatus: string; payoutStatus?: string; failureCode?: string };
+const DRC_TEST_REF: Record<string, TestRef[]> = {
   VODACOM_MPESA_COD: [
-    { phone: "243813456789", label: "✅ COMPLETED", color: "text-green-500" },
-    { phone: "243813456129", label: "⏳ SUBMITTED", color: "text-amber-500" },
-    { phone: "243813456019", label: "❌ PAYER_LIMIT_REACHED", color: "text-destructive" },
-    { phone: "243813456029", label: "❌ PAYER_NOT_FOUND", color: "text-destructive" },
-    { phone: "243813456039", label: "❌ PAYMENT_NOT_APPROVED", color: "text-destructive" },
-    { phone: "243813456049", label: "❌ INSUFFICIENT_BALANCE", color: "text-destructive" },
-    { phone: "243813456069", label: "❌ UNSPECIFIED_FAILURE", color: "text-destructive" },
+    { phone: "243813456789", depositStatus: "COMPLETED",  payoutStatus: "COMPLETED" },
+    { phone: "243813456129", depositStatus: "SUBMITTED",  payoutStatus: "SUBMITTED" },
+    { phone: "243813456019", depositStatus: "FAILED",     failureCode: "PAYER_LIMIT_REACHED" },
+    { phone: "243813456029", depositStatus: "FAILED",     failureCode: "PAYER_NOT_FOUND" },
+    { phone: "243813456039", depositStatus: "FAILED",     failureCode: "PAYMENT_NOT_APPROVED" },
+    { phone: "243813456049", depositStatus: "FAILED",     failureCode: "INSUFFICIENT_BALANCE" },
+    { phone: "243813456069", depositStatus: "FAILED",     payoutStatus: "FAILED", failureCode: "UNSPECIFIED_FAILURE" },
   ],
   AIRTEL_COD: [
-    { phone: "243973456789", label: "✅ COMPLETED", color: "text-green-500" },
-    { phone: "243973456129", label: "⏳ SUBMITTED", color: "text-amber-500" },
-    { phone: "243973456069", label: "❌ UNSPECIFIED_FAILURE", color: "text-destructive" },
+    { phone: "243973456789", depositStatus: "COMPLETED",  payoutStatus: "COMPLETED" },
+    { phone: "243973456129", depositStatus: "SUBMITTED",  payoutStatus: "SUBMITTED" },
+    { phone: "243973456069", depositStatus: "FAILED",     payoutStatus: "FAILED", failureCode: "UNSPECIFIED_FAILURE" },
   ],
   ORANGE_COD: [
-    { phone: "243893456789", label: "✅ COMPLETED", color: "text-green-500" },
-    { phone: "243893456129", label: "⏳ SUBMITTED", color: "text-amber-500" },
-    { phone: "243893456029", label: "❌ PAYER_NOT_FOUND", color: "text-destructive" },
-    { phone: "243893456039", label: "❌ PAYMENT_NOT_APPROVED", color: "text-destructive" },
-    { phone: "243893456049", label: "❌ INSUFFICIENT_BALANCE", color: "text-destructive" },
-    { phone: "243893456069", label: "❌ UNSPECIFIED_FAILURE", color: "text-destructive" },
+    { phone: "243893456789", depositStatus: "COMPLETED",  payoutStatus: "COMPLETED" },
+    { phone: "243893456129", depositStatus: "SUBMITTED",  payoutStatus: "SUBMITTED" },
+    { phone: "243893456119", payoutStatus: "FAILED",      depositStatus: "—", failureCode: "UNSPECIFIED_FAILURE" },
+    { phone: "243893456029", depositStatus: "FAILED",     failureCode: "PAYER_NOT_FOUND" },
+    { phone: "243893456039", depositStatus: "FAILED",     failureCode: "PAYMENT_NOT_APPROVED" },
+    { phone: "243893456049", depositStatus: "FAILED",     failureCode: "INSUFFICIENT_BALANCE" },
+    { phone: "243893456069", depositStatus: "FAILED",     payoutStatus: "FAILED", failureCode: "UNSPECIFIED_FAILURE" },
   ],
 };
 
