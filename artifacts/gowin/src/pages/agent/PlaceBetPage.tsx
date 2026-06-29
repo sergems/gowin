@@ -69,7 +69,7 @@ export default function AgentPlaceBetPage() {
   const stakeNum = parseFloat(stake) || 0;
   const totalOdds = selections.reduce((acc, s) => acc * s.odds, 1);
   const potentialWin = stakeNum * totalOdds;
-  const balance = parseFloat(wallet?.balance ?? "0");
+  const balance = wallet?.balance ?? 0;
 
   const addSelection = (fixture: Fixture, market: string, selection: string, odds: number) => {
     setSelections((prev) => {

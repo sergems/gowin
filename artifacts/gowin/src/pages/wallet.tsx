@@ -250,7 +250,7 @@ export default function Wallet() {
                 <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-1">
                   {isRestrictedRole ? t("wallet.balance_allocated") : t("wallet.balance")}
                 </p>
-                <h2 className="text-5xl font-black tracking-tight">{formatCurrency(parseFloat(wallet?.balance ?? "0"))}</h2>
+                <h2 className="text-5xl font-black tracking-tight">{formatCurrency(wallet?.balance ?? 0)}</h2>
               </div>
             </div>
           </CardContent>

@@ -32,6 +32,11 @@ export type UserRole = typeof UserRole[keyof typeof UserRole];
 export const UserRole = {
   user: 'user',
   admin: 'admin',
+  manager: 'manager',
+  branch_admin: 'branch_admin',
+  agent: 'agent',
+  payout: 'payout',
+  payment_clerk: 'payment_clerk',
 } as const;
 
 export interface User {

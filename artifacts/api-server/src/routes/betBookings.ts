@@ -43,7 +43,7 @@ router.post("/bet-bookings", async (req: Request, res: Response): Promise<void> 
 });
 
 router.get("/bet-bookings/:code", async (req: Request, res: Response): Promise<void> => {
-  const code = req.params.code.toUpperCase().trim();
+  const code = (req.params.code as string).toUpperCase().trim();
   const [booking] = await db.select().from(betBookingsTable).where(eq(betBookingsTable.code, code)).limit(1);
   if (!booking) {
     res.status(404).json({ error: "Booking code not found" });

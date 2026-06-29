@@ -98,7 +98,7 @@ router.get("/agent/vouchers", requireAgent, async (req: AuthRequest, res): Promi
 // ── POST /agent/vouchers/:id/sell ─────────────────────────────────────────────
 router.post("/agent/vouchers/:id/sell", requireAgent, async (req: AuthRequest, res): Promise<void> => {
   const agentId = req.userId!;
-  const voucherId = parseInt(req.params.id);
+  const voucherId = parseInt(req.params.id as string);
 
   const [voucher] = await db.select().from(vouchersTable)
     .where(and(eq(vouchersTable.id, voucherId), eq(vouchersTable.agentId, agentId)))
@@ -119,7 +119,7 @@ router.post("/agent/vouchers/:id/sell", requireAgent, async (req: AuthRequest, r
 // ── POST /agent/vouchers/:id/print ────────────────────────────────────────────
 router.post("/agent/vouchers/:id/print", requireAgent, async (req: AuthRequest, res): Promise<void> => {
   const agentId = req.userId!;
-  const voucherId = parseInt(req.params.id);
+  const voucherId = parseInt(req.params.id as string);
 
   const [voucher] = await db.select().from(vouchersTable)
     .where(and(eq(vouchersTable.id, voucherId), eq(vouchersTable.agentId, agentId)))

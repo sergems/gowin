@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
-import { db, pawapayDepositsTable, walletsTable, transactionsTable, webhookLogsTable } from "@workspace/db";
+import { db, pawapayDepositsTable, walletsTable, transactionsTable, webhookLogsTable, withdrawalsTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 import {
   getPawapayConfig,
@@ -174,7 +174,7 @@ router.post("/pawapay/deposits", requireAuth, async (req: AuthRequest, res): Pro
 
 // ── GET /pawapay/deposits/:depositId — poll deposit status ─────────────────
 router.get("/pawapay/deposits/:depositId", requireAuth, async (req: AuthRequest, res): Promise<void> => {
-  const { depositId } = req.params;
+  const depositId = req.params.depositId as string;
 
   const [deposit] = await db
     .select()

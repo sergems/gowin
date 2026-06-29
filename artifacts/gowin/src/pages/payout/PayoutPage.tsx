@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Search, CheckCircle2, XCircle, Clock, AlertTriangle, Banknote, Receipt, ChevronDown, ChevronUp } from "lucide-react";
@@ -17,7 +17,7 @@ interface BetInfo {
 }
 interface ClaimInfo { id: number; status: string; }
 
-const STATUS_ICON: Record<string, JSX.Element> = {
+const STATUS_ICON: Record<string, React.ReactElement> = {
   won:     <CheckCircle2 className="w-5 h-5 text-emerald-400" />,
   lost:    <XCircle className="w-5 h-5 text-red-400" />,
   pending: <Clock className="w-5 h-5 text-amber-400" />,

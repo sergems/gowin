@@ -27,7 +27,7 @@ async function fetchApiOdds(apiKey: string, externalId: string): Promise<any | n
       `https://apiv2.allsportsapi.com/football/?met=Odds&APIkey=${apiKey}&matchId=${externalId}`,
       { signal: AbortSignal.timeout(8000) },
     );
-    const data = await resp.json();
+    const data: any = await resp.json();
     if (data?.success === 1 && data?.result?.[externalId]) {
       const bks: any[] = data.result[externalId];
       const bk =

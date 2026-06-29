@@ -160,7 +160,7 @@ router.patch("/branch/agents/:id/suspend", requireBranchAdmin, async (req: AuthR
   const branchId = getBranchId(req);
   if (!branchId) { res.status(403).json({ error: "No branch assigned" }); return; }
 
-  const agentId = parseInt(req.params.id);
+  const agentId = parseInt(req.params.id as string);
   const { disabled } = req.body as { disabled: boolean };
 
   const [agent] = await db.select().from(usersTable)
@@ -299,7 +299,7 @@ router.get("/branch/bets/lookup/:code", requireBranchAdmin, async (req: AuthRequ
   const branchId = getBranchId(req);
   if (!branchId) { res.status(403).json({ error: "No branch assigned" }); return; }
 
-  const { code } = req.params;
+  const code = req.params.code as string;
 
   const [bet] = await db
     .select()

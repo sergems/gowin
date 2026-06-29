@@ -90,7 +90,7 @@ async function fetchRealOdds(apiKey: string, matchId: string): Promise<any | nul
       `https://apiv2.allsportsapi.com/football/?met=Odds&APIkey=${apiKey}&matchId=${matchId}`,
       { signal: AbortSignal.timeout(10000) },
     );
-    const data = await resp.json();
+    const data: any = await resp.json();
     if (data?.success === 1 && data?.result?.[matchId]) {
       const bookmakers: any[] = data.result[matchId];
       return (
@@ -324,7 +324,7 @@ router.post("/admin/sync-fixtures", requireAdmin, async (_req, res): Promise<voi
       `https://apiv2.allsportsapi.com/football/?met=Countries&APIkey=${apiKey}`,
       { signal: AbortSignal.timeout(15000) },
     );
-    const cData = await cResp.json();
+    const cData: any = await cResp.json();
     if (cData?.success === 1 && Array.isArray(cData.result)) {
       for (const c of cData.result) {
         countryMap.set(String(c.country_key), {

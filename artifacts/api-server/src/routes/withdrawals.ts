@@ -107,7 +107,7 @@ router.get("/admin/withdrawals", requireAdminOrManager, async (req: AuthRequest,
 
 // ── Admin: update withdrawal status ─────────────────────────────────────────
 router.patch("/admin/withdrawals/:id", requireAdminOrManager, async (req: AuthRequest, res): Promise<void> => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid ID" });
     return;
@@ -200,7 +200,7 @@ router.get("/clerk/withdrawals", requirePaymentClerk, async (req: AuthRequest, r
 
 // ── Payment Clerk: authorise payout ─────────────────────────────────────────
 router.post("/clerk/withdrawals/:id/authorize", requirePaymentClerk, async (req: AuthRequest, res): Promise<void> => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid ID" });
     return;
@@ -301,7 +301,7 @@ router.post("/clerk/withdrawals/:id/authorize", requirePaymentClerk, async (req:
 
 // ── Payment Clerk: reject payout ─────────────────────────────────────────────
 router.post("/clerk/withdrawals/:id/reject", requirePaymentClerk, async (req: AuthRequest, res): Promise<void> => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid ID" });
     return;
@@ -347,7 +347,7 @@ router.post("/clerk/withdrawals/:id/reject", requirePaymentClerk, async (req: Au
 
 // ── Payment Clerk: check payout status from PawaPay ─────────────────────────
 router.get("/clerk/withdrawals/:id/payout-status", requirePaymentClerk, async (req: AuthRequest, res): Promise<void> => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid ID" });
     return;

@@ -64,7 +64,7 @@ export default function AgentDashboardPage() {
       <div className="bg-gradient-to-r from-emerald-900/40 to-emerald-800/20 border border-emerald-800/50 rounded-xl p-5 mb-6 flex items-center justify-between">
         <div>
           <p className="text-xs text-emerald-300/70 uppercase tracking-wider mb-1">Wallet Balance</p>
-          <p className="text-3xl font-bold text-emerald-400">{formatCurrency(parseFloat(wallet?.balance ?? "0"))}</p>
+          <p className="text-3xl font-bold text-emerald-400">{formatCurrency(wallet?.balance ?? 0)}</p>
         </div>
         <DollarSign className="w-10 h-10 text-emerald-600/40" />
       </div>

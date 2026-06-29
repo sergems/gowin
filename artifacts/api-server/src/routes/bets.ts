@@ -198,7 +198,7 @@ router.get("/bets/my", requireAuth, async (req: AuthRequest, res): Promise<void>
 
 // ── Admin: lookup bet by code ─────────────────────────────────────────────────
 router.get("/admin/bets/lookup/:code", requireAdminOrManager, async (req: AuthRequest, res): Promise<void> => {
-  const code = req.params.code.toUpperCase().trim();
+  const code = (req.params.code as string).toUpperCase().trim();
 
   const [bet] = await db.select().from(betsTable).where(eq(betsTable.code, code)).limit(1);
   if (!bet) {

@@ -48,7 +48,7 @@ export async function getSmtpConfig(): Promise<SmtpConfig | null> {
 async function sendMail(opts: MailOptions): Promise<boolean> {
   const cfg = await getSmtpConfig();
   if (!cfg) {
-    logger.warn("SMTP not configured — email not sent", { to: opts.to, subject: opts.subject });
+    logger.warn({ to: opts.to, subject: opts.subject }, "SMTP not configured — email not sent");
     return false;
   }
   try {
@@ -60,7 +60,7 @@ async function sendMail(opts: MailOptions): Promise<boolean> {
       auth: { user: cfg.user, pass: cfg.pass },
     });
     await transporter.sendMail({ from: cfg.from, ...opts });
-    logger.info("Email sent", { to: opts.to, subject: opts.subject });
+    logger.info({ to: opts.to, subject: opts.subject }, "Email sent");
     return true;
   } catch (err) {
     logger.error({ err }, "Failed to send email");

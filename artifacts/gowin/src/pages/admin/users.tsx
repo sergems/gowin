@@ -560,7 +560,7 @@ export default function AdminUsers() {
             <form onSubmit={handleWalletAction} className="space-y-4 pt-4">
               <div className="p-3 bg-accent/20 rounded-md border border-border mb-4">
                 <div className="text-sm text-muted-foreground mb-1">User: <span className="font-bold text-foreground">{selectedUser.username}</span></div>
-                <div className="text-sm text-muted-foreground">Current Balance: <span className="font-bold text-foreground">{formatCurrency(parseFloat(selectedUser.wallet?.balance ?? "0"))}</span></div>
+                <div className="text-sm text-muted-foreground">Current Balance: <span className="font-bold text-foreground">{formatCurrency(selectedUser.wallet?.balance ?? 0)}</span></div>
               </div>
               <div className="space-y-2">
                 <Label>Amount ($)</Label>

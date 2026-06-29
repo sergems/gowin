@@ -59,7 +59,7 @@ export default function CashUpPage() {
   const [submitting, setSubmitting] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
 
   const { data: branchInfo } = useQuery<BranchInfo>({
     queryKey: ["branch-info-cashup"],

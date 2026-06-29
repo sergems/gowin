@@ -53,6 +53,7 @@ const STATUS_VARIANT: Record<string, any> = {
 // ── Bet Verifier ───────────────────────────────────────────────────────────────
 function BetVerifier() {
   const { token } = useAuth();
+  const { formatCurrency } = useSiteSettings();
   const [code, setCode] = useState("");
   const [submitted, setSubmitted] = useState("");
 

@@ -97,7 +97,7 @@ router.get("/users/:id", requireAdminOrManager, async (req: AuthRequest, res): P
 
 // ── PATCH /users/:id — edit user details ─────────────────────────────────────
 router.patch("/users/:id", requireAdminOrManager, async (req: AuthRequest, res): Promise<void> => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid user ID" });
     return;
@@ -152,7 +152,7 @@ router.patch("/users/:id", requireAdminOrManager, async (req: AuthRequest, res):
 
 // ── PATCH /users/:id/role ─────────────────────────────────────────────────────
 router.patch("/users/:id/role", requireAdminOrManager, async (req: AuthRequest, res): Promise<void> => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid user ID" });
     return;
@@ -185,7 +185,7 @@ router.patch("/users/:id/role", requireAdminOrManager, async (req: AuthRequest, 
 
 // ── PATCH /users/:id/disable — block / unblock ────────────────────────────────
 router.patch("/users/:id/disable", requireAdminOrManager, async (req: AuthRequest, res): Promise<void> => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid user ID" });
     return;
@@ -226,7 +226,7 @@ router.patch("/users/:id/disable", requireAdminOrManager, async (req: AuthReques
 
 // ── POST /users/:id/reset-password — admin-initiated temp password ─────────────
 router.post("/users/:id/reset-password", requireAdminOrManager, async (req: AuthRequest, res): Promise<void> => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid user ID" });
     return;

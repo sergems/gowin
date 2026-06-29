@@ -67,7 +67,7 @@ router.post("/admin/branches", requireAdmin, async (req, res): Promise<void> => 
 
 // ── PATCH /admin/branches/:id ─────────────────────────────────────────────────
 router.patch("/admin/branches/:id", requireAdmin, async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
   const { name, country, city, address, phone, email, status } = req.body;
@@ -93,7 +93,7 @@ router.patch("/admin/branches/:id", requireAdmin, async (req, res): Promise<void
 
 // ── DELETE /admin/branches/:id ────────────────────────────────────────────────
 router.delete("/admin/branches/:id", requireAdmin, async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
   await db.delete(branchesTable).where(eq(branchesTable.id, id));
@@ -102,7 +102,7 @@ router.delete("/admin/branches/:id", requireAdmin, async (req, res): Promise<voi
 
 // ── POST /admin/branches/:id/admins — create branch admin account ─────────────
 router.post("/admin/branches/:id/admins", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
-  const branchId = parseInt(req.params.id);
+  const branchId = parseInt(req.params.id as string);
   if (isNaN(branchId)) { res.status(400).json({ error: "Invalid branch ID" }); return; }
 
   const [branch] = await db.select().from(branchesTable).where(eq(branchesTable.id, branchId)).limit(1);
@@ -141,7 +141,7 @@ router.post("/admin/branches/:id/admins", requireAdmin, async (req: AuthRequest,
 
 // ── GET /admin/branches/:id/members ──────────────────────────────────────────
 router.get("/admin/branches/:id/members", requireAdminOrManager, async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid branch ID" }); return; }
 
   const members = await db.select({
@@ -191,7 +191,7 @@ router.get("/admin/branches/:id/members", requireAdminOrManager, async (req, res
 
 // ── POST /admin/branches/:id/credit — add funds to branch balance ────────────
 router.post("/admin/branches/:id/credit", requireAdmin, async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid branch ID" }); return; }
 
   const amount = parseFloat(req.body.amount);
@@ -214,7 +214,7 @@ router.post("/admin/branches/:id/credit", requireAdmin, async (req, res): Promis
 
 // ── PATCH /admin/users/:id/assign-branch — assign/update user branch & role ──
 router.patch("/admin/users/:id/assign-branch", requireAdmin, async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid user ID" }); return; }
 
   const { branchId, role, commissionRate } = req.body;

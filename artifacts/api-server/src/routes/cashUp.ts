@@ -139,7 +139,7 @@ router.get("/branch/floats/:id/preview", requireBranchAdmin, async (req: AuthReq
   const branchId = req.userBranchId;
   if (!branchId) { res.status(403).json({ error: "No branch assigned" }); return; }
 
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   const [alloc] = await db.select().from(branchFloatAllocationsTable)
     .where(and(eq(branchFloatAllocationsTable.id, id), eq(branchFloatAllocationsTable.branchId, branchId)))
     .limit(1);
@@ -168,7 +168,7 @@ router.post("/branch/floats/:id/cashup", requireBranchAdmin, async (req: AuthReq
   const branchId = req.userBranchId;
   if (!branchId) { res.status(403).json({ error: "No branch assigned" }); return; }
 
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   const { cashReturned, notes } = req.body as { cashReturned: number; notes?: string };
 
   if (typeof cashReturned !== "number" || cashReturned < 0) {
@@ -325,7 +325,7 @@ router.get("/agent/float", async (req: AuthRequest, res): Promise<void> => {
 
 // ── GET /api/admin/branches/:id/cashup-summary ── super admin overview ────────
 router.get("/admin/branches/:id/cashup-summary", requireAdminOrManager, async (req, res): Promise<void> => {
-  const branchId = parseInt(req.params.id);
+  const branchId = parseInt(req.params.id as string);
   const [branch] = await db.select().from(branchesTable).where(eq(branchesTable.id, branchId)).limit(1);
   if (!branch) { res.status(404).json({ error: "Branch not found" }); return; }
 

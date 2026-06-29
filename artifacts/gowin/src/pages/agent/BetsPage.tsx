@@ -24,7 +24,7 @@ export default function AgentBetsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
 
   const { data, isLoading } = useQuery({
     queryKey: ["agent-bets"],

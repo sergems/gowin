@@ -63,7 +63,7 @@ router.get("/payout/stats", requirePayout, async (req: AuthRequest, res): Promis
 
 // ── GET /api/payout/ticket/:code — verify ticket ─────────────────────────────
 router.get("/payout/ticket/:code", requirePayout, async (req: AuthRequest, res): Promise<void> => {
-  const { code } = req.params;
+  const code = req.params.code as string;
 
   const [bet] = await db
     .select({
@@ -134,7 +134,7 @@ router.get("/payout/ticket/:code", requirePayout, async (req: AuthRequest, res):
 
 // ── POST /api/payout/ticket/:code/claim — initiate payout for won ticket ─────
 router.post("/payout/ticket/:code/claim", requirePayout, async (req: AuthRequest, res): Promise<void> => {
-  const { code } = req.params;
+  const code = req.params.code as string;
 
   const [bet] = await db
     .select()
