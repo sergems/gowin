@@ -63,6 +63,10 @@ import PayoutPage from "@/pages/payout/PayoutPage";
 import ClerkDashboard from "@/pages/clerk/DashboardPage";
 import ClerkWithdrawals from "@/pages/clerk/WithdrawalsPage";
 
+// Legal Pages
+import PrivacyPolicy from "@/pages/privacy-policy";
+import TermsOfService from "@/pages/terms-of-service";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -171,6 +175,10 @@ function Router() {
         {/* Payment Clerk Routes */}
         <Route path="/clerk" component={() => <ProtectedRoute component={ClerkDashboard} allowedRoles={["payment_clerk", "admin"]} />} />
         <Route path="/clerk/withdrawals" component={() => <ProtectedRoute component={ClerkWithdrawals} allowedRoles={["payment_clerk", "admin"]} />} />
+
+        {/* Legal Pages */}
+        <Route path="/privacy" component={PrivacyPolicy} />
+        <Route path="/terms" component={TermsOfService} />
 
         <Route component={NotFound} />
       </Switch>

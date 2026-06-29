@@ -634,13 +634,18 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
         </div>
 
-        {user && (
-          <footer className="shrink-0 border-t border-border bg-card/50 px-6 py-2 hidden md:block">
-            <p className="text-[10px] text-muted-foreground/60 text-center leading-snug">
-              GOWIN SPORTSBOOK est un opérateur de paris agréé. GOWIN encourage le jeu responsable. Le jeu est interdit aux moins de 18 ans. Avertissement : le jeu peut engendrer une dépendance et être dangereux s'il n'est pas contrôlé et pratiqué avec modération. Les gagnants savent s'arrêter.
-            </p>
-          </footer>
-        )}
+        <footer className="shrink-0 border-t border-border bg-card/50 px-4 py-3 hidden md:block">
+          <p className="text-[10px] text-muted-foreground/60 text-center leading-snug mb-2">
+            GOWIN SPORTSBOOK est un opérateur de paris agréé. GOWIN encourage le jeu responsable. Le jeu est interdit aux moins de 18 ans. Avertissement : le jeu peut engendrer une dépendance et être dangereux s'il n'est pas contrôlé et pratiqué avec modération. Les gagnants savent s'arrêter.
+          </p>
+          <div className="flex items-center justify-center gap-3 text-[10px] text-muted-foreground/50">
+            <span>© {new Date().getFullYear()} GoWin Sportsbook. All rights reserved.</span>
+            <span>·</span>
+            <a href="/privacy" className="hover:text-muted-foreground transition-colors">Privacy Policy</a>
+            <span>·</span>
+            <a href="/terms" className="hover:text-muted-foreground transition-colors">Terms of Service</a>
+          </div>
+        </footer>
       </main>
 
       {/* ── Desktop Bet Slip ─────────────────────────────────────────────────── */}
