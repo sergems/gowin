@@ -298,6 +298,51 @@ router.post("/pawapay/webhook", async (req, res): Promise<void> => {
       }
     }
 
+    if (payload?.type === "PAYOUT") {
+      const { payoutId, status } = payload;
+      if (payoutId && status) {
+        const [withdrawal] = await db
+          .select()
+          .from(withdrawalsTable)
+          .where(eq(withdrawalsTable.pawapayPayoutId, payoutId))
+          .limit(1);
+
+        if (withdrawal) {
+          if (status === "COMPLETED") {
+            await db
+              .update(withdrawalsTable)
+              .set({ status: "completed", pawapayStatus: status, pawapayResponse: payload as any, updatedAt: new Date() })
+              .where(eq(withdrawalsTable.id, withdrawal.id));
+          } else if (status === "FAILED" || status === "DUPLICATE_IGNORED") {
+            // Refund the wallet if payout failed
+            const [wallet] = await db
+              .select()
+              .from(walletsTable)
+              .where(eq(walletsTable.userId, withdrawal.userId))
+              .limit(1);
+            if (wallet) {
+              const refundAmount = parseFloat(withdrawal.amount as string);
+              const newBalance = parseFloat(wallet.balance) + refundAmount;
+              await db
+                .update(walletsTable)
+                .set({ balance: newBalance.toFixed(2) })
+                .where(eq(walletsTable.id, wallet.id));
+              await db.insert(transactionsTable).values({
+                walletId: wallet.id,
+                amount: refundAmount.toFixed(2),
+                type: "credit",
+                description: `Payout Failed — Refund for withdrawal #${withdrawal.id}`,
+              });
+            }
+            await db
+              .update(withdrawalsTable)
+              .set({ status: "failed", pawapayStatus: status, pawapayResponse: payload as any, updatedAt: new Date() })
+              .where(eq(withdrawalsTable.id, withdrawal.id));
+          }
+        }
+      }
+    }
+
     // Mark webhook as processed
     await db
       .update(webhookLogsTable)

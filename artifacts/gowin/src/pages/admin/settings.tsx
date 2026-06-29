@@ -15,7 +15,7 @@ import {
   Key, RefreshCw, CheckCircle2, AlertTriangle,
   Eye, EyeOff, Database, Plug, PlugZap, Unplug, FlaskConical,
   Upload, FileText, Info, Download, Mail, Send, ShieldCheck, ShieldOff,
-  Globe, Lock, Smartphone,
+  Globe, Lock, Smartphone, Copy,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -1061,6 +1061,14 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
   const [minWithdrawal, setMinWithdrawal] = useState("1");
   const [maxWithdrawal, setMaxWithdrawal] = useState("10000");
   const [loaded, setLoaded] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+
+  const copyUrl = (url: string, label: string) => {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedUrl(label);
+      setTimeout(() => setCopiedUrl(null), 2000);
+    });
+  };
 
   const { data: ppSettings, isLoading } = useQuery<any>({
     queryKey: ["/api/admin/pawapay/settings"],
@@ -1126,6 +1134,43 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
           <div className="h-8 bg-accent/50 rounded animate-pulse" />
         ) : (
           <>
+            {/* ── Step 1: Callback URLs ─────────────────────────────────── */}
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
+              <div className="flex items-start gap-2">
+                <span className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center">1</span>
+                <div>
+                  <p className="text-sm font-semibold text-amber-400">Configure Callback URLs in PawaPay first</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Enter these URLs in <strong>PawaPay Dashboard → Developer → Callback URLs</strong> before generating your API token.</p>
+                </div>
+              </div>
+              {(["Deposits", "Payouts", "Refunds"] as const).map((label) => {
+                const url = `${ppSettings?.appUrl || window.location.origin}/api/pawapay/webhook`;
+                return (
+                  <div key={label} className="flex items-center gap-2">
+                    <span className="w-20 text-xs text-muted-foreground flex-shrink-0">{label}</span>
+                    <code className="flex-1 text-xs bg-accent/50 border border-border rounded px-2 py-1.5 font-mono truncate">{url}</code>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="flex-shrink-0 h-7 w-7"
+                      onClick={() => copyUrl(url, label)}
+                      title={`Copy ${label} URL`}
+                    >
+                      {copiedUrl === label
+                        ? <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
+                        : <Copy className="w-3.5 h-3.5" />}
+                    </Button>
+                  </div>
+                );
+              })}
+              {!ppSettings?.appUrl && (
+                <p className="text-xs text-amber-400/80">
+                  Set your <strong>App URL</strong> in the Email/SMTP settings above so the full URL appears here.
+                </p>
+              )}
+            </div>
+
+            {/* ── Step 2: API Token ─────────────────────────────────────── */}
             <div className="flex items-center justify-between p-3 rounded-lg bg-accent/30 border border-border">
               <div>
                 <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">API Token</p>
@@ -1207,7 +1252,7 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
             </Button>
 
             <p className="text-xs text-muted-foreground border-t pt-3">
-              Get your API token from the <strong>PawaPay Dashboard → Developer</strong>. Enable sandbox for testing before going live. Webhook URL: <code className="text-xs bg-accent px-1 rounded">/api/pawapay/webhook</code>
+              Get your API token from <strong>PawaPay Dashboard → Developer → API Tokens</strong> after configuring the callback URLs above. Keep Sandbox Mode on until you're ready for production.
             </p>
           </>
         )}

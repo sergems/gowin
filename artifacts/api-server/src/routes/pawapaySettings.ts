@@ -7,7 +7,7 @@ const router = Router();
 
 // ── GET /admin/pawapay/settings ──────────────────────────────────────────────
 router.get("/admin/pawapay/settings", requireAdmin, async (_req, res): Promise<void> => {
-  const [token, sandbox, depositsEnabled, withdrawalsEnabled, minDep, maxDep, minWith, maxWith] = await Promise.all([
+  const [token, sandbox, depositsEnabled, withdrawalsEnabled, minDep, maxDep, minWith, maxWith, appUrl] = await Promise.all([
     getMetaSetting("pawapay_api_token"),
     getMetaSetting("pawapay_sandbox"),
     getMetaSetting("pawapay_deposits_enabled"),
@@ -16,6 +16,7 @@ router.get("/admin/pawapay/settings", requireAdmin, async (_req, res): Promise<v
     getMetaSetting("pawapay_max_deposit"),
     getMetaSetting("pawapay_min_withdrawal"),
     getMetaSetting("pawapay_max_withdrawal"),
+    getMetaSetting("app_url"),
   ]);
 
   res.json({
@@ -27,6 +28,7 @@ router.get("/admin/pawapay/settings", requireAdmin, async (_req, res): Promise<v
     maxDeposit: maxDep ?? "10000",
     minWithdrawal: minWith ?? "1",
     maxWithdrawal: maxWith ?? "10000",
+    appUrl: appUrl ?? "",
   });
 });
 
