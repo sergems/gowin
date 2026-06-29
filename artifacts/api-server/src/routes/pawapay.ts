@@ -74,7 +74,7 @@ router.post("/pawapay/deposits", requireAuth, async (req: AuthRequest, res): Pro
   }
 
   const config = await getPawapayConfig();
-  if (!config || !config.depositsEnabled) {
+  if (!config || !config.enabled || !config.depositsEnabled) {
     res.status(503).json({ error: "Mobile money deposits are not currently available" });
     return;
   }

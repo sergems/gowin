@@ -1047,12 +1047,38 @@ export default function AdminSettings() {
 }
 
 // ── PawaPay Settings Card ─────────────────────────────────────────────────────
+const DRC_TEST_SCENARIOS: Record<string, { phone: string; label: string; color: string }[]> = {
+  VODACOM_MPESA_COD: [
+    { phone: "243813456789", label: "✅ COMPLETED", color: "text-green-500" },
+    { phone: "243813456129", label: "⏳ SUBMITTED", color: "text-amber-500" },
+    { phone: "243813456019", label: "❌ PAYER_LIMIT_REACHED", color: "text-destructive" },
+    { phone: "243813456029", label: "❌ PAYER_NOT_FOUND", color: "text-destructive" },
+    { phone: "243813456039", label: "❌ PAYMENT_NOT_APPROVED", color: "text-destructive" },
+    { phone: "243813456049", label: "❌ INSUFFICIENT_BALANCE", color: "text-destructive" },
+    { phone: "243813456069", label: "❌ UNSPECIFIED_FAILURE", color: "text-destructive" },
+  ],
+  AIRTEL_COD: [
+    { phone: "243973456789", label: "✅ COMPLETED", color: "text-green-500" },
+    { phone: "243973456129", label: "⏳ SUBMITTED", color: "text-amber-500" },
+    { phone: "243973456069", label: "❌ UNSPECIFIED_FAILURE", color: "text-destructive" },
+  ],
+  ORANGE_COD: [
+    { phone: "243893456789", label: "✅ COMPLETED", color: "text-green-500" },
+    { phone: "243893456129", label: "⏳ SUBMITTED", color: "text-amber-500" },
+    { phone: "243893456029", label: "❌ PAYER_NOT_FOUND", color: "text-destructive" },
+    { phone: "243893456039", label: "❌ PAYMENT_NOT_APPROVED", color: "text-destructive" },
+    { phone: "243893456049", label: "❌ INSUFFICIENT_BALANCE", color: "text-destructive" },
+    { phone: "243893456069", label: "❌ UNSPECIFIED_FAILURE", color: "text-destructive" },
+  ],
+};
+
 function PawapaySettingsCard({ token }: { token: string | null }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const [ppToken, setPpToken] = useState("");
   const [showToken, setShowToken] = useState(false);
+  const [enabled, setEnabled] = useState(true);
   const [isSandbox, setIsSandbox] = useState(true);
   const [depositsEnabled, setDepositsEnabled] = useState(true);
   const [withdrawalsEnabled, setWithdrawalsEnabled] = useState(true);
@@ -1062,6 +1088,13 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
   const [maxWithdrawal, setMaxWithdrawal] = useState("10000");
   const [loaded, setLoaded] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+
+  // ── Sandbox test state ───────────────────────────────────────────────────────
+  const [testOperator, setTestOperator] = useState("VODACOM_MPESA_COD");
+  const [testPhone, setTestPhone] = useState("243813456789");
+  const [testAmount, setTestAmount] = useState("5");
+  const [testCurrency, setTestCurrency] = useState("USD");
+  const [testResult, setTestResult] = useState<any>(null);
 
   const copyUrl = (url: string, label: string) => {
     navigator.clipboard.writeText(url).then(() => {
@@ -1082,6 +1115,7 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
 
   useEffect(() => {
     if (ppSettings && !loaded) {
+      setEnabled(ppSettings.enabled ?? true);
       setIsSandbox(ppSettings.isSandbox ?? true);
       setDepositsEnabled(ppSettings.depositsEnabled ?? true);
       setWithdrawalsEnabled(ppSettings.withdrawalsEnabled ?? true);
@@ -1096,6 +1130,7 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
   const saveMutation = useMutation({
     mutationFn: async () => {
       const body: any = {
+        enabled,
         isSandbox,
         depositsEnabled,
         withdrawalsEnabled,
@@ -1117,16 +1152,58 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
     onSuccess: () => {
       toast({ title: "PawaPay settings saved" });
       setPpToken("");
+      setLoaded(false);
       queryClient.invalidateQueries({ queryKey: ["/api/admin/pawapay/settings"] });
     },
     onError: (e: any) => toast({ title: "Save failed", description: e.message, variant: "destructive" }),
   });
 
+  const testMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/admin/pawapay/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ phone: testPhone, operator: testOperator, amount: testAmount, currency: testCurrency }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error);
+      return d;
+    },
+    onSuccess: (d) => {
+      setTestResult(d);
+      const isOk = d.ok;
+      toast({
+        title: isOk ? "Test deposit sent" : "Test deposit rejected",
+        description: `Status: ${d.pawapayStatus ?? "—"} | HTTP ${d.httpStatus}`,
+        variant: isOk ? "default" : "destructive",
+      });
+    },
+    onError: (e: any) => {
+      setTestResult({ error: e.message });
+      toast({ title: "Test failed", description: e.message, variant: "destructive" });
+    },
+  });
+
+  const scenarios = DRC_TEST_SCENARIOS[testOperator] ?? [];
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Smartphone className="w-4 h-4" /> PawaPay Mobile Money
+        <CardTitle className="flex items-center justify-between text-base">
+          <span className="flex items-center gap-2">
+            <Smartphone className="w-4 h-4" /> PawaPay Mobile Money
+          </span>
+          {ppSettings && (
+            <span className={`text-xs px-2 py-1 rounded-full border font-semibold ${
+              !ppSettings.enabled
+                ? "bg-destructive/10 text-destructive border-destructive/30"
+                : ppSettings.isSandbox
+                  ? "bg-amber-500/15 text-amber-500 border-amber-500/30"
+                  : "bg-primary/15 text-primary border-primary/30"
+            }`}>
+              {!ppSettings.enabled ? "DISABLED" : ppSettings.isSandbox ? "SANDBOX" : "LIVE"}
+            </span>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -1134,6 +1211,21 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
           <div className="h-8 bg-accent/50 rounded animate-pulse" />
         ) : (
           <>
+            {/* ── Master Enable Toggle ──────────────────────────────────── */}
+            <div className={`flex items-center justify-between p-4 rounded-lg border-2 transition-colors ${
+              enabled ? "border-primary/30 bg-primary/5" : "border-destructive/30 bg-destructive/5"
+            }`}>
+              <div>
+                <p className="text-sm font-bold">{enabled ? "PawaPay is Enabled" : "PawaPay is Disabled"}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {enabled
+                    ? "Users can deposit and withdraw via mobile money"
+                    : "All mobile money payments are blocked for all users"}
+                </p>
+              </div>
+              <Switch checked={enabled} onCheckedChange={setEnabled} />
+            </div>
+
             {/* ── Step 1: Callback URLs ─────────────────────────────────── */}
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
               <div className="flex items-start gap-2">
@@ -1175,15 +1267,11 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
               <div>
                 <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">API Token</p>
                 <p className="text-sm font-medium">
-                  {ppSettings?.hasToken ? <span className="text-primary font-semibold flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> Configured</span> : <span className="text-muted-foreground">Not set</span>}
+                  {ppSettings?.hasToken
+                    ? <span className="text-primary font-semibold flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> Configured</span>
+                    : <span className="text-muted-foreground">Not set</span>}
                 </p>
               </div>
-              {ppSettings?.isSandbox && ppSettings?.hasToken && (
-                <span className="text-xs px-2 py-1 bg-amber-500/15 text-amber-500 border border-amber-500/30 rounded-full font-semibold">SANDBOX</span>
-              )}
-              {!ppSettings?.isSandbox && ppSettings?.hasToken && (
-                <span className="text-xs px-2 py-1 bg-primary/15 text-primary border border-primary/30 rounded-full font-semibold">LIVE</span>
-              )}
             </div>
 
             <div className="space-y-2">
@@ -1254,6 +1342,132 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
             <p className="text-xs text-muted-foreground border-t pt-3">
               Get your API token from <strong>PawaPay Dashboard → Developer → API Tokens</strong> after configuring the callback URLs above. Keep Sandbox Mode on until you're ready for production.
             </p>
+
+            {/* ── Sandbox Test Panel (only in sandbox mode) ─────────────── */}
+            {isSandbox && (
+              <div className="border-t pt-4 space-y-4">
+                <div className="flex items-center gap-2">
+                  <FlaskConical className="w-4 h-4 text-amber-400" />
+                  <p className="text-sm font-semibold text-amber-400">Sandbox Test Panel</p>
+                  <span className="text-xs text-muted-foreground">— DRC magic numbers only</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Fire a real API call to the PawaPay sandbox using official DRC test numbers. Each phone number is mapped to a specific outcome — no real money involved.
+                </p>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Operator</Label>
+                    <select
+                      value={testOperator}
+                      onChange={(e) => {
+                        setTestOperator(e.target.value);
+                        const first = DRC_TEST_SCENARIOS[e.target.value]?.[0]?.phone ?? "";
+                        setTestPhone(first);
+                      }}
+                      className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      <option value="VODACOM_MPESA_COD">M-Pesa (Vodacom)</option>
+                      <option value="AIRTEL_COD">Airtel Money</option>
+                      <option value="ORANGE_COD">Orange Money</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Scenario</Label>
+                    <select
+                      value={testPhone}
+                      onChange={(e) => setTestPhone(e.target.value)}
+                      className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      {scenarios.map((s) => (
+                        <option key={s.phone} value={s.phone}>{s.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Amount</Label>
+                    <Input type="number" value={testAmount} onChange={(e) => setTestAmount(e.target.value)} min="1" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Currency</Label>
+                    <select
+                      value={testCurrency}
+                      onChange={(e) => setTestCurrency(e.target.value)}
+                      className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      <option value="USD">USD</option>
+                      <option value="CDF">CDF</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 p-2.5 rounded-md bg-accent/30 border border-border text-xs font-mono text-muted-foreground">
+                  <span className="text-muted-foreground/60">Phone:</span>
+                  <span>{testPhone}</span>
+                  <span className="ml-auto text-muted-foreground/60">→ {scenarios.find(s => s.phone === testPhone)?.label ?? ""}</span>
+                </div>
+
+                <Button
+                  onClick={() => { setTestResult(null); testMutation.mutate(); }}
+                  disabled={testMutation.isPending || !ppSettings?.hasToken}
+                  variant="outline"
+                  className="w-full gap-2 border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
+                >
+                  {testMutation.isPending
+                    ? <><RefreshCw className="w-4 h-4 animate-spin" /> Sending test deposit…</>
+                    : <><FlaskConical className="w-4 h-4" /> Run Test Deposit</>}
+                </Button>
+                {!ppSettings?.hasToken && (
+                  <p className="text-xs text-destructive text-center">Configure an API token above before testing.</p>
+                )}
+
+                {testResult && (
+                  <div className={`rounded-lg border p-3 space-y-2 text-xs ${
+                    testResult.error
+                      ? "border-destructive/30 bg-destructive/5"
+                      : testResult.ok
+                        ? "border-primary/30 bg-primary/5"
+                        : "border-amber-500/30 bg-amber-500/5"
+                  }`}>
+                    {testResult.error ? (
+                      <p className="text-destructive font-semibold">Error: {testResult.error}</p>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-sm">
+                            {testResult.ok ? "✅ Accepted" : "❌ Rejected"}
+                          </span>
+                          <span className="text-muted-foreground">HTTP {testResult.httpStatus}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                          <span className="text-muted-foreground">PawaPay Status</span>
+                          <span className="font-mono font-semibold">{testResult.pawapayStatus ?? "—"}</span>
+                          <span className="text-muted-foreground">Deposit ID</span>
+                          <span className="font-mono truncate">{testResult.depositId}</span>
+                          <span className="text-muted-foreground">Operator</span>
+                          <span className="font-mono">{testResult.operator}</span>
+                          <span className="text-muted-foreground">Amount</span>
+                          <span className="font-mono">{testResult.amount} {testResult.currency}</span>
+                        </div>
+                        {testResult.response && (
+                          <details className="mt-1">
+                            <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Raw response</summary>
+                            <pre className="mt-2 p-2 bg-background/60 rounded text-[10px] overflow-auto max-h-40 whitespace-pre-wrap">
+                              {JSON.stringify(testResult.response, null, 2)}
+                            </pre>
+                          </details>
+                        )}
+                        {testResult.pawapayStatus === "ACCEPTED" && (
+                          <p className="text-amber-400 border-t border-amber-500/20 pt-2">
+                            Status is ACCEPTED — PawaPay will push the final result (COMPLETED/FAILED) to your webhook URL once processed.
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
       </CardContent>

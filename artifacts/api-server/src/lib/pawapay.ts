@@ -11,10 +11,37 @@ export const DRC_OPERATORS = [
   { code: "ORANGE_COD",        name: "Orange Money",     currencies: ["CDF", "USD"] },
 ];
 
+// DRC sandbox test phone numbers (magic numbers from PawaPay docs)
+export const DRC_TEST_NUMBERS: Record<string, { phone: string; expectedStatus: string; failureCode?: string }[]> = {
+  VODACOM_MPESA_COD: [
+    { phone: "243813456789", expectedStatus: "COMPLETED" },
+    { phone: "243813456129", expectedStatus: "SUBMITTED" },
+    { phone: "243813456019", expectedStatus: "FAILED", failureCode: "PAYER_LIMIT_REACHED" },
+    { phone: "243813456029", expectedStatus: "FAILED", failureCode: "PAYER_NOT_FOUND" },
+    { phone: "243813456039", expectedStatus: "FAILED", failureCode: "PAYMENT_NOT_APPROVED" },
+    { phone: "243813456049", expectedStatus: "FAILED", failureCode: "INSUFFICIENT_BALANCE" },
+    { phone: "243813456069", expectedStatus: "FAILED", failureCode: "UNSPECIFIED_FAILURE" },
+  ],
+  AIRTEL_COD: [
+    { phone: "243973456789", expectedStatus: "COMPLETED" },
+    { phone: "243973456129", expectedStatus: "SUBMITTED" },
+    { phone: "243973456069", expectedStatus: "FAILED", failureCode: "UNSPECIFIED_FAILURE" },
+  ],
+  ORANGE_COD: [
+    { phone: "243893456789", expectedStatus: "COMPLETED" },
+    { phone: "243893456129", expectedStatus: "SUBMITTED" },
+    { phone: "243893456029", expectedStatus: "FAILED", failureCode: "PAYER_NOT_FOUND" },
+    { phone: "243893456039", expectedStatus: "FAILED", failureCode: "PAYMENT_NOT_APPROVED" },
+    { phone: "243893456049", expectedStatus: "FAILED", failureCode: "INSUFFICIENT_BALANCE" },
+    { phone: "243893456069", expectedStatus: "FAILED", failureCode: "UNSPECIFIED_FAILURE" },
+  ],
+};
+
 export interface PawapayConfig {
   apiToken: string;
   isSandbox: boolean;
   baseUrl: string;
+  enabled: boolean;
   depositsEnabled: boolean;
   withdrawalsEnabled: boolean;
   minDeposit: number;
@@ -24,8 +51,9 @@ export interface PawapayConfig {
 }
 
 export async function getPawapayConfig(): Promise<PawapayConfig | null> {
-  const [token, sandbox, depositsEnabled, withdrawalsEnabled, minDep, maxDep, minWith, maxWith] = await Promise.all([
+  const [token, enabled, sandbox, depositsEnabled, withdrawalsEnabled, minDep, maxDep, minWith, maxWith] = await Promise.all([
     getMetaSetting("pawapay_api_token"),
+    getMetaSetting("pawapay_enabled"),
     getMetaSetting("pawapay_sandbox"),
     getMetaSetting("pawapay_deposits_enabled"),
     getMetaSetting("pawapay_withdrawals_enabled"),
@@ -42,6 +70,7 @@ export async function getPawapayConfig(): Promise<PawapayConfig | null> {
     apiToken: token,
     isSandbox,
     baseUrl: isSandbox ? PAWAPAY_SANDBOX_URL : PAWAPAY_PROD_URL,
+    enabled: enabled !== "false",
     depositsEnabled: depositsEnabled !== "false",
     withdrawalsEnabled: withdrawalsEnabled !== "false",
     minDeposit: parseFloat(minDep ?? "1"),
