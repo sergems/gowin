@@ -1514,8 +1514,9 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
                               </p>
                             ) : finalStatus ? (
                               (() => {
-                                const fs = finalStatus.response;
-                                const finalSt = fs?.status ?? fs?.depositStatus ?? "UNKNOWN";
+                                const raw = finalStatus.response;
+                                const fs = Array.isArray(raw) ? raw[0] : raw;
+                                const finalSt = fs?.status ?? "UNKNOWN";
                                 const isComplete = finalSt === "COMPLETED";
                                 const isFailed = finalSt === "FAILED";
                                 return (
