@@ -1373,9 +1373,8 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
                     </select>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Scenario</Label>
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Quick-fill scenario</Label>
                     <select
-                      value={testPhone}
                       onChange={(e) => setTestPhone(e.target.value)}
                       className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                     >
@@ -1384,6 +1383,23 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
                       ))}
                     </select>
                   </div>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">Phone number (MSISDN)</Label>
+                  <Input
+                    type="tel"
+                    placeholder="e.g. 243813456789"
+                    value={testPhone}
+                    onChange={(e) => setTestPhone(e.target.value.replace(/\D/g, ""))}
+                    className="font-mono"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Use a magic test number from the scenario dropdown, or enter any number manually. Only magic numbers produce predictable sandbox outcomes.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground uppercase tracking-wider">Amount</Label>
                     <Input type="number" value={testAmount} onChange={(e) => setTestAmount(e.target.value)} min="1" />
@@ -1399,12 +1415,6 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
                       <option value="CDF">CDF</option>
                     </select>
                   </div>
-                </div>
-
-                <div className="flex items-center gap-2 p-2.5 rounded-md bg-accent/30 border border-border text-xs font-mono text-muted-foreground">
-                  <span className="text-muted-foreground/60">Phone:</span>
-                  <span>{testPhone}</span>
-                  <span className="ml-auto text-muted-foreground/60">→ {scenarios.find(s => s.phone === testPhone)?.label ?? ""}</span>
                 </div>
 
                 <Button
