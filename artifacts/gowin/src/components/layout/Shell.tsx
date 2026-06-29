@@ -73,13 +73,14 @@ export function Shell({ children }: { children: ReactNode }) {
   const isBranchAdmin = user?.role === "branch_admin";
   const isAgent = user?.role === "agent";
   const isPayout = user?.role === "payout";
+  const isPaymentClerk = user?.role === "payment_clerk";
 
   useEffect(() => {
-    if (isAdmin || isManager || isBranchAdmin || isAgent || isPayout) {
+    if (isAdmin || isManager || isBranchAdmin || isAgent || isPayout || isPaymentClerk) {
       setBetSlipOpen(false);
     }
-  }, [isAdmin, isManager, isBranchAdmin, isAgent, isPayout]);
-  const isStaffRole = isManager || isBranchAdmin || isAgent || isPayout;
+  }, [isAdmin, isManager, isBranchAdmin, isAgent, isPayout, isPaymentClerk]);
+  const isStaffRole = isManager || isBranchAdmin || isAgent || isPayout || isPaymentClerk;
 
   const { data: footballData } = useQuery<FootballData>({
     queryKey: ["football-countries"],
@@ -139,6 +140,11 @@ export function Shell({ children }: { children: ReactNode }) {
   const payoutLinks = isPayout ? [
     { href: "/payout",      icon: LayoutDashboard, label: t("nav.dashboard"),  match: (l: string) => l === "/payout" },
     { href: "/payout/desk", icon: Banknote,        label: t("nav.payout_desk"), match: (l: string) => l === "/payout/desk" },
+  ] : [];
+
+  const clerkLinks = isPaymentClerk ? [
+    { href: "/clerk",             icon: LayoutDashboard, label: "Dashboard",    match: (l: string) => l === "/clerk" },
+    { href: "/clerk/withdrawals", icon: Banknote,        label: "Withdrawals",  match: (l: string) => l === "/clerk/withdrawals" },
   ] : [];
 
   const adminLinks = user?.role === "admin" ? [
@@ -427,6 +433,26 @@ export function Shell({ children }: { children: ReactNode }) {
                 )}
                 {!open && <div className="my-2 mx-1 border-t border-border" />}
                 {payoutLinks.map(({ href, icon: Icon, label, match }) => (
+                  <Link key={href} href={href} title={!open ? label : undefined} onClick={onNav}
+                    className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                      ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
+                      ${match(location) ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
+                    <Icon className="w-4 h-4 shrink-0" />
+                    {open && label}
+                  </Link>
+                ))}
+              </>
+            )}
+
+            {clerkLinks.length > 0 && (
+              <>
+                {open && (
+                  <div className="pt-4 pb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Payment Clerk
+                  </div>
+                )}
+                {!open && <div className="my-2 mx-1 border-t border-border" />}
+                {clerkLinks.map(({ href, icon: Icon, label, match }) => (
                   <Link key={href} href={href} title={!open ? label : undefined} onClick={onNav}
                     className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
                       ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}

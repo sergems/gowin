@@ -1,0 +1,647 @@
+# Go Win RDC - Integrate PawaPay as the Preferred Payment Gateway
+
+## Project Overview
+
+The Go Win RDC platform is already live and operational.
+
+The current deposit and withdrawal system is manual.
+
+I want to integrate the PawaPay API as the primary payment gateway for all mobile money deposits and withdrawals.
+
+The platform supports two wallet currencies:
+
+* CDF (Congolese Franc)
+* USD (United States Dollar)
+
+PawaPay also supports transactions in these currencies, therefore the user's original wallet currency must always be maintained throughout the payment process.
+
+The integration documentation is available here:
+
+https://docs.pawapay.io/v2/docs/welcome
+
+Read the documentation thoroughly and implement the integration according to PawaPay best practices.
+
+---
+
+# Main Objectives
+
+Replace the current manual payment workflow with an automated PawaPay integration while preserving the existing wallet system and administrative approval workflow.
+
+The current betting system, wallet logic, promotions, bonuses, and transaction history must continue functioning.
+
+Only the payment processing mechanism should change.
+
+---
+
+# Deposit Workflow
+
+PawaPay must become the preferred payment method.
+
+When a user selects Deposit:
+
+Display:
+
+• Mobile Money (Recommended)
+
+The user selects:
+
+* Currency
+
+  * CDF
+  * USD
+
+The system automatically uses the corresponding wallet.
+
+The user enters:
+
+* Amount
+* Mobile number
+
+If required by PawaPay:
+
+* Network Operator
+
+Example:
+
+Vodacom
+
+Airtel
+
+Orange
+
+Africell
+
+(if operator detection is supported, detect automatically)
+
+---
+
+Generate Deposit Request
+
+When the user clicks Continue:
+
+Create a deposit request through the PawaPay API.
+
+Display:
+
+Waiting for payment confirmation...
+
+The user should remain on the deposit status page.
+
+---
+
+Deposit Status
+
+Poll the PawaPay API or use webhooks.
+
+Possible states:
+
+Pending
+
+Completed
+
+Failed
+
+Expired
+
+Cancelled
+
+---
+
+Completed Deposit
+
+When PawaPay confirms payment:
+
+Automatically:
+
+• Credit the user's wallet
+
+• Create transaction record
+
+• Send notification
+
+• Send email
+
+• Update transaction history
+
+The user should never need administrator intervention for successful deposits.
+
+---
+
+Deposit History
+
+Display:
+
+Reference Number
+
+PawaPay Transaction ID
+
+Amount
+
+Currency
+
+Phone Number
+
+Status
+
+Date
+
+Provider
+
+---
+
+Wallet Logic
+
+Never convert currencies automatically.
+
+If deposit is:
+
+100 USD
+
+Credit:
+
+USD Wallet
+
+If deposit is:
+
+100,000 CDF
+
+Credit:
+
+CDF Wallet
+
+Each wallet remains independent.
+
+---
+
+Withdrawal Workflow
+
+Users can only withdraw available winnings according to platform rules.
+
+The workflow must be:
+
+User submits withdrawal
+
+↓
+
+Status = Pending
+
+↓
+
+Administrator reviews request
+
+↓
+
+Administrator Approves
+
+↓
+
+Payment Clerk receives request
+
+↓
+
+Payment Clerk reviews
+
+↓
+
+Payment Clerk authorises payment
+
+↓
+
+System sends payout request to PawaPay
+
+↓
+
+Await API response
+
+↓
+
+Update status
+
+---
+
+Payment Clerk Dashboard
+
+Create a new role:
+
+Payment Clerk
+
+Permissions:
+
+View approved withdrawals
+
+Authorise payouts
+
+Reject payout
+
+View payout history
+
+Cannot:
+
+Manage users
+
+Manage games
+
+Access system settings
+
+Access administrator functions
+
+---
+
+Withdrawal Request Screen
+
+Display:
+
+User
+
+Username
+
+Phone Number
+
+Operator
+
+Amount
+
+Currency
+
+Wallet Type
+
+Requested Date
+
+Status
+
+Reason (optional)
+
+Reference Number
+
+---
+
+Administrator Actions
+
+Approve
+
+Reject
+
+Request More Information
+
+Only approved withdrawals become visible to the Payment Clerk.
+
+---
+
+Payment Clerk Actions
+
+Authorise Payment
+
+Reject Payment
+
+View PawaPay response
+
+Retry failed payments
+
+---
+
+Payout Request
+
+When authorised:
+
+Send payout request to PawaPay.
+
+Store:
+
+PawaPay payout ID
+
+Reference
+
+API response
+
+Status
+
+Timestamp
+
+---
+
+Supported Payout Statuses
+
+Pending
+
+Processing
+
+Completed
+
+Failed
+
+Rejected
+
+Cancelled
+
+Timeout
+
+Update automatically.
+
+---
+
+Wallet Rules
+
+Never allow payouts greater than available balance.
+
+Deduct funds only after successful payout confirmation.
+
+If payout fails:
+
+Restore reserved balance automatically.
+
+No money should be lost.
+
+---
+
+Notifications
+
+Notify user when:
+
+Withdrawal submitted
+
+Approved
+
+Rejected
+
+Payment processing
+
+Payment completed
+
+Payment failed
+
+Use:
+
+Website notifications
+
+Email
+
+(Optional SMS if available)
+
+---
+
+Transaction History
+
+Store:
+
+Internal Transaction ID
+
+PawaPay Reference
+
+PawaPay Transaction ID
+
+Wallet Currency
+
+Amount
+
+Fees
+
+Network
+
+Operator
+
+Phone
+
+Status
+
+Created Date
+
+Completed Date
+
+API Response
+
+---
+
+Webhook Integration
+
+Implement secure webhook endpoints.
+
+Validate webhook authenticity.
+
+Ignore duplicate webhook events.
+
+Update transaction status automatically.
+
+Log webhook payloads.
+
+---
+
+Admin Settings
+
+Create a PawaPay settings page.
+
+Fields:
+
+Sandbox Mode
+
+Production Mode
+
+API Key
+
+Webhook Secret
+
+Base URL
+
+Enable Deposits
+
+Enable Withdrawals
+
+Enable Logging
+
+Enable Test Mode
+
+Enable Webhooks
+
+Supported Operators
+
+Supported Countries
+
+Maximum Deposit
+
+Minimum Deposit
+
+Maximum Withdrawal
+
+Minimum Withdrawal
+
+Allowed Wallet Currencies
+
+Do not hardcode credentials.
+
+Use encrypted environment variables.
+
+---
+
+Security
+
+Validate all requests.
+
+Use HTTPS.
+
+Protect against replay attacks.
+
+Validate signatures.
+
+Never expose API keys.
+
+Encrypt sensitive information.
+
+Use idempotency keys.
+
+Log all API requests.
+
+Log all API responses.
+
+---
+
+Database Changes
+
+Create tables for:
+
+Payment Transactions
+
+Deposit Requests
+
+Withdrawal Requests
+
+Webhook Logs
+
+PawaPay References
+
+Payment Audit Logs
+
+Approval History
+
+Store every status transition.
+
+---
+
+Audit Trail
+
+Record:
+
+Who created request
+
+Who approved
+
+Who authorised
+
+API Request
+
+API Response
+
+Date
+
+IP Address
+
+Browser
+
+---
+
+Error Handling
+
+If API unavailable:
+
+Retry automatically.
+
+Notify administrators.
+
+Do not lose transactions.
+
+Queue failed requests.
+
+---
+
+User Interface
+
+Modern payment experience.
+
+Show:
+
+Operator logo
+
+Currency
+
+Wallet
+
+Reference
+
+Real-time status
+
+Animated progress
+
+Payment success page
+
+Payment failed page
+
+Retry option
+
+---
+
+Reports
+
+Create reports:
+
+Deposits
+
+Withdrawals
+
+Successful Payments
+
+Failed Payments
+
+Pending Payments
+
+Revenue
+
+Daily Totals
+
+Monthly Totals
+
+Export:
+
+CSV
+
+Excel
+
+PDF
+
+---
+
+Testing
+
+Implement complete Sandbox support.
+
+Allow switching between:
+
+Sandbox
+
+Production
+
+without code changes.
+
+---
+
+Documentation
+
+Create internal documentation covering:
+
+Environment variables
+
+Installation
+
+Webhook configuration
+
+API configuration
+
+Testing
+
+Deployment
+
+Troubleshooting
+
+---
+
+PawaPay Credentials Required
+
+Build the integration in full
+Do not hardcode any credentials. The application should not require code changes when moving from the sandbox environment to production.

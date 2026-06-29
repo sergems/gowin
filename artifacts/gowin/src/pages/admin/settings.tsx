@@ -15,7 +15,7 @@ import {
   Key, RefreshCw, CheckCircle2, AlertTriangle,
   Eye, EyeOff, Database, Plug, PlugZap, Unplug, FlaskConical,
   Upload, FileText, Info, Download, Mail, Send, ShieldCheck, ShieldOff,
-  Globe, Lock,
+  Globe, Lock, Smartphone,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -1039,6 +1039,179 @@ export default function AdminSettings() {
         </CardContent>
       </Card>
 
+      {/* ── PawaPay Settings ──────────────────────────────────────────────────── */}
+      <PawapaySettingsCard token={token} />
+
     </div>
+  );
+}
+
+// ── PawaPay Settings Card ─────────────────────────────────────────────────────
+function PawapaySettingsCard({ token }: { token: string | null }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const [ppToken, setPpToken] = useState("");
+  const [showToken, setShowToken] = useState(false);
+  const [isSandbox, setIsSandbox] = useState(true);
+  const [depositsEnabled, setDepositsEnabled] = useState(true);
+  const [withdrawalsEnabled, setWithdrawalsEnabled] = useState(true);
+  const [minDeposit, setMinDeposit] = useState("1");
+  const [maxDeposit, setMaxDeposit] = useState("10000");
+  const [minWithdrawal, setMinWithdrawal] = useState("1");
+  const [maxWithdrawal, setMaxWithdrawal] = useState("10000");
+  const [loaded, setLoaded] = useState(false);
+
+  const { data: ppSettings, isLoading } = useQuery<any>({
+    queryKey: ["/api/admin/pawapay/settings"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/pawapay/settings", { headers: { Authorization: `Bearer ${token}` } });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error);
+      return d;
+    },
+  });
+
+  useEffect(() => {
+    if (ppSettings && !loaded) {
+      setIsSandbox(ppSettings.isSandbox ?? true);
+      setDepositsEnabled(ppSettings.depositsEnabled ?? true);
+      setWithdrawalsEnabled(ppSettings.withdrawalsEnabled ?? true);
+      setMinDeposit(ppSettings.minDeposit ?? "1");
+      setMaxDeposit(ppSettings.maxDeposit ?? "10000");
+      setMinWithdrawal(ppSettings.minWithdrawal ?? "1");
+      setMaxWithdrawal(ppSettings.maxWithdrawal ?? "10000");
+      setLoaded(true);
+    }
+  }, [ppSettings, loaded]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const body: any = {
+        isSandbox,
+        depositsEnabled,
+        withdrawalsEnabled,
+        minDeposit,
+        maxDeposit,
+        minWithdrawal,
+        maxWithdrawal,
+      };
+      if (ppToken.trim()) body.apiToken = ppToken.trim();
+      const res = await fetch("/api/admin/pawapay/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error);
+      return d;
+    },
+    onSuccess: () => {
+      toast({ title: "PawaPay settings saved" });
+      setPpToken("");
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/pawapay/settings"] });
+    },
+    onError: (e: any) => toast({ title: "Save failed", description: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Smartphone className="w-4 h-4" /> PawaPay Mobile Money
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        {isLoading ? (
+          <div className="h-8 bg-accent/50 rounded animate-pulse" />
+        ) : (
+          <>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-accent/30 border border-border">
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">API Token</p>
+                <p className="text-sm font-medium">
+                  {ppSettings?.hasToken ? <span className="text-primary font-semibold flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> Configured</span> : <span className="text-muted-foreground">Not set</span>}
+                </p>
+              </div>
+              {ppSettings?.isSandbox && ppSettings?.hasToken && (
+                <span className="text-xs px-2 py-1 bg-amber-500/15 text-amber-500 border border-amber-500/30 rounded-full font-semibold">SANDBOX</span>
+              )}
+              {!ppSettings?.isSandbox && ppSettings?.hasToken && (
+                <span className="text-xs px-2 py-1 bg-primary/15 text-primary border border-primary/30 rounded-full font-semibold">LIVE</span>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                {ppSettings?.hasToken ? "Update API Token" : "Set API Token"}
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  type={showToken ? "text" : "password"}
+                  placeholder="Bearer token from PawaPay dashboard"
+                  value={ppToken}
+                  onChange={(e) => setPpToken(e.target.value)}
+                  className="font-mono"
+                />
+                <Button variant="ghost" size="icon" onClick={() => setShowToken((v) => !v)}>
+                  {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center justify-between p-3 rounded-lg border border-border">
+                <div>
+                  <p className="text-xs font-semibold">Sandbox Mode</p>
+                  <p className="text-xs text-muted-foreground">Use test environment</p>
+                </div>
+                <Switch checked={isSandbox} onCheckedChange={setIsSandbox} />
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg border border-border">
+                <div>
+                  <p className="text-xs font-semibold">Deposits</p>
+                  <p className="text-xs text-muted-foreground">Allow mobile deposits</p>
+                </div>
+                <Switch checked={depositsEnabled} onCheckedChange={setDepositsEnabled} />
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg border border-border">
+                <div>
+                  <p className="text-xs font-semibold">Withdrawals</p>
+                  <p className="text-xs text-muted-foreground">Allow mobile payouts</p>
+                </div>
+                <Switch checked={withdrawalsEnabled} onCheckedChange={setWithdrawalsEnabled} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Min Deposit</Label>
+                <Input type="number" value={minDeposit} onChange={(e) => setMinDeposit(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Max Deposit</Label>
+                <Input type="number" value={maxDeposit} onChange={(e) => setMaxDeposit(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Min Withdrawal</Label>
+                <Input type="number" value={minWithdrawal} onChange={(e) => setMinWithdrawal(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Max Withdrawal</Label>
+                <Input type="number" value={maxWithdrawal} onChange={(e) => setMaxWithdrawal(e.target.value)} />
+              </div>
+            </div>
+
+            <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="w-full">
+              {saveMutation.isPending ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Saving…</> : "Save PawaPay Settings"}
+            </Button>
+
+            <p className="text-xs text-muted-foreground border-t pt-3">
+              Get your API token from the <strong>PawaPay Dashboard → Developer</strong>. Enable sandbox for testing before going live. Webhook URL: <code className="text-xs bg-accent px-1 rounded">/api/pawapay/webhook</code>
+            </p>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }

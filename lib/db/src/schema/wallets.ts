@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, numeric, timestamp, text, pgEnum, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, numeric, timestamp, text, pgEnum, boolean, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -16,6 +16,7 @@ export const walletsTable = pgTable("wallets", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   balance: numeric("balance", { precision: 15, scale: 2 }).notNull().default("0.00"),
+  currency: varchar("currency", { length: 3 }).notNull().default("USD"),
 });
 
 export const transactionsTable = pgTable("transactions", {

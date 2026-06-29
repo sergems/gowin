@@ -107,3 +107,13 @@ export function requireAdminOrManager(req: AuthRequest, res: Response, next: Nex
     next();
   });
 }
+
+export function requirePaymentClerk(req: AuthRequest, res: Response, next: NextFunction): void {
+  requireAuth(req, res, () => {
+    if (req.userRole !== "payment_clerk" && req.userRole !== "admin") {
+      res.status(403).json({ error: "Payment clerk access required" });
+      return;
+    }
+    next();
+  });
+}

@@ -21,6 +21,8 @@ import cashUpRouter from "./cashUp";
 import payoutRouter from "./payout";
 import liveRouter from "./live";
 import fixturesPdfRouter from "./fixturesPdf";
+import pawapayRouter from "./pawapay";
+import pawapaySettingsRouter from "./pawapaySettings";
 
 const router: IRouter = Router();
 
@@ -46,5 +48,7 @@ router.use(cashUpRouter);
 router.use(payoutRouter);
 router.use(liveRouter);
 router.use(fixturesPdfRouter);
+router.use(pawapayRouter);
+router.use(pawapaySettingsRouter);
 
 export default router;

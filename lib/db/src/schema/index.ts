@@ -6,3 +6,4 @@ export * from "./withdrawals";
 export * from "./password-reset-otps";
 export * from "./branches";
 export * from "./cashUp";
+export * from "./pawapay";

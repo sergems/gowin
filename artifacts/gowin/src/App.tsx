@@ -22,6 +22,7 @@ import History from "@/pages/history";
 import Results from "@/pages/results";
 import Wallet from "@/pages/wallet";
 import Profile from "@/pages/profile";
+import DepositStatusPage from "@/pages/wallet/DepositStatusPage";
 
 // Live Betting
 import LiveBetting from "@/pages/LiveBetting";
@@ -58,6 +59,10 @@ import AgentBets from "@/pages/agent/BetsPage";
 import PayoutDashboard from "@/pages/payout/DashboardPage";
 import PayoutPage from "@/pages/payout/PayoutPage";
 
+// Payment Clerk Pages
+import ClerkDashboard from "@/pages/clerk/DashboardPage";
+import ClerkWithdrawals from "@/pages/clerk/WithdrawalsPage";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -91,6 +96,7 @@ function ProtectedRoute({ component: Component, allowedRoles, adminOnly = false,
     if (user.role === "branch_admin") return <BranchDashboard />;
     if (user.role === "agent") return <AgentDashboard />;
     if (user.role === "payout") return <PayoutDashboard />;
+    if (user.role === "payment_clerk") return <ClerkDashboard />;
     return <Home />;
   }
 
@@ -103,8 +109,9 @@ function RootPage() {
   useEffect(() => {
     if (!isLoading && user?.role === "payout") navigate("/payout");
     if (!isLoading && user?.role === "manager") navigate("/admin");
+    if (!isLoading && user?.role === "payment_clerk") navigate("/clerk");
   }, [user?.role, isLoading]);
-  if (user?.role === "payout" || user?.role === "manager") return null;
+  if (user?.role === "payout" || user?.role === "manager" || user?.role === "payment_clerk") return null;
   return <Home />;
 }
 
@@ -125,6 +132,7 @@ function Router() {
         <Route path="/results" component={Results} />
         <Route path="/history" component={() => <ProtectedRoute component={History} />} />
         <Route path="/wallet" component={() => <ProtectedRoute component={Wallet} allowedRoles={["user", "admin"]} />} />
+        <Route path="/wallet/deposit/:depositId" component={() => <ProtectedRoute component={DepositStatusPage} allowedRoles={["user", "admin"]} />} />
         <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
 
         {/* Admin + Manager Routes */}
@@ -159,6 +167,10 @@ function Router() {
         {/* Payout Routes */}
         <Route path="/payout" component={() => <ProtectedRoute component={PayoutDashboard} allowedRoles={["payout"]} />} />
         <Route path="/payout/desk" component={() => <ProtectedRoute component={PayoutPage} allowedRoles={["payout", "admin"]} />} />
+
+        {/* Payment Clerk Routes */}
+        <Route path="/clerk" component={() => <ProtectedRoute component={ClerkDashboard} allowedRoles={["payment_clerk", "admin"]} />} />
+        <Route path="/clerk/withdrawals" component={() => <ProtectedRoute component={ClerkWithdrawals} allowedRoles={["payment_clerk", "admin"]} />} />
 
         <Route component={NotFound} />
       </Switch>
