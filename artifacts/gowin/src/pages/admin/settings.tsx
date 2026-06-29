@@ -1047,32 +1047,6 @@ export default function AdminSettings() {
 }
 
 // ── PawaPay Settings Card ─────────────────────────────────────────────────────
-type TestRef = { phone: string; depositStatus: string; payoutStatus?: string; failureCode?: string };
-const DRC_TEST_REF: Record<string, TestRef[]> = {
-  VODACOM_MPESA_COD: [
-    { phone: "243813456789", depositStatus: "COMPLETED",  payoutStatus: "COMPLETED" },
-    { phone: "243813456129", depositStatus: "SUBMITTED",  payoutStatus: "SUBMITTED" },
-    { phone: "243813456019", depositStatus: "FAILED",     failureCode: "PAYER_LIMIT_REACHED" },
-    { phone: "243813456029", depositStatus: "FAILED",     failureCode: "PAYER_NOT_FOUND" },
-    { phone: "243813456039", depositStatus: "FAILED",     failureCode: "PAYMENT_NOT_APPROVED" },
-    { phone: "243813456049", depositStatus: "FAILED",     failureCode: "INSUFFICIENT_BALANCE" },
-    { phone: "243813456069", depositStatus: "FAILED",     payoutStatus: "FAILED", failureCode: "UNSPECIFIED_FAILURE" },
-  ],
-  AIRTEL_COD: [
-    { phone: "243973456789", depositStatus: "COMPLETED",  payoutStatus: "COMPLETED" },
-    { phone: "243973456129", depositStatus: "SUBMITTED",  payoutStatus: "SUBMITTED" },
-    { phone: "243973456069", depositStatus: "FAILED",     payoutStatus: "FAILED", failureCode: "UNSPECIFIED_FAILURE" },
-  ],
-  ORANGE_COD: [
-    { phone: "243893456789", depositStatus: "COMPLETED",  payoutStatus: "COMPLETED" },
-    { phone: "243893456129", depositStatus: "SUBMITTED",  payoutStatus: "SUBMITTED" },
-    { phone: "243893456119", payoutStatus: "FAILED",      depositStatus: "—", failureCode: "UNSPECIFIED_FAILURE" },
-    { phone: "243893456029", depositStatus: "FAILED",     failureCode: "PAYER_NOT_FOUND" },
-    { phone: "243893456039", depositStatus: "FAILED",     failureCode: "PAYMENT_NOT_APPROVED" },
-    { phone: "243893456049", depositStatus: "FAILED",     failureCode: "INSUFFICIENT_BALANCE" },
-    { phone: "243893456069", depositStatus: "FAILED",     payoutStatus: "FAILED", failureCode: "UNSPECIFIED_FAILURE" },
-  ],
-};
 
 function PawapaySettingsCard({ token }: { token: string | null }) {
   const { toast } = useToast();
@@ -1093,7 +1067,7 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
 
   // ── Sandbox test state ───────────────────────────────────────────────────────
   const [testOperator, setTestOperator] = useState("VODACOM_MPESA_COD");
-  const [testPhone, setTestPhone] = useState("243813456789");
+  const [testPhone, setTestPhone] = useState("");
   const [testAmount, setTestAmount] = useState("5");
   const [testCurrency, setTestCurrency] = useState("USD");
   const [testResult, setTestResult] = useState<any>(null);
@@ -1219,7 +1193,6 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
     return () => clearTimeout(t);
   }, [pollCountdown, testResult?.depositId]);
 
-  const scenarios = DRC_TEST_REF[testOperator] ?? [];
 
   return (
     <Card>
@@ -1384,40 +1357,22 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
                 <div className="flex items-center gap-2">
                   <FlaskConical className="w-4 h-4 text-amber-400" />
                   <p className="text-sm font-semibold text-amber-400">Sandbox Test Panel</p>
-                  <span className="text-xs text-muted-foreground">— DRC magic numbers only</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Fire a real API call to the PawaPay sandbox using official DRC test numbers. Each phone number is mapped to a specific outcome — no real money involved.
+                  Fire a real API call to the PawaPay sandbox. No real money involved.
                 </p>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Operator</Label>
-                    <select
-                      value={testOperator}
-                      onChange={(e) => {
-                        setTestOperator(e.target.value);
-                        const first = DRC_TEST_REF[e.target.value]?.[0]?.phone ?? "";
-                        setTestPhone(first);
-                      }}
-                      className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                    >
-                      <option value="VODACOM_MPESA_COD">M-Pesa (Vodacom)</option>
-                      <option value="AIRTEL_COD">Airtel Money</option>
-                      <option value="ORANGE_COD">Orange Money</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Quick-fill scenario</Label>
-                    <select
-                      onChange={(e) => setTestPhone(e.target.value)}
-                      className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                    >
-                      {scenarios.map((s) => (
-                        <option key={s.phone} value={s.phone}>{s.label}</option>
-                      ))}
-                    </select>
-                  </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">Operator</Label>
+                  <select
+                    value={testOperator}
+                    onChange={(e) => setTestOperator(e.target.value)}
+                    className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="VODACOM_MPESA_COD">M-Pesa (Vodacom)</option>
+                    <option value="AIRTEL_COD">Airtel Money</option>
+                    <option value="ORANGE_COD">Orange Money</option>
+                  </select>
                 </div>
 
                 <div className="space-y-1">
@@ -1429,9 +1384,6 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
                     onChange={(e) => setTestPhone(e.target.value.replace(/\D/g, ""))}
                     className="font-mono"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Use a magic test number from the scenario dropdown, or enter any number manually. Only magic numbers produce predictable sandbox outcomes.
-                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
