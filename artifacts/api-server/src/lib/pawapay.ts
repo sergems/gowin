@@ -1,15 +1,14 @@
 import { getMetaSetting } from "./metaDb";
 import { logger } from "./logger";
 
-export const PAWAPAY_SANDBOX_URL = "https://api.sandbox.pawapay.cloud";
-export const PAWAPAY_PROD_URL = "https://api.pawapay.cloud";
+export const PAWAPAY_SANDBOX_URL = "https://api.sandbox.pawapay.io";
+export const PAWAPAY_PROD_URL = "https://api.pawapay.io";
 
-// DRC mobile money operators
+// DRC mobile money operators — correct PawaPay correspondent codes for COD
 export const DRC_OPERATORS = [
-  { code: "ORANGE_CD",   name: "Orange Money",     currencies: ["CDF", "USD"] },
-  { code: "AIRTEL_CD",   name: "Airtel Money",      currencies: ["CDF", "USD"] },
-  { code: "VODACOM_CD",  name: "M-Pesa (Vodacom)", currencies: ["CDF", "USD"] },
-  { code: "AFRICELL_CD", name: "Africell Money",   currencies: ["CDF", "USD"] },
+  { code: "VODACOM_MPESA_COD", name: "M-Pesa (Vodacom)", currencies: ["CDF", "USD"] },
+  { code: "AIRTEL_COD",        name: "Airtel Money",     currencies: ["CDF", "USD"] },
+  { code: "ORANGE_COD",        name: "Orange Money",     currencies: ["CDF", "USD"] },
 ];
 
 export interface PawapayConfig {
@@ -58,7 +57,7 @@ async function pawapayRequest(
   path: string,
   body?: object
 ): Promise<{ ok: boolean; status: number; data: any }> {
-  const url = `${config.baseUrl}${path}`;
+  const url = `${config.baseUrl}/v2${path}`;
   try {
     const res = await fetch(url, {
       method,
@@ -134,4 +133,10 @@ export async function getPayoutStatus(
   payoutId: string
 ): Promise<{ ok: boolean; status: number; data: any }> {
   return pawapayRequest(config, "GET", `/payouts/${payoutId}`);
+}
+
+export async function checkAvailability(
+  config: PawapayConfig
+): Promise<{ ok: boolean; status: number; data: any }> {
+  return pawapayRequest(config, "GET", "/availability");
 }

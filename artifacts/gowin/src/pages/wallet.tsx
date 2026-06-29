@@ -56,10 +56,9 @@ interface PawapayConfig {
 }
 
 const DRC_OPERATORS = [
-  { code: "ORANGE_CD",   name: "Orange Money",     currencies: ["CDF", "USD"] },
-  { code: "AIRTEL_CD",   name: "Airtel Money",      currencies: ["CDF", "USD"] },
-  { code: "VODACOM_CD",  name: "M-Pesa (Vodacom)", currencies: ["CDF", "USD"] },
-  { code: "AFRICELL_CD", name: "Africell Money",   currencies: ["CDF", "USD"] },
+  { code: "VODACOM_MPESA_COD", name: "M-Pesa (Vodacom)", currencies: ["CDF", "USD"] },
+  { code: "AIRTEL_COD",        name: "Airtel Money",     currencies: ["CDF", "USD"] },
+  { code: "ORANGE_COD",        name: "Orange Money",     currencies: ["CDF", "USD"] },
 ];
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; Icon: any }> = {

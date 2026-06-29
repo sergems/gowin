@@ -43,10 +43,9 @@ interface Withdrawal {
 }
 
 const DRC_OPERATORS = [
-  { code: "ORANGE_CD", name: "Orange Money" },
-  { code: "AIRTEL_CD", name: "Airtel Money" },
-  { code: "VODACOM_CD", name: "M-Pesa (Vodacom)" },
-  { code: "AFRICELL_CD", name: "Africell Money" },
+  { code: "VODACOM_MPESA_COD", name: "M-Pesa (Vodacom)" },
+  { code: "AIRTEL_COD",        name: "Airtel Money" },
+  { code: "ORANGE_COD",        name: "Orange Money" },
 ];
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; Icon: any }> = {
