@@ -135,6 +135,26 @@ export default function Wallet() {
     staleTime: 60_000,
   });
 
+  const { data: exchangeRate } = useQuery<{ rate: number; isFallback: boolean }>({
+    queryKey: ["/api/pawapay/exchange-rate"],
+    queryFn: async () => {
+      const res = await fetch("/api/pawapay/exchange-rate");
+      return res.json();
+    },
+    staleTime: 60 * 60 * 1000, // 1 hour — matches server cache
+    enabled: !!ppConfig?.enabled,
+  });
+
+  const usdToCdf = exchangeRate?.rate ?? 2800;
+  const depositMax = depositCurrency === "CDF"
+    ? Math.round((ppConfig?.maxDeposit ?? 10000) * usdToCdf)
+    : (ppConfig?.maxDeposit ?? 10000);
+  const depositMin = depositCurrency === "CDF"
+    ? Math.round((ppConfig?.minDeposit ?? 1) * usdToCdf)
+    : (ppConfig?.minDeposit ?? 1);
+
+  const CDF_QUICK_AMOUNTS = [50_000, 100_000, 250_000, 500_000];
+
   const depositMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch("/api/pawapay/deposits", {
@@ -287,21 +307,30 @@ export default function Wallet() {
                       {["USD", "CDF"].map((cur) => (
                         <button
                           key={cur}
-                          onClick={() => { setDepositCurrency(cur); setDepositOperator(""); }}
+                          onClick={() => { setDepositCurrency(cur); setDepositOperator(""); setDepositAmount(""); }}
                           className={`py-2.5 rounded-lg text-sm font-bold border-2 transition-colors ${
                             depositCurrency === cur
                               ? "border-primary bg-primary/10 text-primary"
                               : "border-border text-muted-foreground hover:border-primary/40"
                           }`}
                         >
-                          {cur}
+                          {cur === "CDF" ? "CDF (FC)" : "USD ($)"}
                         </button>
                       ))}
                     </div>
 
+                    {/* Exchange rate info for CDF */}
+                    {depositCurrency === "CDF" && (
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-accent/40 border border-border text-xs text-muted-foreground">
+                        <span>Rate: <strong className="text-foreground">1 USD = {usdToCdf.toLocaleString(undefined, { maximumFractionDigits: 0 })} FC</strong></span>
+                        {exchangeRate?.isFallback && <span className="text-amber-400">(estimated)</span>}
+                        <span className="ml-auto">Max: <strong className="text-foreground">{depositMax.toLocaleString()} FC</strong></span>
+                      </div>
+                    )}
+
                     {/* Quick amounts */}
                     <div className="flex gap-2 flex-wrap">
-                      {QUICK_AMOUNTS.map((amt) => (
+                      {(depositCurrency === "CDF" ? CDF_QUICK_AMOUNTS : QUICK_AMOUNTS).map((amt) => (
                         <button
                           key={amt}
                           onClick={() => setDepositAmount(String(amt))}
@@ -315,8 +344,8 @@ export default function Wallet() {
                     <div className="space-y-2">
                       <Label className="text-xs text-muted-foreground uppercase tracking-wider">Amount ({depositCurrency})</Label>
                       <Input
-                        type="number" min="1"
-                        placeholder={`Min ${ppConfig.minDeposit} — Max ${ppConfig.maxDeposit}`}
+                        type="number" min={depositMin}
+                        placeholder={`Min ${depositMin.toLocaleString()} — Max ${depositMax.toLocaleString()}`}
                         value={depositAmount}
                         onChange={(e) => setDepositAmount(e.target.value)}
                         className="text-lg font-semibold"

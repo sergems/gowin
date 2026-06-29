@@ -8,6 +8,7 @@ import {
   getDepositStatus,
   DRC_OPERATORS,
 } from "../lib/pawapay";
+import { getUsdToCdfRate, getCacheInfo } from "../lib/exchangeRate";
 import { logger } from "../lib/logger";
 import crypto from "crypto";
 
@@ -16,6 +17,13 @@ const router = Router();
 // ── GET /pawapay/operators — list supported operators ──────────────────────
 router.get("/pawapay/operators", async (_req, res): Promise<void> => {
   res.json({ operators: DRC_OPERATORS });
+});
+
+// ── GET /pawapay/exchange-rate — live USD→CDF rate (1h cache) ──────────────
+router.get("/pawapay/exchange-rate", async (_req, res): Promise<void> => {
+  const rate = await getUsdToCdfRate();
+  const info = getCacheInfo();
+  res.json({ rate, cachedAt: info.cachedAt, isFallback: info.isFallback });
 });
 
 // ── GET /pawapay/config — public config (enabled, limits) ──────────────────
@@ -71,8 +79,16 @@ router.post("/pawapay/deposits", requireAuth, async (req: AuthRequest, res): Pro
     return;
   }
 
-  if (parsedAmount < config.minDeposit || parsedAmount > config.maxDeposit) {
-    res.status(400).json({ error: `Amount must be between ${config.minDeposit} and ${config.maxDeposit} ${currency}` });
+  // Currency-aware limit check: CDF limits are USD limits × live exchange rate
+  const rate = await getUsdToCdfRate();
+  const minForCurrency = currency === "CDF" ? config.minDeposit * rate : config.minDeposit;
+  const maxForCurrency = currency === "CDF" ? config.maxDeposit * rate : config.maxDeposit;
+
+  if (parsedAmount < minForCurrency || parsedAmount > maxForCurrency) {
+    const fmt = (n: number) => currency === "CDF"
+      ? `${Math.round(n).toLocaleString()} CDF`
+      : `${n} USD`;
+    res.status(400).json({ error: `Amount must be between ${fmt(minForCurrency)} and ${fmt(maxForCurrency)}` });
     return;
   }
 
