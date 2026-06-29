@@ -86,7 +86,7 @@ async function pawapayRequest(
   path: string,
   body?: object
 ): Promise<{ ok: boolean; status: number; data: any }> {
-  const url = `${config.baseUrl}/v2${path}`;
+  const url = `${config.baseUrl}${path}`;
   try {
     const res = await fetch(url, {
       method,
