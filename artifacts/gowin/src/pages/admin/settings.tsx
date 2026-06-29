@@ -1363,16 +1363,51 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
                 </p>
 
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">Operator</Label>
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">Operator (DRC)</Label>
                   <select
                     value={testOperator}
-                    onChange={(e) => setTestOperator(e.target.value)}
+                    onChange={(e) => { setTestOperator(e.target.value); setTestPhone(""); }}
                     className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                   >
                     <option value="VODACOM_MPESA_COD">M-Pesa (Vodacom)</option>
                     <option value="AIRTEL_COD">Airtel Money</option>
                     <option value="ORANGE_COD">Orange Money</option>
                   </select>
+                </div>
+
+                {/* DRC sandbox quick-fill numbers */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">DRC Sandbox Quick-fill</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(testOperator === "VODACOM_MPESA_COD" ? [
+                      { phone: "243813456789", label: "✅ COMPLETED" },
+                      { phone: "243813456129", label: "⏳ SUBMITTED" },
+                      { phone: "243813456039", label: "❌ NOT APPROVED" },
+                      { phone: "243813456049", label: "❌ NO BALANCE" },
+                    ] : testOperator === "AIRTEL_COD" ? [
+                      { phone: "243973456789", label: "✅ COMPLETED" },
+                      { phone: "243973456129", label: "⏳ SUBMITTED" },
+                      { phone: "243973456069", label: "❌ FAILED" },
+                    ] : [
+                      { phone: "243893456789", label: "✅ COMPLETED" },
+                      { phone: "243893456129", label: "⏳ SUBMITTED" },
+                      { phone: "243893456039", label: "❌ NOT APPROVED" },
+                      { phone: "243893456049", label: "❌ NO BALANCE" },
+                    ]).map(({ phone, label }) => (
+                      <button
+                        key={phone}
+                        type="button"
+                        onClick={() => setTestPhone(phone)}
+                        className={`px-2 py-1 rounded text-xs border transition-colors font-mono ${
+                          testPhone === phone
+                            ? "bg-amber-500/20 border-amber-500/60 text-amber-400"
+                            : "bg-background border-border text-muted-foreground hover:border-amber-500/40 hover:text-foreground"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="space-y-1">
