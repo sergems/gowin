@@ -57,9 +57,9 @@ interface PawapayConfig {
 
 const DRC_OPERATORS = [
   { code: "ORANGE_CD",   name: "Orange Money",     currencies: ["CDF", "USD"] },
-  { code: "AIRTEL_CD",   name: "Airtel Money",      currencies: ["CDF"] },
+  { code: "AIRTEL_CD",   name: "Airtel Money",      currencies: ["CDF", "USD"] },
   { code: "VODACOM_CD",  name: "M-Pesa (Vodacom)", currencies: ["CDF", "USD"] },
-  { code: "AFRICELL_CD", name: "Africell Money",   currencies: ["CDF"] },
+  { code: "AFRICELL_CD", name: "Africell Money",   currencies: ["CDF", "USD"] },
 ];
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; Icon: any }> = {
@@ -266,7 +266,7 @@ export default function Wallet() {
                 onClick={() => setActiveTab("mobile")}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${activeTab === "mobile" ? "bg-primary text-primary-foreground" : "bg-accent/50 text-muted-foreground hover:bg-accent"}`}
               >
-                <Smartphone className="w-4 h-4" /> Mobile Money
+                <Smartphone className="w-4 h-4" /> {t("wallet.mobile_money")}
               </button>
               <button
                 onClick={() => setActiveTab("voucher")}
@@ -291,15 +291,13 @@ export default function Wallet() {
                 {(!ppConfig?.enabled || !ppConfig.depositsEnabled) ? (
                   <div className="flex flex-col items-center gap-3 py-8 text-center">
                     <Smartphone className="w-10 h-10 text-muted-foreground/40" />
-                    <p className="text-muted-foreground">Mobile money deposits are not currently available.</p>
+                    <p className="text-muted-foreground">{t("wallet.mm_not_available")}</p>
                   </div>
                 ) : (
                   <>
                     <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
                       <Smartphone className="w-5 h-5 text-primary shrink-0" />
-                      <p className="text-sm text-muted-foreground">
-                        Deposit directly to your wallet via mobile money. Funds appear instantly after confirmation.
-                      </p>
+                      <p className="text-sm text-muted-foreground">{t("wallet.mm_desc")}</p>
                     </div>
 
                     {/* Currency selector */}
@@ -322,8 +320,8 @@ export default function Wallet() {
                     {/* Exchange rate info for CDF */}
                     {depositCurrency === "CDF" && (
                       <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-accent/40 border border-border text-xs text-muted-foreground">
-                        <span>Rate: <strong className="text-foreground">1 USD = {usdToCdf.toLocaleString(undefined, { maximumFractionDigits: 0 })} FC</strong></span>
-                        {exchangeRate?.isFallback && <span className="text-amber-400">(estimated)</span>}
+                        <span>{t("wallet.mm_rate")} <strong className="text-foreground">1 USD = {usdToCdf.toLocaleString(undefined, { maximumFractionDigits: 0 })} FC</strong></span>
+                        {exchangeRate?.isFallback && <span className="text-amber-400">({t("wallet.mm_estimated")})</span>}
                         <span className="ml-auto">Max: <strong className="text-foreground">{depositMax.toLocaleString()} FC</strong></span>
                       </div>
                     )}
@@ -342,7 +340,7 @@ export default function Wallet() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground uppercase tracking-wider">Amount ({depositCurrency})</Label>
+                      <Label className="text-xs text-muted-foreground uppercase tracking-wider">{t("wallet.mm_amount")} ({depositCurrency})</Label>
                       <Input
                         type="number" min={depositMin}
                         placeholder={`Min ${depositMin.toLocaleString()} — Max ${depositMax.toLocaleString()}`}
@@ -353,24 +351,24 @@ export default function Wallet() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground uppercase tracking-wider">Phone Number</Label>
+                      <Label className="text-xs text-muted-foreground uppercase tracking-wider">{t("wallet.mm_phone")}</Label>
                       <Input
                         type="tel"
                         placeholder="e.g. 243812345678"
                         value={depositPhone}
                         onChange={(e) => setDepositPhone(e.target.value)}
                       />
-                      <p className="text-xs text-muted-foreground">Enter your full number with country code (243…)</p>
+                      <p className="text-xs text-muted-foreground">{t("wallet.mm_phone_hint")}</p>
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground uppercase tracking-wider">Mobile Money Operator</Label>
+                      <Label className="text-xs text-muted-foreground uppercase tracking-wider">{t("wallet.mm_operator")}</Label>
                       <select
                         value={depositOperator}
                         onChange={(e) => setDepositOperator(e.target.value)}
                         className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                       >
-                        <option value="">Select operator…</option>
+                        <option value="">{t("wallet.mm_operator_ph")}</option>
                         {filteredOperators.map((op) => (
                           <option key={op.code} value={op.code}>{op.name}</option>
                         ))}
@@ -383,9 +381,9 @@ export default function Wallet() {
                       onClick={() => depositMutation.mutate()}
                     >
                       {depositMutation.isPending ? (
-                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Initiating…</>
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("wallet.mm_initiating")}</>
                       ) : (
-                        <><Smartphone className="w-4 h-4 mr-2" /> Deposit via Mobile Money</>
+                        <><Smartphone className="w-4 h-4 mr-2" /> {t("wallet.mm_deposit_btn")}</>
                       )}
                     </Button>
                   </>
@@ -449,11 +447,11 @@ export default function Wallet() {
                     <Phone className="w-4 h-4 text-primary" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">Payment to</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">{t("wallet.mm_payment_to")}</p>
                     <p className="font-semibold text-sm">
                       {(user as any)?.phoneNumber ?? (
                         <span className="text-amber-500 text-sm flex items-center gap-1.5">
-                          <AlertTriangle className="w-3.5 h-3.5" /> No phone on profile
+                          <AlertTriangle className="w-3.5 h-3.5" /> {t("wallet.mm_no_phone")}
                         </span>
                       )}
                     </p>
@@ -462,7 +460,7 @@ export default function Wallet() {
 
                 {/* Override phone */}
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">Override phone (optional)</Label>
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">{t("wallet.mm_override_phone")}</Label>
                   <Input
                     type="tel"
                     placeholder={(user as any)?.phoneNumber ?? "243812345678"}
@@ -473,13 +471,13 @@ export default function Wallet() {
 
                 {/* Operator */}
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">Mobile Money Operator</Label>
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">{t("wallet.mm_operator")}</Label>
                   <select
                     value={withdrawOperator}
                     onChange={(e) => setWithdrawOperator(e.target.value)}
                     className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                   >
-                    <option value="">Select operator…</option>
+                    <option value="">{t("wallet.mm_operator_ph")}</option>
                     {withdrawOperators.map((op) => (
                       <option key={op.code} value={op.code}>{op.name}</option>
                     ))}
@@ -513,7 +511,7 @@ export default function Wallet() {
                   disabled={withdrawMutation.isPending || !withdrawAmount || (!(user as any)?.phoneNumber && !withdrawPhone.trim())}
                   className="w-full"
                 >
-                  {withdrawMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Submitting…</> : t("wallet.request_withdrawal")}
+                  {withdrawMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("wallet.mm_submitting")}</> : t("wallet.request_withdrawal")}
                 </Button>
                 <p className="text-xs text-muted-foreground">{t("wallet.withdrawal_desc")}</p>
               </div>

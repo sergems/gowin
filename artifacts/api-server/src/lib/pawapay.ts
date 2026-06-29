@@ -6,10 +6,10 @@ export const PAWAPAY_PROD_URL = "https://api.pawapay.cloud";
 
 // DRC mobile money operators
 export const DRC_OPERATORS = [
-  { code: "ORANGE_CD", name: "Orange Money", currencies: ["CDF", "USD"] },
-  { code: "AIRTEL_CD", name: "Airtel Money", currencies: ["CDF"] },
-  { code: "VODACOM_CD", name: "M-Pesa (Vodacom)", currencies: ["CDF", "USD"] },
-  { code: "AFRICELL_CD", name: "Africell Money", currencies: ["CDF"] },
+  { code: "ORANGE_CD",   name: "Orange Money",     currencies: ["CDF", "USD"] },
+  { code: "AIRTEL_CD",   name: "Airtel Money",      currencies: ["CDF", "USD"] },
+  { code: "VODACOM_CD",  name: "M-Pesa (Vodacom)", currencies: ["CDF", "USD"] },
+  { code: "AFRICELL_CD", name: "Africell Money",   currencies: ["CDF", "USD"] },
 ];
 
 export interface PawapayConfig {
