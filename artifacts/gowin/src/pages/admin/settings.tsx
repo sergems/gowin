@@ -1095,6 +1095,8 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
   const [testAmount, setTestAmount] = useState("5");
   const [testCurrency, setTestCurrency] = useState("USD");
   const [testResult, setTestResult] = useState<any>(null);
+  const [finalStatus, setFinalStatus] = useState<any>(null);
+  const [pollCountdown, setPollCountdown] = useState<number | null>(null);
 
   const copyUrl = (url: string, label: string) => {
     navigator.clipboard.writeText(url).then(() => {
@@ -1171,18 +1173,49 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
     },
     onSuccess: (d) => {
       setTestResult(d);
-      const isOk = d.ok;
+      setFinalStatus(null);
+      if (d.pawapayStatus === "ACCEPTED") {
+        setPollCountdown(5);
+      }
       toast({
-        title: isOk ? "Test deposit sent" : "Test deposit rejected",
-        description: `Status: ${d.pawapayStatus ?? "—"} | HTTP ${d.httpStatus}`,
-        variant: isOk ? "default" : "destructive",
+        title: d.ok ? "Test deposit sent — checking final status…" : "Test deposit rejected",
+        description: `Initial status: ${d.pawapayStatus ?? "—"} | HTTP ${d.httpStatus}`,
+        variant: d.ok ? "default" : "destructive",
       });
     },
     onError: (e: any) => {
       setTestResult({ error: e.message });
+      setFinalStatus(null);
+      setPollCountdown(null);
       toast({ title: "Test failed", description: e.message, variant: "destructive" });
     },
   });
+
+  const pollStatusMutation = useMutation({
+    mutationFn: async (depositId: string) => {
+      const res = await fetch(`/api/admin/pawapay/test/${depositId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error);
+      return d;
+    },
+    onSuccess: (d) => {
+      setFinalStatus(d);
+      setPollCountdown(null);
+    },
+    onError: () => setPollCountdown(null),
+  });
+
+  useEffect(() => {
+    if (pollCountdown === null) return;
+    if (pollCountdown === 0) {
+      if (testResult?.depositId) pollStatusMutation.mutate(testResult.depositId);
+      return;
+    }
+    const t = setTimeout(() => setPollCountdown((c) => (c !== null ? c - 1 : null)), 1000);
+    return () => clearTimeout(t);
+  }, [pollCountdown, testResult?.depositId]);
 
   const scenarios = DRC_TEST_SCENARIOS[testOperator] ?? [];
 
@@ -1468,9 +1501,65 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
                           </details>
                         )}
                         {testResult.pawapayStatus === "ACCEPTED" && (
-                          <p className="text-amber-400 border-t border-amber-500/20 pt-2">
-                            Status is ACCEPTED — PawaPay will push the final result (COMPLETED/FAILED) to your webhook URL once processed.
-                          </p>
+                          <div className="border-t border-border pt-2 space-y-2">
+                            {pollCountdown !== null ? (
+                              <p className="text-amber-400 flex items-center gap-2">
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                Checking final status in {pollCountdown}s…
+                              </p>
+                            ) : pollStatusMutation.isPending ? (
+                              <p className="text-amber-400 flex items-center gap-2">
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                Fetching final status from PawaPay…
+                              </p>
+                            ) : finalStatus ? (
+                              (() => {
+                                const fs = finalStatus.response;
+                                const finalSt = fs?.status ?? fs?.depositStatus ?? "UNKNOWN";
+                                const isComplete = finalSt === "COMPLETED";
+                                const isFailed = finalSt === "FAILED";
+                                return (
+                                  <div className={`rounded-md p-2.5 space-y-1 ${
+                                    isComplete ? "bg-green-500/10 border border-green-500/30"
+                                    : isFailed ? "bg-destructive/10 border border-destructive/30"
+                                    : "bg-accent/30 border border-border"
+                                  }`}>
+                                    <p className={`font-bold text-sm ${isComplete ? "text-green-400" : isFailed ? "text-destructive" : "text-amber-400"}`}>
+                                      Final status: {finalSt}
+                                    </p>
+                                    {fs?.failureReason && (
+                                      <p className="text-destructive font-mono text-xs">
+                                        {fs.failureReason.failureCode}: {fs.failureReason.failureMessage}
+                                      </p>
+                                    )}
+                                    {fs?.rejectionReason && (
+                                      <p className="text-destructive font-mono text-xs">
+                                        {fs.rejectionReason.rejectionCode}: {fs.rejectionReason.rejectionMessage}
+                                      </p>
+                                    )}
+                                    <button
+                                      className="text-xs text-muted-foreground hover:text-foreground underline"
+                                      onClick={() => pollStatusMutation.mutate(testResult.depositId)}
+                                    >
+                                      Re-check
+                                    </button>
+                                  </div>
+                                );
+                              })()
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <p className="text-xs text-muted-foreground flex-1">
+                                  ACCEPTED — PawaPay will deliver the final result asynchronously.
+                                </p>
+                                <button
+                                  className="text-xs text-amber-400 underline shrink-0"
+                                  onClick={() => pollStatusMutation.mutate(testResult.depositId)}
+                                >
+                                  Check now
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </>
                     )}

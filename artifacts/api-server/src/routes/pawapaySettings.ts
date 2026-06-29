@@ -134,6 +134,23 @@ router.post("/admin/pawapay/test", requireAdmin, async (req, res): Promise<void>
   }
 });
 
+// ── GET /admin/pawapay/test/:depositId — poll final status ───────────────────
+router.get("/admin/pawapay/test/:depositId", requireAdmin, async (req, res): Promise<void> => {
+  const { depositId } = req.params;
+  const config = await getPawapayConfig();
+  if (!config) {
+    res.status(503).json({ error: "PawaPay not configured" });
+    return;
+  }
+  try {
+    const { getDepositStatus } = await import("../lib/pawapay.js");
+    const result = await getDepositStatus(config, depositId);
+    res.json({ httpStatus: result.status, ok: result.ok, response: result.data });
+  } catch (err: any) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
 // ── GET /admin/pawapay/test-numbers — return sandbox test MSISDNs ────────────
 router.get("/admin/pawapay/test-numbers", requireAdmin, (_req, res): void => {
   res.json(DRC_TEST_NUMBERS);
