@@ -372,6 +372,15 @@ const translations = {
     "reset.mismatch_desc": "Please make sure both passwords are the same.",
     "reset.invalid_code": "Invalid code",
     "reset.failed": "Reset failed",
+
+    "footer.legal": "GOWIN SPORTSBOOK is a licensed betting operator. GOWIN promotes responsible gambling. Gambling is prohibited for those under 18. Warning: gambling can be addictive and dangerous if not controlled.",
+    "footer.rights": "All rights reserved.",
+    "footer.privacy": "Privacy Policy",
+    "footer.terms": "Terms of Service",
+    "footer.download_title": "Download our official mobile app now",
+    "footer.android": "Android",
+    "footer.ios": "iOS — Soon",
+    "footer.back_home": "Back to Home",
   },
   fr: {
     "nav.home": "Accueil",
@@ -744,6 +753,15 @@ const translations = {
     "reset.mismatch_desc": "Veuillez vous assurer que les deux mots de passe sont identiques.",
     "reset.invalid_code": "Code invalide",
     "reset.failed": "Échec de la réinitialisation",
+
+    "footer.legal": "GOWIN SPORTSBOOK est un opérateur de paris agréé. GOWIN encourage le jeu responsable. Le jeu est interdit aux moins de 18 ans. Avertissement : le jeu peut engendrer une dépendance et être dangereux s'il n'est pas contrôlé et pratiqué avec modération. Les gagnants savent s'arrêter.",
+    "footer.rights": "Tous droits réservés.",
+    "footer.privacy": "Politique de confidentialité",
+    "footer.terms": "Conditions d'utilisation",
+    "footer.download_title": "Téléchargez notre application mobile officielle",
+    "footer.android": "Android",
+    "footer.ios": "iOS — Bientôt",
+    "footer.back_home": "Retour à l'accueil",
   },
 } as const;
 

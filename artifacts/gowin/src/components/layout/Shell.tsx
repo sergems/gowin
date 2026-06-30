@@ -42,6 +42,13 @@ function FlagImg({ src, alt }: { src: string | null | undefined; alt: string }) 
   return <img src={src} alt={alt} width={16} height={11} className="object-cover rounded-sm shrink-0 w-4" style={{ height: 11 }} onError={() => setFailed(true)} />;
 }
 
+const NOTIF_ICONS: Record<string, string> = {
+  payout_completed: "✅",
+  payout_failed: "❌",
+  withdrawal_approved: "🕐",
+  withdrawal_rejected: "⛔",
+};
+
 function NotificationBell() {
   const { token } = useAuth();
   const queryClient = useQueryClient();
@@ -83,18 +90,35 @@ function NotificationBell() {
   const unreadCount = data?.unreadCount ?? 0;
   const notifications = data?.notifications ?? [];
 
-  const TYPE_ICON: Record<string, string> = {
-    payout_completed: "✅",
-    payout_failed: "❌",
-    withdrawal_approved: "🕐",
-    withdrawal_rejected: "⛔",
-  };
+  const [toast, setToast] = useState<{ title: string; message: string; icon: string } | null>(null);
+  const hasInitialized = useRef(false);
+  const prevUnreadRef = useRef(0);
+
+  useEffect(() => {
+    if (!data) return;
+    const count = data.unreadCount;
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      prevUnreadRef.current = count;
+      return;
+    }
+    if (count > prevUnreadRef.current) {
+      const latest = data.notifications[0];
+      if (latest) {
+        setToast({ title: latest.title, message: latest.message, icon: NOTIF_ICONS[latest.type] ?? "🔔" });
+        const timer = setTimeout(() => setToast(null), 5000);
+        return () => clearTimeout(timer);
+      }
+    }
+    prevUnreadRef.current = count;
+  }, [data?.unreadCount]);
 
   function relTime(d: string) {
     try { return formatDistanceToNow(new Date(d), { addSuffix: true }); } catch { return ""; }
   }
 
   return (
+    <>
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((v) => !v)}
@@ -128,7 +152,7 @@ function NotificationBell() {
             ) : (
               notifications.map((n: any) => (
                 <div key={n.id} className={`flex items-start gap-3 px-4 py-3 hover:bg-accent/30 transition-colors ${!n.read ? "bg-primary/5" : ""}`}>
-                  <span className="text-base mt-0.5 shrink-0">{TYPE_ICON[n.type] ?? "🔔"}</span>
+                  <span className="text-base mt-0.5 shrink-0">{NOTIF_ICONS[n.type] ?? "🔔"}</span>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-semibold leading-tight ${!n.read ? "text-foreground" : "text-muted-foreground"}`}>
                       {n.title}
@@ -152,6 +176,28 @@ function NotificationBell() {
         </div>
       )}
     </div>
+
+    {toast && (
+      <div
+        className="fixed bottom-6 right-6 z-[100] bg-card border border-border rounded-xl shadow-2xl p-4 max-w-xs cursor-pointer"
+        onClick={() => setToast(null)}
+      >
+        <div className="flex items-start gap-3">
+          <span className="text-xl shrink-0 mt-0.5">{toast.icon}</span>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm leading-tight">{toast.title}</p>
+            <p className="text-xs text-muted-foreground mt-1 leading-snug line-clamp-3">{toast.message}</p>
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); setToast(null); }}
+            className="text-muted-foreground hover:text-foreground p-0.5 shrink-0"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 
@@ -750,14 +796,27 @@ export function Shell({ children }: { children: ReactNode }) {
 
         <footer className="shrink-0 border-t border-border bg-card/50 px-4 py-3 hidden md:block">
           <p className="text-[10px] text-muted-foreground/60 text-center leading-snug mb-2">
-            GOWIN SPORTSBOOK est un opérateur de paris agréé. GOWIN encourage le jeu responsable. Le jeu est interdit aux moins de 18 ans. Avertissement : le jeu peut engendrer une dépendance et être dangereux s'il n'est pas contrôlé et pratiqué avec modération. Les gagnants savent s'arrêter.
+            {t("footer.legal")}
           </p>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <span className="text-[10px] text-muted-foreground/60">{t("footer.download_title")} :</span>
+            <a
+              href="/gowin.apk"
+              download="GoWin.apk"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-border bg-accent/60 hover:bg-accent text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              🤖 {t("footer.android")}
+            </a>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-border/40 bg-accent/20 text-[10px] font-medium text-muted-foreground/40 cursor-not-allowed select-none">
+              🍎 {t("footer.ios")}
+            </span>
+          </div>
           <div className="flex items-center justify-center gap-3 text-[10px] text-muted-foreground/50">
-            <span>© {new Date().getFullYear()} GoWin Sportsbook. All rights reserved.</span>
+            <span>© {new Date().getFullYear()} GoWin Sportsbook. {t("footer.rights")}</span>
             <span>·</span>
-            <a href="/privacy" className="hover:text-muted-foreground transition-colors">Privacy Policy</a>
+            <a href="/privacy" className="hover:text-muted-foreground transition-colors">{t("footer.privacy")}</a>
             <span>·</span>
-            <a href="/terms" className="hover:text-muted-foreground transition-colors">Terms of Service</a>
+            <a href="/terms" className="hover:text-muted-foreground transition-colors">{t("footer.terms")}</a>
           </div>
         </footer>
       </main>
