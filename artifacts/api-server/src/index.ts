@@ -12,6 +12,7 @@ import { setJwtSecret } from "./middlewares/auth";
 import { eq, sql } from "drizzle-orm";
 import { attachWebSocketServer } from "./lib/wsServer";
 import { startLiveSyncWorkers } from "./lib/liveSync";
+import { runFullFixtureSync } from "./routes/apiSync";
 
 const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
@@ -180,3 +181,32 @@ async function maybeGeneratePdf() {
 setTimeout(maybeGeneratePdf, 10_000);
 // Check every minute whether the slot has changed
 setInterval(maybeGeneratePdf, 60_000);
+
+// ── Daily fixture sync at 07:00 ───────────────────────────────────────────────
+// Uses a slot string (date + "07") so it fires once per day and is
+// idempotent across restarts — same logic as the PDF scheduler above.
+let lastDailySyncSlot = "";
+
+function getDailySyncSlot(): string {
+  const now = new Date();
+  const d = now.toISOString().slice(0, 10);
+  const h = now.getHours();
+  if (h >= 7) return `${d}_07`;
+  return "";
+}
+
+async function maybeDailySync() {
+  const slot = getDailySyncSlot();
+  if (!slot || slot === lastDailySyncSlot) return;
+  lastDailySyncSlot = slot;
+  logger.info("Daily 07:00 fixture sync starting");
+  try {
+    const result = await runFullFixtureSync();
+    logger.info(result, "Daily 07:00 fixture sync finished");
+  } catch (err) {
+    logger.error({ err }, "Daily 07:00 fixture sync failed");
+  }
+}
+
+// Check every minute; fires once the clock passes 07:00 each day
+setInterval(maybeDailySync, 60_000);

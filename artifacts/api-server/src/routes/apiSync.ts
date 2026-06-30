@@ -307,13 +307,10 @@ router.post("/admin/refresh-odds", requireAdmin, async (_req, res): Promise<void
   }
 });
 
-// ── POST /admin/sync-fixtures ─────────────────────────────────────────────────
-router.post("/admin/sync-fixtures", requireAdmin, async (_req, res): Promise<void> => {
+// ── Shared sync logic (called by route + daily scheduler) ─────────────────────
+export async function runFullFixtureSync(): Promise<{ ok: boolean; imported: number; updated: number; total: number; errors: string[]; lastSync: string }> {
   const apiKey = await getSetting("allsports_api_key");
-  if (!apiKey) {
-    res.status(400).json({ error: "No API key configured. Add one in Settings first." });
-    return;
-  }
+  if (!apiKey) throw new Error("No API key configured. Add one in Settings first.");
 
   await setSetting("sync_status", "syncing");
 
@@ -348,17 +345,12 @@ router.post("/admin/sync-fixtures", requireAdmin, async (_req, res): Promise<voi
     apiData = await response.json();
   } catch (err: any) {
     await setSetting("sync_status", "error");
-    res.status(502).json({ error: "Failed to reach AllSportsAPI", detail: err.message });
-    return;
+    throw new Error(`Failed to reach AllSportsAPI: ${err.message}`);
   }
 
   if (apiData?.success !== 1 || !Array.isArray(apiData?.result)) {
     await setSetting("sync_status", "error");
-    res.status(502).json({
-      error: "AllSportsAPI returned an error",
-      detail: apiData?.message ?? `success=${apiData?.success}`,
-    });
-    return;
+    throw new Error(`AllSportsAPI returned an error: ${apiData?.message ?? `success=${apiData?.success}`}`);
   }
 
   const events: any[] = apiData.result;
@@ -408,7 +400,6 @@ router.post("/admin/sync-fixtures", requireAdmin, async (_req, res): Promise<voi
         const [fixture] = await db.insert(fixturesTable).values({ leagueId, homeTeamId, awayTeamId, startTime, status: rawStatus, scoreHome: score.home, scoreAway: score.away, externalId: fixtureExtId }).returning();
 
         if (rawStatus === "upcoming") {
-          // Try to fetch real odds from AllSportsAPI
           const realOdds = await fetchRealOdds(apiKey, fixtureExtId);
           const seed = (parseInt(fixtureExtId, 10) % 1000) / 1000;
           await insertAllMarkets(fixture.id, realOdds, seed);
@@ -425,7 +416,22 @@ router.post("/admin/sync-fixtures", requireAdmin, async (_req, res): Promise<voi
   await setSetting("sync_status", "idle");
   await setSetting("sync_summary", `${imported} imported, ${updated} updated, ${errors.length} errors out of ${events.length} total`);
 
-  res.json({ ok: true, imported, updated, total: events.length, errors: errors.slice(0, 10), lastSync: timestamp });
+  return { ok: true, imported, updated, total: events.length, errors: errors.slice(0, 10), lastSync: timestamp };
+}
+
+// ── POST /admin/sync-fixtures ─────────────────────────────────────────────────
+router.post("/admin/sync-fixtures", requireAdmin, async (_req, res): Promise<void> => {
+  const apiKey = await getSetting("allsports_api_key");
+  if (!apiKey) {
+    res.status(400).json({ error: "No API key configured. Add one in Settings first." });
+    return;
+  }
+  try {
+    const result = await runFullFixtureSync();
+    res.json(result);
+  } catch (err: any) {
+    res.status(502).json({ error: err.message });
+  }
 });
 
 // ── GET /admin/jwt-secret ─────────────────────────────────────────────────────
