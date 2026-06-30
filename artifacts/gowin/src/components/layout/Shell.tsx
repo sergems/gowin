@@ -805,10 +805,10 @@ export function Shell({ children }: { children: ReactNode }) {
               download="GoWin.apk"
               className="opacity-90 hover:opacity-100 transition-opacity"
             >
-              <img src="/store-badges/google-play.png" alt="Get it on Google Play" className="h-7 w-auto" />
+              <img src="/store-badges/google-play.png" alt="Get it on Google Play" style={{ height: 32, width: "auto" }} />
             </a>
             <span className="opacity-30 cursor-not-allowed select-none" title={t("footer.ios")}>
-              <img src="/store-badges/app-store.svg" alt="Download on the App Store" className="h-7 w-auto" style={{ filter: "grayscale(1)" }} />
+              <img src="/store-badges/app-store.svg" alt="Download on the App Store" style={{ height: 32, width: "auto", filter: "grayscale(1)" }} />
             </span>
           </div>
           <div className="flex items-center justify-center gap-3 text-[10px] text-muted-foreground/50">
