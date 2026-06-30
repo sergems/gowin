@@ -19,7 +19,7 @@ import {
   Activity, LayoutDashboard, History, Wallet, Trophy, LogOut, Users, Settings, X,
   ArrowLeftRight, Ticket, UserCircle, AlertTriangle, Banknote, SlidersHorizontal,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, ChevronDown, ChevronRight, Globe, Shield, CheckCircle2,
-  Home, Menu, Images, Printer, Clock, Building2, Target, BarChart3, FileText, DollarSign, Radio, Bell, Smartphone,
+  Home, Menu, Images, Printer, Clock, Building2, Target, BarChart3, FileText, DollarSign, Radio, Bell,
 } from "lucide-react";
 import type { PlacedBetDetails } from "@/contexts/BetSlipContext";
 import { printBetSlip } from "@/lib/printBetSlip";
@@ -488,13 +488,12 @@ export function Shell({ children }: { children: ReactNode }) {
               <a
                 href="/gowin.apk"
                 download="GoWin.apk"
-                title={!open ? t("footer.download_title") : undefined}
-                className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                title={t("footer.download_title")}
+                className={`flex items-center gap-3 rounded-md transition-colors
                   ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
-                  hover:bg-accent hover:text-accent-foreground text-primary`}
+                  hover:bg-accent opacity-90 hover:opacity-100`}
               >
-                <Smartphone className="w-4 h-4 shrink-0" />
-                {open && <span className="flex-1">{t("footer.download_title")}</span>}
+                <img src="/store-badges/google-play.png" alt="Get it on Google Play" className="h-7 w-auto object-contain" />
               </a>
             )}
 
@@ -522,13 +521,12 @@ export function Shell({ children }: { children: ReactNode }) {
               <a
                 href="/gowin.apk"
                 download="GoWin.apk"
-                title={!open ? t("footer.download_title") : undefined}
-                className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                title={t("footer.download_title")}
+                className={`flex items-center gap-3 rounded-md transition-colors
                   ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
-                  hover:bg-accent hover:text-accent-foreground text-primary`}
+                  hover:bg-accent opacity-90 hover:opacity-100`}
               >
-                <Smartphone className="w-4 h-4 shrink-0" />
-                {open && <span className="flex-1">{t("footer.download_title")}</span>}
+                <img src="/store-badges/google-play.png" alt="Get it on Google Play" className="h-7 w-auto object-contain" />
               </a>
             )}
 
@@ -848,9 +846,8 @@ export function Shell({ children }: { children: ReactNode }) {
               <span className="text-[10px] font-medium">Wallet</span>
             </Link>
             <a href="/gowin.apk" download="GoWin.apk"
-              className="flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-md transition-colors text-primary">
-              <Smartphone className="w-5 h-5" />
-              <span className="text-[10px] font-medium">App</span>
+              className="flex-1 flex items-center justify-center py-1.5 rounded-md transition-colors opacity-90 hover:opacity-100">
+              <img src="/store-badges/google-play.png" alt="Get it on Google Play" className="h-6 w-auto object-contain" />
             </a>
           </>
         ) : (
@@ -862,9 +859,8 @@ export function Shell({ children }: { children: ReactNode }) {
               <span className="text-[10px] font-medium">{t("nav.results")}</span>
             </Link>
             <a href="/gowin.apk" download="GoWin.apk"
-              className="flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-md transition-colors text-primary">
-              <Smartphone className="w-5 h-5" />
-              <span className="text-[10px] font-medium">App</span>
+              className="flex-1 flex items-center justify-center py-1.5 rounded-md transition-colors opacity-90 hover:opacity-100">
+              <img src="/store-badges/google-play.png" alt="Get it on Google Play" className="h-6 w-auto object-contain" />
             </a>
             <Link href="/login"
               className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-md transition-colors
