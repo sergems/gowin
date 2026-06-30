@@ -772,18 +772,21 @@ export function translate(key: TranslationKey, lang: Language): string {
   return dict[key] ?? (translations.en as Record<string, string>)[key] ?? key;
 }
 
-export function formatCurrencyValue(amount: number, currency: string, language: Language): string {
+export function formatCurrencyValue(amount: number, currency: string, language: Language, exchangeRate = 1): string {
   const locale = language === "fr" ? "fr-FR" : "en-US";
+  // All DB amounts are stored in USD; convert to CDF using the exchange rate
+  const displayAmount = currency === "CDF" ? amount * exchangeRate : amount;
+  const decimals = currency === "CDF" ? 0 : 2;
   const formatted = new Intl.NumberFormat(locale, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(displayAmount);
 
   if (currency === "USD") {
     return `$${formatted}`;
   }
   if (currency === "CDF") {
-    return `CDF ${formatted}`;
+    return `FC ${formatted}`;
   }
   return `${currency} ${formatted}`;
 }

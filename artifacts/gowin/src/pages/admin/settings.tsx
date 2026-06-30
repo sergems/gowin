@@ -50,8 +50,10 @@ export default function AdminSettings() {
   const { currency: activeCurrency, language: activeLanguage } = useSiteSettings();
 
   // ── Site Settings state ─────────────────────────────────────────────────────
+  const { exchangeRate: activeExchangeRate } = useSiteSettings();
   const [siteCurrency, setSiteCurrency] = useState(activeCurrency);
   const [siteLanguage, setSiteLanguage] = useState(activeLanguage);
+  const [exchangeRate, setExchangeRate] = useState(String(activeExchangeRate));
 
   // ── JWT Secret state ────────────────────────────────────────────────────────
   const [jwtSecretInput, setJwtSecretInput] = useState("");
@@ -363,7 +365,7 @@ export default function AdminSettings() {
       const res = await fetch("/api/admin/site-settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ currency: siteCurrency, language: siteLanguage }),
+        body: JSON.stringify({ currency: siteCurrency, language: siteLanguage, exchangeRate: parseFloat(exchangeRate) || 2800 }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);

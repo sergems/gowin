@@ -179,33 +179,49 @@ async function insertAllMarkets(fixtureId: number, real: any | null, _seed: numb
 
 // ── GET /site-settings (public) ──────────────────────────────────────────────
 router.get("/site-settings", async (_req, res): Promise<void> => {
-  const currency = await getSetting("site_currency");
-  const language = await getSetting("site_language");
+  const [currency, language, exchangeRate] = await Promise.all([
+    getSetting("site_currency"),
+    getSetting("site_language"),
+    getSetting("usd_to_cdf_rate"),
+  ]);
   res.json({
     currency: currency ?? "USD",
     language: language ?? "en",
+    exchangeRate: parseFloat(exchangeRate ?? "2800"),
   });
 });
 
 // ── GET /admin/site-settings ──────────────────────────────────────────────────
 router.get("/admin/site-settings", requireAdmin, async (_req, res): Promise<void> => {
-  const currency = await getSetting("site_currency");
-  const language = await getSetting("site_language");
+  const [currency, language, exchangeRate] = await Promise.all([
+    getSetting("site_currency"),
+    getSetting("site_language"),
+    getSetting("usd_to_cdf_rate"),
+  ]);
   res.json({
     currency: currency ?? "USD",
     language: language ?? "en",
+    exchangeRate: parseFloat(exchangeRate ?? "2800"),
   });
 });
 
 // ── PUT /admin/site-settings ──────────────────────────────────────────────────
 router.put("/admin/site-settings", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
-  const { currency, language } = req.body;
+  const { currency, language, exchangeRate } = req.body;
+  const saves: Promise<void>[] = [];
   if (currency && typeof currency === "string" && currency.trim()) {
-    await setSetting("site_currency", currency.trim().toUpperCase());
+    saves.push(setSetting("site_currency", currency.trim().toUpperCase()));
   }
   if (language && typeof language === "string" && ["en", "fr"].includes(language)) {
-    await setSetting("site_language", language);
+    saves.push(setSetting("site_language", language));
   }
+  if (exchangeRate !== undefined) {
+    const rate = parseFloat(String(exchangeRate));
+    if (!isNaN(rate) && rate > 0) {
+      saves.push(setSetting("usd_to_cdf_rate", String(rate)));
+    }
+  }
+  await Promise.all(saves);
   res.json({ ok: true });
 });
 
