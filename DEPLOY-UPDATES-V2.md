@@ -1,8 +1,8 @@
 # GoWin — Deploying All Updates to Production (v2 · June 2026)
 
-This is the **comprehensive update guide** covering every feature and change built since the initial deployment.  
-Use this when updating an existing Linode server, or when setting up a fresh server with the full current codebase.  
-For the very first server setup (Docker, Nginx, SSL), see `DEPLOYMENT_GUIDE.md`.
+This is the **complete update guide** covering every feature and change built since the initial deployment.  
+Use this when updating the existing Linode server. The server is already set up with Docker, Nginx, and SSL.  
+For initial server setup from scratch, see `DEPLOYMENT_GUIDE.md`.
 
 ---
 
@@ -20,7 +20,7 @@ In the Replit **Shell** tab:
 
 ```bash
 git add .
-git commit -m "feat: full update — odds filter, pawapay, currency, layout, nav badges"
+git commit -m "feat: full v2 update — all features current as of June 2026"
 git push origin main
 ```
 
@@ -36,15 +36,15 @@ ssh root@172.105.149.205
 
 ---
 
-## Step 3 — Update docker-compose.yml (one-time — add slides volume)
+## Step 3 — Update docker-compose.yml (replace entire file)
 
-If this is your first update after the initial deploy, the `slides` volume entry is not in your server's `docker-compose.yml` yet. Add it now so uploaded banner images survive container rebuilds:
+This version adds a `slides` volume so uploaded banner images survive rebuilds. Replace the entire file:
 
 ```bash
 nano /var/www/gowin/docker-compose.yml
 ```
 
-Replace the entire file with:
+Paste:
 
 ```yaml
 services:
@@ -84,22 +84,20 @@ volumes:
 
 Save: `Ctrl+X` → `Y` → `Enter`.
 
-> **Why:** Banner slide images uploaded through Admin → Slides are stored in `/app/uploads/slides` inside the container. Without a named volume, they are wiped on every `docker compose up --build -d`. The `pgdata` volume was already there for the database.
+> **Why the `slides` volume:** Banner slide images uploaded via Admin → Slides are stored in `/app/uploads/slides` inside the container. Without a named volume they are wiped on every rebuild. The `pgdata` volume was already present for the database — this just adds `slides`.
 
 ---
 
-## Step 4 — Update the .env file (if needed)
-
-Open the env file on the server and confirm/add any missing values:
+## Step 4 — Update the .env file
 
 ```bash
 nano /var/www/gowin/.env
 ```
 
-The full required `.env` for this version:
+Confirm the file contains all of the following (replace `YOUR_STRONG_PASSWORD` with whatever password you set during initial setup):
 
 ```env
-# ── Required ───────────────────────────────────────────────────────────
+# ── Required ─────────────────────────────────────────────────────────────────
 NODE_ENV=production
 PORT=8080
 
@@ -109,16 +107,19 @@ POSTGRES_PASSWORD=YOUR_STRONG_PASSWORD
 POSTGRES_DB=gowindb
 DATABASE_URL=postgresql://gowin:YOUR_STRONG_PASSWORD@db:5432/gowindb
 
-# ── Optional: email (password resets / OTP) ────────────────────────────
-SMTP_HOST=
-SMTP_PORT=
-SMTP_USER=
-SMTP_PASS=
-SMTP_FROM=
+# ── Optional: email (password resets / OTP) ───────────────────────────────────
+SMTP_HOST=mail.gowinrdc.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=no-reply@gowinrdc.com
+SMTP_PASS=YOUR_SMTP_PASSWORD
+SMTP_FROM=GoWin <no-reply@gowinrdc.com>
 APP_URL=https://gowinrdc.com
 ```
 
-> **Note:** PawaPay API credentials (token, environment, correspondent IDs) are managed through **Admin → Settings → PawaPay** in the app — they are stored in the database, not in `.env`.
+> **PawaPay credentials** (API token, environment, correspondent IDs) are managed through **Admin → Settings → PawaPay** in the app — they are stored in the database, not in `.env`.
+
+> **JWT secret** is also managed through **Admin → Settings** in the app — stored in the database, not in `.env`.
 
 Save: `Ctrl+X` → `Y` → `Enter`.
 
@@ -132,70 +133,96 @@ git pull
 docker compose up --build -d
 ```
 
-The entrypoint script runs `schema.sql` automatically on every start — it is fully idempotent and safe to run on an existing database. This update adds:
-- `payment_clerk` to the `user_role` enum (if not already present)
-- `wallets.currency` column (if not already present)
-- `pawapay_deposits` and `webhook_logs` tables (if not already present)
-- `usd_to_cdf_rate` seed value in settings (if not already present)
+The entrypoint script runs `schema.sql` automatically on every start — it is fully **idempotent** (safe to run on an existing database with data). This update adds or migrates:
 
-Watch the logs:
+- All enum types (`bet_status`, `user_role` with `payment_clerk`, `branch_status`, `withdrawal_status`, etc.)
+- All tables with `CREATE TABLE IF NOT EXISTS` and `ALTER TABLE … ADD COLUMN IF NOT EXISTS`
+- `wallets.currency` column (USD default)
+- `pawapay_deposits` and `webhook_logs` tables
+- `branch_float_allocations` and `cash_up_sessions` tables
+- `notifications` table
+- `bet_bookings` table
+- Seed row for `usd_to_cdf_rate` in settings (if not already present)
+
+No data is wiped. No manual SQL needed.
+
+Watch the logs while it builds and starts:
 
 ```bash
 docker compose logs -f app
 ```
 
-Expected:
+Expected output:
 
 ```
+[entrypoint] Waiting for PostgreSQL to be ready...
 [entrypoint] PostgreSQL is ready.
 [entrypoint] Applying database schema...
 [entrypoint] Schema applied.
 [entrypoint] Starting API server...
-Server listening  port: 8080
+{"level":30,"msg":"WebSocket server attached on /ws"}
+{"level":30,"msg":"Server listening","port":8080}
+{"level":30,"msg":"Live sync workers started"}
 ```
+
+First rebuild after changes takes 5–10 minutes. Subsequent rebuilds are faster (Docker layer cache).
 
 ---
 
 ## Step 6 — Verify
 
-Open **https://gowinrdc.com** and check the items below:
+Open **https://gowinrdc.com** and check all of the following:
 
 | What to check | Expected |
 |---------------|----------|
 | Home page | Banner slider starts flush at the top — no gap above it |
-| Sports / fixtures | Only games with at least one odd are listed |
-| Country/league sidebar | Only leagues that have bettable upcoming fixtures appear |
-| Sidebar (logged out) | Google Play badge below the Fixtures PDF link |
-| Sidebar (logged in) | Google Play badge below the Wallet link |
+| Sports / Fixtures | Only fixtures with at least one active odd are listed |
+| Country/league sidebar | Only leagues with bettable upcoming fixtures appear |
+| Sidebar (logged out) | Google Play badge visible below the Fixtures PDF link |
+| Sidebar (logged in) | Google Play badge visible below the Wallet link |
 | Mobile bottom nav | Google Play badge between Wallet and Bet Slip |
-| Footer | One slim line: copyright · Privacy · Terms (no store badges) |
-| Admin → Settings | Currency section shows USD/CDF exchange rate input and "Fetch live rate" button |
-| Admin → Users | Wallet balances display in the selected currency |
-| Admin → Withdrawals | Amounts display in the selected currency |
-| Password reset | Forgot-password flow works; 3 failed logins trigger forced reset |
+| Footer | Single slim line: copyright · Privacy · Terms |
 | Fixtures PDF | Sidebar link downloads a PDF coupon with upcoming matches |
+| Login / Register | Auth flow works; 3 failed logins trigger forced password reset |
+| Forgot password | OTP email sent; reset-password page works |
+| Wallet | Deposit and withdrawal flows work |
+| Admin → Settings | PawaPay config section present; Currency section shows USD/CDF rate + "Fetch live rate" button |
+| Admin → Users | Wallet balances shown in selected currency |
+| Admin → Withdrawals | Amounts shown in selected currency |
+| Admin → Slides | Upload, reorder, and delete banner slides |
+| Admin → Branches | Branch list, create/edit branches |
+| WebSocket | Live odds update in real time without page reload |
+| Notifications | Bell icon in header; bet settlement alerts delivered |
 
 ---
 
-## Complete feature list (all sessions)
+## Complete feature list (all sessions — current as of June 2026)
 
 | Feature | Details |
 |---------|---------|
-| **Sports betting** | Browse fixtures by league/country; place single and accumulator bets; real-time odds updates via WebSocket |
-| **Odds filter** | Only fixtures with at least one available odd are shown in lists and the sidebar nav |
-| **Wallet** | Deposit, withdraw, view transaction history; balances shown in USD or CDF |
-| **USD / CDF currency** | Admin sets exchange rate (manual or "Fetch live rate" from API); all amounts displayed in selected currency |
-| **PawaPay integration** | Mobile money gateway for deposits; `payment_clerk` role manages deposit processing; multi-currency wallets |
-| **Password recovery** | Email OTP self-service reset; admin-issued temp password (1 hr, shown in UI + optional email); 3 failed logins → forced reset |
-| **Admin panel** | Users (roles, wallet credit/debit, block/unblock, reset passwords), Fixtures, Bets, Withdrawals, Vouchers, Settings, Slides |
-| **Branch management** | Branch admins, agents, float allocation, cash-up sessions |
+| **Sports betting** | Browse fixtures by league/country; single and accumulator bets; real-time odds via WebSocket |
+| **Odds filter** | Only fixtures with at least one available odd are shown in all lists and the sidebar |
+| **Live bet sync** | Scores updated every 60 s; odds refreshed every 10 s from external API + DB |
+| **Auto-settle** | Finished fixtures settled automatically every 5 min; winnings credited to wallets |
+| **Wallet** | Deposit, withdraw, view full transaction history; balances in USD or CDF |
+| **USD / CDF currency** | Admin sets exchange rate (manual entry or "Fetch live rate"); all amounts displayed in selected currency |
+| **PawaPay integration** | Mobile money gateway for deposits; multi-currency wallets; `payment_clerk` role manages processing |
+| **Payment clerk** | Dedicated role for processing PawaPay deposits; scoped clerk dashboard |
+| **Password recovery** | Email OTP self-service reset; admin-issued temp password (1 hr, shown in UI + optional email); 3-failed-login → forced reset |
+| **Admin panel** | Full management: users (roles, wallet credit/debit, block/unblock, reset passwords), fixtures, bets, withdrawals, vouchers, settings, slides, branches |
+| **Branch management** | Branch admins, agents with commission rates, float allocation, cash-up sessions |
+| **Agent routes** | Commission tracking, agent-placed bets on behalf of users |
+| **Payout management** | Dedicated payout role and flows for cash payouts |
+| **API sync** | Admin can trigger external fixture/odds sync manually; scheduled background sync |
 | **Fixtures PDF** | Daily PDF coupon generated at 08:00 and 13:00; only fixtures with odds included; downloadable from sidebar |
-| **Banner slider** | Admin uploads and reorders promotional slides; full-bleed display from the top of the viewport |
-| **Navigation** | Floating header (no height impact); Google Play download badge in sidebar and mobile bottom nav |
-| **Notifications** | In-app notification bell for users; bet settlement alerts |
+| **Banner slider** | Admin uploads and reorders promotional slides; full-bleed display flush from top of viewport |
 | **Bet booking** | Share a bet slip by code; recipient can load and place the same selections |
-| **Results page** | Browse settled fixtures and outcomes |
-| **Email** | nodemailer for OTP, temp passwords, lockout notices (optional — skipped if SMTP not configured) |
+| **Results page** | Browse settled fixtures and final scores |
+| **Notifications** | In-app notification bell; bet settlement and system alerts |
+| **Database switcher** | Admin can point the app at a different Postgres instance via Admin → Settings |
+| **JWT management** | JWT secret managed via Admin → Settings; stored in DB; auto-seeded on first boot |
+| **Email** | nodemailer for OTP, temp passwords, lockout notices (gracefully skipped if SMTP not configured) |
+| **Navigation** | Floating header (no layout height impact); Google Play download badge in sidebar and mobile bottom nav |
 
 ---
 
@@ -205,7 +232,7 @@ If the update causes a problem:
 
 ```bash
 cd /var/www/gowin
-git log --oneline -5          # find the last known-good commit
+git log --oneline -5          # find the last known-good commit hash
 git checkout <commit-hash>
 docker compose up --build -d
 ```
@@ -215,22 +242,28 @@ docker compose up --build -d
 ## Troubleshooting
 
 **No fixtures showing after deploy**  
-→ The odds filter is working. Odds are refreshed every 10 minutes by the live sync worker. Wait a few minutes and reload. Check: `docker compose exec db psql -U gowin -d gowindb -c "SELECT COUNT(*) FROM odds;"`
+→ The odds filter is active. The live sync worker refreshes odds every 10 min. Wait and reload.  
+→ Check: `docker compose exec db psql -U gowin -d gowindb -c "SELECT COUNT(*) FROM odds;"`
 
 **Slide images missing after rebuild**  
-→ The `slides` volume was not in `docker-compose.yml`. Follow Step 3 above, then restore images through Admin → Slides.
+→ The `slides` volume was missing from `docker-compose.yml`. Follow Step 3 above, then re-upload via Admin → Slides.
 
 **502 Bad Gateway**  
-→ App container still starting. Wait 30 s. Check: `docker compose ps` and `docker compose logs app`.
+→ App container still starting. Wait 30 s.  
+→ Check: `docker compose ps` and `docker compose logs app`.
 
-**`payment_clerk` role error on startup**  
-→ Schema migration adds it automatically. Check: `docker compose logs app | grep entrypoint`.
+**`payment_clerk` role error**  
+→ Schema migration adds it automatically via `ALTER TYPE … ADD VALUE IF NOT EXISTS`.  
+→ Check: `docker compose logs app | grep entrypoint`.
 
 **SSL certificate expired**  
 → `certbot renew` — or check: `certbot certificates`.
 
 **Out of disk space**  
 → `docker system prune -af` (removes old images — data volumes are safe).
+
+**`ERR_PNPM_IGNORED_BUILDS`**  
+→ `onlyBuiltDependencies` must be in `pnpm-workspace.yaml` (already correct in this version). Confirm after `git pull`.
 
 ---
 
