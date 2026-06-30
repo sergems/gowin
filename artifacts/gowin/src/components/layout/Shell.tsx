@@ -798,17 +798,17 @@ export function Shell({ children }: { children: ReactNode }) {
           <p className="text-[10px] text-muted-foreground/60 text-center leading-snug mb-2">
             {t("footer.legal")}
           </p>
-          <div className="flex items-center justify-center gap-2 mb-2">
+          <div className="flex items-center justify-center gap-3 mb-2">
             <span className="text-[10px] text-muted-foreground/60">{t("footer.download_title")} :</span>
             <a
               href="/gowin.apk"
               download="GoWin.apk"
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-border bg-accent/60 hover:bg-accent text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+              className="opacity-90 hover:opacity-100 transition-opacity"
             >
-              🤖 {t("footer.android")}
+              <img src="/store-badges/google-play.png" alt="Get it on Google Play" className="h-7 w-auto" />
             </a>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-border/40 bg-accent/20 text-[10px] font-medium text-muted-foreground/40 cursor-not-allowed select-none">
-              🍎 {t("footer.ios")}
+            <span className="opacity-30 cursor-not-allowed select-none" title={t("footer.ios")}>
+              <img src="/store-badges/app-store.svg" alt="Download on the App Store" className="h-7 w-auto" style={{ filter: "grayscale(1)" }} />
             </span>
           </div>
           <div className="flex items-center justify-center gap-3 text-[10px] text-muted-foreground/50">
