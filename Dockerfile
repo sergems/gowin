@@ -62,6 +62,10 @@ COPY scripts/schema.sql          ./scripts/schema.sql
 COPY scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
 RUN chmod +x /app/scripts/docker-entrypoint.sh
 
+# Slide images are uploaded at runtime and must be persisted via a Docker volume.
+# Mount a named volume at /app/uploads/slides in docker-compose.yml.
+VOLUME ["/app/uploads/slides"]
+
 EXPOSE 8080
 
 # Entrypoint: waits for Postgres, applies schema (idempotent), then starts the server
