@@ -8,13 +8,24 @@ import crypto from "crypto";
 
 const router = Router();
 
+// Resolve phone + operator from user profile based on accountType
+function resolvePaymentAccount(user: any, accountType?: string): { phoneNumber: string; operator: string } | null {
+  const type = accountType === "secondary" ? "secondary" : "primary";
+  if (type === "secondary") {
+    if (!user.secondaryPhoneNumber || !user.secondaryMobileOperator) return null;
+    return { phoneNumber: user.secondaryPhoneNumber, operator: user.secondaryMobileOperator };
+  }
+  if (!user.phoneNumber || !user.mobileOperator) return null;
+  return { phoneNumber: user.phoneNumber, operator: user.mobileOperator };
+}
+
 // ── User: request a withdrawal ──────────────────────────────────────────────
 router.post("/wallet/withdrawal-request", requireAuth, async (req: AuthRequest, res): Promise<void> => {
   if (["agent", "branch_admin", "payout", "payment_clerk"].includes(req.userRole!)) {
     res.status(403).json({ error: "Staff accounts cannot request withdrawals" });
     return;
   }
-  const { amount, currency, phoneNumber, operator } = req.body;
+  const { amount, currency, accountType } = req.body;
   const parsedAmount = parseFloat(amount);
   const walletCurrency: string = currency && ["CDF", "USD"].includes(currency) ? currency : "USD";
 
@@ -24,9 +35,15 @@ router.post("/wallet/withdrawal-request", requireAuth, async (req: AuthRequest, 
   }
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
-  const withdrawPhone = (phoneNumber && typeof phoneNumber === "string" && phoneNumber.trim()) || user?.phoneNumber;
-  if (!withdrawPhone) {
-    res.status(403).json({ error: "You must provide a phone number or set one in your profile." });
+
+  // Resolve payment account from profile
+  const account = resolvePaymentAccount(user, accountType);
+  if (!account) {
+    if (accountType === "secondary") {
+      res.status(403).json({ error: "No secondary payment account set. Add one in your profile." });
+    } else {
+      res.status(403).json({ error: "No primary payment account set. Please set your phone number and mobile operator in your profile." });
+    }
     return;
   }
 
@@ -53,11 +70,11 @@ router.post("/wallet/withdrawal-request", requireAuth, async (req: AuthRequest, 
     .values({
       userId: req.userId!,
       amount: parsedAmount.toFixed(2),
-      bankDetails: withdrawPhone,
+      bankDetails: account.phoneNumber,
       status: "pending",
       currency: walletCurrency,
-      phoneNumber: withdrawPhone,
-      operator: operator ?? null,
+      phoneNumber: account.phoneNumber,
+      operator: account.operator,
     })
     .returning();
 
@@ -179,9 +196,9 @@ router.post("/admin/withdrawals/:id/pawapay-payout", requireAdmin, async (req: A
     return;
   }
 
-  const operator = req.body.operator ?? withdrawal.operator;
+  const operator = withdrawal.operator;
   const phoneNumber = withdrawal.phoneNumber ?? withdrawal.bankDetails;
-  if (!operator) { res.status(400).json({ error: "operator is required" }); return; }
+  if (!operator) { res.status(400).json({ error: "No operator set on this withdrawal" }); return; }
   if (!phoneNumber) { res.status(400).json({ error: "No phone number on this withdrawal" }); return; }
 
   const config = await getPawapayConfig();
@@ -211,7 +228,6 @@ router.post("/admin/withdrawals/:id/pawapay-payout", requireAdmin, async (req: A
     const pawapayStatus = result.data?.status ?? (result.ok ? "ACCEPTED" : "FAILED");
 
     if (!result.ok) {
-      // Restore wallet and revert to approved
       const wallets = await db.select().from(walletsTable).where(eq(walletsTable.userId, withdrawal.userId));
       const wallet = wallets.find((w) => w.currency === (withdrawal.currency ?? "USD")) ?? wallets[0];
       if (wallet) {
@@ -246,8 +262,8 @@ router.post("/admin/withdrawals/:id/pawapay-payout", requireAdmin, async (req: A
   }
 });
 
-// ── Admin: poll PawaPay payout status for a withdrawal ──────────────────────
-router.get("/admin/withdrawals/:id/payout-status", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
+// ── Admin/Clerk: poll PawaPay payout status for a withdrawal ──────────────
+router.get("/admin/withdrawals/:id/payout-status", requireAdminOrManager, async (req: AuthRequest, res): Promise<void> => {
   const id = parseInt(req.params.id as string);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
@@ -341,10 +357,10 @@ router.post("/clerk/withdrawals/:id/authorize", requirePaymentClerk, async (req:
   }
 
   const phoneNumber = withdrawal.phoneNumber ?? withdrawal.bankDetails;
-  const operator = withdrawal.operator ?? req.body.operator;
+  const operator = withdrawal.operator;
 
   if (!operator) {
-    res.status(400).json({ error: "Operator required to process payout" });
+    res.status(400).json({ error: "No operator set on this withdrawal. The user must set their payment account in their profile." });
     return;
   }
 
@@ -356,7 +372,6 @@ router.post("/clerk/withdrawals/:id/authorize", requirePaymentClerk, async (req:
 
   const payoutId = crypto.randomUUID();
 
-  // Mark as processing
   await db
     .update(withdrawalsTable)
     .set({
@@ -383,7 +398,6 @@ router.post("/clerk/withdrawals/:id/authorize", requirePaymentClerk, async (req:
     const pawapayStatus = result.data?.status ?? (result.ok ? "ACCEPTED" : "FAILED");
 
     if (!result.ok) {
-      // Restore wallet balance on failure
       const wallets = await db.select().from(walletsTable).where(eq(walletsTable.userId, withdrawal.userId));
       const wallet = wallets.find((w) => w.currency === (withdrawal.currency ?? "USD")) ?? wallets[0];
       if (wallet) {
@@ -408,7 +422,6 @@ router.post("/clerk/withdrawals/:id/authorize", requirePaymentClerk, async (req:
     res.json({ ...updated, amount: parseFloat(updated.amount) });
   } catch (err: any) {
     logger.error({ err }, "PawaPay payout initiation failed");
-    // Restore wallet balance on error
     const wallets = await db.select().from(walletsTable).where(eq(walletsTable.userId, withdrawal.userId));
     const wallet = wallets.find((w) => w.currency === (withdrawal.currency ?? "USD")) ?? wallets[0];
     if (wallet) {
@@ -441,7 +454,6 @@ router.post("/clerk/withdrawals/:id/reject", requirePaymentClerk, async (req: Au
     return;
   }
 
-  // Restore wallet balance
   const wallets = await db.select().from(walletsTable).where(eq(walletsTable.userId, withdrawal.userId));
   const wallet = wallets.find((w) => w.currency === (withdrawal.currency ?? "USD")) ?? wallets[0];
   if (wallet) {
@@ -491,7 +503,6 @@ router.get("/clerk/withdrawals/:id/payout-status", requirePaymentClerk, async (r
 
   try {
     const result = await getPayoutStatus(config, withdrawal.pawapayPayoutId);
-    // v2 wraps status check: { status: "FOUND", data: { status: "COMPLETED", ... } }
     const apiStatus: string = result.data?.data?.status ?? withdrawal.pawapayStatus;
 
     let newStatus = withdrawal.status;
@@ -503,7 +514,6 @@ router.get("/clerk/withdrawals/:id/payout-status", requirePaymentClerk, async (r
       .set({ status: newStatus as any, pawapayStatus: apiStatus, pawapayResponse: result.data as any, updatedAt: new Date() })
       .where(eq(withdrawalsTable.id, id));
 
-    // Restore balance if payout failed
     if ((apiStatus === "FAILED" || apiStatus === "TIMED_OUT") && withdrawal.status === "processing") {
       const wallets = await db.select().from(walletsTable).where(eq(walletsTable.userId, withdrawal.userId));
       const wallet = wallets.find((w) => w.currency === (withdrawal.currency ?? "USD")) ?? wallets[0];

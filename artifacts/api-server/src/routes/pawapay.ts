@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
-import { db, pawapayDepositsTable, walletsTable, transactionsTable, webhookLogsTable, withdrawalsTable } from "@workspace/db";
+import { db, pawapayDepositsTable, walletsTable, transactionsTable, webhookLogsTable, withdrawalsTable, usersTable } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 import {
   getPawapayConfig,
@@ -53,7 +53,7 @@ router.post("/pawapay/deposits", requireAuth, async (req: AuthRequest, res): Pro
     return;
   }
 
-  const { amount, currency, phoneNumber, operator } = req.body;
+  const { amount, currency, accountType, phoneNumber: rawPhone, operator: rawOperator } = req.body;
   const parsedAmount = parseFloat(amount);
 
   if (!parsedAmount || parsedAmount <= 0) {
@@ -64,13 +64,41 @@ router.post("/pawapay/deposits", requireAuth, async (req: AuthRequest, res): Pro
     res.status(400).json({ error: "Currency must be CDF or USD" });
     return;
   }
-  if (!phoneNumber || typeof phoneNumber !== "string" || phoneNumber.trim().length < 9) {
-    res.status(400).json({ error: "Valid phone number required" });
-    return;
-  }
-  if (!operator || typeof operator !== "string") {
-    res.status(400).json({ error: "Operator required" });
-    return;
+
+  // Resolve phone + operator: prefer profile account, fall back to direct input
+  let phoneNumber: string;
+  let operator: string;
+
+  if (accountType === "primary" || accountType === "secondary") {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
+    const u = user as any;
+    if (accountType === "secondary") {
+      if (!u.secondaryPhoneNumber || !u.secondaryMobileOperator) {
+        res.status(400).json({ error: "No secondary payment account set. Add one in your profile." });
+        return;
+      }
+      phoneNumber = u.secondaryPhoneNumber;
+      operator = u.secondaryMobileOperator;
+    } else {
+      if (!u.phoneNumber || !u.mobileOperator) {
+        res.status(400).json({ error: "No primary payment account set. Please set your phone number and mobile operator in your profile." });
+        return;
+      }
+      phoneNumber = u.phoneNumber;
+      operator = u.mobileOperator;
+    }
+  } else {
+    // Direct phone/operator provided (legacy / fallback)
+    if (!rawPhone || typeof rawPhone !== "string" || rawPhone.trim().length < 9) {
+      res.status(400).json({ error: "Valid phone number required" });
+      return;
+    }
+    if (!rawOperator || typeof rawOperator !== "string") {
+      res.status(400).json({ error: "Operator required" });
+      return;
+    }
+    phoneNumber = rawPhone.trim();
+    operator = rawOperator;
   }
 
   const config = await getPawapayConfig();
@@ -79,7 +107,6 @@ router.post("/pawapay/deposits", requireAuth, async (req: AuthRequest, res): Pro
     return;
   }
 
-  // Currency-aware limit check: CDF limits are USD limits × live exchange rate
   const rate = await getUsdToCdfRate();
   const minForCurrency = currency === "CDF" ? config.minDeposit * rate : config.minDeposit;
   const maxForCurrency = currency === "CDF" ? config.maxDeposit * rate : config.maxDeposit;
@@ -92,7 +119,6 @@ router.post("/pawapay/deposits", requireAuth, async (req: AuthRequest, res): Pro
     return;
   }
 
-  // Find or create the correct currency wallet
   let [wallet] = await db
     .select()
     .from(walletsTable)
@@ -100,7 +126,6 @@ router.post("/pawapay/deposits", requireAuth, async (req: AuthRequest, res): Pro
     .then((rows) => rows.filter((w) => w.currency === currency));
 
   if (!wallet) {
-    // Create a wallet for this currency
     const [newWallet] = await db
       .insert(walletsTable)
       .values({ userId: req.userId!, balance: "0.00", currency })
@@ -110,7 +135,6 @@ router.post("/pawapay/deposits", requireAuth, async (req: AuthRequest, res): Pro
 
   const depositId = crypto.randomUUID();
 
-  // Store deposit record first (idempotency)
   const [deposit] = await db
     .insert(pawapayDepositsTable)
     .values({
@@ -119,20 +143,19 @@ router.post("/pawapay/deposits", requireAuth, async (req: AuthRequest, res): Pro
       walletId: wallet.id,
       amount: parsedAmount.toFixed(2),
       currency,
-      phoneNumber: phoneNumber.trim(),
+      phoneNumber,
       operator,
       status: "PENDING",
     })
     .returning();
 
-  // Call PawaPay API
   try {
     const result = await initiateDeposit(
       config,
       depositId,
       parsedAmount,
       currency,
-      phoneNumber.trim(),
+      phoneNumber,
       operator,
       `GoWin Deposit`
     );
@@ -159,7 +182,7 @@ router.post("/pawapay/deposits", requireAuth, async (req: AuthRequest, res): Pro
       status: pawapayStatus,
       amount: parsedAmount,
       currency,
-      phoneNumber: phoneNumber.trim(),
+      phoneNumber,
       operator,
     });
   } catch (err: any) {
@@ -191,7 +214,6 @@ router.get("/pawapay/deposits/:depositId", requireAuth, async (req: AuthRequest,
     return;
   }
 
-  // If already credited, return final status
   if (deposit.walletCredited) {
     res.json({
       depositId,
@@ -202,7 +224,6 @@ router.get("/pawapay/deposits/:depositId", requireAuth, async (req: AuthRequest,
     return;
   }
 
-  // Poll PawaPay for live status
   const config = await getPawapayConfig();
   if (!config) {
     res.json({ depositId, status: deposit.status, amount: parseFloat(deposit.amount), currency: deposit.currency });
@@ -211,16 +232,13 @@ router.get("/pawapay/deposits/:depositId", requireAuth, async (req: AuthRequest,
 
   try {
     const result = await getDepositStatus(config, depositId);
-    // v2 status check returns { status: "FOUND", data: { status: "COMPLETED", ... } }
     const apiStatus: string = result.data?.data?.status ?? deposit.status;
 
-    // Update local record
     await db
       .update(pawapayDepositsTable)
       .set({ pawapayStatus: apiStatus, pawapayResponse: result.data as any, updatedAt: new Date() })
       .where(eq(pawapayDepositsTable.id, deposit.id));
 
-    // Credit wallet on completion
     if (apiStatus === "COMPLETED" && !deposit.walletCredited) {
       const [wallet] = await db
         .select()
@@ -265,10 +283,8 @@ router.get("/pawapay/deposits/:depositId", requireAuth, async (req: AuthRequest,
 router.post("/pawapay/webhook", async (req, res): Promise<void> => {
   const payload = req.body;
 
-  // v2 callbacks have no "type" field — detect by depositId vs payoutId presence
   const eventType = payload?.depositId ? "DEPOSIT" : payload?.payoutId ? "PAYOUT" : "UNKNOWN";
 
-  // Log all webhook events
   await db.insert(webhookLogsTable).values({
     eventType,
     payload: payload as any,
@@ -334,7 +350,6 @@ router.post("/pawapay/webhook", async (req, res): Promise<void> => {
               .set({ status: "completed", pawapayStatus: status, pawapayResponse: payload as any, updatedAt: new Date() })
               .where(eq(withdrawalsTable.id, withdrawal.id));
           } else if (status === "FAILED" || status === "DUPLICATE_IGNORED") {
-            // Refund the wallet if payout failed
             const [wallet] = await db
               .select()
               .from(walletsTable)
@@ -363,7 +378,6 @@ router.post("/pawapay/webhook", async (req, res): Promise<void> => {
       }
     }
 
-    // Mark webhook as processed
     await db
       .update(webhookLogsTable)
       .set({ processed: true })

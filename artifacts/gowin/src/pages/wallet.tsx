@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useGetMyWallet, useGetMyTransactions } from "@workspace/api-client-react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import {
   Wallet as WalletIcon, ArrowDownRight, ArrowUpRight, History as HistoryIcon,
   Minus, Ticket, Clock, CheckCircle2, XCircle, Banknote, Phone, AlertTriangle,
-  Smartphone, Loader2, ChevronDown,
+  Smartphone, Loader2, ChevronDown, CheckCircle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +31,18 @@ async function postWalletAction(path: string, token: string | null, body: object
 }
 
 const QUICK_AMOUNTS = [500, 1000, 2500, 5000];
+const CDF_QUICK_AMOUNTS = [50_000, 100_000, 250_000, 500_000];
+
+const DRC_OPERATOR_NAMES: Record<string, string> = {
+  VODACOM_MPESA_COD: "M-Pesa (Vodacom)",
+  AIRTEL_COD: "Airtel Money",
+  ORANGE_COD: "Orange Money",
+};
+
+function operatorLabel(code: string | null) {
+  if (!code) return null;
+  return DRC_OPERATOR_NAMES[code] ?? code.replace(/_/g, " ");
+}
 
 interface Withdrawal {
   id: number;
@@ -55,11 +67,12 @@ interface PawapayConfig {
   operators: { code: string; name: string; currencies: string[] }[];
 }
 
-const DRC_OPERATORS = [
-  { code: "VODACOM_MPESA_COD", name: "M-Pesa (Vodacom)", currencies: ["CDF", "USD"] },
-  { code: "AIRTEL_COD",        name: "Airtel Money",     currencies: ["CDF", "USD"] },
-  { code: "ORANGE_COD",        name: "Orange Money",     currencies: ["CDF", "USD"] },
-];
+interface UserProfile {
+  phoneNumber: string | null;
+  mobileOperator: string | null;
+  secondaryPhoneNumber: string | null;
+  secondaryMobileOperator: string | null;
+}
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; Icon: any }> = {
   pending:    { label: "Pending",    color: "bg-amber-500/15 text-amber-500 border-amber-500/30",       Icon: Clock },
@@ -81,6 +94,86 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+// ── Account Selector Component ────────────────────────────────────────────
+function AccountSelector({
+  profile,
+  selected,
+  onChange,
+}: {
+  profile: UserProfile;
+  selected: "primary" | "secondary";
+  onChange: (v: "primary" | "secondary") => void;
+}) {
+  const hasPrimary = !!profile.phoneNumber && !!profile.mobileOperator;
+  const hasSecondary = !!profile.secondaryPhoneNumber && !!profile.secondaryMobileOperator;
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-xs text-muted-foreground uppercase tracking-wider">Payment Account</Label>
+      <div className="grid gap-2">
+        {hasPrimary && (
+          <button
+            type="button"
+            onClick={() => onChange("primary")}
+            className={`flex items-center gap-3 p-3 rounded-lg border-2 text-left transition-colors ${
+              selected === "primary"
+                ? "border-primary bg-primary/5"
+                : "border-border hover:border-primary/40"
+            }`}
+          >
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+              selected === "primary" ? "bg-primary/20 text-primary" : "bg-accent text-muted-foreground"
+            }`}>
+              <Smartphone className="w-4 h-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">Primary</p>
+              <p className="font-mono text-sm font-semibold truncate">{profile.phoneNumber}</p>
+              <p className="text-xs text-muted-foreground">{operatorLabel(profile.mobileOperator)}</p>
+            </div>
+            {selected === "primary" && <CheckCircle className="w-4 h-4 text-primary shrink-0" />}
+          </button>
+        )}
+        {hasSecondary && (
+          <button
+            type="button"
+            onClick={() => onChange("secondary")}
+            className={`flex items-center gap-3 p-3 rounded-lg border-2 text-left transition-colors ${
+              selected === "secondary"
+                ? "border-blue-500 bg-blue-500/5"
+                : "border-border hover:border-blue-500/40"
+            }`}
+          >
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+              selected === "secondary" ? "bg-blue-500/20 text-blue-400" : "bg-accent text-muted-foreground"
+            }`}>
+              <Phone className="w-4 h-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">Secondary</p>
+              <p className="font-mono text-sm font-semibold truncate">{profile.secondaryPhoneNumber}</p>
+              <p className="text-xs text-muted-foreground">{operatorLabel(profile.secondaryMobileOperator)}</p>
+            </div>
+            {selected === "secondary" && <CheckCircle className="w-4 h-4 text-blue-500 shrink-0" />}
+          </button>
+        )}
+        {!hasPrimary && (
+          <div className="flex items-start gap-3 p-3 rounded-lg border border-amber-500/40 bg-amber-500/5">
+            <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-amber-500">No payment account set</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Set your phone number and mobile operator in{" "}
+                <Link href="/profile" className="text-primary underline">your profile</Link> to deposit and withdraw.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Wallet() {
   const { data: wallet, isLoading: isWalletLoading } = useGetMyWallet();
   const { data: transactionsData, isLoading: isTransactionsLoading } = useGetMyTransactions();
@@ -92,26 +185,33 @@ export default function Wallet() {
 
   const isRestrictedRole = ["agent", "branch_admin", "payout", "payment_clerk"].includes(user?.role ?? "");
 
-  // Active tab: "mobile" | "voucher" | "withdraw"
   const [activeTab, setActiveTab] = useState<"mobile" | "voucher" | "withdraw">("mobile");
-
-  // Voucher state
   const [voucherCode, setVoucherCode] = useState("");
   const [isRedeeming, setIsRedeeming] = useState(false);
 
   // Withdrawal state
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawCurrency, setWithdrawCurrency] = useState("USD");
-  const [withdrawPhone, setWithdrawPhone] = useState("");
-  const [withdrawOperator, setWithdrawOperator] = useState("");
+  const [withdrawAccountType, setWithdrawAccountType] = useState<"primary" | "secondary">("primary");
 
   // Mobile Money deposit state
   const [depositAmount, setDepositAmount] = useState("");
   const [depositCurrency, setDepositCurrency] = useState("USD");
-  const [depositPhone, setDepositPhone] = useState((user as any)?.phoneNumber ?? "");
-  const [depositOperator, setDepositOperator] = useState("");
+  const [depositAccountType, setDepositAccountType] = useState<"primary" | "secondary">("primary");
 
   const transactions = transactionsData?.transactions || [];
+
+  // Load user profile for phone/operator data
+  const { data: profile } = useQuery<UserProfile>({
+    queryKey: ["/api/profile"],
+    queryFn: async () => {
+      const res = await fetch("/api/profile", {
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      });
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
 
   const { data: withdrawals = [], isLoading: isWithdrawalsLoading } = useQuery<Withdrawal[]>({
     queryKey: ["/api/wallet/withdrawals"],
@@ -140,7 +240,7 @@ export default function Wallet() {
       const res = await fetch("/api/pawapay/exchange-rate");
       return res.json();
     },
-    staleTime: 60 * 60 * 1000, // 1 hour — matches server cache
+    staleTime: 60 * 60 * 1000,
     enabled: !!ppConfig?.enabled,
   });
 
@@ -152,7 +252,8 @@ export default function Wallet() {
     ? Math.round((ppConfig?.minDeposit ?? 1) * usdToCdf)
     : (ppConfig?.minDeposit ?? 1);
 
-  const CDF_QUICK_AMOUNTS = [50_000, 100_000, 250_000, 500_000];
+  const hasPrimaryAccount = !!(profile?.phoneNumber && profile?.mobileOperator);
+  const hasSecondaryAccount = !!(profile?.secondaryPhoneNumber && profile?.secondaryMobileOperator);
 
   const depositMutation = useMutation({
     mutationFn: async () => {
@@ -162,8 +263,7 @@ export default function Wallet() {
         body: JSON.stringify({
           amount: parseFloat(depositAmount),
           currency: depositCurrency,
-          phoneNumber: depositPhone.trim(),
-          operator: depositOperator,
+          accountType: depositAccountType,
         }),
       });
       const data = await res.json();
@@ -184,8 +284,7 @@ export default function Wallet() {
         body: JSON.stringify({
           amount: parseFloat(withdrawAmount),
           currency: withdrawCurrency,
-          phoneNumber: withdrawPhone.trim() || (user as any)?.phoneNumber,
-          operator: withdrawOperator || undefined,
+          accountType: withdrawAccountType,
         }),
       });
       const data = await res.json();
@@ -223,8 +322,17 @@ export default function Wallet() {
     }
   };
 
-  const filteredOperators = DRC_OPERATORS.filter((op) => op.currencies.includes(depositCurrency));
-  const withdrawOperators = DRC_OPERATORS.filter((op) => op.currencies.includes(withdrawCurrency));
+  // Which account is selected for deposit/withdraw
+  const selectedDepositAccount = depositAccountType === "secondary"
+    ? { phone: profile?.secondaryPhoneNumber, operator: profile?.secondaryMobileOperator }
+    : { phone: profile?.phoneNumber, operator: profile?.mobileOperator };
+
+  const selectedWithdrawAccount = withdrawAccountType === "secondary"
+    ? { phone: profile?.secondaryPhoneNumber, operator: profile?.secondaryMobileOperator }
+    : { phone: profile?.phoneNumber, operator: profile?.mobileOperator };
+
+  const depositAccountReady = !!(selectedDepositAccount.phone && selectedDepositAccount.operator);
+  const withdrawAccountReady = !!(selectedWithdrawAccount.phone && selectedWithdrawAccount.operator);
 
   return (
     <div className="space-y-6">
@@ -304,7 +412,7 @@ export default function Wallet() {
                       {["USD", "CDF"].map((cur) => (
                         <button
                           key={cur}
-                          onClick={() => { setDepositCurrency(cur); setDepositOperator(""); setDepositAmount(""); }}
+                          onClick={() => { setDepositCurrency(cur); setDepositAmount(""); }}
                           className={`py-2.5 rounded-lg text-sm font-bold border-2 transition-colors ${
                             depositCurrency === cur
                               ? "border-primary bg-primary/10 text-primary"
@@ -316,7 +424,7 @@ export default function Wallet() {
                       ))}
                     </div>
 
-                    {/* Exchange rate info for CDF */}
+                    {/* Exchange rate for CDF */}
                     {depositCurrency === "CDF" && (
                       <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-accent/40 border border-border text-xs text-muted-foreground">
                         <span>{t("wallet.mm_rate")} <strong className="text-foreground">1 USD = {usdToCdf.toLocaleString(undefined, { maximumFractionDigits: 0 })} FC</strong></span>
@@ -349,34 +457,16 @@ export default function Wallet() {
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground uppercase tracking-wider">{t("wallet.mm_phone")}</Label>
-                      <Input
-                        type="tel"
-                        placeholder="e.g. 243812345678"
-                        value={depositPhone}
-                        onChange={(e) => setDepositPhone(e.target.value)}
-                      />
-                      <p className="text-xs text-muted-foreground">{t("wallet.mm_phone_hint")}</p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground uppercase tracking-wider">{t("wallet.mm_operator")}</Label>
-                      <select
-                        value={depositOperator}
-                        onChange={(e) => setDepositOperator(e.target.value)}
-                        className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                      >
-                        <option value="">{t("wallet.mm_operator_ph")}</option>
-                        {filteredOperators.map((op) => (
-                          <option key={op.code} value={op.code}>{op.name}</option>
-                        ))}
-                      </select>
-                    </div>
+                    {/* Account selector for deposit */}
+                    <AccountSelector
+                      profile={profile ?? { phoneNumber: null, mobileOperator: null, secondaryPhoneNumber: null, secondaryMobileOperator: null }}
+                      selected={depositAccountType}
+                      onChange={(v) => setDepositAccountType(v)}
+                    />
 
                     <Button
                       className="w-full"
-                      disabled={!depositAmount || !depositPhone || !depositOperator || depositMutation.isPending}
+                      disabled={!depositAmount || !depositAccountReady || depositMutation.isPending}
                       onClick={() => depositMutation.mutate()}
                     >
                       {depositMutation.isPending ? (
@@ -385,6 +475,14 @@ export default function Wallet() {
                         <><Smartphone className="w-4 h-4 mr-2" /> {t("wallet.mm_deposit_btn")}</>
                       )}
                     </Button>
+
+                    {depositAccountReady && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        Payment push will be sent to{" "}
+                        <strong className="text-foreground font-mono">{selectedDepositAccount.phone}</strong>{" "}
+                        via <strong className="text-foreground">{operatorLabel(selectedDepositAccount.operator ?? null)}</strong>
+                      </p>
+                    )}
                   </>
                 )}
               </div>
@@ -428,7 +526,7 @@ export default function Wallet() {
                   {["USD", "CDF"].map((cur) => (
                     <button
                       key={cur}
-                      onClick={() => { setWithdrawCurrency(cur); setWithdrawOperator(""); }}
+                      onClick={() => { setWithdrawCurrency(cur); }}
                       className={`py-2.5 rounded-lg text-sm font-bold border-2 transition-colors ${
                         withdrawCurrency === cur
                           ? "border-destructive bg-destructive/10 text-destructive"
@@ -440,48 +538,12 @@ export default function Wallet() {
                   ))}
                 </div>
 
-                {/* Phone */}
-                <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-accent/30">
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                    <Phone className="w-4 h-4 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">{t("wallet.mm_payment_to")}</p>
-                    <p className="font-semibold text-sm">
-                      {(user as any)?.phoneNumber ?? (
-                        <span className="text-amber-500 text-sm flex items-center gap-1.5">
-                          <AlertTriangle className="w-3.5 h-3.5" /> {t("wallet.mm_no_phone")}
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Override phone */}
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">{t("wallet.mm_override_phone")}</Label>
-                  <Input
-                    type="tel"
-                    placeholder={(user as any)?.phoneNumber ?? "243812345678"}
-                    value={withdrawPhone}
-                    onChange={(e) => setWithdrawPhone(e.target.value)}
-                  />
-                </div>
-
-                {/* Operator */}
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">{t("wallet.mm_operator")}</Label>
-                  <select
-                    value={withdrawOperator}
-                    onChange={(e) => setWithdrawOperator(e.target.value)}
-                    className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                  >
-                    <option value="">{t("wallet.mm_operator_ph")}</option>
-                    {withdrawOperators.map((op) => (
-                      <option key={op.code} value={op.code}>{op.name}</option>
-                    ))}
-                  </select>
-                </div>
+                {/* Account selector for withdrawal */}
+                <AccountSelector
+                  profile={profile ?? { phoneNumber: null, mobileOperator: null, secondaryPhoneNumber: null, secondaryMobileOperator: null }}
+                  selected={withdrawAccountType}
+                  onChange={(v) => setWithdrawAccountType(v)}
+                />
 
                 {/* Quick amounts */}
                 <div className="flex gap-2 flex-wrap">
@@ -507,11 +569,21 @@ export default function Wallet() {
                 <Button
                   variant="destructive"
                   onClick={() => withdrawMutation.mutate()}
-                  disabled={withdrawMutation.isPending || !withdrawAmount || (!(user as any)?.phoneNumber && !withdrawPhone.trim())}
+                  disabled={withdrawMutation.isPending || !withdrawAmount || !withdrawAccountReady}
                   className="w-full"
                 >
-                  {withdrawMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("wallet.mm_submitting")}</> : t("wallet.request_withdrawal")}
+                  {withdrawMutation.isPending
+                    ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("wallet.mm_submitting")}</>
+                    : t("wallet.request_withdrawal")}
                 </Button>
+
+                {withdrawAccountReady && (
+                  <p className="text-xs text-muted-foreground">
+                    Payout will be sent to{" "}
+                    <strong className="text-foreground font-mono">{selectedWithdrawAccount.phone}</strong>{" "}
+                    via <strong className="text-foreground">{operatorLabel(selectedWithdrawAccount.operator ?? null)}</strong>
+                  </p>
+                )}
                 <p className="text-xs text-muted-foreground">{t("wallet.withdrawal_desc")}</p>
               </div>
             )}
@@ -604,8 +676,8 @@ export default function Wallet() {
                         </p>
                       </div>
                     </div>
-                    <div className={`text-lg font-bold ${isCredit ? "text-primary" : ""}`}>
-                      {isCredit ? "+" : "-"}{formatCurrency(Number(tx.amount))}
+                    <div className={`text-lg font-bold ${isCredit ? "text-primary" : "text-destructive"}`}>
+                      {isCredit ? "+" : "−"}{formatCurrency(Math.abs(parseFloat(tx.amount)))}
                     </div>
                   </div>
                 );

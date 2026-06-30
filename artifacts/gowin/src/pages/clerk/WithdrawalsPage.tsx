@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import {
   Clock, CheckCircle2, XCircle, Banknote, ChevronRight,
-  RefreshCw, Phone, AlertTriangle, Loader2,
+  Phone, AlertTriangle, Loader2, Wifi, Smartphone,
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -42,12 +42,6 @@ interface Withdrawal {
   } | null;
 }
 
-const DRC_OPERATORS = [
-  { code: "VODACOM_MPESA_COD", name: "M-Pesa (Vodacom)" },
-  { code: "AIRTEL_COD",        name: "Airtel Money" },
-  { code: "ORANGE_COD",        name: "Orange Money" },
-];
-
 const STATUS_CONFIG: Record<string, { label: string; color: string; Icon: any }> = {
   pending:     { label: "Pending",     color: "bg-amber-500/15 text-amber-500 border-amber-500/30",       Icon: Clock },
   approved:    { label: "Approved",    color: "bg-blue-500/15 text-blue-500 border-blue-500/30",          Icon: CheckCircle2 },
@@ -63,7 +57,7 @@ function StatusBadge({ status }: { status: string }) {
   const Icon = cfg.Icon;
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${cfg.color}`}>
-      <Icon className="w-3 h-3" /> {cfg.label}
+      <Icon className={`w-3 h-3 ${status === "processing" ? "animate-spin" : ""}`} /> {cfg.label}
     </span>
   );
 }
@@ -74,6 +68,56 @@ function displayName(user: Withdrawal["user"]) {
   return user.username;
 }
 
+// ── Age-based urgency ────────────────────────────────────────────────────
+function getAgingTier(createdAt: string): "fresh" | "normal" | "slow" | "late" | "critical" {
+  const h = (Date.now() - new Date(createdAt).getTime()) / 3_600_000;
+  if (h < 0.5) return "fresh";
+  if (h < 2)   return "normal";
+  if (h < 6)   return "slow";
+  if (h < 12)  return "late";
+  return "critical";
+}
+
+const AGING_CARD_STYLES: Record<string, string> = {
+  fresh:    "border-emerald-500/40 bg-emerald-500/5",
+  normal:   "border-amber-400/30 bg-amber-400/5",
+  slow:     "border-orange-500/40 bg-orange-500/5",
+  late:     "border-red-500/50 bg-red-500/8",
+  critical: "border-red-700/60 bg-red-700/10",
+};
+
+const AGING_BADGE_STYLES: Record<string, string> = {
+  fresh:    "text-emerald-500",
+  normal:   "text-amber-400",
+  slow:     "text-orange-500",
+  late:     "text-red-500",
+  critical: "text-red-700 animate-pulse font-bold",
+};
+
+const AGING_DOTS: Record<string, string> = {
+  fresh: "🟢", normal: "🟡", slow: "🟠", late: "🔴", critical: "⚠️",
+};
+
+function AgingBadge({ createdAt }: { createdAt: string }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const i = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(i);
+  }, []);
+  const ageMs = now - new Date(createdAt).getTime();
+  const hours = Math.floor(ageMs / 3_600_000);
+  const minutes = Math.floor((ageMs % 3_600_000) / 60_000);
+  const tier = getAgingTier(createdAt);
+  let label = "";
+  if (tier === "critical") label = `${hours}h ${minutes}m — OVERDUE`;
+  else if (tier === "late") label = `${hours}h ${minutes}m — Past deadline`;
+  else if (hours > 0) label = `${hours}h ${minutes}m`;
+  else label = `${minutes}m`;
+  return (
+    <span className={`text-xs ${AGING_BADGE_STYLES[tier]}`}>{AGING_DOTS[tier]} {label}</span>
+  );
+}
+
 const TABS = [
   { key: "approved",   label: "Pending Authorisation" },
   { key: "processing", label: "Processing" },
@@ -81,6 +125,8 @@ const TABS = [
   { key: "failed",     label: "Failed" },
   { key: "rejected",   label: "Rejected" },
 ];
+
+const POLL_INTERVAL_MS = 10_000;
 
 export default function ClerkWithdrawalsPage() {
   const { token } = useAuth();
@@ -91,10 +137,12 @@ export default function ClerkWithdrawalsPage() {
   const [activeTab, setActiveTab] = useState("approved");
   const [authoriseModal, setAuthoriseModal] = useState<Withdrawal | null>(null);
   const [rejectModal, setRejectModal] = useState<Withdrawal | null>(null);
-  const [selectedOperator, setSelectedOperator] = useState("");
   const [rejectReason, setRejectReason] = useState("");
+  const [countdown, setCountdown] = useState(POLL_INTERVAL_MS / 1000);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const { data, isLoading, refetch } = useQuery<Withdrawal[]>({
+  const { data, isLoading } = useQuery<Withdrawal[]>({
     queryKey: ["/api/clerk/withdrawals", activeTab],
     queryFn: async () => {
       const res = await fetch(`/api/clerk/withdrawals?status=${activeTab}`, {
@@ -104,24 +152,59 @@ export default function ClerkWithdrawalsPage() {
       if (!res.ok) throw new Error(d.error);
       return d;
     },
+    refetchInterval: activeTab === "processing" ? POLL_INTERVAL_MS : false,
   });
 
+  // Auto-poll PawaPay for each processing item
+  const pollProcessingItems = useCallback(async () => {
+    const items = (data ?? []).filter((w) => w.status === "processing" && w.pawapayPayoutId);
+    if (items.length === 0) return;
+    await Promise.allSettled(
+      items.map((w) =>
+        fetch(`/api/clerk/withdrawals/${w.id}/payout-status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+      )
+    );
+    queryClient.invalidateQueries({ queryKey: ["/api/clerk/withdrawals"] });
+  }, [data, token, queryClient]);
+
+  useEffect(() => {
+    if (activeTab !== "processing") {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+      if (countdownRef.current) clearInterval(countdownRef.current);
+      return;
+    }
+    setCountdown(POLL_INTERVAL_MS / 1000);
+    countdownRef.current = setInterval(() => {
+      setCountdown((c) => (c <= 1 ? POLL_INTERVAL_MS / 1000 : c - 1));
+    }, 1000);
+    pollingRef.current = setInterval(() => {
+      pollProcessingItems();
+      setCountdown(POLL_INTERVAL_MS / 1000);
+    }, POLL_INTERVAL_MS);
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, [activeTab, pollProcessingItems]);
+
   const authoriseMutation = useMutation({
-    mutationFn: async ({ id, operator }: { id: number; operator: string }) => {
+    mutationFn: async (id: number) => {
       const res = await fetch(`/api/clerk/withdrawals/${id}/authorize`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ operator }),
+        body: JSON.stringify({}),
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error);
       return d;
     },
     onSuccess: () => {
-      toast({ title: "Payout initiated", description: "PawaPay payout has been sent" });
+      toast({ title: "Payout initiated", description: "PawaPay payout has been sent. Live polling will update the status." });
       setAuthoriseModal(null);
-      setSelectedOperator("");
       queryClient.invalidateQueries({ queryKey: ["/api/clerk/withdrawals"] });
+      setActiveTab("processing");
     },
     onError: (e: any) => toast({ title: "Payout failed", description: e.message, variant: "destructive" }),
   });
@@ -146,22 +229,6 @@ export default function ClerkWithdrawalsPage() {
     onError: (e: any) => toast({ title: "Action failed", description: e.message, variant: "destructive" }),
   });
 
-  const checkStatusMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await fetch(`/api/clerk/withdrawals/${id}/payout-status`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error);
-      return d;
-    },
-    onSuccess: (d) => {
-      toast({ title: `PawaPay status: ${d.pawapayStatus ?? d.status}` });
-      queryClient.invalidateQueries({ queryKey: ["/api/clerk/withdrawals"] });
-    },
-    onError: (e: any) => toast({ title: "Status check failed", description: e.message, variant: "destructive" }),
-  });
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -169,9 +236,6 @@ export default function ClerkWithdrawalsPage() {
           <h1 className="text-3xl font-black tracking-tight mb-2">Withdrawal Payouts</h1>
           <p className="text-muted-foreground">Authorise and process approved withdrawal requests via PawaPay</p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          <RefreshCw className="w-4 h-4 mr-2" /> Refresh
-        </Button>
       </div>
 
       {/* Flow */}
@@ -196,7 +260,7 @@ export default function ClerkWithdrawalsPage() {
             }`}
           >
             {tab.label}
-            {tab.key === "approved" && data && activeTab === "approved" && (
+            {tab.key === "approved" && data && activeTab === "approved" && data.length > 0 && (
               <span className="ml-2 bg-amber-500 text-white text-xs px-1.5 py-0.5 rounded-full leading-none">
                 {data.length}
               </span>
@@ -204,6 +268,15 @@ export default function ClerkWithdrawalsPage() {
           </button>
         ))}
       </div>
+
+      {/* Auto-poll indicator */}
+      {activeTab === "processing" && (
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-violet-500/30 bg-violet-500/5 text-sm">
+          <Wifi className="w-4 h-4 text-violet-400 animate-pulse" />
+          <span className="text-violet-300 font-medium">Live polling PawaPay every {POLL_INTERVAL_MS / 1000}s</span>
+          <span className="text-muted-foreground ml-auto text-xs">Next check in {countdown}s</span>
+        </div>
+      )}
 
       {/* List */}
       {isLoading ? (
@@ -213,55 +286,62 @@ export default function ClerkWithdrawalsPage() {
       ) : !data || data.length === 0 ? (
         <div className="py-16 text-center border border-dashed border-border rounded-xl">
           <Banknote className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
-          <p className="text-muted-foreground">No {activeTab} withdrawals</p>
+          <p className="text-muted-foreground">No {TABS.find(t => t.key === activeTab)?.label.toLowerCase()} withdrawals</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {data.map((w) => (
-            <div key={w.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-border bg-card hover:bg-accent/20 transition-colors">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">
-                  {displayName(w.user).charAt(0).toUpperCase()}
+          {data.map((w) => {
+            const tier = w.status === "processing" ? getAgingTier(w.createdAt) : null;
+            return (
+              <div
+                key={w.id}
+                className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border bg-card transition-colors ${
+                  tier ? AGING_CARD_STYLES[tier] : "border-border hover:bg-accent/20"
+                }`}
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">
+                    {displayName(w.user).charAt(0).toUpperCase()}
+                  </div>
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold">{displayName(w.user)}</span>
+                      {w.user?.publicId && <span className="text-xs font-mono text-muted-foreground">#{w.user.publicId}</span>}
+                      <StatusBadge status={w.status} />
+                      <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-accent text-muted-foreground">{w.currency}</span>
+                      {tier && <AgingBadge createdAt={w.createdAt} />}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Phone className="w-3 h-3" />
+                      {w.phoneNumber ?? w.bankDetails}
+                      {w.operator && <span className="ml-1 text-foreground/70">via {w.operator.replace(/_/g, " ")}</span>}
+                    </div>
+                    <p className="text-xs text-muted-foreground">{format(new Date(w.createdAt), "PPP p")}</p>
+                    {w.pawapayStatus && (
+                      <p className="text-xs text-muted-foreground">PawaPay: <span className="font-mono font-semibold">{w.pawapayStatus}</span></p>
+                    )}
+                    {w.status === "processing" && (
+                      <p className="text-xs text-violet-400 flex items-center gap-1"><Wifi className="w-3 h-3" /> Auto-updating</p>
+                    )}
+                    {w.clerkNote && <p className="text-xs text-muted-foreground italic">Note: {w.clerkNote}</p>}
+                  </div>
                 </div>
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold">{displayName(w.user)}</span>
-                    {w.user?.publicId && <span className="text-xs font-mono text-muted-foreground">#{w.user.publicId}</span>}
-                    <StatusBadge status={w.status} />
-                    <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-accent text-muted-foreground">{w.currency}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Phone className="w-3 h-3" />
-                    {w.phoneNumber ?? w.bankDetails}
-                    {w.operator && <span className="ml-1 text-foreground/70">via {w.operator}</span>}
-                  </div>
-                  <p className="text-xs text-muted-foreground">{format(new Date(w.createdAt), "PPP p")}</p>
-                  {w.pawapayStatus && (
-                    <p className="text-xs text-muted-foreground">PawaPay: <span className="font-mono font-semibold">{w.pawapayStatus}</span></p>
+                <div className="flex items-center gap-3 ml-14 sm:ml-0 flex-wrap">
+                  <span className="text-xl font-black">{formatCurrency(w.amount)}</span>
+                  {w.status === "approved" && (
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => setAuthoriseModal(w)}>
+                        Authorise
+                      </Button>
+                      <Button size="sm" variant="destructive" onClick={() => { setRejectModal(w); setRejectReason(""); }}>
+                        Reject
+                      </Button>
+                    </div>
                   )}
-                  {w.clerkNote && <p className="text-xs text-muted-foreground italic">Note: {w.clerkNote}</p>}
                 </div>
               </div>
-              <div className="flex items-center gap-3 ml-14 sm:ml-0 flex-wrap">
-                <span className="text-xl font-black">{formatCurrency(w.amount)}</span>
-                {w.status === "approved" && (
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={() => { setAuthoriseModal(w); setSelectedOperator(w.operator ?? ""); }}>
-                      Authorise
-                    </Button>
-                    <Button size="sm" variant="destructive" onClick={() => { setRejectModal(w); setRejectReason(""); }}>
-                      Reject
-                    </Button>
-                  </div>
-                )}
-                {w.status === "processing" && w.pawapayPayoutId && (
-                  <Button size="sm" variant="outline" onClick={() => checkStatusMutation.mutate(w.id)} disabled={checkStatusMutation.isPending}>
-                    <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Check Status
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -286,23 +366,27 @@ export default function ClerkWithdrawalsPage() {
                   <span className="text-muted-foreground text-sm">Phone</span>
                   <span className="font-mono text-sm">{authoriseModal.phoneNumber ?? authoriseModal.bankDetails}</span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground text-sm">Operator</span>
+                  <span className="text-sm font-semibold">
+                    {authoriseModal.operator
+                      ? authoriseModal.operator.replace(/_/g, " ")
+                      : <span className="text-destructive">Not set</span>}
+                  </span>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Mobile Money Operator</Label>
-                <select
-                  value={selectedOperator}
-                  onChange={(e) => setSelectedOperator(e.target.value)}
-                  className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  <option value="">Select operator…</option>
-                  {DRC_OPERATORS.map((op) => (
-                    <option key={op.code} value={op.code}>{op.name}</option>
-                  ))}
-                </select>
-              </div>
-              {!selectedOperator && (
-                <div className="flex items-center gap-2 text-xs text-amber-500">
-                  <AlertTriangle className="w-3.5 h-3.5" /> Operator required to process payout
+              {!authoriseModal.operator && (
+                <div className="flex items-start gap-2 p-3 rounded-lg border border-destructive/30 bg-destructive/5">
+                  <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+                  <p className="text-xs text-destructive">
+                    No operator is set on this withdrawal. The user must set their primary payment account in their profile before a payout can be processed.
+                  </p>
+                </div>
+              )}
+              {authoriseModal.operator && (
+                <div className="flex items-center gap-2 p-3 rounded-lg border border-primary/20 bg-primary/5 text-sm">
+                  <Smartphone className="w-4 h-4 text-primary" />
+                  <span>Payout will be sent via <strong>{authoriseModal.operator.replace(/_/g, " ")}</strong> to <strong className="font-mono">{authoriseModal.phoneNumber ?? authoriseModal.bankDetails}</strong></span>
                 </div>
               )}
             </div>
@@ -310,8 +394,8 @@ export default function ClerkWithdrawalsPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setAuthoriseModal(null)}>Cancel</Button>
             <Button
-              disabled={!selectedOperator || authoriseMutation.isPending}
-              onClick={() => authoriseModal && authoriseMutation.mutate({ id: authoriseModal.id, operator: selectedOperator })}
+              disabled={!authoriseModal?.operator || authoriseMutation.isPending}
+              onClick={() => authoriseModal && authoriseMutation.mutate(authoriseModal.id)}
             >
               {authoriseMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending…</> : "Send Payout"}
             </Button>
