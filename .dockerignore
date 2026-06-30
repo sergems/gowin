@@ -18,6 +18,7 @@ node_modules
 
 # ── Database dumps (not needed in image) ─────────────────────────────────────
 backup.sql
+backup2.sql
 *.sql.gz
 *.dump
 
