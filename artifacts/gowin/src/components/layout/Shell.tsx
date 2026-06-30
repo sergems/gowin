@@ -1,8 +1,8 @@
 import { ReactNode, useState, useEffect, useRef } from "react";
 import gowinLogo from "../../assets/logo.png";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { Link, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBetSlip } from "@/contexts/BetSlipContext";
 import { useGetMyWallet, getGetMyWalletQueryKey } from "@workspace/api-client-react";
@@ -19,7 +19,7 @@ import {
   Activity, LayoutDashboard, History, Wallet, Trophy, LogOut, Users, Settings, X,
   ArrowLeftRight, Ticket, UserCircle, AlertTriangle, Banknote, SlidersHorizontal,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, ChevronDown, ChevronRight, Globe, Shield, CheckCircle2,
-  Home, Menu, Images, Printer, Clock, Building2, Target, BarChart3, FileText, DollarSign, Radio,
+  Home, Menu, Images, Printer, Clock, Building2, Target, BarChart3, FileText, DollarSign, Radio, Bell,
 } from "lucide-react";
 import type { PlacedBetDetails } from "@/contexts/BetSlipContext";
 import { printBetSlip } from "@/lib/printBetSlip";
@@ -40,6 +40,119 @@ function FlagImg({ src, alt }: { src: string | null | undefined; alt: string }) 
   const [failed, setFailed] = useState(false);
   if (!src || failed) return <span className="text-xs shrink-0">🏳️</span>;
   return <img src={src} alt={alt} width={16} height={11} className="object-cover rounded-sm shrink-0 w-4" style={{ height: 11 }} onError={() => setFailed(true)} />;
+}
+
+function NotificationBell() {
+  const { token } = useAuth();
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const { data } = useQuery<{ notifications: any[]; unreadCount: number }>({
+    queryKey: ["/api/notifications"],
+    queryFn: async () => {
+      const res = await fetch("/api/notifications", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return res.json();
+    },
+    refetchInterval: 30_000,
+    enabled: !!token,
+  });
+
+  const markAllRead = useMutation({
+    mutationFn: async () => {
+      await fetch("/api/notifications/mark-read", {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/notifications"] }),
+  });
+
+  useEffect(() => {
+    if (!open) return;
+    if ((data?.unreadCount ?? 0) > 0) markAllRead.mutate();
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const unreadCount = data?.unreadCount ?? 0;
+  const notifications = data?.notifications ?? [];
+
+  const TYPE_ICON: Record<string, string> = {
+    payout_completed: "✅",
+    payout_failed: "❌",
+    withdrawal_approved: "🕐",
+    withdrawal_rejected: "⛔",
+  };
+
+  function relTime(d: string) {
+    try { return formatDistanceToNow(new Date(d), { addSuffix: true }); } catch { return ""; }
+  }
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="relative p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+        title="Notifications"
+      >
+        <Bell className="w-5 h-5" />
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center leading-none">
+            {unreadCount > 9 ? "9+" : unreadCount}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-2 w-80 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <h3 className="font-semibold text-sm">Notifications</h3>
+            {notifications.length > 0 && (
+              <button onClick={() => markAllRead.mutate()} className="text-xs text-primary hover:underline">
+                Mark all read
+              </button>
+            )}
+          </div>
+          <div className="max-h-96 overflow-y-auto divide-y divide-border/40">
+            {notifications.length === 0 ? (
+              <div className="py-10 text-center">
+                <Bell className="w-8 h-8 text-muted-foreground/20 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">No notifications yet</p>
+              </div>
+            ) : (
+              notifications.map((n: any) => (
+                <div key={n.id} className={`flex items-start gap-3 px-4 py-3 hover:bg-accent/30 transition-colors ${!n.read ? "bg-primary/5" : ""}`}>
+                  <span className="text-base mt-0.5 shrink-0">{TYPE_ICON[n.type] ?? "🔔"}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-semibold leading-tight ${!n.read ? "text-foreground" : "text-muted-foreground"}`}>
+                      {n.title}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-snug line-clamp-2">{n.message}</p>
+                    <p className="text-[10px] text-muted-foreground/50 mt-1">{relTime(n.createdAt)}</p>
+                  </div>
+                  {!n.read && <span className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0 animate-pulse" />}
+                </div>
+              ))
+            )}
+          </div>
+          {notifications.length > 0 && (
+            <div className="px-4 py-2.5 border-t border-border bg-accent/20 flex items-center justify-between">
+              <Link href="/wallet" onClick={() => setOpen(false)} className="text-xs text-primary hover:underline">
+                View wallet →
+              </Link>
+              <span className="text-xs text-muted-foreground/50">{notifications.length} total</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function Shell({ children }: { children: ReactNode }) {
@@ -606,6 +719,7 @@ export function Shell({ children }: { children: ReactNode }) {
                 </div>
               </Link>
             )}
+            {user && !isStaffRole && <NotificationBell />}
             {!betSlipOpen && (
               <button
                 onClick={() => setBetSlipOpen(true)}

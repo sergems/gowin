@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db, pawapayDepositsTable, walletsTable, transactionsTable, webhookLogsTable, withdrawalsTable, usersTable } from "@workspace/db";
+import { notifyPayoutCompleted, notifyPayoutFailed } from "../lib/notifications";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 import {
   getPawapayConfig,
@@ -349,6 +350,14 @@ router.post("/pawapay/webhook", async (req, res): Promise<void> => {
               .update(withdrawalsTable)
               .set({ status: "completed", pawapayStatus: status, pawapayResponse: payload as any, updatedAt: new Date() })
               .where(eq(withdrawalsTable.id, withdrawal.id));
+            if (withdrawal.status === "processing") {
+              notifyPayoutCompleted(
+                withdrawal.userId,
+                withdrawal.amount as string,
+                withdrawal.currency ?? "USD",
+                withdrawal.id
+              ).catch(() => {});
+            }
           } else if (status === "FAILED" || status === "DUPLICATE_IGNORED") {
             const [wallet] = await db
               .select()
@@ -373,6 +382,14 @@ router.post("/pawapay/webhook", async (req, res): Promise<void> => {
               .update(withdrawalsTable)
               .set({ status: "failed", pawapayStatus: status, pawapayResponse: payload as any, updatedAt: new Date() })
               .where(eq(withdrawalsTable.id, withdrawal.id));
+            if (withdrawal.status === "processing") {
+              notifyPayoutFailed(
+                withdrawal.userId,
+                withdrawal.amount as string,
+                withdrawal.currency ?? "USD",
+                withdrawal.id
+              ).catch(() => {});
+            }
           }
         }
       }

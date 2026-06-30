@@ -125,6 +125,72 @@ export async function sendTempPasswordEmail(to: string, username: string, tempPa
   });
 }
 
+export async function sendPayoutCompletedEmail(to: string, username: string, amount: string, currency: string): Promise<boolean> {
+  const formatted = `${parseFloat(amount).toFixed(2)} ${currency}`;
+  return sendMail({
+    to,
+    subject: "GoWin — Payout Successful",
+    text: `Hi ${username},\n\nGreat news! Your withdrawal of ${formatted} has been processed successfully and sent to your mobile money account.\n\nGoWin Team`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+        <h2 style="color:#16a34a">✅ Payout Successful</h2>
+        <p>Hi <strong>${username}</strong>,</p>
+        <p>Your withdrawal has been processed successfully.</p>
+        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:20px;margin:20px 0;text-align:center">
+          <p style="color:#15803d;font-size:14px;margin:0 0 4px 0">Amount Sent</p>
+          <p style="font-size:28px;font-weight:bold;color:#15803d;margin:0">${formatted}</p>
+        </div>
+        <p style="color:#666;font-size:14px">The funds have been sent to your registered mobile money account. Please check your phone for a confirmation message from your mobile money provider.</p>
+        <p style="color:#666;font-size:14px">— The GoWin Team</p>
+      </div>
+    `,
+  });
+}
+
+export async function sendPayoutFailedEmail(to: string, username: string, amount: string, currency: string): Promise<boolean> {
+  const formatted = `${parseFloat(amount).toFixed(2)} ${currency}`;
+  return sendMail({
+    to,
+    subject: "GoWin — Payout Failed — Balance Refunded",
+    text: `Hi ${username},\n\nUnfortunately, your withdrawal of ${formatted} could not be processed. Your balance has been refunded automatically.\n\nPlease check your profile payment account settings and try again, or contact support.\n\nGoWin Team`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+        <h2 style="color:#dc2626">❌ Payout Failed — Balance Refunded</h2>
+        <p>Hi <strong>${username}</strong>,</p>
+        <p>We were unable to process your withdrawal.</p>
+        <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:20px;margin:20px 0;text-align:center">
+          <p style="color:#b91c1c;font-size:14px;margin:0 0 4px 0">Amount Refunded</p>
+          <p style="font-size:28px;font-weight:bold;color:#b91c1c;margin:0">${formatted}</p>
+        </div>
+        <p style="color:#666;font-size:14px">Your balance has been automatically refunded. Please verify your payment account details in your profile and try again. If this continues, please contact support.</p>
+        <p style="color:#666;font-size:14px">— The GoWin Team</p>
+      </div>
+    `,
+  });
+}
+
+export async function sendWithdrawalApprovedEmail(to: string, username: string, amount: string, currency: string): Promise<boolean> {
+  const formatted = `${parseFloat(amount).toFixed(2)} ${currency}`;
+  return sendMail({
+    to,
+    subject: "GoWin — Withdrawal Approved",
+    text: `Hi ${username},\n\nYour withdrawal request of ${formatted} has been approved and is queued for payout. You will receive another notification once the funds are sent to your mobile money account.\n\nGoWin Team`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+        <h2 style="color:#2563eb">✓ Withdrawal Approved</h2>
+        <p>Hi <strong>${username}</strong>,</p>
+        <p>Your withdrawal request has been approved.</p>
+        <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:20px;margin:20px 0;text-align:center">
+          <p style="color:#1d4ed8;font-size:14px;margin:0 0 4px 0">Withdrawal Amount</p>
+          <p style="font-size:28px;font-weight:bold;color:#1d4ed8;margin:0">${formatted}</p>
+        </div>
+        <p style="color:#666;font-size:14px">Your withdrawal is now queued for processing. You will receive another notification once the payout is sent to your mobile money account.</p>
+        <p style="color:#666;font-size:14px">— The GoWin Team</p>
+      </div>
+    `,
+  });
+}
+
 export async function sendAccountLockedEmail(to: string, username: string): Promise<boolean> {
   const appUrl = (await getDbSetting("app_url")) ?? process.env.APP_URL ?? "";
   return sendMail({

@@ -3,6 +3,7 @@ import { db, usersTable, walletsTable, withdrawalsTable, branchesTable, transact
 import { eq, desc, and } from "drizzle-orm";
 import { requireAuth, requireAdmin, requireAdminOrManager, requirePaymentClerk, type AuthRequest } from "../middlewares/auth";
 import { getPawapayConfig, initiatePayout, getPayoutStatus } from "../lib/pawapay";
+import { notifyPayoutCompleted, notifyPayoutFailed, notifyWithdrawalApproved } from "../lib/notifications";
 import { logger } from "../lib/logger";
 import crypto from "crypto";
 
@@ -181,6 +182,16 @@ router.patch("/admin/withdrawals/:id", requireAdminOrManager, async (req: AuthRe
     .where(eq(withdrawalsTable.id, id))
     .returning();
 
+  // Notify user of approval
+  if (status === "approved") {
+    notifyWithdrawalApproved(
+      withdrawal.userId,
+      withdrawal.amount,
+      withdrawal.currency ?? "USD",
+      id
+    ).catch(() => {});
+  }
+
   res.json({ ...updated, amount: parseFloat(updated.amount) });
 });
 
@@ -298,6 +309,13 @@ router.get("/admin/withdrawals/:id/payout-status", requireAdminOrManager, async 
         const restored = parseFloat(wallet.balance) + parseFloat(withdrawal.amount);
         await db.update(walletsTable).set({ balance: restored.toFixed(2) }).where(eq(walletsTable.id, wallet.id));
       }
+    }
+
+    // Notify user on status change
+    if (apiStatus === "COMPLETED" && withdrawal.status === "processing") {
+      notifyPayoutCompleted(withdrawal.userId, withdrawal.amount, withdrawal.currency ?? "USD", withdrawal.id).catch(() => {});
+    } else if ((apiStatus === "FAILED" || apiStatus === "TIMED_OUT") && withdrawal.status === "processing") {
+      notifyPayoutFailed(withdrawal.userId, withdrawal.amount, withdrawal.currency ?? "USD", withdrawal.id).catch(() => {});
     }
 
     res.json({ status: newStatus, pawapayStatus: apiStatus });
@@ -521,6 +539,13 @@ router.get("/clerk/withdrawals/:id/payout-status", requirePaymentClerk, async (r
         const restored = parseFloat(wallet.balance) + parseFloat(withdrawal.amount);
         await db.update(walletsTable).set({ balance: restored.toFixed(2) }).where(eq(walletsTable.id, wallet.id));
       }
+    }
+
+    // Notify user on status change
+    if (apiStatus === "COMPLETED" && withdrawal.status === "processing") {
+      notifyPayoutCompleted(withdrawal.userId, withdrawal.amount, withdrawal.currency ?? "USD", withdrawal.id).catch(() => {});
+    } else if ((apiStatus === "FAILED" || apiStatus === "TIMED_OUT") && withdrawal.status === "processing") {
+      notifyPayoutFailed(withdrawal.userId, withdrawal.amount, withdrawal.currency ?? "USD", withdrawal.id).catch(() => {});
     }
 
     res.json({ status: newStatus, pawapayStatus: apiStatus, details: result.data });

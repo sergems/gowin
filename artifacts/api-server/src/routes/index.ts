@@ -23,6 +23,7 @@ import liveRouter from "./live";
 import fixturesPdfRouter from "./fixturesPdf";
 import pawapayRouter from "./pawapay";
 import pawapaySettingsRouter from "./pawapaySettings";
+import notificationsRouter from "./notifications";
 
 const router: IRouter = Router();
 
@@ -50,5 +51,6 @@ router.use(liveRouter);
 router.use(fixturesPdfRouter);
 router.use(pawapayRouter);
 router.use(pawapaySettingsRouter);
+router.use(notificationsRouter);
 
 export default router;
