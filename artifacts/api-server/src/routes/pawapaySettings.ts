@@ -8,8 +8,9 @@ const router = Router();
 
 // ── GET /admin/pawapay/settings ──────────────────────────────────────────────
 router.get("/admin/pawapay/settings", requireAdmin, async (_req, res): Promise<void> => {
-  const [token, enabled, sandbox, depositsEnabled, withdrawalsEnabled, minDep, maxDep, minWith, maxWith, appUrl] = await Promise.all([
+  const [token, prodToken, enabled, sandbox, depositsEnabled, withdrawalsEnabled, minDep, maxDep, minWith, maxWith, appUrl] = await Promise.all([
     getMetaSetting("pawapay_api_token"),
+    getMetaSetting("pawapay_prod_api_token"),
     getMetaSetting("pawapay_enabled"),
     getMetaSetting("pawapay_sandbox"),
     getMetaSetting("pawapay_deposits_enabled"),
@@ -23,6 +24,7 @@ router.get("/admin/pawapay/settings", requireAdmin, async (_req, res): Promise<v
 
   res.json({
     hasToken: !!token,
+    hasProdToken: !!prodToken,
     enabled: enabled !== "false",
     isSandbox: sandbox !== "false",
     depositsEnabled: depositsEnabled !== "false",
@@ -39,6 +41,7 @@ router.get("/admin/pawapay/settings", requireAdmin, async (_req, res): Promise<v
 router.put("/admin/pawapay/settings", requireAdmin, async (req, res): Promise<void> => {
   const {
     apiToken,
+    prodApiToken,
     enabled,
     isSandbox,
     depositsEnabled,
@@ -53,6 +56,9 @@ router.put("/admin/pawapay/settings", requireAdmin, async (req, res): Promise<vo
 
   if (typeof apiToken === "string" && apiToken.trim()) {
     updates.push(setMetaSetting("pawapay_api_token", apiToken.trim()));
+  }
+  if (typeof prodApiToken === "string" && prodApiToken.trim()) {
+    updates.push(setMetaSetting("pawapay_prod_api_token", prodApiToken.trim()));
   }
   if (typeof enabled === "boolean") {
     updates.push(setMetaSetting("pawapay_enabled", String(enabled)));

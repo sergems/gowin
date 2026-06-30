@@ -26,7 +26,7 @@ Each user can have multiple wallet rows — one per currency. The `wallets.curre
 - `requirePaymentClerk` middleware: allows `payment_clerk` OR `admin`
 
 ### PawaPay configuration
-Stored in `settings` table via `getMetaSetting`/`setMetaSetting`. Keys: `pawapay_api_token`, `pawapay_sandbox`, `pawapay_deposits_enabled`, `pawapay_withdrawals_enabled`, `pawapay_min/max_deposit/withdrawal`. Admin UI at Settings → PawaPay Mobile Money card.
+Stored in `settings` table via `getMetaSetting`/`setMetaSetting`. Keys: `pawapay_api_token` (sandbox), `pawapay_prod_api_token` (production), `pawapay_sandbox`, `pawapay_deposits_enabled`, `pawapay_withdrawals_enabled`, `pawapay_min/max_deposit/withdrawal`. Admin UI at Settings → PawaPay Mobile Money card. Separate token fields for sandbox vs production — `getPawapayConfig()` picks the right token based on mode.
 
 ### DRC operators
 - `ORANGE_CD` — CDF + USD
@@ -36,9 +36,9 @@ Stored in `settings` table via `getMetaSetting`/`setMetaSetting`. Keys: `pawapay
 
 **Why:** PawaPay operator codes are uppercase, underscore-separated, country-suffixed. Frontend filters operators by selected currency.
 
-### PawaPay API endpoints (v1)
-- Sandbox: `https://api.sandbox.pawapay.cloud`
-- Production: `https://api.pawapay.cloud`
+### PawaPay API endpoints (v2)
+- Sandbox: `https://api.sandbox.pawapay.io`
+- Production: `https://api.pawapay.io`
 - `POST /deposits` — initiate collection
 - `GET /deposits/{depositId}` — poll status
 - `POST /payouts` — initiate payout

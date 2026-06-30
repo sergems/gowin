@@ -13,7 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import {
   Key, RefreshCw, CheckCircle2, AlertTriangle,
-  Eye, EyeOff, Database, Plug, PlugZap, Unplug, FlaskConical,
+  Eye, EyeOff, Database, Plug, PlugZap, Unplug, FlaskConical, Zap,
   Upload, FileText, Info, Download, Mail, Send, ShieldCheck, ShieldOff,
   Globe, Lock, Smartphone, Copy,
 } from "lucide-react";
@@ -1053,9 +1053,12 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
   const queryClient = useQueryClient();
 
   const [ppToken, setPpToken] = useState("");
+  const [ppProdToken, setPpProdToken] = useState("");
   const [showToken, setShowToken] = useState(false);
+  const [showProdToken, setShowProdToken] = useState(false);
   const [enabled, setEnabled] = useState(true);
   const [isSandbox, setIsSandbox] = useState(true);
+  const [showProdWarning, setShowProdWarning] = useState(false);
   const [depositsEnabled, setDepositsEnabled] = useState(true);
   const [withdrawalsEnabled, setWithdrawalsEnabled] = useState(true);
   const [minDeposit, setMinDeposit] = useState("1");
@@ -1118,6 +1121,7 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
         maxWithdrawal,
       };
       if (ppToken.trim()) body.apiToken = ppToken.trim();
+      if (ppProdToken.trim()) body.prodApiToken = ppProdToken.trim();
       const res = await fetch("/api/admin/pawapay/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -1282,14 +1286,50 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
               </div>
             </div>
 
+            {/* ── Environment Toggle ──────────────────────────────────── */}
+            <div className="rounded-lg border border-border overflow-hidden">
+              <div className="flex">
+                <button
+                  type="button"
+                  onClick={() => { setIsSandbox(true); setShowProdWarning(false); }}
+                  className={`flex-1 flex flex-col items-center gap-1 py-3 text-xs font-semibold transition-colors ${isSandbox ? "bg-amber-500/15 text-amber-400 border-b-2 border-amber-400" : "text-muted-foreground hover:bg-accent/40"}`}
+                >
+                  <FlaskConical className="w-4 h-4" />
+                  SANDBOX
+                  <span className="text-[10px] font-normal opacity-70">No real money</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { if (isSandbox) setShowProdWarning(true); }}
+                  className={`flex-1 flex flex-col items-center gap-1 py-3 text-xs font-semibold transition-colors ${!isSandbox ? "bg-green-500/15 text-green-400 border-b-2 border-green-400" : "text-muted-foreground hover:bg-accent/40"}`}
+                >
+                  <Zap className="w-4 h-4" />
+                  PRODUCTION
+                  <span className="text-[10px] font-normal opacity-70">Real money — live</span>
+                </button>
+              </div>
+              {showProdWarning && isSandbox && (
+                <div className="p-3 bg-red-500/10 border-t border-red-500/30 space-y-2">
+                  <p className="text-xs text-red-400 font-semibold">⚠ Switch to Production?</p>
+                  <p className="text-xs text-muted-foreground">This will route all deposits and withdrawals through the <strong>live PawaPay API</strong> using real mobile money. Make sure you have entered your production API token below.</p>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="destructive" className="text-xs h-7" onClick={() => { setIsSandbox(false); setShowProdWarning(false); }}>Yes, go LIVE</Button>
+                    <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setShowProdWarning(false)}>Cancel</Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── Sandbox API Token ───────────────────────────────────── */}
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground uppercase tracking-wider">
-                {ppSettings?.hasToken ? "Update API Token" : "Set API Token"}
+                Sandbox API Token {ppSettings?.hasToken ? <span className="text-green-400 ml-1">✓ set</span> : <span className="text-amber-400 ml-1">not set</span>}
               </Label>
+              <p className="text-[10px] text-muted-foreground">Get this from <a href="https://dashboard.sandbox.pawapay.cloud/#/login" target="_blank" rel="noopener noreferrer" className="underline text-primary">dashboard.sandbox.pawapay.cloud</a> → System Configuration → API Token</p>
               <div className="flex gap-2">
                 <Input
                   type={showToken ? "text" : "password"}
-                  placeholder="Bearer token from PawaPay dashboard"
+                  placeholder="Sandbox bearer token"
                   value={ppToken}
                   onChange={(e) => setPpToken(e.target.value)}
                   className="font-mono"
@@ -1300,14 +1340,27 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center justify-between p-3 rounded-lg border border-border">
-                <div>
-                  <p className="text-xs font-semibold">Sandbox Mode</p>
-                  <p className="text-xs text-muted-foreground">Use test environment</p>
-                </div>
-                <Switch checked={isSandbox} onCheckedChange={setIsSandbox} />
+            {/* ── Production API Token ─────────────────────────────────── */}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                Production API Token {ppSettings?.hasProdToken ? <span className="text-green-400 ml-1">✓ set</span> : <span className="text-muted-foreground/50 ml-1">not set</span>}
+              </Label>
+              <p className="text-[10px] text-muted-foreground">Get this from <a href="https://dashboard.pawapay.cloud/#/login" target="_blank" rel="noopener noreferrer" className="underline text-primary">dashboard.pawapay.cloud</a> → System Configuration → API Token (requires completed onboarding)</p>
+              <div className="flex gap-2">
+                <Input
+                  type={showProdToken ? "text" : "password"}
+                  placeholder="Production bearer token"
+                  value={ppProdToken}
+                  onChange={(e) => setPpProdToken(e.target.value)}
+                  className={`font-mono ${!isSandbox ? "border-green-500/50" : ""}`}
+                />
+                <Button variant="ghost" size="icon" onClick={() => setShowProdToken((v) => !v)}>
+                  {showProdToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </Button>
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div className="flex items-center justify-between p-3 rounded-lg border border-border">
                 <div>
                   <p className="text-xs font-semibold">Deposits</p>

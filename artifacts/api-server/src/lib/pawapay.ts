@@ -51,8 +51,9 @@ export interface PawapayConfig {
 }
 
 export async function getPawapayConfig(): Promise<PawapayConfig | null> {
-  const [token, enabled, sandbox, depositsEnabled, withdrawalsEnabled, minDep, maxDep, minWith, maxWith] = await Promise.all([
+  const [sandboxToken, prodToken, enabled, sandbox, depositsEnabled, withdrawalsEnabled, minDep, maxDep, minWith, maxWith] = await Promise.all([
     getMetaSetting("pawapay_api_token"),
+    getMetaSetting("pawapay_prod_api_token"),
     getMetaSetting("pawapay_enabled"),
     getMetaSetting("pawapay_sandbox"),
     getMetaSetting("pawapay_deposits_enabled"),
@@ -63,9 +64,11 @@ export async function getPawapayConfig(): Promise<PawapayConfig | null> {
     getMetaSetting("pawapay_max_withdrawal"),
   ]);
 
+  const isSandbox = sandbox !== "false";
+  const token = isSandbox ? sandboxToken : (prodToken ?? sandboxToken);
+
   if (!token) return null;
 
-  const isSandbox = sandbox !== "false";
   return {
     apiToken: token,
     isSandbox,
