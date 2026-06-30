@@ -54,12 +54,17 @@ router.get("/football/countries", async (_req, res): Promise<void> => {
         l.country_name,
         l.country_logo,
         l.country_key,
-        COUNT(f.id) AS fixture_count
+        COUNT(DISTINCT f.id) AS fixture_count
       FROM leagues l
-      LEFT JOIN fixtures f ON f.league_id = l.id AND f.status = 'upcoming'
+      INNER JOIN fixtures f ON f.league_id = l.id AND f.status = 'upcoming'
       WHERE l.external_id NOT IN ('3', '4', '683', '1')
+        AND EXISTS (
+          SELECT 1 FROM markets m
+          JOIN odds o ON o.market_id = m.id
+          WHERE m.fixture_id = f.id LIMIT 1
+        )
       GROUP BY l.id, l.name, l.league_logo, l.country_name, l.country_logo, l.country_key
-      HAVING COUNT(f.id) > 0
+      HAVING COUNT(DISTINCT f.id) > 0
       ORDER BY l.country_name ASC, l.name ASC
     `),
     db.execute(sql`
@@ -68,10 +73,15 @@ router.get("/football/countries", async (_req, res): Promise<void> => {
         l.name,
         l.league_logo,
         l.external_id,
-        COUNT(f.id) AS fixture_count
+        COUNT(DISTINCT f.id) AS fixture_count
       FROM leagues l
-      LEFT JOIN fixtures f ON f.league_id = l.id AND f.status = 'upcoming'
+      INNER JOIN fixtures f ON f.league_id = l.id AND f.status = 'upcoming'
       WHERE l.external_id IN ('3', '4', '683', '1')
+        AND EXISTS (
+          SELECT 1 FROM markets m
+          JOIN odds o ON o.market_id = m.id
+          WHERE m.fixture_id = f.id LIMIT 1
+        )
       GROUP BY l.id, l.name, l.league_logo, l.external_id
       ORDER BY ARRAY_POSITION(ARRAY['3','4','683','1'], l.external_id)
     `),
@@ -196,6 +206,15 @@ router.get("/fixtures", async (req, res): Promise<void> => {
   if (status) conditions.push(eq(fixturesTable.status, status as any));
   if (status === "upcoming") conditions.push(gte(fixturesTable.startTime, new Date()));
   if (sportId) conditions.push(eq(leaguesTable.sportId, sportId));
+  // Only return fixtures that have at least one market with at least one odd
+  if (withMarkets) {
+    conditions.push(sql`EXISTS (
+      SELECT 1 FROM markets m
+      JOIN odds o ON o.market_id = m.id
+      WHERE m.fixture_id = ${fixturesTable.id}
+      LIMIT 1
+    )`);
+  }
   if (dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     const dayStart = new Date(dateStr + "T00:00:00.000Z");
     const dayEnd = new Date(dateStr + "T23:59:59.999Z");
@@ -320,10 +339,13 @@ router.get("/fixtures", async (req, res): Promise<void> => {
     });
   }
 
-  const fixturesWithMarkets = fixtures.map((f: any) => ({
-    ...f,
-    markets: marketsMap.get(f.id) ?? [],
-  }));
+  const fixturesWithMarkets = fixtures
+    .map((f: any) => ({
+      ...f,
+      markets: marketsMap.get(f.id) ?? [],
+    }))
+    // Secondary safeguard: drop any fixture that ended up with no markets/odds
+    .filter((f: any) => f.markets.length > 0 && f.markets.some((m: any) => m.odds && m.odds.length > 0));
 
   res.json({ fixtures: fixturesWithMarkets, total: totalResult.count, page, limit });
 });
