@@ -677,7 +677,7 @@ export default function Wallet() {
                       </div>
                     </div>
                     <div className={`text-lg font-bold ${isCredit ? "text-primary" : "text-destructive"}`}>
-                      {isCredit ? "+" : "−"}{formatCurrency(Math.abs(parseFloat(tx.amount)))}
+                      {isCredit ? "+" : "−"}{formatCurrency(Math.abs(Number(tx.amount)))}
                     </div>
                   </div>
                 );

@@ -102,15 +102,16 @@ function NotificationBell() {
       prevUnreadRef.current = count;
       return;
     }
+    let timer: ReturnType<typeof setTimeout> | undefined;
     if (count > prevUnreadRef.current) {
       const latest = data.notifications[0];
       if (latest) {
         setToast({ title: latest.title, message: latest.message, icon: NOTIF_ICONS[latest.type] ?? "🔔" });
-        const timer = setTimeout(() => setToast(null), 5000);
-        return () => clearTimeout(timer);
+        timer = setTimeout(() => setToast(null), 5000);
       }
     }
     prevUnreadRef.current = count;
+    return () => { if (timer !== undefined) clearTimeout(timer); };
   }, [data?.unreadCount]);
 
   function relTime(d: string) {
