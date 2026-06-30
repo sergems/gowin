@@ -376,8 +376,8 @@ export async function generateFixturesPdf(): Promise<string> {
 
     content: [
       ...coverContent,
-      { text: "", pageBreak: "after" },
       {
+        pageBreak: "before",
         table: {
           headerRows: 2,
           widths: [36, 38, "*", 28, 28, 28, 28, 28, 28, 28, 24, 24, 26, 26, 26],
