@@ -7,12 +7,14 @@ WORKDIR /app
 
 # Copy manifests first for layer caching
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json .npmrc pnpm.config.cjs ./
-COPY artifacts/api-server/package.json ./artifacts/api-server/
-COPY artifacts/gowin/package.json       ./artifacts/gowin/
-COPY lib/db/package.json                ./lib/db/
-COPY lib/api-spec/package.json          ./lib/api-spec/
-COPY lib/api-client-react/package.json  ./lib/api-client-react/
-COPY lib/api-zod/package.json           ./lib/api-zod/
+COPY artifacts/api-server/package.json      ./artifacts/api-server/
+COPY artifacts/gowin/package.json           ./artifacts/gowin/
+COPY artifacts/mockup-sandbox/package.json  ./artifacts/mockup-sandbox/
+COPY lib/db/package.json                    ./lib/db/
+COPY lib/api-spec/package.json              ./lib/api-spec/
+COPY lib/api-client-react/package.json      ./lib/api-client-react/
+COPY lib/api-zod/package.json               ./lib/api-zod/
+COPY scripts/package.json                   ./scripts/
 
 RUN pnpm install --no-frozen-lockfile --ignore-scripts && \
     pnpm rebuild esbuild
