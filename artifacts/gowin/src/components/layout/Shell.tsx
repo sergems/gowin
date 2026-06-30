@@ -727,38 +727,25 @@ export function Shell({ children }: { children: ReactNode }) {
 
       {/* ── Main Content ─────────────────────────────────────────────────────── */}
       <main className="flex-1 flex flex-col overflow-hidden relative min-w-0">
-        <header className="h-14 border-b border-border bg-card/50 backdrop-blur flex items-center justify-between px-4 md:px-6 shrink-0 z-10">
+        {/* Floating overlay header — zero height, sits on top of content */}
+        <header className="absolute top-0 left-0 right-0 h-14 flex items-center justify-between px-4 md:px-6 z-20 pointer-events-none">
           {/* Mobile: hamburger */}
-          <button className="md:hidden text-muted-foreground hover:text-foreground p-1.5 rounded-md hover:bg-accent mr-2"
+          <button className="md:hidden pointer-events-auto text-white/90 hover:text-white p-1.5 rounded-md hover:bg-white/10 mr-2 drop-shadow"
             onClick={() => setMobileSidebarOpen(true)}>
             <Menu className="w-5 h-5" />
           </button>
 
-          {/* Desktop: welcome */}
-          <div className="flex-1 hidden md:block">
-            {user && (
-              <span className="text-sm text-muted-foreground">
-                Welcome,{" "}
-                <span className="font-semibold text-foreground">
-                  {(user as any).firstName && (user as any).lastName
-                    ? `${(user as any).firstName} ${(user as any).lastName}`
-                    : user.username}
-                </span>
-              </span>
-            )}
-          </div>
-
           {/* Mobile: centered logo */}
-          <div className="md:hidden flex items-center absolute left-1/2 -translate-x-1/2">
-            <img src={gowinLogo} alt="GoWin" className="h-7 w-auto object-contain" />
+          <div className="md:hidden pointer-events-auto flex items-center absolute left-1/2 -translate-x-1/2">
+            <img src={gowinLogo} alt="GoWin" className="h-7 w-auto object-contain drop-shadow" />
           </div>
 
-          <div className="flex items-center gap-3 flex-1 justify-end">
+          <div className="flex items-center gap-3 flex-1 justify-end pointer-events-auto">
             {user && wallet && (
               <Link href="/wallet">
-                <div className="flex items-center gap-1.5 bg-accent/50 px-2.5 py-1 md:px-3 md:py-1.5 rounded-full border border-border hover:bg-accent transition-colors cursor-pointer">
+                <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm px-2.5 py-1 md:px-3 md:py-1.5 rounded-full border border-white/20 hover:bg-black/60 transition-colors cursor-pointer">
                   <Wallet className="w-4 h-4 text-primary" />
-                  <span className="font-semibold text-sm">{formatCurrency(wallet.balance)}</span>
+                  <span className="font-semibold text-sm text-white">{formatCurrency(wallet.balance)}</span>
                 </div>
               </Link>
             )}
@@ -766,7 +753,7 @@ export function Shell({ children }: { children: ReactNode }) {
             {!betSlipOpen && (
               <button
                 onClick={() => setBetSlipOpen(true)}
-                className="hidden md:flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-md hover:bg-accent relative"
+                className="hidden md:flex items-center gap-1.5 text-white/80 hover:text-white transition-colors p-1.5 rounded-md hover:bg-white/10 relative drop-shadow"
                 title="Open bet slip"
               >
                 <PanelRightOpen className="w-5 h-5" />
@@ -786,7 +773,7 @@ export function Shell({ children }: { children: ReactNode }) {
           [&::-webkit-scrollbar-thumb]:rounded-full
           [&::-webkit-scrollbar-thumb]:bg-yellow-400/70
           [&::-webkit-scrollbar-thumb:hover]:bg-yellow-400">
-          <div className="p-4 md:p-5 lg:p-6 max-w-7xl mx-auto pb-24 md:pb-6">
+          <div className="pt-14 px-4 pb-24 md:px-5 md:pb-6 lg:px-6 max-w-7xl mx-auto">
             {children}
           </div>
         </div>
