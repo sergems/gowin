@@ -6,3 +6,9 @@ id = "TNTlIWCDwQ61KTTjCkThh"
 uri = "file://DEPLOY-UPDATES.md"
 type = "text"
 title = "How to Deploy Updates to Production"
+
+[[outputs]]
+id = "yFAQMSxotW-j48g0Rdiw0"
+uri = "file://DEPLOY-UPDATES-V2.md"
+type = "text"
+title = "Deploy Updates v2 — June 2026"
