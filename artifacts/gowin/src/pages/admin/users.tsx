@@ -392,7 +392,7 @@ export default function AdminUsers() {
                         {format(new Date(user.createdAt), "MMM d, yyyy")}
                       </TableCell>
                       <TableCell className="text-right font-bold text-sm">
-                        ${user.wallet?.balance.toFixed(2) ?? "0.00"}
+                        {formatCurrency(user.wallet?.balance ?? 0)}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">

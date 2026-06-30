@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
+import { useSiteSettings } from "../../contexts/SiteSettingsContext";
 import { Users, Plus, UserX, UserCheck, DollarSign, ShieldCheck } from "lucide-react";
 
 interface Agent {
@@ -22,6 +23,7 @@ interface Agent {
 const emptyForm = { username: "", email: "", firstName: "", lastName: "", phoneNumber: "", commissionRate: "", role: "agent" };
 
 export default function BranchAgentsPage() {
+  const { formatCurrency } = useSiteSettings();
   const qc = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState(emptyForm);
@@ -80,7 +82,7 @@ export default function BranchAgentsPage() {
             {agent.role === "agent" && (
               <>
                 <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" /> {agent.commissionRate}% commission</span>
-                <span>🎯 {agent.betsPlaced} bets · ${agent.totalStake.toFixed(2)}</span>
+                <span>🎯 {agent.betsPlaced} bets · {formatCurrency(agent.totalStake)}</span>
                 <span>🎫 {agent.vouchersSold} vouchers</span>
               </>
             )}

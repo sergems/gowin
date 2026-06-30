@@ -3,6 +3,7 @@ import { usePlaceBet } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import type { BetSelectionInput } from "@workspace/api-client-react";
 import { useAuth } from "./AuthContext";
+import { useSiteSettings } from "./SiteSettingsContext";
 
 interface BetSlipItem extends BetSelectionInput {
   fixtureName: string;
@@ -51,6 +52,7 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
   const [lastPlacedBet, setLastPlacedBet] = useState<PlacedBetDetails | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { formatCurrency } = useSiteSettings();
 
   const placeBetMutation = usePlaceBet();
 
@@ -107,7 +109,7 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
       };
       setLastPlacedBet(placed);
 
-      toast({ title: "Bet Placed Successfully", description: `Your bet has been placed. Potential win: $${potentialWin.toFixed(2)}` });
+      toast({ title: "Bet Placed Successfully", description: `Your bet has been placed. Potential win: ${formatCurrency(potentialWin)}` });
       clearSlip();
     } catch (err: any) {
       toast({ title: "Failed to place bet", description: err.message || "An error occurred.", variant: "destructive" });

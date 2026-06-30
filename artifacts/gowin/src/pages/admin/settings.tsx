@@ -54,6 +54,7 @@ export default function AdminSettings() {
   const [siteCurrency, setSiteCurrency] = useState(activeCurrency);
   const [siteLanguage, setSiteLanguage] = useState(activeLanguage);
   const [exchangeRate, setExchangeRate] = useState(String(activeExchangeRate));
+  const [isFetchingRate, setIsFetchingRate] = useState(false);
 
   // ── JWT Secret state ────────────────────────────────────────────────────────
   const [jwtSecretInput, setJwtSecretInput] = useState("");
@@ -447,6 +448,48 @@ export default function AdminSettings() {
               </div>
             </div>
           </div>
+
+          {/* Exchange rate — shown when CDF is selected or when rate is non-default */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                Exchange Rate (1 USD = ? CDF)
+              </Label>
+              <button
+                onClick={async () => {
+                  setIsFetchingRate(true);
+                  try {
+                    const res = await fetch("/api/pawapay/exchange-rate");
+                    if (!res.ok) throw new Error("Failed to fetch rate");
+                    const data = await res.json();
+                    setExchangeRate(String(Math.round(data.rate)));
+                    toast({ title: "Live rate fetched", description: `1 USD = ${Math.round(data.rate).toLocaleString()} CDF` });
+                  } catch {
+                    toast({ title: "Could not fetch live rate", description: "Check your internet connection.", variant: "destructive" });
+                  } finally {
+                    setIsFetchingRate(false);
+                  }
+                }}
+                disabled={isFetchingRate}
+                className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3 h-3 ${isFetchingRate ? "animate-spin" : ""}`} />
+                {isFetchingRate ? "Fetching…" : "Fetch live rate"}
+              </button>
+            </div>
+            <Input
+              type="number"
+              min="1"
+              step="1"
+              value={exchangeRate}
+              onChange={(e) => setExchangeRate(e.target.value)}
+              placeholder="e.g. 2800"
+            />
+            <p className="text-xs text-muted-foreground">
+              All balances are stored in USD. This rate is used to display amounts in CDF across the site.
+            </p>
+          </div>
+
           <Button
             onClick={() => saveSiteSettingsMutation.mutate()}
             disabled={saveSiteSettingsMutation.isPending}

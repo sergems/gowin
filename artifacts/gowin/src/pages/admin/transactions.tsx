@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,7 @@ function useFetchAdminTransactions(token: string | null, page: number, typeFilte
 
 export default function AdminTransactions() {
   const { token } = useAuth();
+  const { formatCurrency } = useSiteSettings();
   const [page, setPage] = useState(1);
   const [typeFilter, setTypeFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -170,7 +172,7 @@ export default function AdminTransactions() {
 
                     {/* Amount */}
                     <div className={`text-right font-bold text-sm col-start-3 sm:col-auto ${meta.credit ? "text-primary" : ""}`}>
-                      {meta.credit ? "+" : "−"}${Number(tx.amount).toFixed(2)}
+                      {meta.credit ? "+" : "−"}{formatCurrency(Math.abs(Number(tx.amount)))}
                     </div>
                   </div>
                 );
