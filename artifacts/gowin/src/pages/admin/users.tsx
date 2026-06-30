@@ -35,6 +35,12 @@ async function apiFetch(path: string, method: string, body: object, token: strin
   return data;
 }
 
+const DRC_OPERATORS = [
+  { code: "VODACOM_MPESA_COD", name: "M-Pesa (Vodacom)" },
+  { code: "AIRTEL_COD",        name: "Airtel Money" },
+  { code: "ORANGE_COD",        name: "Orange Money" },
+];
+
 interface AdminUser {
   id: number;
   username: string;
@@ -42,6 +48,9 @@ interface AdminUser {
   firstName: string | null;
   lastName: string | null;
   phoneNumber: string | null;
+  mobileOperator: string | null;
+  secondaryPhoneNumber: string | null;
+  secondaryMobileOperator: string | null;
   role: string;
   branchId?: number | null;
   commissionRate?: number;
@@ -107,6 +116,7 @@ export default function AdminUsers() {
   const [editUser, setEditUser] = useState<AdminUser | null>(null);
   const [editForm, setEditForm] = useState({
     firstName: "", lastName: "", email: "", phoneNumber: "", username: "",
+    mobileOperator: "", secondaryPhoneNumber: "", secondaryMobileOperator: "",
     role: "user", branchId: "", commissionRate: "",
   });
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -168,6 +178,9 @@ export default function AdminUsers() {
       lastName: user.lastName ?? "",
       email: user.email,
       phoneNumber: user.phoneNumber ?? "",
+      mobileOperator: user.mobileOperator ?? "",
+      secondaryPhoneNumber: user.secondaryPhoneNumber ?? "",
+      secondaryMobileOperator: user.secondaryMobileOperator ?? "",
       username: user.username,
       role: user.role,
       branchId: user.branchId != null ? String(user.branchId) : "",
@@ -188,6 +201,9 @@ export default function AdminUsers() {
         editForm.lastName !== (editUser.lastName ?? "") ||
         editForm.email !== editUser.email ||
         editForm.phoneNumber !== (editUser.phoneNumber ?? "") ||
+        editForm.mobileOperator !== (editUser.mobileOperator ?? "") ||
+        editForm.secondaryPhoneNumber !== (editUser.secondaryPhoneNumber ?? "") ||
+        editForm.secondaryMobileOperator !== (editUser.secondaryMobileOperator ?? "") ||
         editForm.username !== editUser.username;
 
       if (profileChanged) {
@@ -196,6 +212,9 @@ export default function AdminUsers() {
           lastName: editForm.lastName,
           email: editForm.email,
           phoneNumber: editForm.phoneNumber,
+          mobileOperator: editForm.mobileOperator,
+          secondaryPhoneNumber: editForm.secondaryPhoneNumber,
+          secondaryMobileOperator: editForm.secondaryMobileOperator,
           username: editForm.username,
         }, token));
       }
@@ -437,9 +456,56 @@ export default function AdminUsers() {
                 <Label>Email</Label>
                 <Input type="email" value={editForm.email} onChange={(e) => setEditForm(f => ({ ...f, email: e.target.value }))} required />
               </div>
-              <div className="space-y-2">
-                <Label>Phone Number</Label>
-                <Input value={editForm.phoneNumber} onChange={(e) => setEditForm(f => ({ ...f, phoneNumber: e.target.value }))} placeholder="+243..." />
+              {/* Mobile Payment Method */}
+              <div className="border-t border-border pt-4 space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Mobile Payment Method</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Primary Phone</Label>
+                    <Input
+                      value={editForm.phoneNumber}
+                      onChange={(e) => setEditForm(f => ({ ...f, phoneNumber: e.target.value }))}
+                      placeholder="+243..."
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Primary Operator</Label>
+                    <Select value={editForm.mobileOperator || "none"} onValueChange={(v) => setEditForm(f => ({ ...f, mobileOperator: v === "none" ? "" : v }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select operator" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">— Not set —</SelectItem>
+                        {DRC_OPERATORS.map(op => (
+                          <SelectItem key={op.code} value={op.code}>{op.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Secondary Phone <span className="text-muted-foreground/60">(optional)</span></Label>
+                    <Input
+                      value={editForm.secondaryPhoneNumber}
+                      onChange={(e) => setEditForm(f => ({ ...f, secondaryPhoneNumber: e.target.value }))}
+                      placeholder="+243..."
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Secondary Operator</Label>
+                    <Select value={editForm.secondaryMobileOperator || "none"} onValueChange={(v) => setEditForm(f => ({ ...f, secondaryMobileOperator: v === "none" ? "" : v }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select operator" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">— Not set —</SelectItem>
+                        {DRC_OPERATORS.map(op => (
+                          <SelectItem key={op.code} value={op.code}>{op.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground">These are used for PawaPay mobile money deposits and withdrawals. Operators: M-Pesa (Vodacom), Airtel Money, Orange Money.</p>
               </div>
 
               {/* Role & Access section */}

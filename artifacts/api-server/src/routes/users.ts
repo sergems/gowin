@@ -18,6 +18,9 @@ function formatUser(u: any, wallet?: any) {
     firstName: u.firstName ?? null,
     lastName: u.lastName ?? null,
     phoneNumber: u.phoneNumber ?? null,
+    mobileOperator: u.mobileOperator ?? null,
+    secondaryPhoneNumber: u.secondaryPhoneNumber ?? null,
+    secondaryMobileOperator: u.secondaryMobileOperator ?? null,
     role: u.role,
     branchId: u.branchId ?? null,
     commissionRate: parseFloat(u.commissionRate ?? "0"),
@@ -103,7 +106,7 @@ router.patch("/users/:id", requireAdminOrManager, async (req: AuthRequest, res):
     return;
   }
 
-  const { firstName, lastName, email, phoneNumber, username } = req.body as Record<string, string | undefined>;
+  const { firstName, lastName, email, phoneNumber, mobileOperator, secondaryPhoneNumber, secondaryMobileOperator, username } = req.body as Record<string, string | undefined>;
 
   const updates: Record<string, any> = {};
   if (firstName !== undefined) updates.firstName = firstName.trim() || null;
@@ -114,6 +117,9 @@ router.patch("/users/:id", requireAdminOrManager, async (req: AuthRequest, res):
     updates.email = trimmed;
   }
   if (phoneNumber !== undefined) updates.phoneNumber = phoneNumber.trim() || null;
+  if (mobileOperator !== undefined) updates.mobileOperator = mobileOperator.trim() || null;
+  if (secondaryPhoneNumber !== undefined) updates.secondaryPhoneNumber = secondaryPhoneNumber.trim() || null;
+  if (secondaryMobileOperator !== undefined) updates.secondaryMobileOperator = secondaryMobileOperator.trim() || null;
   if (username !== undefined) {
     const trimmed = username.trim();
     if (!trimmed) { res.status(400).json({ error: "Username cannot be empty" }); return; }
