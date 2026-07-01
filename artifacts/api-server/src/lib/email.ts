@@ -63,7 +63,18 @@ async function sendMail(opts: MailOptions): Promise<boolean> {
     logger.info({ to: opts.to, subject: opts.subject }, "Email sent");
     return true;
   } catch (err) {
-    logger.error({ err }, "Failed to send email");
+    logger.error(
+      {
+        to: opts.to,
+        subject: opts.subject,
+        smtpHost: cfg.host,
+        smtpPort: cfg.port,
+        smtpSecure: cfg.secure,
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+      },
+      "Failed to send email"
+    );
     return false;
   }
 }
