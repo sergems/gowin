@@ -21,6 +21,17 @@ function isUEFALeague(name: string) { return UEFA_MATCHERS.some((t) => t(name));
 function uefaOrder(name: string) { const i = UEFA_MATCHERS.findIndex((t) => t(name)); return i === -1 ? 99 : i; }
 function isInternational(c: string | null | undefined) { return !c || c === "World" || c === "International"; }
 
+// ── Sport metadata ─────────────────────────────────────────────────────────────
+
+const SPORT_META: Record<string, { icon: string; useFootballGrouping: boolean }> = {
+  Football:   { icon: "⚽", useFootballGrouping: true },
+  Basketball: { icon: "🏀", useFootballGrouping: false },
+  Tennis:     { icon: "🎾", useFootballGrouping: false },
+  Cricket:    { icon: "🏏", useFootballGrouping: false },
+};
+
+// ── Small UI helpers ───────────────────────────────────────────────────────────
+
 function Logo({ src, alt, size = 24 }: { src: string | null | undefined; alt: string; size?: number }) {
   const [failed, setFailed] = useState(false);
   if (!src || failed) return <Shield className="text-muted-foreground shrink-0" style={{ width: size, height: size }} />;
@@ -36,6 +47,8 @@ function FlagImg({ src, alt }: { src: string | null | undefined; alt: string }) 
   if (!src || failed) return <Globe className="w-3.5 h-3.5 text-muted-foreground shrink-0" />;
   return <img src={src} alt={alt} width={16} height={11} className="object-cover rounded-sm shrink-0 w-4" style={{ height: 11 }} onError={() => setFailed(true)} />;
 }
+
+// ── Result / Live cards ────────────────────────────────────────────────────────
 
 function ResultCard({ fixture }: { fixture: any }) {
   const hasScore = fixture.scoreHome !== null && fixture.scoreAway !== null;
@@ -107,6 +120,8 @@ function LiveCard({ fixture }: { fixture: any }) {
   );
 }
 
+// ── Grouping logic ─────────────────────────────────────────────────────────────
+
 type LeagueGroup = {
   leagueId: number;
   leagueName: string;
@@ -124,7 +139,7 @@ type CountryGroup = {
   leagues: LeagueGroup[];
 };
 
-function groupByCountryLeague(fixtures: any[]): CountryGroup[] {
+function groupByCountryLeague(fixtures: any[], useFootballGrouping: boolean): CountryGroup[] {
   const leagueMap = new Map<number, LeagueGroup>();
   for (const f of fixtures) {
     const lid = f.leagueId ?? 0;
@@ -143,8 +158,24 @@ function groupByCountryLeague(fixtures: any[]): CountryGroup[] {
 
   const all = Array.from(leagueMap.values());
 
-  const uefaLeagues = all.filter((l) => isUEFALeague(l.leagueName));
-  const intlLeagues  = all.filter((l) => !isUEFALeague(l.leagueName) && isInternational(l.countryName));
+  if (!useFootballGrouping) {
+    // For non-football sports: group all leagues under one "International" bucket
+    // (since countryName tends to be category names, not real countries)
+    const byCategory = new Map<string, CountryGroup>();
+    for (const l of all) {
+      const cat = l.countryName ?? "International";
+      if (!byCategory.has(cat)) {
+        byCategory.set(cat, { countryName: cat, countryLogo: l.countryLogo, leagues: [] });
+      }
+      byCategory.get(cat)!.leagues.push(l);
+    }
+    byCategory.forEach((cg) => cg.leagues.sort((a, b) => a.leagueName.localeCompare(b.leagueName)));
+    return [...byCategory.values()].sort((a, b) => a.countryName.localeCompare(b.countryName));
+  }
+
+  // Football grouping: UEFA first, then international, then by country
+  const uefaLeagues    = all.filter((l) => isUEFALeague(l.leagueName));
+  const intlLeagues    = all.filter((l) => !isUEFALeague(l.leagueName) && isInternational(l.countryName));
   const countryLeagues = all.filter((l) => !isUEFALeague(l.leagueName) && !isInternational(l.countryName));
 
   uefaLeagues.sort((a, b) => uefaOrder(a.leagueName) - uefaOrder(b.leagueName));
@@ -153,9 +184,7 @@ function groupByCountryLeague(fixtures: any[]): CountryGroup[] {
   const countryMap = new Map<string, CountryGroup>();
   for (const l of countryLeagues) {
     const cn = l.countryName ?? "Other";
-    if (!countryMap.has(cn)) {
-      countryMap.set(cn, { countryName: cn, countryLogo: l.countryLogo, leagues: [] });
-    }
+    if (!countryMap.has(cn)) countryMap.set(cn, { countryName: cn, countryLogo: l.countryLogo, leagues: [] });
     countryMap.get(cn)!.leagues.push(l);
   }
   countryMap.forEach((cg) => cg.leagues.sort((a, b) => a.leagueName.localeCompare(b.leagueName)));
@@ -173,6 +202,47 @@ function groupByCountryLeague(fixtures: any[]): CountryGroup[] {
   result.push(...sortedCountries);
   return result;
 }
+
+// ── Sport tab selector ─────────────────────────────────────────────────────────
+
+function SportTabs({
+  sports,
+  selected,
+  onSelect,
+}: {
+  sports: Array<{ name: string; count: number }>;
+  selected: string;
+  onSelect: (s: string) => void;
+}) {
+  if (sports.length <= 1) return null;
+  return (
+    <div className="flex gap-1 flex-wrap">
+      {sports.map((s) => {
+        const meta = SPORT_META[s.name];
+        const isActive = selected === s.name;
+        return (
+          <button
+            key={s.name}
+            onClick={() => onSelect(s.name)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+              isActive
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
+            }`}
+          >
+            <span>{meta?.icon ?? "🏟️"}</span>
+            <span>{s.name}</span>
+            <span className={`tabular-nums ${isActive ? "text-primary-foreground/70" : "text-muted-foreground/60"}`}>
+              {s.count}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── League block ───────────────────────────────────────────────────────────────
 
 function LeagueBlock({
   league,
@@ -211,6 +281,8 @@ function LeagueBlock({
   );
 }
 
+// ── Country section ───────────────────────────────────────────────────────────
+
 function CountrySection({
   country,
   renderCard,
@@ -223,7 +295,6 @@ function CountrySection({
   const { t } = useSiteSettings();
   const [collapsed, setCollapsed] = useState(false);
   const total = country.leagues.reduce((s, l) => s + l.fixtures.length, 0);
-
   const isUEFA = country.isUEFA;
   const isIntl = country.isInternational;
 
@@ -232,9 +303,7 @@ function CountrySection({
       <button
         onClick={() => setCollapsed((c) => !c)}
         className={`w-full flex items-center gap-2.5 px-4 py-2.5 transition-colors ${
-          isUEFA
-            ? "bg-primary/10 hover:bg-primary/15"
-            : "bg-accent/20 hover:bg-accent/30"
+          isUEFA ? "bg-primary/10 hover:bg-primary/15" : "bg-accent/20 hover:bg-accent/30"
         }`}
       >
         {isUEFA ? (
@@ -264,6 +333,60 @@ function CountrySection({
   );
 }
 
+// ── Sport-separated fixture view ──────────────────────────────────────────────
+
+function SportFixtureView({
+  fixtures,
+  renderCard,
+}: {
+  fixtures: any[];
+  renderCard: (f: any) => React.ReactNode;
+}) {
+  // Compute available sports sorted by fixture count (desc)
+  const sportCounts = new Map<string, number>();
+  for (const f of fixtures) {
+    const name = f.league?.sport?.name ?? f.sportName ?? "Football";
+    sportCounts.set(name, (sportCounts.get(name) ?? 0) + 1);
+  }
+  const sports = [...sportCounts.entries()]
+    .sort(([, a], [, b]) => b - a)
+    .map(([name, count]) => ({ name, count }));
+
+  const [selectedSport, setSelectedSport] = useState<string>(() => sports[0]?.name ?? "Football");
+
+  // Reset selection when available sports change
+  useEffect(() => {
+    if (sports.length > 0 && !sports.find((s) => s.name === selectedSport)) {
+      setSelectedSport(sports[0].name);
+    }
+  }, [sports.map((s) => s.name).join(",")]);
+
+  const filtered = fixtures.filter((f) => (f.league?.sport?.name ?? f.sportName ?? "Football") === selectedSport);
+  const meta = SPORT_META[selectedSport];
+  const countryGroups = groupByCountryLeague(filtered, meta?.useFootballGrouping ?? true);
+
+  return (
+    <div className="space-y-4">
+      <SportTabs sports={sports} selected={selectedSport} onSelect={setSelectedSport} />
+
+      {countryGroups.length === 0 ? null : (
+        <div className="space-y-3">
+          {countryGroups.map((cg) => (
+            <CountrySection
+              key={cg.countryName}
+              country={cg}
+              renderCard={renderCard}
+              gridCols="grid-cols-1 xl:grid-cols-2"
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Live section ───────────────────────────────────────────────────────────────
+
 function LiveSection() {
   const { t } = useSiteSettings();
   const [lastUpdated, setLastUpdated] = useState(() => new Date());
@@ -278,7 +401,6 @@ function LiveSection() {
   }, [dataUpdatedAt]);
 
   const fixtures = data?.fixtures ?? [];
-  const countryGroups = groupByCountryLeague(fixtures);
   const timeStr = lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
   return (
@@ -306,20 +428,16 @@ function LiveSection() {
           <p className="text-sm text-muted-foreground">{t("results.no_live_desc")}</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {countryGroups.map((cg) => (
-            <CountrySection
-              key={cg.countryName}
-              country={cg}
-              renderCard={(f) => <LiveCard key={f.id} fixture={f} />}
-              gridCols="grid-cols-1 xl:grid-cols-2"
-            />
-          ))}
-        </div>
+        <SportFixtureView
+          fixtures={fixtures}
+          renderCard={(f) => <LiveCard key={f.id} fixture={f} />}
+        />
       )}
     </div>
   );
 }
+
+// ── Finished section ──────────────────────────────────────────────────────────
 
 function FinishedSection() {
   const { t } = useSiteSettings();
@@ -340,8 +458,6 @@ function FinishedSection() {
 
   const fixtures = (data?.fixtures ?? [])
     .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
-
-  const countryGroups = groupByCountryLeague(fixtures);
 
   return (
     <div className="space-y-5">
@@ -370,20 +486,16 @@ function FinishedSection() {
           <p className="text-sm text-muted-foreground">{t("results.no_results_desc")}</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {countryGroups.map((cg) => (
-            <CountrySection
-              key={cg.countryName}
-              country={cg}
-              renderCard={(f) => <ResultCard key={f.id} fixture={f} />}
-              gridCols="grid-cols-1 xl:grid-cols-2"
-            />
-          ))}
-        </div>
+        <SportFixtureView
+          fixtures={fixtures}
+          renderCard={(f) => <ResultCard key={f.id} fixture={f} />}
+        />
       )}
     </div>
   );
 }
+
+// ── Page ───────────────────────────────────────────────────────────────────────
 
 type Tab = "live" | "finished";
 
