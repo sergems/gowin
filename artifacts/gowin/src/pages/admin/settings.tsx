@@ -259,22 +259,27 @@ export default function AdminSettings() {
     onError: (e: any) => toast({ title: "Test failed", description: e.message, variant: "destructive" }),
   });
 
+  const [syncingSport, setSyncingSport] = useState<string | null>(null);
+
   const syncMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (sport?: string) => {
+      setSyncingSport(sport ?? "all");
       const res = await fetch("/api/admin/sync-fixtures", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: sport ? JSON.stringify({ sport }) : undefined,
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? data.detail ?? "Sync failed");
       return data;
     },
     onSuccess: (data) => {
-      toast({ title: "Sync complete", description: `${data.imported} new fixtures imported, ${data.updated} updated.` });
+      toast({ title: "Sync complete", description: `${data.imported} new, ${data.updated} updated.` });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/settings"] });
       queryClient.invalidateQueries({ queryKey: ["/api/fixtures"] });
     },
     onError: (e: any) => toast({ title: "Sync failed", description: e.message, variant: "destructive" }),
+    onSettled: () => setSyncingSport(null),
   });
 
   const testDbMutation = useMutation({
@@ -381,6 +386,13 @@ export default function AdminSettings() {
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
   const isSyncing = syncMutation.isPending || settings?.syncStatus === "syncing";
+
+  const SPORTS = [
+    { key: "football",   label: "Football",   icon: "⚽" },
+    { key: "basketball", label: "Basketball", icon: "🏀" },
+    { key: "tennis",     label: "Tennis",     icon: "🎾" },
+    { key: "cricket",    label: "Cricket",    icon: "🏏" },
+  ];
   const maskedKey = (key: string) =>
     key.length > 10 ? key.slice(0, 6) + "•".repeat(key.length - 10) + key.slice(-4) : key;
 
@@ -743,6 +755,7 @@ export default function AdminSettings() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Status row */}
           <div className="flex items-center justify-between p-3 rounded-lg bg-accent/30 border border-border">
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Last Sync</p>
@@ -755,7 +768,8 @@ export default function AdminSettings() {
             <div>
               {isSyncing ? (
                 <Badge className="bg-blue-500/15 text-blue-500 border-blue-500/30 flex items-center gap-1.5">
-                  <RefreshCw className="w-3 h-3 animate-spin" /> Syncing…
+                  <RefreshCw className="w-3 h-3 animate-spin" />
+                  {syncingSport && syncingSport !== "all" ? `Syncing ${syncingSport}…` : "Syncing all…"}
                 </Badge>
               ) : settings?.lastSync === "never" ? (
                 <Badge variant="outline" className="text-muted-foreground">Never synced</Badge>
@@ -766,25 +780,52 @@ export default function AdminSettings() {
               )}
             </div>
           </div>
+
           {settings?.syncSummary && (
             <div className="px-3 py-2 rounded-lg bg-primary/5 border border-primary/20 text-xs text-muted-foreground">
               <span className="font-semibold text-foreground">Last result: </span>{settings.syncSummary}
             </div>
           )}
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">
-              Pulls upcoming fixtures for the next <strong>14 days</strong> from AllSportsAPI and imports them.
-            </p>
-            <Button onClick={() => syncMutation.mutate()} disabled={isSyncing || !settings?.apiKey} className="w-full gap-2">
-              <RefreshCw className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`} />
-              {isSyncing ? "Syncing fixtures…" : "Sync Now"}
-            </Button>
-            {!settings?.apiKey && (
-              <p className="text-xs text-amber-500 flex items-center gap-1.5">
-                <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> Save an API key first before syncing
-              </p>
-            )}
+
+          <p className="text-sm text-muted-foreground">
+            Pulls upcoming fixtures for the next <strong>14 days</strong> from AllSportsAPI. Sync all sports at once or refresh a single sport.
+          </p>
+
+          {/* Per-sport buttons */}
+          <div className="grid grid-cols-2 gap-2">
+            {SPORTS.map((sport) => {
+              const isThisSyncing = isSyncing && syncingSport === sport.key;
+              return (
+                <Button
+                  key={sport.key}
+                  variant="outline"
+                  onClick={() => syncMutation.mutate(sport.key)}
+                  disabled={isSyncing || !settings?.apiKey}
+                  className="gap-2 justify-start"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${isThisSyncing ? "animate-spin" : ""}`} />
+                  <span className="text-base leading-none">{sport.icon}</span>
+                  <span>{isThisSyncing ? "Syncing…" : sport.label}</span>
+                </Button>
+              );
+            })}
           </div>
+
+          {/* Sync All */}
+          <Button
+            onClick={() => syncMutation.mutate(undefined)}
+            disabled={isSyncing || !settings?.apiKey}
+            className="w-full gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${isSyncing && syncingSport === "all" ? "animate-spin" : ""}`} />
+            {isSyncing && syncingSport === "all" ? "Syncing all sports…" : "Sync All Sports"}
+          </Button>
+
+          {!settings?.apiKey && (
+            <p className="text-xs text-amber-500 flex items-center gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> Save an API key first before syncing
+            </p>
+          )}
         </CardContent>
       </Card>
 
