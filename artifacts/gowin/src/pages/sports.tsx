@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { useSearch } from "wouter";
-import { useListFixtures } from "@workspace/api-client-react";
-import type { ListFixturesParams } from "@workspace/api-client-react";
+import { useSearch, useLocation } from "wouter";
+import { useListFixtures, useListLeagues } from "@workspace/api-client-react";
+import type { ListFixturesParams, League } from "@workspace/api-client-react";
 import { Link } from "wouter";
-import { ChevronDown, ChevronLeft, CalendarDays, Shield, Trophy } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, CalendarDays, Shield, Trophy, Globe } from "lucide-react";
 import { fmtUTCTime, utcDateKey, utcDateLabel } from "@/lib/formatUTC";
 import { useBetSlip } from "@/contexts/BetSlipContext";
 import { sortOdds } from "@/lib/sortOdds";
@@ -216,15 +216,135 @@ function FixtureCard({ fixture }: { fixture: any }) {
   );
 }
 
+// ── League browser (for non-football sports) ──────────────────────────────────
+
+function LeagueBrowser({
+  sportId,
+  sportName,
+  onSelectLeague,
+}: {
+  sportId: number;
+  sportName: string;
+  onSelectLeague: (id: number, name: string) => void;
+}) {
+  const { data: leagues = [], isLoading } = useListLeagues({ sportId });
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+
+  const sportMeta = getSportMeta(sportName);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-14 rounded-xl bg-accent/40 animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  if (leagues.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <Trophy className="w-12 h-12 text-muted-foreground/30 mb-4" />
+        <p className="font-bold text-lg mb-1">No leagues available</p>
+        <p className="text-muted-foreground text-sm">Try syncing fixtures from Admin → Settings.</p>
+      </div>
+    );
+  }
+
+  // Group by country
+  const grouped = new Map<string, League[]>();
+  for (const league of leagues) {
+    const country = league.countryName ?? "International";
+    if (!grouped.has(country)) grouped.set(country, []);
+    grouped.get(country)!.push(league);
+  }
+
+  const toggleGroup = (country: string) => {
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      next.has(country) ? next.delete(country) : next.add(country);
+      return next;
+    });
+  };
+
+  const entries = [...grouped.entries()].sort(([a], [b]) => {
+    if (a === "International") return -1;
+    if (b === "International") return 1;
+    return a.localeCompare(b);
+  });
+
+  return (
+    <div className="space-y-2">
+      {entries.map(([country, countryLeagues]) => {
+        const isOpen = openGroups.has(country);
+        const countryLogo = countryLeagues[0]?.countryLogo;
+        return (
+          <div key={country} className="bg-card border border-border rounded-xl overflow-hidden">
+            <button
+              onClick={() => toggleGroup(country)}
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-accent/30 transition-colors"
+            >
+              {countryLogo ? (
+                <img
+                  src={countryLogo}
+                  alt={country}
+                  width={20}
+                  height={14}
+                  className="object-cover rounded-sm shrink-0"
+                  style={{ width: 20, height: 14 }}
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                />
+              ) : (
+                <Globe className="w-4 h-4 text-muted-foreground shrink-0" />
+              )}
+              <span className="flex-1 text-sm font-semibold text-left">{country}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">{countryLeagues.length}</span>
+                {isOpen
+                  ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                  : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+              </div>
+            </button>
+
+            {isOpen && (
+              <div className="border-t border-border/50">
+                {countryLeagues.map((league) => (
+                  <button
+                    key={league.id}
+                    onClick={() => onSelectLeague(league.id, league.name)}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-accent/40 transition-colors text-left group border-b border-border/30 last:border-b-0"
+                  >
+                    <Logo src={league.leagueLogo} alt={league.name} size={18} />
+                    <span className="flex-1 text-sm text-foreground/90 group-hover:text-primary transition-colors truncate">
+                      {league.name}
+                    </span>
+                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/40 group-hover:text-primary/60 transition-colors shrink-0" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function SportsPage() {
   const search = useSearch();
+  const [, navigate] = useLocation();
   const params = new URLSearchParams(search);
   const selectedLeagueId = params.get("leagueId") ? Number(params.get("leagueId")) : null;
   const selectedLeagueName = params.get("leagueName") ? decodeURIComponent(params.get("leagueName")!) : null;
   const selectedSportId = params.get("sportId") ? Number(params.get("sportId")) : null;
   const selectedSportName = params.get("sportName") ? decodeURIComponent(params.get("sportName")!) : null;
+
+  const sportMeta = getSportMeta(selectedSportName);
+
+  const showLeagueBrowser = !!selectedSportId && !selectedLeagueId;
 
   const queryParams: any = { status: "upcoming", withMarkets: true };
   if (selectedLeagueId) {
@@ -239,7 +359,12 @@ export default function SportsPage() {
 
   const { data: fixturesData, isLoading } = useListFixtures(
     queryParams,
-    { query: { queryKey: ["fixtures", "sports", selectedLeagueId, selectedSportId] } },
+    {
+      query: {
+        queryKey: ["fixtures", "sports", selectedLeagueId, selectedSportId],
+        enabled: !showLeagueBrowser,
+      },
+    },
   );
 
   const now = new Date();
@@ -247,23 +372,28 @@ export default function SportsPage() {
     (f) => new Date(f.startTime) > now,
   );
 
-  // Detect which sport we're browsing
   const firstFixtureSportName = fixtures[0]?.sportName ?? null;
   const effectiveSportName = selectedSportName ?? firstFixtureSportName;
-  const sportMeta = getSportMeta(effectiveSportName);
 
   const pageTitle = selectedLeagueName ?? (
     selectedSportId
-      ? (selectedSportName ? `${sportMeta.icon} ${selectedSportName}` : sportMeta.icon + " " + sportMeta.label)
-      : `${sportMeta.icon} All Fixtures`
+      ? (selectedSportName ? `${sportMeta.icon} ${selectedSportName}` : `${sportMeta.icon} ${sportMeta.label}`)
+      : `⚽ All Fixtures`
   );
+
+  const handleSelectLeague = (id: number, name: string) => {
+    navigate(`/sports?sportId=${selectedSportId}&sportName=${encodeURIComponent(selectedSportName ?? "")}&leagueId=${id}&leagueName=${encodeURIComponent(name)}`);
+  };
 
   return (
     <div className="space-y-6">
       {/* Page header */}
       <div className="flex flex-col gap-2">
         {(selectedLeagueName || selectedSportId) && (
-          <button onClick={() => window.history.back()} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors self-start">
+          <button
+            onClick={() => window.history.back()}
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors self-start"
+          >
             <ChevronLeft className="w-4 h-4" /> Back
           </button>
         )}
@@ -271,16 +401,27 @@ export default function SportsPage() {
           <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
             {pageTitle}
           </h1>
-          {(selectedLeagueName || selectedSportId) && (
+          {selectedLeagueName && (
             <p className="text-xs text-muted-foreground mt-0.5">
               {fixturesData?.total ?? 0} upcoming matches
+            </p>
+          )}
+          {showLeagueBrowser && !selectedLeagueName && (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Select a competition to view matches
             </p>
           )}
         </div>
       </div>
 
-      {/* Fixtures */}
-      {isLoading ? (
+      {/* League browser for non-football sports */}
+      {showLeagueBrowser ? (
+        <LeagueBrowser
+          sportId={selectedSportId}
+          sportName={selectedSportName ?? ""}
+          onSelectLeague={handleSelectLeague}
+        />
+      ) : isLoading ? (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-36 rounded-xl bg-accent/40 animate-pulse" />
