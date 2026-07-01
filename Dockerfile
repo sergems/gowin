@@ -56,6 +56,13 @@ COPY --from=builder /app/lib/api-spec                      ./lib/api-spec
 COPY --from=builder /app/artifacts/api-server/dist        ./artifacts/api-server/dist
 COPY --from=builder /app/artifacts/api-server/package.json ./artifacts/api-server/
 
+# api-server's own node_modules (pnpm symlinks into the shared .pnpm store).
+# Required because some deps are esbuild-externalized (not bundled into dist/index.mjs)
+# and must be resolvable via real node_modules at runtime — e.g. pdfmake, nodemailer.
+# Node resolves modules by walking up from dist/index.mjs, so without this
+# directory those externalized packages throw "Cannot find module" in production.
+COPY --from=builder /app/artifacts/api-server/node_modules ./artifacts/api-server/node_modules
+
 # Frontend static files (served by Express in production)
 COPY --from=builder /app/artifacts/gowin/dist/public ./artifacts/gowin/dist/public
 
