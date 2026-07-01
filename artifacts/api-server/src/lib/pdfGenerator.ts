@@ -1,11 +1,13 @@
 import { createRequire } from "module";
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from "fs";
-import { join } from "path";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
 import { db, fixturesTable, leaguesTable, teamsTable, marketsTable, oddsTable } from "@workspace/db";
 import { eq, and, gte, lte, asc, inArray } from "drizzle-orm";
 import { logger } from "./logger";
 
 const _require = createRequire(import.meta.url);
+const _moduleDir = dirname(fileURLToPath(import.meta.url));
 
 const OUTPUT_DIR = join(process.cwd(), "uploads", "fixtures");
 const PDF_PATH = join(OUTPUT_DIR, "daily-fixtures.pdf");
@@ -41,6 +43,17 @@ function isMajorLeague(name: string): boolean {
 
 function getLogoBase64(): string | null {
   const candidates = [
+    // Production: dist bundle sits at artifacts/api-server/dist/*.mjs,
+    // frontend static build lives at artifacts/gowin/dist/public/logo.png
+    join(_moduleDir, "..", "..", "..", "gowin", "dist", "public", "logo.png"),
+    join(_moduleDir, "..", "..", "..", "..", "artifacts", "gowin", "dist", "public", "logo.png"),
+    // Dev (tsx running from src, monorepo layout on disk)
+    join(_moduleDir, "..", "..", "..", "gowin", "public", "logo.png"),
+    join(_moduleDir, "..", "..", "..", "gowin", "src", "assets", "logo.png"),
+    join(process.cwd(), "artifacts", "gowin", "dist", "public", "logo.png"),
+    join(process.cwd(), "artifacts", "gowin", "public", "logo.png"),
+    join(process.cwd(), "artifacts", "gowin", "src", "assets", "logo.png"),
+    join(process.cwd(), "..", "gowin", "dist", "public", "logo.png"),
     join(process.cwd(), "..", "gowin", "src", "assets", "logo.png"),
     join(process.cwd(), "..", "..", "artifacts", "gowin", "src", "assets", "logo.png"),
   ];
@@ -49,6 +62,7 @@ function getLogoBase64(): string | null {
       return readFileSync(p).toString("base64");
     }
   }
+  logger.warn({ candidates }, "Fixtures PDF: logo.png not found in any candidate path, falling back to text logo");
   return null;
 }
 
@@ -298,31 +312,37 @@ export async function generateFixturesPdf(): Promise<string> {
   }
 
   // ── Cover page ────────────────────────────────────────────────────────────
+  // NOTE: every cover element uses absolutePosition so it is removed from the
+  // normal document flow entirely. This guarantees the cover always renders
+  // on exactly page 1 — no risk of overflow pushing content onto a blank
+  // page 2 (which previously happened when the flowed content's cumulative
+  // height slightly exceeded the A4 landscape page height).
+  const PAGE_W = 841.89;
   const coverContent: any[] = [];
 
   const logoDataUrl = logoBase64 ? `data:image/png;base64,${logoBase64}` : null;
   if (logoDataUrl) {
-    coverContent.push({ image: logoDataUrl, width: 220, alignment: "center", margin: [0, 80, 0, 32] });
+    coverContent.push({ image: logoDataUrl, fit: [200, 85], alignment: "center", absolutePosition: { x: 0, y: 35 }, width: PAGE_W });
   } else {
-    coverContent.push({ text: "GoWin", fontSize: 52, bold: true, color: C.white, alignment: "center", margin: [0, 100, 0, 32] });
+    coverContent.push({ text: "GoWin", fontSize: 48, bold: true, color: C.white, alignment: "center", absolutePosition: { x: 0, y: 55 }, width: PAGE_W });
   }
 
   coverContent.push(
-    { text: "DAILY FIXTURES COUPON", fontSize: 26, bold: true, color: C.white, alignment: "center", characterSpacing: 3, margin: [0, 0, 0, 14] },
-    { canvas: [{ type: "line", x1: 80, y1: 0, x2: 720, y2: 0, lineWidth: 1.5, lineColor: C.gold }], margin: [0, 0, 0, 16] },
-    { text: dateLabel, fontSize: 15, color: C.gold, alignment: "center", margin: [0, 0, 0, 6] },
-    { text: `Generated at ${timeLabel}`, fontSize: 10, color: "#99ccaa", alignment: "center", margin: [0, 0, 0, 40] },
+    { text: "DAILY FIXTURES COUPON", fontSize: 26, bold: true, color: C.white, alignment: "center", characterSpacing: 3, absolutePosition: { x: 0, y: 145 }, width: PAGE_W },
+    { canvas: [{ type: "line", x1: 0, y1: 0, x2: 641.89, y2: 0, lineWidth: 1.5, lineColor: C.gold }], absolutePosition: { x: 100, y: 184 } },
+    { text: dateLabel, fontSize: 15, color: C.gold, alignment: "center", absolutePosition: { x: 0, y: 196 }, width: PAGE_W },
+    { text: `Generated at ${timeLabel}`, fontSize: 10, color: "#99ccaa", alignment: "center", absolutePosition: { x: 0, y: 220 }, width: PAGE_W },
     {
       columns: [
         { stack: [{ text: String(totalGames), fontSize: 42, bold: true, color: C.white, alignment: "center" }, { text: "Fixtures", fontSize: 12, color: "#99ccaa", alignment: "center" }], width: "*" },
         { canvas: [{ type: "line", x1: 0, y1: 0, x2: 0, y2: 80, lineWidth: 1, lineColor: C.gold }], width: 1, margin: [0, 10, 0, 0] },
         { stack: [{ text: String(groups.length), fontSize: 42, bold: true, color: C.white, alignment: "center" }, { text: "Competitions", fontSize: 12, color: "#99ccaa", alignment: "center" }], width: "*" },
       ],
-      margin: [80, 0, 80, 50],
+      absolutePosition: { x: 100, y: 258 },
+      width: 641.89,
     },
-    { canvas: [{ type: "line", x1: 80, y1: 0, x2: 720, y2: 0, lineWidth: 1, lineColor: C.gold }], margin: [0, 0, 0, 30] },
-    { text: "\u201cPari ya mayele, mbongo ya solo!\u201d", fontSize: 18, italics: true, color: C.gold, alignment: "center", margin: [0, 0, 0, 14] },
-    { text: "www.gowinrdc.com", fontSize: 12, color: "#99ccaa", alignment: "center" },
+    { text: "\u201cPari ya mayele, mbongo ya solo!\u201d", fontSize: 18, italics: true, color: C.gold, alignment: "center", absolutePosition: { x: 0, y: 500 }, width: PAGE_W },
+    { text: "www.gowinrdc.com", fontSize: 12, color: "#99ccaa", alignment: "center", absolutePosition: { x: 0, y: 532 }, width: PAGE_W },
   );
 
   // ── Document definition ───────────────────────────────────────────────────
@@ -376,8 +396,8 @@ export async function generateFixturesPdf(): Promise<string> {
 
     content: [
       ...coverContent,
+      { text: "", pageBreak: "before" },
       {
-        pageBreak: "before",
         table: {
           headerRows: 2,
           widths: [36, 38, "*", 28, 28, 28, 28, 28, 28, 28, 24, 24, 26, 26, 26],

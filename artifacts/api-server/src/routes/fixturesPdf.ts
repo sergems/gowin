@@ -12,7 +12,7 @@ router.get("/fixtures-pdf/download", async (req, res): Promise<void> => {
     }
     res.download(getPdfPath(), "gowin-daily-fixtures.pdf");
   } catch (err) {
-    logger.error({ err }, "Failed to serve fixtures PDF");
+    logger.error({ err, message: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : undefined }, "Failed to serve fixtures PDF");
     res.status(503).json({ error: "PDF is not available yet. Please try again shortly." });
   }
 });
