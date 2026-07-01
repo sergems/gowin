@@ -4,6 +4,10 @@ const translations = {
   en: {
     "nav.home": "Home",
     "nav.sports": "Sports",
+    "nav.football": "Football",
+    "nav.basketball": "Basketball",
+    "nav.tennis": "Tennis",
+    "nav.cricket": "Cricket",
     "nav.results": "Results",
     "nav.live": "Live In-Play",
     "nav.my_bets": "My Bets",
@@ -385,6 +389,10 @@ const translations = {
   fr: {
     "nav.home": "Accueil",
     "nav.sports": "Sports",
+    "nav.football": "Football",
+    "nav.basketball": "Basketball",
+    "nav.tennis": "Tennis",
+    "nav.cricket": "Cricket",
     "nav.results": "Résultats",
     "nav.live": "Paris en direct",
     "nav.my_bets": "Mes paris",

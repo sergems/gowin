@@ -249,6 +249,17 @@ export function Shell({ children }: { children: ReactNode }) {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: sportsData } = useQuery<Array<{ id: number; name: string; icon: string }>>({
+    queryKey: ["sports-list"],
+    queryFn: () => fetch("/api/sports").then((r) => r.json()),
+    enabled: !isAdmin && !isStaffRole,
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const activeSportId = location.startsWith("/sports") && typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).get("sportId")
+    : null;
+
   const toggleCountry = (name: string) => {
     setOpenCountries((prev) => {
       const next = new Set(prev);
@@ -353,25 +364,25 @@ export function Shell({ children }: { children: ReactNode }) {
 
 
             {!isStaffRole && isAdmin ? (
-              <Link href="/sports" title={!open ? t("nav.sports") : undefined} onClick={onNav}
+              <Link href="/sports" title={!open ? t("nav.football") : undefined} onClick={onNav}
                 className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
                   ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
                   ${location.startsWith("/sports") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
                 <Trophy className="w-4 h-4 shrink-0" />
-                {open && <span className="flex-1">{t("nav.sports")}</span>}
+                {open && <span className="flex-1">{t("nav.football")}</span>}
               </Link>
             ) : !isStaffRole ? (
               <> 
-                <button title={!open ? t("nav.sports") : undefined}
+                <button title={!open ? t("nav.football") : undefined}
                   onClick={() => {
                     if (!open) setSidebarOpen(true);
                     setSportsOpen((v) => !v);
                   }}
                   className={`w-full flex items-center gap-3 rounded-md text-sm font-medium transition-colors
                     ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
-                    ${location.startsWith("/sports") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
+                    ${location.startsWith("/sports") && !activeSportId ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
                   <Trophy className="w-4 h-4 shrink-0" />
-                  {open && <span className="flex-1 text-left">{t("nav.sports")}</span>}
+                  {open && <span className="flex-1 text-left">{t("nav.football")}</span>}
                   {open && (sportsOpen ? <ChevronDown className="w-3.5 h-3.5 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 shrink-0" />)}
                 </button>
 
@@ -449,6 +460,23 @@ export function Shell({ children }: { children: ReactNode }) {
                 )}
               </>
             ) : null}
+
+            {!isAdmin && !isStaffRole && sportsData?.filter((s) => s.name !== "Football").map((sport) => (
+              <Link
+                key={sport.id}
+                href={`/sports?sportId=${sport.id}&sportName=${encodeURIComponent(sport.name)}`}
+                title={!open ? sport.name : undefined}
+                onClick={onNav}
+                className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                  ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
+                  ${activeSportId === String(sport.id)
+                    ? "bg-primary/10 text-primary"
+                    : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}
+              >
+                <span className="w-4 h-4 shrink-0 text-base leading-none flex items-center justify-center">{sport.icon}</span>
+                {open && <span className="flex-1">{sport.name}</span>}
+              </Link>
+            ))}
 
             {!isAdmin && !isStaffRole && (
               <Link href="/results" title={!open ? t("nav.results") : undefined} onClick={onNav}

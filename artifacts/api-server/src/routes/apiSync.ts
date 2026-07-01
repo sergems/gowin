@@ -28,9 +28,11 @@ function dateStr(d: Date) {
 function mapStatus(eventStatus: string): "upcoming" | "live" | "finished" | "cancelled" {
   if (!eventStatus || eventStatus === "") return "upcoming";
   const s = eventStatus.toLowerCase();
-  if (s === "finished" || s === "ft" || s === "aet" || s === "pen") return "finished";
-  if (s === "cancelled" || s === "postponed" || s === "abandoned") return "cancelled";
-  if (["1h", "ht", "2h", "et", "p", "live", "inprogress"].some((k) => s.includes(k))) return "live";
+  if (s === "finished" || s === "ft" || s === "aet" || s === "pen" || s === "completed" || s === "complete") return "finished";
+  if (s === "cancelled" || s === "postponed" || s === "abandoned" || s === "walkover" || s === "retired") return "cancelled";
+  if (["1h", "ht", "2h", "et", "p", "live", "inprogress", "in play", "in_play",
+       "q1", "q2", "q3", "q4", "ot", "1st", "2nd", "3rd", "4th",
+       "break", "progress", "innings"].some((k) => s.includes(k))) return "live";
   return "upcoming";
 }
 
@@ -41,6 +43,10 @@ function parseScore(result: string): { home: number | null; away: number | null 
     return { home: parts[0], away: parts[1] };
   }
   return { home: null, away: null };
+}
+
+function valid(n: any): boolean {
+  return n != null && isFinite(Number(n)) && Number(n) > 1;
 }
 
 interface CountryInfo {
@@ -82,12 +88,20 @@ async function upsertTeam(name: string, logo: string | null, externalId: string)
   return (result.rows[0] as any).id as number;
 }
 
+async function getOrCreateSport(name: string, icon: string) {
+  let [sport] = await db.select().from(sportsTable).where(eq(sportsTable.name, name)).limit(1);
+  if (!sport) {
+    [sport] = await db.insert(sportsTable).values({ name, icon }).returning();
+  }
+  return sport;
+}
+
 // ── Fetch real odds from AllSportsAPI for a single match ────────────────────
 
-async function fetchRealOdds(apiKey: string, matchId: string): Promise<any | null> {
+async function fetchRealOdds(apiKey: string, matchId: string, apiBase: string = "football"): Promise<any | null> {
   try {
     const resp = await fetch(
-      `https://apiv2.allsportsapi.com/football/?met=Odds&APIkey=${apiKey}&matchId=${matchId}`,
+      `https://apiv2.allsportsapi.com/${apiBase}/?met=Odds&APIkey=${apiKey}&matchId=${matchId}`,
       { signal: AbortSignal.timeout(10000) },
     );
     const data: any = await resp.json();
@@ -101,21 +115,17 @@ async function fetchRealOdds(apiKey: string, matchId: string): Promise<any | nul
       );
     }
   } catch {
-    // non-fatal — fall back to generated odds
+    // non-fatal — fall back to no markets
   }
   return null;
 }
 
-function valid(n: any): boolean {
-  return n != null && isFinite(Number(n)) && Number(n) > 1;
-}
+// ── Football markets ─────────────────────────────────────────────────────────
 
-// ── Insert only real API-sourced markets for a new upcoming fixture ──────────
+async function insertFootballMarkets(fixtureId: number, real: any | null) {
+  if (!real) return;
 
-async function insertAllMarkets(fixtureId: number, real: any | null, _seed: number) {
-  if (!real) return; // No real odds from API — create no markets
-
-  // ── 1X2 ───────────────────────────────────────────────────────────────────
+  // 1X2
   if (valid(real.odd_1) && valid(real.odd_x) && valid(real.odd_2)) {
     const [m] = await db.insert(marketsTable).values({ fixtureId, marketType: "1X2" }).returning();
     await db.insert(oddsTable).values([
@@ -125,7 +135,7 @@ async function insertAllMarkets(fixtureId: number, real: any | null, _seed: numb
     ]);
   }
 
-  // ── Double Chance ─────────────────────────────────────────────────────────
+  // Double Chance
   if (valid(real.odd_1x) && valid(real.odd_12) && valid(real.odd_x2)) {
     const [m] = await db.insert(marketsTable).values({ fixtureId, marketType: "Double Chance" }).returning();
     await db.insert(oddsTable).values([
@@ -135,29 +145,29 @@ async function insertAllMarkets(fixtureId: number, real: any | null, _seed: numb
     ]);
   }
 
-  // ── Both Teams To Score ───────────────────────────────────────────────────
+  // Both Teams To Score
   if (valid(real.bts_yes) && valid(real.bts_no)) {
     const [m] = await db.insert(marketsTable).values({ fixtureId, marketType: "Both Teams To Score" }).returning();
     await db.insert(oddsTable).values([
       { marketId: m.id, selection: "Yes", oddsValue: Number(real.bts_yes).toFixed(2) },
-      { marketId: m.id, selection: "No",  oddsValue: Number(real.bts_no).toFixed(2) },
+      { marketId: m.id, selection: "No", oddsValue: Number(real.bts_no).toFixed(2) },
     ]);
   }
 
-  // ── Over/Under (5 lines) ──────────────────────────────────────────────────
+  // Over/Under (5 lines)
   for (const line of ["0.5", "1.5", "2.5", "3.5", "4.5"]) {
     const overKey = `o+${line}`;
     const underKey = `u+${line}`;
     if (valid(real[overKey]) && valid(real[underKey])) {
       const [m] = await db.insert(marketsTable).values({ fixtureId, marketType: `Over/Under ${line}` }).returning();
       await db.insert(oddsTable).values([
-        { marketId: m.id, selection: `Over ${line}`,  oddsValue: Number(real[overKey]).toFixed(2) },
+        { marketId: m.id, selection: `Over ${line}`, oddsValue: Number(real[overKey]).toFixed(2) },
         { marketId: m.id, selection: `Under ${line}`, oddsValue: Number(real[underKey]).toFixed(2) },
       ]);
     }
   }
 
-  // ── Asian Handicap — first valid line from API ─────────────────────────────
+  // Asian Handicap
   const ahPairs: Array<[string, string, string, string]> = [
     ["ah-1_1", "ah-1_2", "-1", "+1"],
     ["ah-1.5_1", "ah-1.5_2", "-1.5", "+1.5"],
@@ -175,6 +185,388 @@ async function insertAllMarkets(fixtureId: number, real: any | null, _seed: numb
       break;
     }
   }
+}
+
+// ── Basketball markets ───────────────────────────────────────────────────────
+
+async function insertBasketballMarkets(fixtureId: number, real: any | null) {
+  if (!real) return;
+
+  // Moneyline (no draw in basketball)
+  if (valid(real.odd_1) && valid(real.odd_2)) {
+    const [m] = await db.insert(marketsTable).values({ fixtureId, marketType: "Moneyline" }).returning();
+    await db.insert(oddsTable).values([
+      { marketId: m.id, selection: "Home", oddsValue: Number(real.odd_1).toFixed(2) },
+      { marketId: m.id, selection: "Away", oddsValue: Number(real.odd_2).toFixed(2) },
+    ]);
+  }
+
+  // Point Spread (Asian Handicap)
+  const ahPairs: Array<[string, string, string, string]> = [
+    ["ah-10.5_1", "ah-10.5_2", "-10.5", "+10.5"],
+    ["ah-7.5_1", "ah-7.5_2", "-7.5", "+7.5"],
+    ["ah-5.5_1", "ah-5.5_2", "-5.5", "+5.5"],
+    ["ah-3.5_1", "ah-3.5_2", "-3.5", "+3.5"],
+    ["ah-1.5_1", "ah-1.5_2", "-1.5", "+1.5"],
+    ["ah+1.5_1", "ah+1.5_2", "+1.5", "-1.5"],
+    ["ah+3.5_1", "ah+3.5_2", "+3.5", "-3.5"],
+    ["ah+5.5_1", "ah+5.5_2", "+5.5", "-5.5"],
+  ];
+  for (const [k1, k2, label1, label2] of ahPairs) {
+    if (valid(real[k1]) && valid(real[k2])) {
+      const [m] = await db.insert(marketsTable).values({ fixtureId, marketType: `Point Spread ${label1}` }).returning();
+      await db.insert(oddsTable).values([
+        { marketId: m.id, selection: `Home (${label1})`, oddsValue: Number(real[k1]).toFixed(2) },
+        { marketId: m.id, selection: `Away (${label2})`, oddsValue: Number(real[k2]).toFixed(2) },
+      ]);
+      break;
+    }
+  }
+
+  // Total Points (Over/Under) — basketball lines are much higher
+  const ouLines = ["150.5", "160.5", "170.5", "180.5", "190.5", "200.5", "210.5", "220.5",
+                   "130.5", "140.5", "145.5", "155.5", "165.5", "175.5", "185.5", "195.5"];
+  for (const line of ouLines) {
+    const overKey = `o+${line}`;
+    const underKey = `u+${line}`;
+    if (valid(real[overKey]) && valid(real[underKey])) {
+      const [m] = await db.insert(marketsTable).values({ fixtureId, marketType: `Total Points ${line}` }).returning();
+      await db.insert(oddsTable).values([
+        { marketId: m.id, selection: `Over ${line}`, oddsValue: Number(real[overKey]).toFixed(2) },
+        { marketId: m.id, selection: `Under ${line}`, oddsValue: Number(real[underKey]).toFixed(2) },
+      ]);
+      break;
+    }
+  }
+
+  // Quarter Winner (if available via odd_1q1 etc. — varies by provider, try common keys)
+  if (valid(real.odd_1q1) && valid(real.odd_xq1) && valid(real.odd_2q1)) {
+    const [m] = await db.insert(marketsTable).values({ fixtureId, marketType: "Quarter 1 Winner" }).returning();
+    await db.insert(oddsTable).values([
+      { marketId: m.id, selection: "Home", oddsValue: Number(real.odd_1q1).toFixed(2) },
+      { marketId: m.id, selection: "Draw", oddsValue: Number(real.odd_xq1).toFixed(2) },
+      { marketId: m.id, selection: "Away", oddsValue: Number(real.odd_2q1).toFixed(2) },
+    ]);
+  }
+}
+
+// ── Tennis markets ───────────────────────────────────────────────────────────
+
+async function insertTennisMarkets(fixtureId: number, real: any | null, homeLabel: string, awayLabel: string) {
+  if (!real) return;
+
+  // Match Winner (no draw in tennis)
+  if (valid(real.odd_1) && valid(real.odd_2)) {
+    const [m] = await db.insert(marketsTable).values({ fixtureId, marketType: "Match Winner" }).returning();
+    await db.insert(oddsTable).values([
+      { marketId: m.id, selection: homeLabel, oddsValue: Number(real.odd_1).toFixed(2) },
+      { marketId: m.id, selection: awayLabel, oddsValue: Number(real.odd_2).toFixed(2) },
+    ]);
+  }
+
+  // Over/Under Games — tennis totals (number of games in a match)
+  const tennisOuLines = ["17.5", "18.5", "19.5", "20.5", "21.5", "22.5", "23.5", "24.5",
+                          "15.5", "16.5", "25.5", "26.5", "27.5", "28.5"];
+  for (const line of tennisOuLines) {
+    const overKey = `o+${line}`;
+    const underKey = `u+${line}`;
+    if (valid(real[overKey]) && valid(real[underKey])) {
+      const [m] = await db.insert(marketsTable).values({ fixtureId, marketType: `Over/Under Games ${line}` }).returning();
+      await db.insert(oddsTable).values([
+        { marketId: m.id, selection: `Over ${line}`, oddsValue: Number(real[overKey]).toFixed(2) },
+        { marketId: m.id, selection: `Under ${line}`, oddsValue: Number(real[underKey]).toFixed(2) },
+      ]);
+      break;
+    }
+  }
+
+  // Game Handicap (spread)
+  const ahPairs: Array<[string, string, string, string]> = [
+    ["ah-3.5_1", "ah-3.5_2", "-3.5", "+3.5"],
+    ["ah-2.5_1", "ah-2.5_2", "-2.5", "+2.5"],
+    ["ah-1.5_1", "ah-1.5_2", "-1.5", "+1.5"],
+    ["ah+1.5_1", "ah+1.5_2", "+1.5", "-1.5"],
+    ["ah+2.5_1", "ah+2.5_2", "+2.5", "-2.5"],
+    ["ah+3.5_1", "ah+3.5_2", "+3.5", "-3.5"],
+  ];
+  for (const [k1, k2, label1, label2] of ahPairs) {
+    if (valid(real[k1]) && valid(real[k2])) {
+      const [m] = await db.insert(marketsTable).values({ fixtureId, marketType: `Game Handicap ${label1}` }).returning();
+      await db.insert(oddsTable).values([
+        { marketId: m.id, selection: `${homeLabel} (${label1})`, oddsValue: Number(real[k1]).toFixed(2) },
+        { marketId: m.id, selection: `${awayLabel} (${label2})`, oddsValue: Number(real[k2]).toFixed(2) },
+      ]);
+      break;
+    }
+  }
+
+  // First Set Winner
+  if (valid(real.odd_1fs) && valid(real.odd_2fs)) {
+    const [m] = await db.insert(marketsTable).values({ fixtureId, marketType: "First Set Winner" }).returning();
+    await db.insert(oddsTable).values([
+      { marketId: m.id, selection: homeLabel, oddsValue: Number(real.odd_1fs).toFixed(2) },
+      { marketId: m.id, selection: awayLabel, oddsValue: Number(real.odd_2fs).toFixed(2) },
+    ]);
+  }
+}
+
+// ── Cricket markets ───────────────────────────────────────────────────────────
+
+async function insertCricketMarkets(fixtureId: number, real: any | null) {
+  if (!real) return;
+
+  // Match Winner (no draw in limited-overs; tests can draw)
+  if (valid(real.odd_1) && valid(real.odd_2)) {
+    const [m] = await db.insert(marketsTable).values({ fixtureId, marketType: "Match Winner" }).returning();
+    await db.insert(oddsTable).values([
+      { marketId: m.id, selection: "Home", oddsValue: Number(real.odd_1).toFixed(2) },
+      { marketId: m.id, selection: "Away", oddsValue: Number(real.odd_2).toFixed(2) },
+    ]);
+  }
+
+  // Draw (Test matches may have draw)
+  if (valid(real.odd_x)) {
+    const markets = await db.select().from(marketsTable).where(eq(marketsTable.fixtureId, fixtureId));
+    const matchWinner = markets.find((m) => m.marketType === "Match Winner");
+    if (matchWinner && valid(real.odd_1) && valid(real.odd_2)) {
+      // If there's a draw price, update Match Winner to include it
+      await db.insert(oddsTable).values([
+        { marketId: matchWinner.id, selection: "Draw", oddsValue: Number(real.odd_x).toFixed(2) },
+      ]);
+    }
+  }
+
+  // Total Runs (Over/Under)
+  const cricketLines = ["150.5", "160.5", "170.5", "180.5", "200.5", "250.5", "300.5", "320.5",
+                         "140.5", "145.5", "155.5", "165.5", "175.5", "190.5", "220.5", "280.5"];
+  for (const line of cricketLines) {
+    const overKey = `o+${line}`;
+    const underKey = `u+${line}`;
+    if (valid(real[overKey]) && valid(real[underKey])) {
+      const [m] = await db.insert(marketsTable).values({ fixtureId, marketType: `Total Runs ${line}` }).returning();
+      await db.insert(oddsTable).values([
+        { marketId: m.id, selection: `Over ${line}`, oddsValue: Number(real[overKey]).toFixed(2) },
+        { marketId: m.id, selection: `Under ${line}`, oddsValue: Number(real[underKey]).toFixed(2) },
+      ]);
+      break;
+    }
+  }
+
+  // Toss Winner (if available)
+  if (valid(real.odd_toss_1) && valid(real.odd_toss_2)) {
+    const [m] = await db.insert(marketsTable).values({ fixtureId, marketType: "Toss Winner" }).returning();
+    await db.insert(oddsTable).values([
+      { marketId: m.id, selection: "Home", oddsValue: Number(real.odd_toss_1).toFixed(2) },
+      { marketId: m.id, selection: "Away", oddsValue: Number(real.odd_toss_2).toFixed(2) },
+    ]);
+  }
+}
+
+// ── Generic sport sync ────────────────────────────────────────────────────────
+
+interface SportSyncConfig {
+  name: string;
+  icon: string;
+  apiBase: string;
+  getLeagueExternalId: (e: any) => string;
+  getLeagueName: (e: any) => string;
+  getLeagueLogo: (e: any) => string | null;
+  getHomeTeamName: (e: any) => string;
+  getAwayTeamName: (e: any) => string;
+  getHomeTeamKey: (e: any) => string;
+  getAwayTeamKey: (e: any) => string;
+  getHomeTeamLogo: (e: any) => string | null;
+  getAwayTeamLogo: (e: any) => string | null;
+  getFixtureKey: (e: any) => string;
+  getDate: (e: any) => string;
+  getTime: (e: any) => string | undefined;
+  getStatus: (e: any) => string;
+  getResult: (e: any) => string;
+  getCountryKey: (e: any) => string;
+  getCountryName: (e: any) => string;
+  getCountryLogo: (e: any) => string | null;
+  insertMarkets: (fixtureId: number, real: any | null, homeTeam: string, awayTeam: string) => Promise<void>;
+}
+
+const SPORT_CONFIGS: SportSyncConfig[] = [
+  {
+    name: "Football",
+    icon: "⚽",
+    apiBase: "football",
+    getLeagueExternalId: (e) => String(e.league_key),
+    getLeagueName: (e) => e.league_name ?? "Unknown League",
+    getLeagueLogo: (e) => e.league_logo ?? null,
+    getHomeTeamName: (e) => e.event_home_team ?? "Home",
+    getAwayTeamName: (e) => e.event_away_team ?? "Away",
+    getHomeTeamKey: (e) => String(e.home_team_key),
+    getAwayTeamKey: (e) => String(e.away_team_key),
+    getHomeTeamLogo: (e) => e.home_team_logo ?? null,
+    getAwayTeamLogo: (e) => e.away_team_logo ?? null,
+    getFixtureKey: (e) => String(e.event_key),
+    getDate: (e) => e.event_date,
+    getTime: (e) => e.event_time,
+    getStatus: (e) => e.event_status ?? "",
+    getResult: (e) => e.event_final_result ?? "",
+    getCountryKey: (e) => String(e.event_country_key ?? ""),
+    getCountryName: (e) => e.country_name ?? "Unknown",
+    getCountryLogo: (e) => e.country_logo ?? null,
+    insertMarkets: async (fixtureId, real) => insertFootballMarkets(fixtureId, real),
+  },
+  {
+    name: "Basketball",
+    icon: "🏀",
+    apiBase: "basketball",
+    getLeagueExternalId: (e) => String(e.league_key ?? e.event_league_id ?? "bball_" + String(e.event_key)),
+    getLeagueName: (e) => e.league_name ?? e.event_league ?? "Unknown League",
+    getLeagueLogo: (e) => e.league_logo ?? null,
+    getHomeTeamName: (e) => e.event_home_team ?? e.home_team ?? "Home",
+    getAwayTeamName: (e) => e.event_away_team ?? e.away_team ?? "Away",
+    getHomeTeamKey: (e) => String(e.home_team_key ?? e.home_team_id ?? "ht_" + String(e.event_key)),
+    getAwayTeamKey: (e) => String(e.away_team_key ?? e.away_team_id ?? "at_" + String(e.event_key)),
+    getHomeTeamLogo: (e) => e.home_team_logo ?? null,
+    getAwayTeamLogo: (e) => e.away_team_logo ?? null,
+    getFixtureKey: (e) => "bball_" + String(e.event_key),
+    getDate: (e) => e.event_date,
+    getTime: (e) => e.event_time,
+    getStatus: (e) => e.event_status ?? "",
+    getResult: (e) => e.event_final_result ?? "",
+    getCountryKey: (e) => String(e.event_country_key ?? e.country_key ?? ""),
+    getCountryName: (e) => e.country_name ?? e.event_country ?? "Unknown",
+    getCountryLogo: (e) => e.country_logo ?? null,
+    insertMarkets: async (fixtureId, real) => insertBasketballMarkets(fixtureId, real),
+  },
+  {
+    name: "Tennis",
+    icon: "🎾",
+    apiBase: "tennis",
+    getLeagueExternalId: (e) => String(e.league_key ?? e.tournament_key ?? "tennis_" + String(e.event_key)),
+    getLeagueName: (e) => e.league_name ?? e.tournament_name ?? "Unknown Tournament",
+    getLeagueLogo: (e) => e.league_logo ?? null,
+    // Tennis uses players, not teams — map to home/away slots
+    getHomeTeamName: (e) => e.event_first_player ?? e.event_home_team ?? "Player 1",
+    getAwayTeamName: (e) => e.event_second_player ?? e.event_away_team ?? "Player 2",
+    getHomeTeamKey: (e) => "t_" + String(e.first_player_key ?? e.home_team_key ?? String(e.event_key) + "_1"),
+    getAwayTeamKey: (e) => "t_" + String(e.second_player_key ?? e.away_team_key ?? String(e.event_key) + "_2"),
+    getHomeTeamLogo: (e) => e.first_player_logo ?? e.home_team_logo ?? null,
+    getAwayTeamLogo: (e) => e.second_player_logo ?? e.away_team_logo ?? null,
+    getFixtureKey: (e) => "tennis_" + String(e.event_key),
+    getDate: (e) => e.event_date,
+    getTime: (e) => e.event_time,
+    getStatus: (e) => e.event_status ?? "",
+    getResult: (e) => e.event_final_result ?? "",
+    getCountryKey: (e) => String(e.event_country_key ?? ""),
+    getCountryName: (e) => e.country_name ?? "International",
+    getCountryLogo: (e) => e.country_logo ?? null,
+    insertMarkets: async (fixtureId, real, homeTeam, awayTeam) => insertTennisMarkets(fixtureId, real, homeTeam, awayTeam),
+  },
+  {
+    name: "Cricket",
+    icon: "🏏",
+    apiBase: "cricket",
+    getLeagueExternalId: (e) => String(e.league_key ?? e.event_league_id ?? "cricket_" + String(e.event_key)),
+    getLeagueName: (e) => e.league_name ?? "Unknown Competition",
+    getLeagueLogo: (e) => e.league_logo ?? null,
+    getHomeTeamName: (e) => e.event_home_team ?? e.home_team ?? "Home",
+    getAwayTeamName: (e) => e.event_away_team ?? e.away_team ?? "Away",
+    getHomeTeamKey: (e) => String(e.home_team_key ?? e.home_team_id ?? "cric_ht_" + String(e.event_key)),
+    getAwayTeamKey: (e) => String(e.away_team_key ?? e.away_team_id ?? "cric_at_" + String(e.event_key)),
+    getHomeTeamLogo: (e) => e.home_team_logo ?? null,
+    getAwayTeamLogo: (e) => e.away_team_logo ?? null,
+    getFixtureKey: (e) => "cricket_" + String(e.event_key),
+    getDate: (e) => e.event_date,
+    getTime: (e) => e.event_time,
+    getStatus: (e) => e.event_status ?? "",
+    getResult: (e) => e.event_final_result ?? "",
+    getCountryKey: (e) => String(e.event_country_key ?? ""),
+    getCountryName: (e) => e.country_name ?? "International",
+    getCountryLogo: (e) => e.country_logo ?? null,
+    insertMarkets: async (fixtureId, real) => insertCricketMarkets(fixtureId, real),
+  },
+];
+
+// ── Core sync function for a single sport ─────────────────────────────────────
+
+async function syncSportFixtures(
+  config: SportSyncConfig,
+  apiKey: string,
+  countryMap: Map<string, CountryInfo>,
+  today: Date,
+  future: Date,
+): Promise<{ imported: number; updated: number; total: number; errors: string[] }> {
+  const url = `https://apiv2.allsportsapi.com/${config.apiBase}/?met=Fixtures&APIkey=${apiKey}&from=${dateStr(today)}&to=${dateStr(future)}`;
+
+  let apiData: any;
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(20000) });
+    apiData = await response.json();
+  } catch (err: any) {
+    return { imported: 0, updated: 0, total: 0, errors: [`Failed to reach ${config.name} API: ${err.message}`] };
+  }
+
+  if (apiData?.success !== 1 || !Array.isArray(apiData?.result)) {
+    return { imported: 0, updated: 0, total: 0, errors: [`${config.name} API error: ${apiData?.message ?? `success=${apiData?.success}`}`] };
+  }
+
+  const events: any[] = apiData.result;
+  const sport = await getOrCreateSport(config.name, config.icon);
+
+  let imported = 0;
+  let updated = 0;
+  const errors: string[] = [];
+
+  for (const event of events) {
+    try {
+      const leagueExtId = config.getLeagueExternalId(event);
+      const homeTeamName = config.getHomeTeamName(event);
+      const awayTeamName = config.getAwayTeamName(event);
+      const homeExtId = config.getHomeTeamKey(event);
+      const awayExtId = config.getAwayTeamKey(event);
+      const fixtureExtId = config.getFixtureKey(event);
+
+      const countryKeyStr = config.getCountryKey(event);
+      const countryInfo = countryMap.get(countryKeyStr);
+      const countryName = config.getCountryName(event) ?? countryInfo?.name ?? "Unknown";
+      const countryLogo = config.getCountryLogo(event) ?? countryInfo?.logo ?? null;
+      const leagueLogo = config.getLeagueLogo(event);
+
+      const leagueId = await upsertLeague(sport.id, config.getLeagueName(event), leagueExtId, countryKeyStr, countryName, countryLogo, leagueLogo);
+      const homeTeamId = await upsertTeam(homeTeamName, config.getHomeTeamLogo(event), homeExtId);
+      const awayTeamId = await upsertTeam(awayTeamName, config.getAwayTeamLogo(event), awayExtId);
+
+      const timeStr = config.getTime(event) ?? "00:00";
+      const rawStartTime = new Date(`${config.getDate(event)}T${timeStr}:00Z`);
+      // AllSports API sends local time (UTC+2) labeled as UTC — subtract 2h for true UTC
+      const startTime = new Date(rawStartTime.getTime() - 2 * 60 * 60 * 1000);
+      const rawStatus = mapStatus(config.getStatus(event));
+      const score = parseScore(config.getResult(event));
+
+      const [existing] = await db.select({ id: fixturesTable.id }).from(fixturesTable).where(eq(fixturesTable.externalId, fixtureExtId)).limit(1);
+
+      if (existing) {
+        const updateFields: Record<string, unknown> = { status: rawStatus, scoreHome: score.home, scoreAway: score.away };
+        if (rawStatus === "upcoming") {
+          updateFields.startTime = startTime;
+        }
+        await db.update(fixturesTable).set(updateFields).where(eq(fixturesTable.id, existing.id));
+        updated++;
+      } else {
+        const [fixture] = await db.insert(fixturesTable).values({
+          leagueId, homeTeamId, awayTeamId, startTime, status: rawStatus,
+          scoreHome: score.home, scoreAway: score.away, externalId: fixtureExtId,
+        }).returning();
+
+        if (rawStatus === "upcoming") {
+          const realOdds = await fetchRealOdds(apiKey, String(event.event_key), config.apiBase);
+          await config.insertMarkets(fixture.id, realOdds, homeTeamName, awayTeamName);
+        }
+        imported++;
+      }
+    } catch (err: any) {
+      errors.push(`[${config.name}] Event ${event.event_key}: ${err.message}`);
+    }
+  }
+
+  return { imported, updated, total: events.length, errors };
 }
 
 // ── GET /site-settings (public) ──────────────────────────────────────────────
@@ -324,13 +716,15 @@ router.post("/admin/refresh-odds", requireAdmin, async (_req, res): Promise<void
 });
 
 // ── Shared sync logic (called by route + daily scheduler) ─────────────────────
-export async function runFullFixtureSync(): Promise<{ ok: boolean; imported: number; updated: number; total: number; errors: string[]; lastSync: string }> {
+export async function runFullFixtureSync(sportFilter?: string): Promise<{
+  ok: boolean; imported: number; updated: number; total: number; errors: string[]; lastSync: string;
+}> {
   const apiKey = await getSetting("allsports_api_key");
   if (!apiKey) throw new Error("No API key configured. Add one in Settings first.");
 
   await setSetting("sync_status", "syncing");
 
-  // 1. Fetch country list
+  // 1. Fetch country list (football endpoint has the best country data)
   const countryMap = new Map<string, CountryInfo>();
   try {
     const cResp = await fetch(
@@ -349,101 +743,46 @@ export async function runFullFixtureSync(): Promise<{ ok: boolean; imported: num
     }
   } catch { /* non-fatal */ }
 
-  // 2. Fetch fixtures for next 14 days
   const today = new Date();
   const future = new Date(today);
   future.setDate(future.getDate() + 14);
-  const url = `https://apiv2.allsportsapi.com/football/?met=Fixtures&APIkey=${apiKey}&from=${dateStr(today)}&to=${dateStr(future)}`;
 
-  let apiData: any;
-  try {
-    const response = await fetch(url, { signal: AbortSignal.timeout(20000) });
-    apiData = await response.json();
-  } catch (err: any) {
-    await setSetting("sync_status", "error");
-    throw new Error(`Failed to reach AllSportsAPI: ${err.message}`);
-  }
+  // 2. Sync all (or selected) sports
+  const configsToSync = sportFilter
+    ? SPORT_CONFIGS.filter((c) => c.name.toLowerCase() === sportFilter.toLowerCase())
+    : SPORT_CONFIGS;
 
-  if (apiData?.success !== 1 || !Array.isArray(apiData?.result)) {
-    await setSetting("sync_status", "error");
-    throw new Error(`AllSportsAPI returned an error: ${apiData?.message ?? `success=${apiData?.success}`}`);
-  }
+  let totalImported = 0;
+  let totalUpdated = 0;
+  let totalEvents = 0;
+  const allErrors: string[] = [];
 
-  const events: any[] = apiData.result;
-  let imported = 0;
-  let updated = 0;
-  const errors: string[] = [];
-
-  let [footballSport] = await db.select().from(sportsTable).where(eq(sportsTable.name, "Football")).limit(1);
-  if (!footballSport) {
-    [footballSport] = await db.insert(sportsTable).values({ name: "Football", icon: "⚽" }).returning();
-  }
-
-  for (const event of events) {
-    try {
-      const leagueExtId = String(event.league_key);
-      const homeExtId = String(event.home_team_key);
-      const awayExtId = String(event.away_team_key);
-      const fixtureExtId = String(event.event_key);
-
-      const countryKeyStr = String(event.event_country_key ?? "");
-      const countryInfo = countryMap.get(countryKeyStr);
-      const countryName = event.country_name ?? countryInfo?.name ?? "Unknown";
-      const countryLogo = event.country_logo ?? countryInfo?.logo ?? null;
-      const leagueLogo = event.league_logo ?? null;
-
-      const leagueId = await upsertLeague(footballSport.id, event.league_name ?? "Unknown League", leagueExtId, countryKeyStr, countryName, countryLogo, leagueLogo);
-      const homeTeamId = await upsertTeam(event.event_home_team, event.home_team_logo ?? null, homeExtId);
-      const awayTeamId = await upsertTeam(event.event_away_team, event.away_team_logo ?? null, awayExtId);
-
-      // The AllSports API sends event_time as local time (UTC+2) but labels it as UTC.
-      // Subtract 2 hours to get true UTC so live/upcoming detection stays in sync.
-      const rawStartTime = new Date(`${event.event_date}T${event.event_time ?? "00:00"}:00Z`);
-      const startTime = new Date(rawStartTime.getTime() - 2 * 60 * 60 * 1000);
-      const rawStatus = mapStatus(event.event_status ?? "");
-      const score = parseScore(event.event_final_result ?? "");
-
-      const [existing] = await db.select({ id: fixturesTable.id }).from(fixturesTable).where(eq(fixturesTable.externalId, fixtureExtId)).limit(1);
-
-      if (existing) {
-        const updateFields: Record<string, unknown> = { status: rawStatus, scoreHome: score.home, scoreAway: score.away };
-        if (rawStatus === "upcoming") {
-          updateFields.startTime = startTime;
-        }
-        await db.update(fixturesTable).set(updateFields).where(eq(fixturesTable.id, existing.id));
-        updated++;
-      } else {
-        const [fixture] = await db.insert(fixturesTable).values({ leagueId, homeTeamId, awayTeamId, startTime, status: rawStatus, scoreHome: score.home, scoreAway: score.away, externalId: fixtureExtId }).returning();
-
-        if (rawStatus === "upcoming") {
-          const realOdds = await fetchRealOdds(apiKey, fixtureExtId);
-          const seed = (parseInt(fixtureExtId, 10) % 1000) / 1000;
-          await insertAllMarkets(fixture.id, realOdds, seed);
-        }
-        imported++;
-      }
-    } catch (err: any) {
-      errors.push(`Event ${event.event_key}: ${err.message}`);
-    }
+  for (const config of configsToSync) {
+    const result = await syncSportFixtures(config, apiKey, countryMap, today, future);
+    totalImported += result.imported;
+    totalUpdated += result.updated;
+    totalEvents += result.total;
+    allErrors.push(...result.errors);
   }
 
   const timestamp = new Date().toISOString();
   await setSetting("last_sync", timestamp);
   await setSetting("sync_status", "idle");
-  await setSetting("sync_summary", `${imported} imported, ${updated} updated, ${errors.length} errors out of ${events.length} total`);
+  await setSetting("sync_summary", `${totalImported} imported, ${totalUpdated} updated, ${allErrors.length} errors out of ${totalEvents} total`);
 
-  return { ok: true, imported, updated, total: events.length, errors: errors.slice(0, 10), lastSync: timestamp };
+  return { ok: true, imported: totalImported, updated: totalUpdated, total: totalEvents, errors: allErrors.slice(0, 20), lastSync: timestamp };
 }
 
 // ── POST /admin/sync-fixtures ─────────────────────────────────────────────────
-router.post("/admin/sync-fixtures", requireAdmin, async (_req, res): Promise<void> => {
+router.post("/admin/sync-fixtures", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
   const apiKey = await getSetting("allsports_api_key");
   if (!apiKey) {
     res.status(400).json({ error: "No API key configured. Add one in Settings first." });
     return;
   }
+  const sport = typeof req.body?.sport === "string" ? req.body.sport : undefined;
   try {
-    const result = await runFullFixtureSync();
+    const result = await runFullFixtureSync(sport);
     res.json(result);
   } catch (err: any) {
     res.status(502).json({ error: err.message });

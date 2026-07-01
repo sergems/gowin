@@ -8,8 +8,6 @@ import { fmtUTCTime, utcDateKey, utcDateLabel } from "@/lib/formatUTC";
 import { useBetSlip } from "@/contexts/BetSlipContext";
 import { sortOdds } from "@/lib/sortOdds";
 
-// ── Date helpers (UTC-aware) ──────────────────────────────────────────────────
-
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function Logo({ src, alt, size = 24 }: { src: string | null | undefined; alt: string; size?: number }) {
@@ -26,6 +24,16 @@ function Logo({ src, alt, size = 24 }: { src: string | null | undefined; alt: st
       onError={() => setFailed(true)}
     />
   );
+}
+
+// ── Sport metadata ─────────────────────────────────────────────────────────────
+
+function getSportMeta(sportName: string | null | undefined) {
+  const n = (sportName ?? "Football").toLowerCase();
+  if (n === "basketball") return { icon: "🏀", defaultMarket: "Moneyline", label: "Basketball" };
+  if (n === "tennis")     return { icon: "🎾", defaultMarket: "Match Winner", label: "Tennis" };
+  if (n === "cricket")    return { icon: "🏏", defaultMarket: "Match Winner", label: "Cricket" };
+  return { icon: "⚽", defaultMarket: "1X2", label: "Football" };
 }
 
 // ── Odds button ───────────────────────────────────────────────────────────────
@@ -80,9 +88,12 @@ function FixtureCard({ fixture }: { fixture: any }) {
   const [expanded, setExpanded] = useState(false);
   const [activeMarketIdx, setActiveMarketIdx] = useState(0);
 
-  const market1x2 = markets.find((m) => m.marketType === "1X2") ?? markets[0] ?? null;
+  const sportMeta = getSportMeta(fixture.sportName);
+  const defaultMarket =
+    markets.find((m) => m.marketType === sportMeta.defaultMarket) ?? markets[0] ?? null;
+
   const fixtureName = `${fixture.homeTeam?.name ?? "Home"} vs ${fixture.awayTeam?.name ?? "Away"}`;
-  const activeMarket = expanded ? (markets[activeMarketIdx] ?? market1x2) : market1x2;
+  const activeMarket = expanded ? (markets[activeMarketIdx] ?? defaultMarket) : defaultMarket;
 
   const handleToggle = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -165,7 +176,7 @@ function FixtureCard({ fixture }: { fixture: any }) {
             <div className="px-3 pt-3 pb-1" onClick={(e) => e.preventDefault()}>
               {!expanded && (
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-                  {market1x2?.marketType ?? activeMarket.marketType}
+                  {defaultMarket?.marketType ?? activeMarket.marketType}
                 </p>
               )}
               <div className="flex gap-2">
@@ -207,39 +218,60 @@ function FixtureCard({ fixture }: { fixture: any }) {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-export default function FootballPage() {
+export default function SportsPage() {
   const search = useSearch();
   const params = new URLSearchParams(search);
   const selectedLeagueId = params.get("leagueId") ? Number(params.get("leagueId")) : null;
   const selectedLeagueName = params.get("leagueName") ? decodeURIComponent(params.get("leagueName")!) : null;
+  const selectedSportId = params.get("sportId") ? Number(params.get("sportId")) : null;
+  const selectedSportName = params.get("sportName") ? decodeURIComponent(params.get("sportName")!) : null;
+
+  const queryParams: any = { status: "upcoming", withMarkets: true };
+  if (selectedLeagueId) {
+    queryParams.leagueId = selectedLeagueId;
+    queryParams.limit = 50;
+  } else if (selectedSportId) {
+    queryParams.sportId = selectedSportId;
+    queryParams.limit = 50;
+  } else {
+    queryParams.limit = 20;
+  }
 
   const { data: fixturesData, isLoading } = useListFixtures(
-    (selectedLeagueId
-      ? { leagueId: selectedLeagueId, status: "upcoming", limit: 50, withMarkets: true }
-      : { status: "upcoming", limit: 20, withMarkets: true }) as any,
-    { query: { queryKey: ["fixtures", "sports", selectedLeagueId] } },
+    queryParams,
+    { query: { queryKey: ["fixtures", "sports", selectedLeagueId, selectedSportId] } },
   );
 
-  // Server already filters startTime > NOW(); client-side guard covers stale cache on first render
   const now = new Date();
   const fixtures = (fixturesData?.fixtures ?? []).filter(
     (f) => new Date(f.startTime) > now,
+  );
+
+  // Detect which sport we're browsing
+  const firstFixtureSportName = fixtures[0]?.sportName ?? null;
+  const effectiveSportName = selectedSportName ?? firstFixtureSportName;
+  const sportMeta = getSportMeta(effectiveSportName);
+
+  const pageTitle = selectedLeagueName ?? (
+    selectedSportId
+      ? (selectedSportName ? `${sportMeta.icon} ${selectedSportName}` : sportMeta.icon + " " + sportMeta.label)
+      : `${sportMeta.icon} All Fixtures`
   );
 
   return (
     <div className="space-y-6">
       {/* Page header */}
       <div className="flex flex-col gap-2">
-        {selectedLeagueName && (
+        {(selectedLeagueName || selectedSportId) && (
           <button onClick={() => window.history.back()} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors self-start">
             <ChevronLeft className="w-4 h-4" /> Back
           </button>
         )}
         <div>
           <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
-            ⚽ {selectedLeagueName ?? "All Fixtures"}
+            {pageTitle}
           </h1>
-          {selectedLeagueName && (
+          {(selectedLeagueName || selectedSportId) && (
             <p className="text-xs text-muted-foreground mt-0.5">
               {fixturesData?.total ?? 0} upcoming matches
             </p>
@@ -261,6 +293,8 @@ export default function FootballPage() {
           <p className="text-muted-foreground text-sm">
             {selectedLeagueId
               ? "No scheduled matches for this league."
+              : selectedSportId
+              ? "No upcoming matches for this sport. Try syncing fixtures from Admin → Settings."
               : "Select a league from the sidebar to browse fixtures."}
           </p>
         </div>
@@ -293,9 +327,9 @@ export default function FootballPage() {
               </div>
             ))}
 
-            {!selectedLeagueId && fixtures.length === 20 && (
+            {!selectedLeagueId && !selectedSportId && fixtures.length === 20 && (
               <p className="text-center text-xs text-muted-foreground mt-6">
-                Showing 20 fixtures — select a specific league from the sidebar to see all matches.
+                Showing 20 fixtures — select a specific league or sport to see all matches.
               </p>
             )}
           </div>

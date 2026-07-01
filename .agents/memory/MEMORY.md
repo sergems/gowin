@@ -2,3 +2,4 @@
 - [No zod in api-server](no-zod-api-server.md) — esbuild can't resolve `zod` in api-server; use plain JS guards for request validation
 - [DB push workaround](db-push-workaround.md) — drizzle-kit push fails non-TTY; use raw psql for schema changes
 - [PawaPay integration](pawapay-integration.md) — PawaPay mobile money gateway integrated; multi-currency wallets, payment_clerk role, full deposit/withdrawal/clerk flow
+- [Multi-sport sync pattern](multi-sport-sync.md) — SportSyncConfig interface drives Football/Basketball/Tennis/Cricket sync from AllSportsAPI; Tennis uses first_player/second_player fields; sport nav items are dynamic (fetched from /api/sports, Football excluded since it has its own dropdown)
