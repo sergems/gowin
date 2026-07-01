@@ -78,11 +78,12 @@ externalPort = 8080
 [userenv]
 
 [userenv.shared]
-SMTP_HOST = "mail.gowinrdc.com"
+SMTP_HOST = "premium156.web-hosting.com"
 SMTP_PORT = "465"
 SMTP_USER = "no-reply@gowinrdc.com"
 SMTP_SECURE = "true"
 SMTP_FROM = "GoWin <no-reply@gowinrdc.com>"
+SMTP_PASS = "n_C4]qnCbG#r-L]o"
 
 [nix]
 channel = "stable-25_05"
