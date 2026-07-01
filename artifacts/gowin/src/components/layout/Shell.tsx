@@ -252,7 +252,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const { data: sportsData } = useQuery<Array<{ id: number; name: string; icon: string }>>({
     queryKey: ["sports-list"],
     queryFn: () => fetch("/api/sports").then((r) => r.json()),
-    enabled: !isAdmin && !isStaffRole,
+    enabled: !isStaffRole,
     staleTime: 10 * 60 * 1000,
   });
 
@@ -461,7 +461,7 @@ export function Shell({ children }: { children: ReactNode }) {
               </>
             ) : null}
 
-            {!isAdmin && !isStaffRole && sportsData?.filter((s) => s.name !== "Football").map((sport) => (
+            {!isStaffRole && sportsData?.filter((s) => s.name !== "Football").map((sport) => (
               <Link
                 key={sport.id}
                 href={`/sports?sportId=${sport.id}&sportName=${encodeURIComponent(sport.name)}`}
