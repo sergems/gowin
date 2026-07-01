@@ -416,15 +416,15 @@ const SPORT_CONFIGS: SportSyncConfig[] = [
     name: "Basketball",
     icon: "🏀",
     apiBase: "basketball",
-    getLeagueExternalId: (e) => String(e.league_key ?? e.event_league_id ?? "bball_" + String(e.event_key)),
+    getLeagueExternalId: (e) => "bball_league_" + String(e.league_key ?? e.event_key),
     getLeagueName: (e) => e.league_name ?? e.event_league ?? "Unknown League",
     getLeagueLogo: (e) => e.league_logo ?? null,
     getHomeTeamName: (e) => e.event_home_team ?? e.home_team ?? "Home",
     getAwayTeamName: (e) => e.event_away_team ?? e.away_team ?? "Away",
-    getHomeTeamKey: (e) => String(e.home_team_key ?? e.home_team_id ?? "ht_" + String(e.event_key)),
-    getAwayTeamKey: (e) => String(e.away_team_key ?? e.away_team_id ?? "at_" + String(e.event_key)),
-    getHomeTeamLogo: (e) => e.home_team_logo ?? null,
-    getAwayTeamLogo: (e) => e.away_team_logo ?? null,
+    getHomeTeamKey: (e) => "bball_team_" + String(e.home_team_key ?? "ht_" + String(e.event_key)),
+    getAwayTeamKey: (e) => "bball_team_" + String(e.away_team_key ?? "at_" + String(e.event_key)),
+    getHomeTeamLogo: (e) => e.event_home_team_logo ?? e.home_team_logo ?? null,
+    getAwayTeamLogo: (e) => e.event_away_team_logo ?? e.away_team_logo ?? null,
     getFixtureKey: (e) => "bball_" + String(e.event_key),
     getDate: (e) => e.event_date,
     getTime: (e) => e.event_time,
@@ -439,16 +439,16 @@ const SPORT_CONFIGS: SportSyncConfig[] = [
     name: "Tennis",
     icon: "🎾",
     apiBase: "tennis",
-    getLeagueExternalId: (e) => String(e.league_key ?? e.tournament_key ?? "tennis_" + String(e.event_key)),
+    getLeagueExternalId: (e) => "tennis_league_" + String(e.league_key ?? e.event_key),
     getLeagueName: (e) => e.league_name ?? e.tournament_name ?? "Unknown Tournament",
     getLeagueLogo: (e) => e.league_logo ?? null,
     // Tennis uses players, not teams — map to home/away slots
     getHomeTeamName: (e) => e.event_first_player ?? e.event_home_team ?? "Player 1",
     getAwayTeamName: (e) => e.event_second_player ?? e.event_away_team ?? "Player 2",
-    getHomeTeamKey: (e) => "t_" + String(e.first_player_key ?? e.home_team_key ?? String(e.event_key) + "_1"),
-    getAwayTeamKey: (e) => "t_" + String(e.second_player_key ?? e.away_team_key ?? String(e.event_key) + "_2"),
-    getHomeTeamLogo: (e) => e.first_player_logo ?? e.home_team_logo ?? null,
-    getAwayTeamLogo: (e) => e.second_player_logo ?? e.away_team_logo ?? null,
+    getHomeTeamKey: (e) => "tennis_player_" + String(e.first_player_key ?? String(e.event_key) + "_1"),
+    getAwayTeamKey: (e) => "tennis_player_" + String(e.second_player_key ?? String(e.event_key) + "_2"),
+    getHomeTeamLogo: (e) => e.event_first_player_logo ?? e.first_player_logo ?? null,
+    getAwayTeamLogo: (e) => e.event_second_player_logo ?? e.second_player_logo ?? null,
     getFixtureKey: (e) => "tennis_" + String(e.event_key),
     getDate: (e) => e.event_date,
     getTime: (e) => e.event_time,
@@ -463,20 +463,26 @@ const SPORT_CONFIGS: SportSyncConfig[] = [
     name: "Cricket",
     icon: "🏏",
     apiBase: "cricket",
-    getLeagueExternalId: (e) => String(e.league_key ?? e.event_league_id ?? "cricket_" + String(e.event_key)),
+    getLeagueExternalId: (e) => "cricket_league_" + String(e.league_key ?? e.event_key),
     getLeagueName: (e) => e.league_name ?? "Unknown Competition",
     getLeagueLogo: (e) => e.league_logo ?? null,
     getHomeTeamName: (e) => e.event_home_team ?? e.home_team ?? "Home",
     getAwayTeamName: (e) => e.event_away_team ?? e.away_team ?? "Away",
-    getHomeTeamKey: (e) => String(e.home_team_key ?? e.home_team_id ?? "cric_ht_" + String(e.event_key)),
-    getAwayTeamKey: (e) => String(e.away_team_key ?? e.away_team_id ?? "cric_at_" + String(e.event_key)),
-    getHomeTeamLogo: (e) => e.home_team_logo ?? null,
-    getAwayTeamLogo: (e) => e.away_team_logo ?? null,
+    getHomeTeamKey: (e) => "cricket_team_" + String(e.home_team_key ?? "ht_" + String(e.event_key)),
+    getAwayTeamKey: (e) => "cricket_team_" + String(e.away_team_key ?? "at_" + String(e.event_key)),
+    getHomeTeamLogo: (e) => e.event_home_team_logo ?? e.home_team_logo ?? null,
+    getAwayTeamLogo: (e) => e.event_away_team_logo ?? e.away_team_logo ?? null,
     getFixtureKey: (e) => "cricket_" + String(e.event_key),
-    getDate: (e) => e.event_date,
+    // Cricket uses event_date_start (not event_date)
+    getDate: (e) => e.event_date_start ?? e.event_date ?? null,
     getTime: (e) => e.event_time,
     getStatus: (e) => e.event_status ?? "",
-    getResult: (e) => e.event_final_result ?? "",
+    getResult: (e) => {
+      const h = e.event_home_final_result;
+      const a = e.event_away_final_result;
+      if (h && a && h !== "" && a !== "") return `${h}-${a}`;
+      return e.event_final_result ?? "";
+    },
     getCountryKey: (e) => String(e.event_country_key ?? ""),
     getCountryName: (e) => e.country_name ?? "International",
     getCountryLogo: (e) => e.country_logo ?? null,
@@ -533,8 +539,18 @@ async function syncSportFixtures(
       const homeTeamId = await upsertTeam(homeTeamName, config.getHomeTeamLogo(event), homeExtId);
       const awayTeamId = await upsertTeam(awayTeamName, config.getAwayTeamLogo(event), awayExtId);
 
+      const rawDate = config.getDate(event);
+      if (!rawDate || typeof rawDate !== "string" || !rawDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        errors.push(`[${config.name}] Event ${event.event_key}: missing/invalid event_date "${rawDate}"`);
+        continue;
+      }
       const timeStr = config.getTime(event) ?? "00:00";
-      const rawStartTime = new Date(`${config.getDate(event)}T${timeStr}:00Z`);
+      const safeTime = timeStr && typeof timeStr === "string" && timeStr.match(/^\d{2}:\d{2}$/) ? timeStr : "00:00";
+      const rawStartTime = new Date(`${rawDate}T${safeTime}:00Z`);
+      if (isNaN(rawStartTime.getTime())) {
+        errors.push(`[${config.name}] Event ${event.event_key}: unparseable date "${rawDate}T${safeTime}"`);
+        continue;
+      }
       // AllSports API sends local time (UTC+2) labeled as UTC — subtract 2h for true UTC
       const startTime = new Date(rawStartTime.getTime() - 2 * 60 * 60 * 1000);
       const rawStatus = mapStatus(config.getStatus(event));
