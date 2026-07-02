@@ -65,7 +65,7 @@ export default function CashUpPage() {
     queryKey: ["branch-info-cashup"],
     queryFn: () => fetch("/api/branch/info", { headers }).then(r => r.json()).then(d => d.branch),
   });
-  const { data: agentsData } = useQuery<{ agents: { id: number; username: string; firstName: string|null; lastName: string|null }[] }>({
+  const { data: agentsData } = useQuery<{ agents: { id: number; username: string; firstName: string|null; lastName: string|null }[] } >({
     queryKey: ["branch-agents-cashup"],
     queryFn: () => fetch("/api/branch/agents", { headers }).then(r => r.json()),
   });

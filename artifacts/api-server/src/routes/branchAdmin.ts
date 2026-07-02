@@ -341,6 +341,41 @@ router.get("/branch/bets/lookup/:code", requireBranchAdmin, async (req: AuthRequ
   });
 });
 
+// ── PATCH /branch/bets/:id/void — branch-admin void a pending bet ────────────
+router.patch("/branch/bets/:id/void", requireBranchAdmin, async (req: AuthRequest, res): Promise<void> => {
+  const branchId = getBranchId(req);
+  if (!branchId) { res.status(403).json({ error: "No branch assigned" }); return; }
+
+  const betId = parseInt(req.params.id as string);
+
+  const [bet] = await db.select().from(betsTable)
+    .where(and(eq(betsTable.id, betId), eq(betsTable.branchId, branchId)))
+    .limit(1);
+
+  if (!bet) { res.status(404).json({ error: "Bet not found at this branch" }); return; }
+  if (bet.status !== "pending") { res.status(400).json({ error: "Only pending bets can be voided" }); return; }
+
+  await db.update(betsTable).set({ status: "void" }).where(eq(betsTable.id, betId));
+
+  // Refund the stake to the agent's wallet (or the user's wallet if placed directly)
+  const targetUserId = bet.agentId ?? bet.userId;
+  const [wallet] = await db.select().from(walletsTable).where(eq(walletsTable.userId, targetUserId)).limit(1);
+  if (wallet) {
+    const newBalance = parseFloat(wallet.balance) + parseFloat(bet.stake as any);
+    await db.update(walletsTable)
+      .set({ balance: String(newBalance.toFixed(2)) })
+      .where(eq(walletsTable.userId, targetUserId));
+    await db.insert(transactionsTable).values({
+      walletId: wallet.id,
+      amount: String(bet.stake),
+      type: "credit",
+      description: `Bet ${bet.code ?? "#" + bet.id} voided — stake refunded`,
+    });
+  }
+
+  res.json({ ok: true, betId });
+});
+
 // ── GET /branch/bets — list all bets for this branch ─────────────────────────
 router.get("/branch/bets", requireBranchAdmin, async (req: AuthRequest, res): Promise<void> => {
   const branchId = getBranchId(req);

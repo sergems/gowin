@@ -52,7 +52,7 @@ export default function BranchVouchersPage() {
       setError("");
       alert(`${data.allocated} voucher(s) allocated to agent.`);
     },
-    onError: (e: any) => setError(e.message ?? "Failed to allocate"),
+    onError: (e: any) => setError(e.response?.data?.error ?? e.message ?? "Failed to allocate"),
   });
 
   const vouchers: Voucher[] = vData?.vouchers ?? [];

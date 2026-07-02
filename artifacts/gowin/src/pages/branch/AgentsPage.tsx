@@ -48,13 +48,14 @@ export default function BranchAgentsPage() {
       setTempCred({ username: data.agent.username, email: data.agent.email, tempPassword: data.tempPassword, role: data.agent.role });
       setError("");
     },
-    onError: (e: any) => setError(e.message ?? "Failed to create staff account"),
+    onError: (e: any) => setError(e.response?.data?.error ?? e.message ?? "Failed to create staff account"),
   });
 
   const suspendMut = useMutation({
     mutationFn: ({ id, disabled }: { id: number; disabled: boolean }) =>
       api.patch<{ ok: boolean }>(`/api/branch/agents/${id}/suspend`, { disabled }).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["branch-agents"] }),
+    onError: (e: any) => alert(e.response?.data?.error ?? e.message ?? "Failed to update staff status"),
   });
 
   const agents: Agent[] = data?.agents ?? [];

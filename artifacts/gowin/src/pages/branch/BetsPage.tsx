@@ -192,8 +192,8 @@ export default function BranchBetsPage() {
   const handleVoid = async (betId: number) => {
     if (!confirm("Void this bet and refund the stake?")) return;
     try {
-      const res = await fetch(`/api/bets/${betId}/void`, {
-        method: "POST",
+      const res = await fetch(`/api/branch/bets/${betId}/void`, {
+        method: "PATCH",
         headers: { ...headers, "Content-Type": "application/json" },
       });
       if (!res.ok) {
