@@ -1,6 +1,6 @@
 import { createContext, useContext, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { translate, formatCurrencyValue, type Language, type TranslationKey } from "@/lib/i18n";
+import { translate, formatCurrencyValue, parseCurrencyInput, type Language, type TranslationKey } from "@/lib/i18n";
 
 interface SiteSettings {
   currency: string;
@@ -14,6 +14,7 @@ interface SiteSettingsContextValue {
   exchangeRate: number;
   t: (key: TranslationKey) => string;
   formatCurrency: (amount: number | string) => string;
+  parseAmount: (amount: number | string) => number;
 }
 
 const SiteSettingsContext = createContext<SiteSettingsContextValue>({
@@ -22,6 +23,7 @@ const SiteSettingsContext = createContext<SiteSettingsContextValue>({
   exchangeRate: 2800,
   t: (key) => key,
   formatCurrency: (amount) => `$${Number(amount).toFixed(2)}`,
+  parseAmount: (amount) => Number(amount),
 });
 
 export function SiteSettingsProvider({ children }: { children: ReactNode }) {
@@ -45,9 +47,13 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
   const t = (key: TranslationKey) => translate(key, language);
   const formatCurrency = (amount: number | string) =>
     formatCurrencyValue(Number(amount), currency, language, exchangeRate);
+  // Converts a value the user typed while viewing the site in the active currency
+  // back into the USD figure the backend expects (wallet balances/bet stakes are USD-only).
+  const parseAmount = (amount: number | string) =>
+    parseCurrencyInput(Number(amount), currency, exchangeRate);
 
   return (
-    <SiteSettingsContext.Provider value={{ currency, language, exchangeRate, t, formatCurrency }}>
+    <SiteSettingsContext.Provider value={{ currency, language, exchangeRate, t, formatCurrency, parseAmount }}>
       {children}
     </SiteSettingsContext.Provider>
   );

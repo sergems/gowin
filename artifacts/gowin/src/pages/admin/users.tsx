@@ -76,7 +76,7 @@ const ROLE_TABS = [
 type RoleTab = typeof ROLE_TABS[number]["key"];
 
 export default function AdminUsers() {
-  const { formatCurrency } = useSiteSettings();
+  const { formatCurrency, parseAmount, currency } = useSiteSettings();
   const [activeTab, setActiveTab] = useState<RoleTab>("all");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -142,7 +142,9 @@ export default function AdminUsers() {
     e.preventDefault();
     if (!selectedUser || !actionType || !amount) return;
     try {
-      const payload = { userId: selectedUser.id, amount: parseFloat(amount), description: description || `Admin ${actionType}` };
+      // The amount is typed in the site's active display currency; convert to USD
+      // (wallet balances are always stored/processed in USD) before sending it.
+      const payload = { userId: selectedUser.id, amount: parseAmount(parseFloat(amount) || 0), description: description || `Admin ${actionType}` };
       if (actionType === "credit") await creditMutation.mutateAsync({ data: payload });
       else await debitMutation.mutateAsync({ data: payload });
       toast({ title: "Success", description: `Successfully ${actionType}ed wallet.` });
@@ -629,7 +631,7 @@ export default function AdminUsers() {
                 <div className="text-sm text-muted-foreground">Current Balance: <span className="font-bold text-foreground">{formatCurrency(selectedUser.wallet?.balance ?? 0)}</span></div>
               </div>
               <div className="space-y-2">
-                <Label>Amount ($)</Label>
+                <Label>Amount ({currency})</Label>
                 <Input type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} required />
               </div>
               <div className="space-y-2">

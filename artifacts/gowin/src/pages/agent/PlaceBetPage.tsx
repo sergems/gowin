@@ -33,7 +33,7 @@ interface Selection {
 
 export default function AgentPlaceBetPage() {
   const qc = useQueryClient();
-  const { formatCurrency } = useSiteSettings();
+  const { formatCurrency, parseAmount } = useSiteSettings();
   const { data: wallet, refetch: refetchWallet } = useGetMyWallet({ query: { queryKey: getGetMyWalletQueryKey() } });
   const [selections, setSelections] = useState<Selection[]>([]);
   const [stake, setStake] = useState("");
@@ -66,7 +66,9 @@ export default function AgentPlaceBetPage() {
     !search || f.homeTeam.toLowerCase().includes(search.toLowerCase()) || f.awayTeam.toLowerCase().includes(search.toLowerCase())
   );
 
-  const stakeNum = parseFloat(stake) || 0;
+  // stake input is in the site's active display currency; convert to USD (the wallet/bet
+  // stake is always processed in USD) before doing any math or sending it to the backend.
+  const stakeNum = parseAmount(parseFloat(stake) || 0);
   const totalOdds = selections.reduce((acc, s) => acc * s.odds, 1);
   const potentialWin = stakeNum * totalOdds;
   const balance = wallet?.balance ?? 0;

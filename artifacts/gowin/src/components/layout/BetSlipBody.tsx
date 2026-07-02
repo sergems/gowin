@@ -24,7 +24,7 @@ interface FixtureLiveData {
 }
 
 export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
-  const { t, formatCurrency, currency } = useSiteSettings();
+  const { t, formatCurrency, currency, parseAmount } = useSiteSettings();
   const {
     selections, removeSelection, stake, setStake,
     totalOdds, potentialWin, isMaxWinCapped,
@@ -311,7 +311,9 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
                   if (raw === "" || /^\d*\.?\d*$/.test(raw)) {
                     setStakeInput(raw);
                     const parsed = parseFloat(raw);
-                    setStake(!isNaN(parsed) ? parsed : 0);
+                    // stake is always tracked internally in USD; the input is in the
+                    // site's active display currency (e.g. CDF), so convert it back.
+                    setStake(!isNaN(parsed) ? parseAmount(parsed) : 0);
                   }
                 }}
                 onBlur={() => {

@@ -780,6 +780,16 @@ export function translate(key: TranslationKey, lang: Language): string {
   return dict[key] ?? (translations.en as Record<string, string>)[key] ?? key;
 }
 
+// The site stores/processes all monetary figures (wallet balances, bet stakes) in USD.
+// When a user types an amount while viewing the site in CDF, that typed number is a CDF
+// figure and must be converted back to USD before it is sent to the backend.
+export function parseCurrencyInput(amount: number, currency: string, exchangeRate = 1): number {
+  if (currency === "CDF" && exchangeRate > 0) {
+    return amount / exchangeRate;
+  }
+  return amount;
+}
+
 export function formatCurrencyValue(amount: number, currency: string, language: Language, exchangeRate = 1): string {
   const locale = language === "fr" ? "fr-FR" : "en-US";
   // All DB amounts are stored in USD; convert to CDF using the exchange rate
