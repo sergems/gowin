@@ -126,8 +126,11 @@ router.post("/branch/agents", requireBranchAdmin, async (req: AuthRequest, res):
 
   const assignedRole = role === "payout" ? "payout" : "agent";
 
-  const existing = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
-  if (existing.length > 0) { res.status(409).json({ error: "Email already in use" }); return; }
+  const existingEmail = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, email.trim())).limit(1);
+  if (existingEmail.length > 0) { res.status(409).json({ error: "Email already in use" }); return; }
+
+  const existingUsername = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.username, username.trim())).limit(1);
+  if (existingUsername.length > 0) { res.status(409).json({ error: "Username already taken" }); return; }
 
   const tempPassword = generateTempPassword();
   const passwordHash = await bcrypt.hash(tempPassword, 10);
