@@ -202,6 +202,144 @@ export async function sendWithdrawalApprovedEmail(to: string, username: string, 
   });
 }
 
+export async function sendDepositCompletedEmail(to: string, username: string, amount: string, currency: string): Promise<boolean> {
+  const formatted = `${parseFloat(amount).toFixed(2)} ${currency}`;
+  return sendMail({
+    to,
+    subject: "GoWin — Deposit Successful",
+    text: `Hi ${username},\n\nYour deposit of ${formatted} has been received and credited to your wallet.\n\nGoWin Team`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+        <h2 style="color:#16a34a">✅ Deposit Successful</h2>
+        <p>Hi <strong>${username}</strong>,</p>
+        <p>Your deposit has been received and credited to your wallet.</p>
+        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:20px;margin:20px 0;text-align:center">
+          <p style="color:#15803d;font-size:14px;margin:0 0 4px 0">Amount Credited</p>
+          <p style="font-size:28px;font-weight:bold;color:#15803d;margin:0">${formatted}</p>
+        </div>
+        <p style="color:#666;font-size:14px">— The GoWin Team</p>
+      </div>
+    `,
+  });
+}
+
+export async function sendWithdrawalRejectedEmail(to: string, username: string, amount: string, currency: string): Promise<boolean> {
+  const formatted = `${parseFloat(amount).toFixed(2)} ${currency}`;
+  return sendMail({
+    to,
+    subject: "GoWin — Withdrawal Rejected",
+    text: `Hi ${username},\n\nYour withdrawal request of ${formatted} was rejected and the amount has been refunded to your wallet.\n\nGoWin Team`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+        <h2 style="color:#dc2626">⛔ Withdrawal Rejected</h2>
+        <p>Hi <strong>${username}</strong>,</p>
+        <p>Your withdrawal request was rejected and the amount has been refunded to your wallet balance.</p>
+        <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:20px;margin:20px 0;text-align:center">
+          <p style="color:#b91c1c;font-size:14px;margin:0 0 4px 0">Amount Refunded</p>
+          <p style="font-size:28px;font-weight:bold;color:#b91c1c;margin:0">${formatted}</p>
+        </div>
+        <p style="color:#666;font-size:14px">If you have questions, please contact support.</p>
+        <p style="color:#666;font-size:14px">— The GoWin Team</p>
+      </div>
+    `,
+  });
+}
+
+export async function sendBetWonEmail(to: string, username: string, amount: string, currency: string, betId: number): Promise<boolean> {
+  const formatted = `${parseFloat(amount).toFixed(2)} ${currency}`;
+  return sendMail({
+    to,
+    subject: "GoWin — You Won! 🎉",
+    text: `Hi ${username},\n\nCongratulations! Your bet #${betId} won. ${formatted} has been credited to your wallet.\n\nGoWin Team`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+        <h2 style="color:#16a34a">🎉 You Won!</h2>
+        <p>Hi <strong>${username}</strong>,</p>
+        <p>Congratulations! Your bet <strong>#${betId}</strong> won.</p>
+        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:20px;margin:20px 0;text-align:center">
+          <p style="color:#15803d;font-size:14px;margin:0 0 4px 0">Winnings Credited</p>
+          <p style="font-size:28px;font-weight:bold;color:#15803d;margin:0">${formatted}</p>
+        </div>
+        <p style="color:#666;font-size:14px">— The GoWin Team</p>
+      </div>
+    `,
+  });
+}
+
+export async function sendWalletCreditEmail(to: string, username: string, amount: string, currency: string, description: string): Promise<boolean> {
+  const formatted = `${parseFloat(amount).toFixed(2)} ${currency}`;
+  return sendMail({
+    to,
+    subject: "GoWin — Wallet Credited",
+    text: `Hi ${username},\n\nYour wallet has been credited with ${formatted}.\nReason: ${description}\n\nGoWin Team`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+        <h2 style="color:#16a34a">✅ Wallet Credited</h2>
+        <p>Hi <strong>${username}</strong>,</p>
+        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:20px;margin:20px 0;text-align:center">
+          <p style="color:#15803d;font-size:14px;margin:0 0 4px 0">Amount Credited</p>
+          <p style="font-size:28px;font-weight:bold;color:#15803d;margin:0">${formatted}</p>
+        </div>
+        <p style="color:#666;font-size:14px">Reason: ${description}</p>
+        <p style="color:#666;font-size:14px">— The GoWin Team</p>
+      </div>
+    `,
+  });
+}
+
+export async function sendWalletDebitEmail(to: string, username: string, amount: string, currency: string, description: string): Promise<boolean> {
+  const formatted = `${parseFloat(amount).toFixed(2)} ${currency}`;
+  return sendMail({
+    to,
+    subject: "GoWin — Wallet Debited",
+    text: `Hi ${username},\n\nYour wallet has been debited ${formatted}.\nReason: ${description}\n\nGoWin Team`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+        <h2 style="color:#dc2626">Wallet Debited</h2>
+        <p>Hi <strong>${username}</strong>,</p>
+        <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:20px;margin:20px 0;text-align:center">
+          <p style="color:#b91c1c;font-size:14px;margin:0 0 4px 0">Amount Debited</p>
+          <p style="font-size:28px;font-weight:bold;color:#b91c1c;margin:0">${formatted}</p>
+        </div>
+        <p style="color:#666;font-size:14px">Reason: ${description}</p>
+        <p style="color:#666;font-size:14px">— The GoWin Team</p>
+      </div>
+    `,
+  });
+}
+
+export async function sendAccountBlockedEmail(to: string, username: string): Promise<boolean> {
+  return sendMail({
+    to,
+    subject: "GoWin — Account Blocked",
+    text: `Hi ${username},\n\nYour account has been blocked by an administrator. If you believe this is a mistake, please contact support.\n\nGoWin Team`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+        <h2 style="color:#dc2626">Account Blocked</h2>
+        <p>Hi <strong>${username}</strong>,</p>
+        <p>Your account has been blocked by an administrator. If you believe this is a mistake, please contact support.</p>
+        <p style="color:#666;font-size:14px">— The GoWin Team</p>
+      </div>
+    `,
+  });
+}
+
+export async function sendAccountUnblockedEmail(to: string, username: string): Promise<boolean> {
+  return sendMail({
+    to,
+    subject: "GoWin — Account Reactivated",
+    text: `Hi ${username},\n\nYour account has been reactivated. You can now log in as usual.\n\nGoWin Team`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+        <h2 style="color:#16a34a">Account Reactivated</h2>
+        <p>Hi <strong>${username}</strong>,</p>
+        <p>Your account has been reactivated. You can now log in as usual.</p>
+        <p style="color:#666;font-size:14px">— The GoWin Team</p>
+      </div>
+    `,
+  });
+}
+
 export async function sendAccountLockedEmail(to: string, username: string): Promise<boolean> {
   const appUrl = (await getDbSetting("app_url")) ?? process.env.APP_URL ?? "";
   return sendMail({

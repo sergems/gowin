@@ -6,6 +6,7 @@ import { requireAdmin, requireAdminOrManager, requireAuth, type AuthRequest } fr
 import { ListUsersQueryParams, GetUserParams } from "@workspace/api-zod";
 import { sendTempPasswordEmail } from "../lib/email";
 import { logger } from "../lib/logger";
+import { notifyAccountBlocked, notifyAccountUnblocked } from "../lib/notifications";
 
 const router = Router();
 
@@ -225,6 +226,12 @@ router.patch("/users/:id/disable", requireAdminOrManager, async (req: AuthReques
   if (!updated) {
     res.status(404).json({ error: "User not found" });
     return;
+  }
+
+  if (disabled) {
+    notifyAccountBlocked(updated.id).catch(() => {});
+  } else {
+    notifyAccountUnblocked(updated.id).catch(() => {});
   }
 
   res.json(formatUser(updated));

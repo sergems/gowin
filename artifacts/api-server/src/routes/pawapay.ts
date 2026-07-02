@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db, pawapayDepositsTable, walletsTable, transactionsTable, webhookLogsTable, withdrawalsTable, usersTable } from "@workspace/db";
-import { notifyPayoutCompleted, notifyPayoutFailed } from "../lib/notifications";
+import { notifyPayoutCompleted, notifyPayoutFailed, notifyDepositCompleted } from "../lib/notifications";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 import {
   getPawapayConfig,
@@ -325,6 +325,7 @@ router.post("/pawapay/webhook", async (req, res): Promise<void> => {
               .update(pawapayDepositsTable)
               .set({ walletCredited: true, status: "COMPLETED", pawapayStatus: status, updatedAt: new Date() })
               .where(eq(pawapayDepositsTable.id, deposit.id));
+            notifyDepositCompleted(deposit.userId, deposit.amount, deposit.currency ?? "USD", deposit.id).catch(() => {});
           }
         } else if (deposit && status === "FAILED") {
           await db

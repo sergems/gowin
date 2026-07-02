@@ -47,6 +47,13 @@ const NOTIF_ICONS: Record<string, string> = {
   payout_failed: "❌",
   withdrawal_approved: "🕐",
   withdrawal_rejected: "⛔",
+  deposit_completed: "💰",
+  bet_won: "🎉",
+  bet_lost: "📉",
+  wallet_credit: "➕",
+  wallet_debit: "➖",
+  account_blocked: "🚫",
+  account_unblocked: "🔓",
 };
 
 function NotificationBell() {

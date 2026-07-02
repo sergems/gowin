@@ -3,7 +3,7 @@ import { db, usersTable, walletsTable, withdrawalsTable, branchesTable, transact
 import { eq, desc, and } from "drizzle-orm";
 import { requireAuth, requireAdmin, requireAdminOrManager, requirePaymentClerk, type AuthRequest } from "../middlewares/auth";
 import { getPawapayConfig, initiatePayout, getPayoutStatus } from "../lib/pawapay";
-import { notifyPayoutCompleted, notifyPayoutFailed, notifyWithdrawalApproved } from "../lib/notifications";
+import { notifyPayoutCompleted, notifyPayoutFailed, notifyWithdrawalApproved, notifyWithdrawalRejected } from "../lib/notifications";
 import { logger } from "../lib/logger";
 import crypto from "crypto";
 
@@ -182,9 +182,16 @@ router.patch("/admin/withdrawals/:id", requireAdminOrManager, async (req: AuthRe
     .where(eq(withdrawalsTable.id, id))
     .returning();
 
-  // Notify user of approval
+  // Notify user of approval / rejection
   if (status === "approved") {
     notifyWithdrawalApproved(
+      withdrawal.userId,
+      withdrawal.amount,
+      withdrawal.currency ?? "USD",
+      id
+    ).catch(() => {});
+  } else if (status === "rejected") {
+    notifyWithdrawalRejected(
       withdrawal.userId,
       withdrawal.amount,
       withdrawal.currency ?? "USD",
@@ -495,6 +502,13 @@ router.post("/clerk/withdrawals/:id/reject", requirePaymentClerk, async (req: Au
       updatedAt: new Date(),
     })
     .where(eq(withdrawalsTable.id, id));
+
+  notifyWithdrawalRejected(
+    withdrawal.userId,
+    withdrawal.amount,
+    withdrawal.currency ?? "USD",
+    id
+  ).catch(() => {});
 
   res.json({ ok: true, message: "Withdrawal rejected and balance restored" });
 });

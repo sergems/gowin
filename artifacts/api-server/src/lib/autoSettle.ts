@@ -1,6 +1,7 @@
 import { db, fixturesTable, betsTable, betSelectionsTable, walletsTable, transactionsTable } from "@workspace/db";
 import { eq, and, inArray, isNotNull } from "drizzle-orm";
 import { logger } from "./logger";
+import { notifyBetWon, notifyBetLost } from "./notifications";
 
 function getSelectionOutcome(
   selection: string,
@@ -106,6 +107,9 @@ export async function autoSettleFinishedFixtures(): Promise<{
     if (hasLoss) {
       await db.update(betsTable).set({ status: "lost" }).where(eq(betsTable.id, bet.id));
       lost++;
+      if (!bet.branchId) {
+        notifyBetLost(bet.userId, bet.id).catch(() => {});
+      }
       continue;
     }
 
@@ -136,6 +140,7 @@ export async function autoSettleFinishedFixtures(): Promise<{
           type: "bet_won",
           description: `Bet #${bet.id} won`,
         });
+        notifyBetWon(bet.userId, payout.toFixed(2), wallet.currency ?? "USD", bet.id).catch(() => {});
       }
     }
   }

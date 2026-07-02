@@ -3,6 +3,7 @@ import { db, walletsTable, transactionsTable, usersTable } from "@workspace/db";
 import { eq, desc, count, sql, and, ilike, or } from "drizzle-orm";
 import { requireAuth, requireAdmin, requireAdminOrManager, type AuthRequest } from "../middlewares/auth";
 import { CreditWalletBody, DebitWalletBody, GetMyTransactionsQueryParams, GetUserWalletParams } from "@workspace/api-zod";
+import { notifyWalletCredit, notifyWalletDebit } from "../lib/notifications";
 
 const router = Router();
 
@@ -135,6 +136,7 @@ router.post("/wallet/credit", requireAdminOrManager, async (req: AuthRequest, re
     type: "credit",
     description,
   });
+  notifyWalletCredit(wallet.userId, amount.toFixed(2), wallet.currency ?? "USD", description).catch(() => {});
 
   res.json({ id: wallet.id, userId: wallet.userId, balance: newBalance });
 });
@@ -166,6 +168,7 @@ router.post("/wallet/debit", requireAdminOrManager, async (req: AuthRequest, res
     type: "debit",
     description,
   });
+  notifyWalletDebit(wallet.userId, amount.toFixed(2), wallet.currency ?? "USD", description).catch(() => {});
 
   res.json({ id: wallet.id, userId: wallet.userId, balance: newBalance });
 });
