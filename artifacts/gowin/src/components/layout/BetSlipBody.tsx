@@ -25,6 +25,7 @@ interface FixtureLiveData {
 
 export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
   const { t, formatCurrency, currency, parseAmount } = useSiteSettings();
+  const isForeignCurrency = currency !== "USD";
   const {
     selections, removeSelection, stake, setStake,
     totalOdds, potentialWin, isMaxWinCapped,
@@ -323,6 +324,11 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
                 }}
               />
             </div>
+            {isForeignCurrency && stake > 0 && (
+              <p className="text-[11px] text-muted-foreground text-right -mt-1">
+                ≈ ${stake.toFixed(2)} USD
+              </p>
+            )}
             <Separator className="my-2" />
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">{t("betslip.potential_win")}</span>

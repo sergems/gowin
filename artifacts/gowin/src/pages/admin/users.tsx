@@ -77,6 +77,7 @@ type RoleTab = typeof ROLE_TABS[number]["key"];
 
 export default function AdminUsers() {
   const { formatCurrency, parseAmount, currency } = useSiteSettings();
+  const isForeignCurrency = currency !== "USD";
   const [activeTab, setActiveTab] = useState<RoleTab>("all");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -633,6 +634,11 @@ export default function AdminUsers() {
               <div className="space-y-2">
                 <Label>Amount ({currency})</Label>
                 <Input type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+                {isForeignCurrency && parseFloat(amount) > 0 && (
+                  <p className="text-[11px] text-muted-foreground text-right">
+                    ≈ ${parseAmount(parseFloat(amount)).toFixed(2)} USD
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Description (Optional)</Label>

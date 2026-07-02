@@ -33,7 +33,8 @@ interface Selection {
 
 export default function AgentPlaceBetPage() {
   const qc = useQueryClient();
-  const { formatCurrency, parseAmount } = useSiteSettings();
+  const { formatCurrency, parseAmount, currency } = useSiteSettings();
+  const isForeignCurrency = currency !== "USD";
   const { data: wallet, refetch: refetchWallet } = useGetMyWallet({ query: { queryKey: getGetMyWalletQueryKey() } });
   const [selections, setSelections] = useState<Selection[]>([]);
   const [stake, setStake] = useState("");
@@ -224,14 +225,17 @@ export default function AgentPlaceBetPage() {
                 <div className="border-t border-zinc-700 pt-3 mb-3 text-xs space-y-1 text-zinc-400">
                   <div className="flex justify-between"><span>Total Odds</span><span className="text-white font-mono">{totalOdds.toFixed(4)}</span></div>
                 </div>
-                <label className="text-xs text-zinc-400 block mb-1">Stake ($)</label>
+                <label className="text-xs text-zinc-400 block mb-1">Stake ({currency})</label>
                 <input
                   type="number"
-                  className="w-full bg-zinc-700 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-white mb-2 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-zinc-700 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-white mb-1 focus:outline-none focus:border-emerald-500"
                   placeholder="0.00"
                   value={stake}
                   onChange={(e) => setStake(e.target.value)}
                 />
+                {isForeignCurrency && stakeNum > 0 && (
+                  <p className="text-[11px] text-zinc-500 text-right mb-2">≈ ${stakeNum.toFixed(2)} USD</p>
+                )}
                 {stakeNum > 0 && (
                   <div className="text-xs text-zinc-400 mb-3 flex justify-between">
                     <span>Potential Win</span>
