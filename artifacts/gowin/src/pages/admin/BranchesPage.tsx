@@ -159,6 +159,10 @@ export default function BranchesPage() {
   const [creditAmount, setCreditAmount] = useState("");
   const [creditNotes, setCreditNotes] = useState("");
   const [creditLoading, setCreditLoading] = useState(false);
+  const [debitBranch, setDebitBranch] = useState<Branch | null>(null);
+  const [debitAmount, setDebitAmount] = useState("");
+  const [debitNotes, setDebitNotes] = useState("");
+  const [debitLoading, setDebitLoading] = useState(false);
   const [error, setError] = useState("");
 
   const { data, isLoading } = useQuery({
@@ -297,11 +301,18 @@ export default function BranchesPage() {
 
                 <div className="flex items-center gap-1 shrink-0">
                   <button
-                    onClick={() => { setCreditBranch(b); setCreditAmount(""); setCreditNotes(""); }}
+                    onClick={() => { setCreditBranch(b); setCreditAmount(""); setCreditNotes(""); setError(""); }}
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-medium transition-colors border border-emerald-500/20"
                     title={t("branches.credit")}
                   >
                     <DollarSign className="w-3 h-3" /> {t("branches.credit")}
+                  </button>
+                  <button
+                    onClick={() => { setDebitBranch(b); setDebitAmount(""); setDebitNotes(""); setError(""); }}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium transition-colors border border-red-500/20"
+                    title="Debit"
+                  >
+                    <DollarSign className="w-3 h-3" /> Debit
                   </button>
                   <button
                     onClick={() => toggleExpand(b.id)}
@@ -456,6 +467,73 @@ export default function BranchesPage() {
                 }}
                 className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50">
                 {creditLoading ? t("branches.crediting") : t("branches.credit_balance")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Debit Branch modal */}
+      {debitBranch && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold text-white mb-1">Debit Branch Balance</h2>
+            <p className="text-sm text-zinc-400 mb-1">{t("branches.branch_label")}: <span className="text-white font-medium">{debitBranch.name}</span></p>
+            <p className="text-sm text-zinc-400 mb-4">{t("branches.current_balance")}: <span className="text-emerald-400 font-bold">{formatCurrency(parseFloat(String(debitBranch.balance ?? "0")))}</span></p>
+            {error && <p className="text-red-400 text-sm mb-3 bg-red-900/20 rounded-lg px-3 py-2">{error}</p>}
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-zinc-400 mb-1 block">{t("branches.amount")}</label>
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="e.g. 500.00"
+                  value={debitAmount}
+                  onChange={e => setDebitAmount(e.target.value)}
+                  className="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-red-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400 mb-1 block">{t("branches.notes")}</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Funds recovery"
+                  value={debitNotes}
+                  onChange={e => setDebitNotes(e.target.value)}
+                  className="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-red-500"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => { setDebitBranch(null); setError(""); }}
+                className="flex-1 px-4 py-2 rounded-lg border border-zinc-600 text-zinc-300 hover:bg-zinc-800 text-sm">
+                {t("common.cancel")}
+              </button>
+              <button
+                disabled={debitLoading || !debitAmount || parseFloat(debitAmount) <= 0}
+                onClick={async () => {
+                  if (!debitBranch || !debitAmount) return;
+                  setDebitLoading(true);
+                  setError("");
+                  try {
+                    await api.post(`/api/admin/branches/${debitBranch.id}/debit`, {
+                      amount: parseFloat(debitAmount),
+                      notes: debitNotes || undefined,
+                    });
+                    qc.invalidateQueries({ queryKey: ["admin-branches"] });
+                    setDebitBranch(null);
+                    setDebitAmount("");
+                    setDebitNotes("");
+                  } catch (e: any) {
+                    setError(e.response?.data?.error ?? e.message ?? "Failed to debit branch");
+                  } finally {
+                    setDebitLoading(false);
+                  }
+                }}
+                className="flex-1 bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50">
+                {debitLoading ? "Debiting…" : "Debit Balance"}
               </button>
             </div>
           </div>

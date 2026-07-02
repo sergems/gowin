@@ -212,6 +212,35 @@ router.post("/admin/branches/:id/credit", requireAdmin, async (req, res): Promis
   res.json({ branch: updated, credited: amount });
 });
 
+// ── POST /admin/branches/:id/debit — remove funds from branch balance ────────
+router.post("/admin/branches/:id/debit", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id as string);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid branch ID" }); return; }
+
+  const amount = parseFloat(req.body.amount);
+  if (isNaN(amount) || amount <= 0) {
+    res.status(400).json({ error: "Amount must be a positive number" });
+    return;
+  }
+
+  const [branch] = await db.select().from(branchesTable).where(eq(branchesTable.id, id)).limit(1);
+  if (!branch) { res.status(404).json({ error: "Branch not found" }); return; }
+
+  const currentBalance = parseFloat(branch.balance);
+  if (amount > currentBalance) {
+    res.status(400).json({ error: "Insufficient branch balance" });
+    return;
+  }
+
+  const newBalance = (currentBalance - amount).toFixed(2);
+  const [updated] = await db.update(branchesTable)
+    .set({ balance: newBalance })
+    .where(eq(branchesTable.id, id))
+    .returning();
+
+  res.json({ branch: updated, debited: amount });
+});
+
 // ── PATCH /admin/users/:id/assign-branch — assign/update user branch & role ──
 router.patch("/admin/users/:id/assign-branch", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(req.params.id as string);

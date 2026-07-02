@@ -419,7 +419,7 @@ export default function Wallet() {
                               : "border-border text-muted-foreground hover:border-primary/40"
                           }`}
                         >
-                          {cur === "CDF" ? "CDF (FC)" : "USD ($)"}
+                          {cur === "CDF" ? "CDF" : "USD ($)"}
                         </button>
                       ))}
                     </div>
@@ -427,9 +427,9 @@ export default function Wallet() {
                     {/* Exchange rate for CDF */}
                     {depositCurrency === "CDF" && (
                       <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-accent/40 border border-border text-xs text-muted-foreground">
-                        <span>{t("wallet.mm_rate")} <strong className="text-foreground">1 USD = {usdToCdf.toLocaleString(undefined, { maximumFractionDigits: 0 })} FC</strong></span>
+                        <span>{t("wallet.mm_rate")} <strong className="text-foreground">1 USD = {usdToCdf.toLocaleString(undefined, { maximumFractionDigits: 0 })} CDF</strong></span>
                         {exchangeRate?.isFallback && <span className="text-amber-400">({t("wallet.mm_estimated")})</span>}
-                        <span className="ml-auto">Max: <strong className="text-foreground">{depositMax.toLocaleString()} FC</strong></span>
+                        <span className="ml-auto">Max: <strong className="text-foreground">{depositMax.toLocaleString()} CDF</strong></span>
                       </div>
                     )}
 
@@ -441,7 +441,7 @@ export default function Wallet() {
                           onClick={() => setDepositAmount(String(amt))}
                           className="px-3 py-1.5 rounded-md border border-border text-sm font-medium hover:bg-primary/10 hover:border-primary/40 transition-colors"
                         >
-                          {depositCurrency === "CDF" ? `${amt.toLocaleString()} FC` : `$${amt}`}
+                          {depositCurrency === "CDF" ? `${amt.toLocaleString()} CDF` : `$${amt}`}
                         </button>
                       ))}
                     </div>
@@ -553,7 +553,7 @@ export default function Wallet() {
                       onClick={() => setWithdrawAmount(String(amt))}
                       className="px-3 py-1.5 rounded-md border border-border text-sm font-medium hover:bg-destructive/10 hover:border-destructive/40 transition-colors"
                     >
-                      {withdrawCurrency === "CDF" ? `${amt.toLocaleString()} FC` : `$${amt}`}
+                      {withdrawCurrency === "CDF" ? `${amt.toLocaleString()} CDF` : `$${amt}`}
                     </button>
                   ))}
                 </div>

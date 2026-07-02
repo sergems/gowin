@@ -794,7 +794,7 @@ export function formatCurrencyValue(amount: number, currency: string, language: 
     return `$${formatted}`;
   }
   if (currency === "CDF") {
-    return `FC ${formatted}`;
+    return `CDF ${formatted}`;
   }
   return `${currency} ${formatted}`;
 }
