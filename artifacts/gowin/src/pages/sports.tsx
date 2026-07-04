@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSearch, useLocation } from "wouter";
-import { useListFixtures, useListLeagues } from "@workspace/api-client-react";
+import { useListFixtures, useListLeagues, useListSports } from "@workspace/api-client-react";
 import type { ListFixturesParams, League } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { ChevronDown, ChevronLeft, ChevronRight, CalendarDays, Shield, Trophy, Globe } from "lucide-react";
@@ -342,9 +342,17 @@ export default function SportsPage() {
   const selectedSportId = params.get("sportId") ? Number(params.get("sportId")) : null;
   const selectedSportName = params.get("sportName") ? decodeURIComponent(params.get("sportName")!) : null;
 
+  // Fetch sports list so we can find football's ID for the default (no-param) view
+  const { data: sportsData } = useListSports();
+  const footballSportId = sportsData?.find((s) => s.name?.toLowerCase() === "football")?.id ?? null;
+
   const sportMeta = getSportMeta(selectedSportName);
 
+  // Show league browser only for non-football sports (sportId set, no leagueId)
   const showLeagueBrowser = !!selectedSportId && !selectedLeagueId;
+
+  // When no sport or league is selected, default to football so games are never mixed
+  const effectiveSportId = selectedSportId ?? (!selectedLeagueId ? footballSportId : null);
 
   const queryParams: any = { status: "upcoming", withMarkets: true };
   if (selectedLeagueId) {
@@ -353,16 +361,23 @@ export default function SportsPage() {
   } else if (selectedSportId) {
     queryParams.sportId = selectedSportId;
     queryParams.limit = 50;
+  } else if (effectiveSportId) {
+    // Default: Football view — filter by football's sport ID
+    queryParams.sportId = effectiveSportId;
+    queryParams.limit = 50;
   } else {
     queryParams.limit = 20;
   }
+
+  // Don't fetch fixtures until we know which sport to filter by (prevents mixed results on initial render)
+  const readyToFetch = !!selectedLeagueId || !!selectedSportId || effectiveSportId !== null;
 
   const { data: fixturesData, isLoading } = useListFixtures(
     queryParams,
     {
       query: {
-        queryKey: ["fixtures", "sports", selectedLeagueId, selectedSportId],
-        enabled: !showLeagueBrowser,
+        queryKey: ["fixtures", "sports", selectedLeagueId, selectedSportId, effectiveSportId],
+        enabled: !showLeagueBrowser && readyToFetch,
       },
     },
   );
@@ -375,10 +390,12 @@ export default function SportsPage() {
   const firstFixtureSportName = fixtures[0]?.sportName ?? null;
   const effectiveSportName = selectedSportName ?? firstFixtureSportName;
 
+  // When no params, it's the Football default view
+  const isDefaultFootballView = !selectedSportId && !selectedLeagueId;
   const pageTitle = selectedLeagueName ?? (
     selectedSportId
       ? (selectedSportName ? `${sportMeta.icon} ${selectedSportName}` : `${sportMeta.icon} ${sportMeta.label}`)
-      : `⚽ All Fixtures`
+      : `⚽ Football`
   );
 
   const handleSelectLeague = (id: number, name: string) => {

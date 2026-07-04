@@ -56,6 +56,7 @@ router.get("/football/countries", async (_req, res): Promise<void> => {
         l.country_key,
         COUNT(DISTINCT f.id) AS fixture_count
       FROM leagues l
+      INNER JOIN sports s ON s.id = l.sport_id AND LOWER(s.name) = 'football'
       INNER JOIN fixtures f ON f.league_id = l.id AND f.status = 'upcoming'
       WHERE l.external_id NOT IN ('3', '4', '683', '1')
         AND EXISTS (
@@ -75,6 +76,7 @@ router.get("/football/countries", async (_req, res): Promise<void> => {
         l.external_id,
         COUNT(DISTINCT f.id) AS fixture_count
       FROM leagues l
+      INNER JOIN sports s ON s.id = l.sport_id AND LOWER(s.name) = 'football'
       INNER JOIN fixtures f ON f.league_id = l.id AND f.status = 'upcoming'
       WHERE l.external_id IN ('3', '4', '683', '1')
         AND EXISTS (
