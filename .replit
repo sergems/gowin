@@ -57,7 +57,7 @@ outputType = "webview"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "pnpm --filter @workspace/gowin run dev"
-waitForPort = 20254
+waitForPort = 5000
 
 [agent]
 stack = "BEST_EFFORT_FALLBACK"
