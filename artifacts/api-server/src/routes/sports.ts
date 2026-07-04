@@ -145,18 +145,46 @@ router.get("/leagues", async (req, res): Promise<void> => {
   const qp = ListLeaguesQueryParams.safeParse(req.query);
   const sportId = qp.success ? qp.data.sportId : undefined;
 
-  let query = db.select({
-    id: leaguesTable.id,
-    sportId: leaguesTable.sportId,
-    name: leaguesTable.name,
-    sport: sportsTable,
-  }).from(leaguesTable).leftJoin(sportsTable, eq(sportsTable.id, leaguesTable.sportId));
+  // Only return leagues that have at least one upcoming fixture with odds,
+  // so Basketball/Tennis/Cricket league browsers don't show empty leagues.
+  const rows = await db.execute(sql`
+    SELECT
+      l.id,
+      l.sport_id AS "sportId",
+      l.name,
+      l.country_name AS "countryName",
+      l.country_logo AS "countryLogo",
+      l.country_key AS "countryKey",
+      l.league_logo AS "leagueLogo",
+      s.id AS "sport_id",
+      s.name AS "sport_name",
+      s.icon AS "sport_icon"
+    FROM leagues l
+    LEFT JOIN sports s ON s.id = l.sport_id
+    WHERE (${sportId !== undefined ? sql`l.sport_id = ${sportId}` : sql`TRUE`})
+      AND EXISTS (
+        SELECT 1
+        FROM fixtures f
+        JOIN markets m ON m.fixture_id = f.id
+        JOIN odds o ON o.market_id = m.id
+        WHERE f.league_id = l.id
+          AND f.status = 'upcoming'
+        LIMIT 1
+      )
+    ORDER BY l.country_name ASC, l.name ASC
+  `);
 
-  if (sportId) {
-    query = query.where(eq(leaguesTable.sportId, sportId)) as typeof query;
-  }
+  const leagues = (rows.rows as any[]).map((r) => ({
+    id: r.id,
+    sportId: r.sportId,
+    name: r.name,
+    countryName: r.countryName,
+    countryLogo: r.countryLogo,
+    countryKey: r.countryKey,
+    leagueLogo: r.leagueLogo,
+    sport: { id: r.sport_id, name: r.sport_name, icon: r.sport_icon },
+  }));
 
-  const leagues = await query;
   res.json(leagues);
 });
 

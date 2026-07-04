@@ -375,7 +375,7 @@ export function Shell({ children }: { children: ReactNode }) {
                 className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
                   ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
                   ${location.startsWith("/sports") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
-                <Trophy className="w-4 h-4 shrink-0" />
+                <span className="w-4 h-4 shrink-0 text-base leading-none flex items-center justify-center">⚽</span>
                 {open && <span className="flex-1">{t("nav.football")}</span>}
               </Link>
             ) : !isStaffRole ? (
@@ -388,7 +388,7 @@ export function Shell({ children }: { children: ReactNode }) {
                   className={`w-full flex items-center gap-3 rounded-md text-sm font-medium transition-colors
                     ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
                     ${location.startsWith("/sports") && !activeSportId ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
-                  <Trophy className="w-4 h-4 shrink-0" />
+                  <span className="w-4 h-4 shrink-0 text-base leading-none flex items-center justify-center">⚽</span>
                   {open && <span className="flex-1 text-left">{t("nav.football")}</span>}
                   {open && (sportsOpen ? <ChevronDown className="w-3.5 h-3.5 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 shrink-0" />)}
                 </button>
