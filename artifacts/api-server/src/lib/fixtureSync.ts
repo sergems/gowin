@@ -130,8 +130,8 @@ export async function syncFixtureResults(): Promise<{ updated: number; errors: n
         // 2. Never let API "live" or "upcoming" demote a game we've already marked "finished".
         // 3. startTime is NEVER updated for existing fixtures.
         let finalStatus = apiStatus;
-        const fiveMinFromNow = new Date(now.getTime() + 5 * 60 * 1000);
-        if (existing.status === "live" && apiStatus === "upcoming" && startTime < fiveMinFromNow) {
+        const tenMinFromNow = new Date(now.getTime() + 10 * 60 * 1000);
+        if (existing.status === "live" && apiStatus === "upcoming" && startTime < tenMinFromNow) {
           // Game hasn't clearly started yet OR is genuinely in progress — keep live
           finalStatus = "live";
         }
