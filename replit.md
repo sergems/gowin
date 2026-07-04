@@ -57,6 +57,11 @@ _Populate as you build — explicit user instructions worth remembering across s
 - OpenAPI component schema names must not match `<operationId>Response` pattern or orval will generate duplicate exports in `lib/api-zod/src/index.ts`
 - SMTP env vars are optional; `email.ts` logs a warning and returns `false` (not `void`) for email functions when unconfigured
 
+## Canonical Ports
+
+- Frontend (gowin): **20254** — set by `artifacts/gowin/.replit-artifact/artifact.toml` via `PORT=20254`. Do NOT override in workflow commands; the artifact config is the source of truth.
+- API server: **8080** — set by `artifacts/api-server/.replit-artifact/artifact.toml`. Frontend Vite proxy forwards `/api`, `/slides-images`, and `/ws` to `localhost:8080`.
+
 ## Pointers
 
 - See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
