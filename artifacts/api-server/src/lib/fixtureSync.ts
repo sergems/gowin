@@ -124,11 +124,15 @@ export async function syncFixtureResults(): Promise<{ updated: number; errors: n
 
       if (existing) {
         // Status merge rules — API data can be delayed or use wrong timezones:
-        // 1. Never let API "upcoming" demote a game we've already marked "live" or "finished".
+        // 1. Never let API "upcoming" demote a game we've already marked "live" UNLESS
+        //    startTime is clearly in the future (> 30 min). A future game can't be live —
+        //    the backup or a previous bug may have marked it so; trust the API to correct it.
         // 2. Never let API "live" or "upcoming" demote a game we've already marked "finished".
         // 3. startTime is NEVER updated for existing fixtures.
         let finalStatus = apiStatus;
-        if (existing.status === "live" && (apiStatus === "upcoming")) {
+        const thirtyMinFromNow = new Date(now.getTime() + 30 * 60 * 1000);
+        if (existing.status === "live" && apiStatus === "upcoming" && startTime < thirtyMinFromNow) {
+          // Game hasn't clearly started yet OR is genuinely in progress — keep live
           finalStatus = "live";
         }
         if (existing.status === "finished" && (apiStatus === "upcoming" || apiStatus === "live")) {
