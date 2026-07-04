@@ -3,3 +3,5 @@
 - [DB push workaround](db-push-workaround.md) — drizzle-kit push fails non-TTY; use raw psql for schema changes
 - [PawaPay integration](pawapay-integration.md) — PawaPay mobile money gateway integrated; multi-currency wallets, payment_clerk role, full deposit/withdrawal/clerk flow
 - [Multi-sport sync pattern](multi-sport-sync.md) — SportSyncConfig interface drives Football/Basketball/Tennis/Cricket sync from AllSportsAPI; Tennis uses first_player/second_player fields; sport nav items are dynamic (fetched from /api/sports, Football excluded since it has its own dropdown)
+- [AllSportsAPI odds format](allsports-odds-format.md) — football odds are flat bookmaker rows; Basketball/Tennis/Cricket are nested per-market objects — parsers must branch by sport
+- [api-server runs from dist bundle](api-server-dist-bundle.md) — `pnpm dev` runs `dist/index.mjs`, not source; must rebuild before restart_workflow picks up src/ changes

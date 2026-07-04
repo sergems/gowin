@@ -53,6 +53,47 @@ async function fetchApiOdds(apiKey: string, externalId: string, apiBase: string)
   return null;
 }
 
+// Basketball/Tennis/Cricket odds come back from AllSportsAPI as a nested
+// per-market object keyed by outcome → bookmaker → value, e.g.
+// { "Home/Away": { "Home": { "bet365": "1.80", ... }, "Away": { ... } }, ... }
+// This is a different shape than football's flat bookmaker-array format.
+const PREFERRED_BOOKMAKERS = [
+  "bet365", "1xBet", "WilliamHill", "Marathon", "Betano",
+  "Unibet", "Betfair", "BetVictor", "10Bet", "Pncl", "Sbo",
+];
+
+function pickOdd(map?: Record<string, string> | null): number | null {
+  if (!map) return null;
+  for (const bk of PREFERRED_BOOKMAKERS) {
+    const raw = map[bk];
+    if (raw != null) {
+      const v = Number(raw);
+      if (isFinite(v) && v > 1) return v;
+    }
+  }
+  for (const key of Object.keys(map)) {
+    const v = Number(map[key]);
+    if (isFinite(v) && v > 1) return v;
+  }
+  return null;
+}
+
+async function fetchNestedOdds(apiKey: string, externalId: string, apiBase: string): Promise<Record<string, any> | null> {
+  const rawId = externalId.replace(/^(bball_|tennis_|cricket_)/, "");
+  try {
+    const resp = await fetch(
+      `https://apiv2.allsportsapi.com/${apiBase}/?met=Odds&APIkey=${apiKey}&matchId=${rawId}`,
+      { signal: AbortSignal.timeout(8000) },
+    );
+    const data: any = await resp.json();
+    const result = data?.result?.[rawId];
+    if (data?.success === 1 && result && typeof result === "object" && !Array.isArray(result)) {
+      return result;
+    }
+  } catch { /* timeout / network error */ }
+  return null;
+}
+
 async function getOrCreateMarket(fixtureId: number, marketType: string, byType: Map<string, any>): Promise<any> {
   const existing = byType.get(marketType);
   if (existing) return existing;
@@ -170,56 +211,67 @@ async function refreshBasketballFixture(
   fixtureId: number,
   externalId: string,
 ): Promise<boolean> {
-  const bk = await fetchApiOdds(apiKey, externalId, "basketball");
+  const nested = await fetchNestedOdds(apiKey, externalId, "basketball");
 
   await db.execute(sql`
     DELETE FROM odds WHERE market_id IN (SELECT id FROM markets WHERE fixture_id = ${fixtureId})
   `);
-  if (!bk) return false;
+  if (!nested) return false;
 
   const markets = await db.select().from(marketsTable).where(eq(marketsTable.fixtureId, fixtureId));
   const byType = new Map(markets.map((m) => [m.marketType, m]));
   const rows: Array<{ marketId: number; selection: string; oddsValue: string }> = [];
 
   // Moneyline
-  if (valid(bk.odd_1) && valid(bk.odd_2)) {
-    const m = await getOrCreateMarket(fixtureId, "Moneyline", byType);
-    rows.push(
-      { marketId: m.id, selection: "Home", oddsValue: Number(bk.odd_1).toFixed(2) },
-      { marketId: m.id, selection: "Away", oddsValue: Number(bk.odd_2).toFixed(2) },
-    );
-  }
-
-  // Point Spread
-  const spreadPairs: [string, string, string, string][] = [
-    ["ah-10.5_1","ah-10.5_2","-10.5","+10.5"],["ah-7.5_1","ah-7.5_2","-7.5","+7.5"],
-    ["ah-5.5_1","ah-5.5_2","-5.5","+5.5"],["ah-3.5_1","ah-3.5_2","-3.5","+3.5"],
-    ["ah-1.5_1","ah-1.5_2","-1.5","+1.5"],["ah+1.5_1","ah+1.5_2","+1.5","-1.5"],
-    ["ah+3.5_1","ah+3.5_2","+3.5","-3.5"],["ah+5.5_1","ah+5.5_2","+5.5","-5.5"],
-  ];
-  for (const [k1, k2, l1, l2] of spreadPairs) {
-    if (valid(bk[k1]) && valid(bk[k2])) {
-      const m = await getOrCreateMarket(fixtureId, `Point Spread ${l1}`, byType);
+  const ha = nested["Home/Away"];
+  if (ha) {
+    const home = pickOdd(ha.Home);
+    const away = pickOdd(ha.Away);
+    if (home && away) {
+      const m = await getOrCreateMarket(fixtureId, "Moneyline", byType);
       rows.push(
-        { marketId: m.id, selection: `Home (${l1})`, oddsValue: Number(bk[k1]).toFixed(2) },
-        { marketId: m.id, selection: `Away (${l2})`, oddsValue: Number(bk[k2]).toFixed(2) },
+        { marketId: m.id, selection: "Home", oddsValue: home.toFixed(2) },
+        { marketId: m.id, selection: "Away", oddsValue: away.toFixed(2) },
       );
-      break;
     }
   }
 
-  // Total Points O/U
-  const ouLines = ["130.5","140.5","145.5","150.5","155.5","160.5","165.5","170.5",
-                   "175.5","180.5","185.5","190.5","195.5","200.5","210.5","220.5"];
-  for (const line of ouLines) {
-    const overKey = `o+${line}`, underKey = `u+${line}`;
-    if (valid(bk[overKey]) && valid(bk[underKey])) {
-      const m = await getOrCreateMarket(fixtureId, `Total Points ${line}`, byType);
+  // Point Spread
+  const spreadLines = ["-1.5","+1.5","-3.5","+3.5","-5.5","+5.5","-7.5","+7.5","-9.5","+9.5"];
+  for (const line of spreadLines) {
+    const mkt = nested[`Asian Handicap ${line}`];
+    if (mkt) {
+      const home = pickOdd(mkt.Home);
+      const away = pickOdd(mkt.Away);
+      if (home && away) {
+        const oppLine = line.startsWith("-") ? `+${line.slice(1)}` : `-${line.slice(1)}`;
+        const m = await getOrCreateMarket(fixtureId, `Point Spread ${line}`, byType);
+        rows.push(
+          { marketId: m.id, selection: `Home (${line})`, oddsValue: home.toFixed(2) },
+          { marketId: m.id, selection: `Away (${oppLine})`, oddsValue: away.toFixed(2) },
+        );
+        break;
+      }
+    }
+  }
+
+  // Total Points O/U — pick a middle line from whatever the API offers for this match
+  const ouLines = Object.keys(nested)
+    .filter((k) => /^Over\/Under \d/.test(k))
+    .map((k) => ({ key: k, line: parseFloat(k.replace("Over/Under ", "")) }))
+    .filter((x) => isFinite(x.line))
+    .sort((a, b) => a.line - b.line);
+  if (ouLines.length > 0) {
+    const pick = ouLines[Math.floor(ouLines.length / 2)];
+    const mkt = nested[pick.key];
+    const over = pickOdd(mkt.Over);
+    const under = pickOdd(mkt.Under);
+    if (over && under) {
+      const m = await getOrCreateMarket(fixtureId, `Total Points ${pick.line}`, byType);
       rows.push(
-        { marketId: m.id, selection: `Over ${line}`, oddsValue: Number(bk[overKey]).toFixed(2) },
-        { marketId: m.id, selection: `Under ${line}`, oddsValue: Number(bk[underKey]).toFixed(2) },
+        { marketId: m.id, selection: `Over ${pick.line}`, oddsValue: over.toFixed(2) },
+        { marketId: m.id, selection: `Under ${pick.line}`, oddsValue: under.toFixed(2) },
       );
-      break;
     }
   }
 
@@ -234,64 +286,66 @@ async function refreshTennisFixture(
   fixtureId: number,
   externalId: string,
 ): Promise<boolean> {
-  const bk = await fetchApiOdds(apiKey, externalId, "tennis");
+  const nested = await fetchNestedOdds(apiKey, externalId, "tennis");
 
   await db.execute(sql`
     DELETE FROM odds WHERE market_id IN (SELECT id FROM markets WHERE fixture_id = ${fixtureId})
   `);
-  if (!bk) return false;
+  if (!nested) return false;
 
   const markets = await db.select().from(marketsTable).where(eq(marketsTable.fixtureId, fixtureId));
   const byType = new Map(markets.map((m) => [m.marketType, m]));
   const rows: Array<{ marketId: number; selection: string; oddsValue: string }> = [];
 
   // Match Winner
-  if (valid(bk.odd_1) && valid(bk.odd_2)) {
-    const m = await getOrCreateMarket(fixtureId, "Match Winner", byType);
-    rows.push(
-      { marketId: m.id, selection: "Player 1", oddsValue: Number(bk.odd_1).toFixed(2) },
-      { marketId: m.id, selection: "Player 2", oddsValue: Number(bk.odd_2).toFixed(2) },
-    );
-  }
-
-  // Over/Under Games
-  const ouLines = ["15.5","16.5","17.5","18.5","19.5","20.5","21.5","22.5","23.5","24.5","25.5","26.5"];
-  for (const line of ouLines) {
-    const overKey = `o+${line}`, underKey = `u+${line}`;
-    if (valid(bk[overKey]) && valid(bk[underKey])) {
-      const m = await getOrCreateMarket(fixtureId, `Over/Under Games ${line}`, byType);
+  const ha = nested["Home/Away"];
+  if (ha) {
+    const p1 = pickOdd(ha.Home);
+    const p2 = pickOdd(ha.Away);
+    if (p1 && p2) {
+      const m = await getOrCreateMarket(fixtureId, "Match Winner", byType);
       rows.push(
-        { marketId: m.id, selection: `Over ${line}`, oddsValue: Number(bk[overKey]).toFixed(2) },
-        { marketId: m.id, selection: `Under ${line}`, oddsValue: Number(bk[underKey]).toFixed(2) },
+        { marketId: m.id, selection: "Player 1", oddsValue: p1.toFixed(2) },
+        { marketId: m.id, selection: "Player 2", oddsValue: p2.toFixed(2) },
       );
-      break;
     }
   }
 
-  // Game Handicap
-  const ahPairs: [string, string, string, string][] = [
-    ["ah-3.5_1","ah-3.5_2","-3.5","+3.5"],["ah-2.5_1","ah-2.5_2","-2.5","+2.5"],
-    ["ah-1.5_1","ah-1.5_2","-1.5","+1.5"],["ah+1.5_1","ah+1.5_2","+1.5","-1.5"],
-    ["ah+2.5_1","ah+2.5_2","+2.5","-2.5"],["ah+3.5_1","ah+3.5_2","+3.5","-3.5"],
-  ];
-  for (const [k1, k2, l1, l2] of ahPairs) {
-    if (valid(bk[k1]) && valid(bk[k2])) {
-      const m = await getOrCreateMarket(fixtureId, `Game Handicap ${l1}`, byType);
-      rows.push(
-        { marketId: m.id, selection: `Player 1 (${l1})`, oddsValue: Number(bk[k1]).toFixed(2) },
-        { marketId: m.id, selection: `Player 2 (${l2})`, oddsValue: Number(bk[k2]).toFixed(2) },
-      );
-      break;
+  // Over/Under Games — pick a middle line common to both Over and Under sides
+  const overMkt = nested["Over/Under by Games in Match Over"];
+  const underMkt = nested["Over/Under by Games in Match Under"];
+  if (overMkt && underMkt) {
+    const commonLines = Object.keys(overMkt)
+      .filter((l) => underMkt[l] != null && isFinite(Number(l)))
+      .map(Number)
+      .sort((a, b) => a - b);
+    if (commonLines.length > 0) {
+      const line = commonLines[Math.floor(commonLines.length / 2)];
+      const lineKey = String(line);
+      const over = pickOdd(overMkt[lineKey]);
+      const under = pickOdd(underMkt[lineKey]);
+      if (over && under) {
+        const m = await getOrCreateMarket(fixtureId, `Over/Under Games ${line}`, byType);
+        rows.push(
+          { marketId: m.id, selection: `Over ${line}`, oddsValue: over.toFixed(2) },
+          { marketId: m.id, selection: `Under ${line}`, oddsValue: under.toFixed(2) },
+        );
+      }
     }
   }
 
   // First Set Winner
-  if (valid(bk.odd_1fs) && valid(bk.odd_2fs)) {
-    const m = await getOrCreateMarket(fixtureId, "First Set Winner", byType);
-    rows.push(
-      { marketId: m.id, selection: "Player 1", oddsValue: Number(bk.odd_1fs).toFixed(2) },
-      { marketId: m.id, selection: "Player 2", oddsValue: Number(bk.odd_2fs).toFixed(2) },
-    );
+  const fs = nested["Home/Away (1st Set)"];
+  if (fs) {
+    const p1 = pickOdd(fs.Home);
+    const p2 = pickOdd(fs.Away);
+    if (p1 && p2) {
+      const m = await getOrCreateMarket(fixtureId, "First Set Winner", byType);
+      rows.push(
+        { marketId: m.id, selection: "Player 1", oddsValue: p1.toFixed(2) },
+        { marketId: m.id, selection: "Player 2", oddsValue: p2.toFixed(2) },
+      );
+    }
   }
 
   if (rows.length > 0) await db.insert(oddsTable).values(rows);
@@ -305,42 +359,54 @@ async function refreshCricketFixture(
   fixtureId: number,
   externalId: string,
 ): Promise<boolean> {
-  const bk = await fetchApiOdds(apiKey, externalId, "cricket");
+  const nested = await fetchNestedOdds(apiKey, externalId, "cricket");
 
   await db.execute(sql`
     DELETE FROM odds WHERE market_id IN (SELECT id FROM markets WHERE fixture_id = ${fixtureId})
   `);
-  if (!bk) return false;
+  if (!nested) return false;
 
   const markets = await db.select().from(marketsTable).where(eq(marketsTable.fixtureId, fixtureId));
   const byType = new Map(markets.map((m) => [m.marketType, m]));
   const rows: Array<{ marketId: number; selection: string; oddsValue: string }> = [];
 
   // Match Winner
-  if (valid(bk.odd_1) && valid(bk.odd_2)) {
-    const m = await getOrCreateMarket(fixtureId, "Match Winner", byType);
-    rows.push(
-      { marketId: m.id, selection: "Home", oddsValue: Number(bk.odd_1).toFixed(2) },
-      { marketId: m.id, selection: "Away", oddsValue: Number(bk.odd_2).toFixed(2) },
-    );
-    // Draw (test matches)
-    if (valid(bk.odd_x)) {
-      rows.push({ marketId: m.id, selection: "Draw", oddsValue: Number(bk.odd_x).toFixed(2) });
+  const ha = nested["Home/Away"];
+  const threeWay = nested["3Way Result"];
+  if (ha) {
+    const home = pickOdd(ha.Home);
+    const away = pickOdd(ha.Away);
+    if (home && away) {
+      const m = await getOrCreateMarket(fixtureId, "Match Winner", byType);
+      rows.push(
+        { marketId: m.id, selection: "Home", oddsValue: home.toFixed(2) },
+        { marketId: m.id, selection: "Away", oddsValue: away.toFixed(2) },
+      );
+      // Draw (test matches)
+      if (threeWay) {
+        const draw = pickOdd(threeWay.Draw);
+        if (draw) rows.push({ marketId: m.id, selection: "Draw", oddsValue: draw.toFixed(2) });
+      }
     }
   }
 
-  // Total Runs O/U
-  const ouLines = ["140.5","150.5","160.5","170.5","175.5","180.5","190.5","200.5",
-                   "250.5","280.5","300.5","320.5","350.5"];
-  for (const line of ouLines) {
-    const overKey = `o+${line}`, underKey = `u+${line}`;
-    if (valid(bk[overKey]) && valid(bk[underKey])) {
-      const m = await getOrCreateMarket(fixtureId, `Total Runs ${line}`, byType);
+  // Total Runs O/U — pick a middle line from whatever the API offers for this match
+  const ouLines = Object.keys(nested)
+    .filter((k) => /^Over\/Under \d/.test(k))
+    .map((k) => ({ key: k, line: parseFloat(k.replace("Over/Under ", "")) }))
+    .filter((x) => isFinite(x.line))
+    .sort((a, b) => a.line - b.line);
+  if (ouLines.length > 0) {
+    const pick = ouLines[Math.floor(ouLines.length / 2)];
+    const mkt = nested[pick.key];
+    const over = pickOdd(mkt.Over);
+    const under = pickOdd(mkt.Under);
+    if (over && under) {
+      const m = await getOrCreateMarket(fixtureId, `Total Runs ${pick.line}`, byType);
       rows.push(
-        { marketId: m.id, selection: `Over ${line}`, oddsValue: Number(bk[overKey]).toFixed(2) },
-        { marketId: m.id, selection: `Under ${line}`, oddsValue: Number(bk[underKey]).toFixed(2) },
+        { marketId: m.id, selection: `Over ${pick.line}`, oddsValue: over.toFixed(2) },
+        { marketId: m.id, selection: `Under ${pick.line}`, oddsValue: under.toFixed(2) },
       );
-      break;
     }
   }
 
