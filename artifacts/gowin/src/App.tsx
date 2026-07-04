@@ -1,6 +1,6 @@
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { useEffect } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
@@ -107,6 +107,36 @@ function ProtectedRoute({ component: Component, allowedRoles, adminOnly = false,
   return <Component {...rest} />;
 }
 
+/** Resolves a sport name to its DB id then redirects to /sports?sportId=…&sportName=… */
+function SportRedirect({ name }: { name: string }) {
+  const [, navigate] = useLocation();
+  const { data: sportsData, isError } = useQuery<Array<{ id: number; name: string; icon: string }>>({
+    queryKey: ["sports-list"],
+    queryFn: () => fetch("/api/sports").then((r) => r.json()),
+    staleTime: 10 * 60 * 1000,
+    retry: 2,
+  });
+
+  useEffect(() => {
+    if (isError) { navigate("/", { replace: true }); return; }
+    if (!sportsData) return;
+    if (!Array.isArray(sportsData)) { navigate("/", { replace: true }); return; }
+    const sport = sportsData.find((s) => s.name.toLowerCase() === name.toLowerCase());
+    navigate(
+      sport
+        ? `/sports?sportId=${sport.id}&sportName=${encodeURIComponent(sport.name)}`
+        : "/",
+      { replace: true },
+    );
+  }, [sportsData, isError, name, navigate]);
+
+  return (
+    <div className="h-screen w-full flex items-center justify-center bg-background">
+      <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+    </div>
+  );
+}
+
 function RootPage() {
   const { user, isLoading } = useAuth();
   const [, navigate] = useLocation();
@@ -132,6 +162,9 @@ function Router() {
         <Route path="/live">{() => { const [, nav] = useLocation(); useEffect(() => { nav("/"); }, []); return null; }}</Route>
         <Route path="/sports" component={SportsHub} />
         <Route path="/sports/:sportId" component={SportsHub} />
+        <Route path="/basketball">{() => <SportRedirect name="Basketball" />}</Route>
+        <Route path="/tennis">{() => <SportRedirect name="Tennis" />}</Route>
+        <Route path="/cricket">{() => <SportRedirect name="Cricket" />}</Route>
         <Route path="/fixtures/:id" component={FixtureDetail} />
         <Route path="/results" component={Results} />
         <Route path="/history" component={() => <ProtectedRoute component={History} />} />

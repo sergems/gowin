@@ -210,7 +210,12 @@ function FixtureCard({ fixture }: { fixture: any }) {
 
           <div className="flex items-center gap-3">
             <div className="flex-1 flex items-center gap-2 min-w-0">
-              <Logo src={fixture.homeTeam?.logo} alt={fixture.homeTeam?.name ?? ""} size={28} />
+              <Logo
+                src={fixture.homeTeam?.logo}
+                alt={fixture.homeTeam?.name ?? ""}
+                size={28}
+                fallback={<CountryFlag name={fixture.league?.countryName} size={28} />}
+              />
               <span className="font-semibold text-sm truncate">{fixture.homeTeam?.name}</span>
             </div>
             <div className="shrink-0">
@@ -226,7 +231,12 @@ function FixtureCard({ fixture }: { fixture: any }) {
             </div>
             <div className="flex-1 flex items-center justify-end gap-2 min-w-0">
               <span className="font-semibold text-sm truncate text-right">{fixture.awayTeam?.name}</span>
-              <Logo src={fixture.awayTeam?.logo} alt={fixture.awayTeam?.name ?? ""} size={28} />
+              <Logo
+                src={fixture.awayTeam?.logo}
+                alt={fixture.awayTeam?.name ?? ""}
+                size={28}
+                fallback={<CountryFlag name={fixture.league?.countryName} size={28} />}
+              />
             </div>
           </div>
         </div>

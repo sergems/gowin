@@ -1,10 +1,93 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRoute } from "wouter";
 import { useGetFixture, getGetFixtureQueryKey } from "@workspace/api-client-react";
 import { useBetSlip } from "@/contexts/BetSlipContext";
 import { sortOdds } from "@/lib/sortOdds";
-import { Trophy, CalendarDays, Activity, ChevronLeft } from "lucide-react";
+import { Trophy, CalendarDays, Activity, ChevronLeft, Globe, Shield } from "lucide-react";
 import { fmtUTCDateTimeLong } from "@/lib/formatUTC";
+
+// ── Country flag helpers (mirrors sports.tsx) ─────────────────────────────────
+
+const COUNTRY_ISO2: Record<string, string> = {
+  "afghanistan":"af","albania":"al","algeria":"dz","angola":"ao","argentina":"ar",
+  "armenia":"am","australia":"au","austria":"at","azerbaijan":"az","bahrain":"bh",
+  "bangladesh":"bd","belarus":"by","belgium":"be","bolivia":"bo",
+  "bosnia":"ba","bosnia and herzegovina":"ba","botswana":"bw","brazil":"br",
+  "bulgaria":"bg","cambodia":"kh","cameroon":"cm","canada":"ca","chile":"cl",
+  "china":"cn","colombia":"co","costa rica":"cr","croatia":"hr","cyprus":"cy",
+  "czech republic":"cz","czechia":"cz","denmark":"dk","ecuador":"ec","egypt":"eg",
+  "el salvador":"sv","england":"gb-eng","estonia":"ee","ethiopia":"et","europe":"eu",
+  "finland":"fi","france":"fr","georgia":"ge","germany":"de","ghana":"gh",
+  "greece":"gr","guatemala":"gt","honduras":"hn","hong kong":"hk","hungary":"hu",
+  "iceland":"is","india":"in","indonesia":"id","iran":"ir","iraq":"iq",
+  "ireland":"ie","israel":"il","italy":"it","ivory coast":"ci","jamaica":"jm",
+  "japan":"jp","jordan":"jo","kazakhstan":"kz","kenya":"ke","kosovo":"xk",
+  "kuwait":"kw","latvia":"lv","lebanon":"lb","libya":"ly","lithuania":"lt",
+  "luxembourg":"lu","malaysia":"my","malta":"mt","mexico":"mx","moldova":"md",
+  "montenegro":"me","morocco":"ma","mozambique":"mz","namibia":"na",
+  "netherlands":"nl","new zealand":"nz","nicaragua":"ni","nigeria":"ng",
+  "north korea":"kp","north macedonia":"mk","northern ireland":"gb-nir",
+  "norway":"no","oman":"om","pakistan":"pk","palestine":"ps","panama":"pa",
+  "paraguay":"py","peru":"pe","philippines":"ph","poland":"pl","portugal":"pt",
+  "qatar":"qa","romania":"ro","russia":"ru","saudi arabia":"sa","scotland":"gb-sct",
+  "senegal":"sn","serbia":"rs","singapore":"sg","slovakia":"sk","slovenia":"si",
+  "south africa":"za","south korea":"kr","spain":"es","sudan":"sd","sweden":"se",
+  "switzerland":"ch","syria":"sy","taiwan":"tw","tanzania":"tz","thailand":"th",
+  "tunisia":"tn","turkey":"tr","uganda":"ug","ukraine":"ua",
+  "united arab emirates":"ae","united states":"us","usa":"us","uruguay":"uy",
+  "uzbekistan":"uz","venezuela":"ve","vietnam":"vn","wales":"gb-wls",
+  "yemen":"ye","zambia":"zm","zimbabwe":"zw",
+  "congo dr":"cd","democratic republic of congo":"cd","dr congo":"cd",
+};
+
+function countryFlagUrl(name: string | null | undefined): string | null {
+  if (!name) return null;
+  const iso2 = COUNTRY_ISO2[name.toLowerCase().trim()];
+  return iso2 ? `https://flagcdn.com/20x15/${iso2}.png` : null;
+}
+
+function TeamLogo({
+  logo, name, countryName, size = 64,
+}: {
+  logo?: string | null; name?: string | null; countryName?: string | null; size?: number;
+}) {
+  const [logoFailed, setLogoFailed] = useState(false);
+  const [flagFailed, setFlagFailed] = useState(false);
+
+  // Reset failed states if the source URLs change (e.g. component re-used with different team)
+  useEffect(() => { setLogoFailed(false); }, [logo]);
+  useEffect(() => { setFlagFailed(false); }, [countryName]);
+
+  const flagUrl = countryFlagUrl(countryName);
+
+  if (logo && !logoFailed) {
+    return (
+      <img
+        src={logo}
+        alt={name ?? ""}
+        width={size}
+        height={size}
+        className="object-contain"
+        style={{ width: size, height: size }}
+        onError={() => setLogoFailed(true)}
+      />
+    );
+  }
+  if (flagUrl && !flagFailed) {
+    return (
+      <img
+        src={flagUrl}
+        alt={countryName ?? ""}
+        width={size}
+        height={Math.round(size * 0.75)}
+        className="object-cover rounded"
+        style={{ width: size, height: Math.round(size * 0.75) }}
+        onError={() => setFlagFailed(true)}
+      />
+    );
+  }
+  return <Shield className="text-muted-foreground/40" style={{ width: size, height: size }} />;
+}
 
 // ── Market category definitions ───────────────────────────────────────────────
 
@@ -269,9 +352,12 @@ export default function FixtureDetail() {
           {/* Teams + score */}
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1 flex flex-col items-center gap-3 text-center min-w-0">
-              {fixture.homeTeam?.logo && (
-                <img src={fixture.homeTeam.logo} alt="" className="w-16 h-16 object-contain" />
-              )}
+              <TeamLogo
+                logo={fixture.homeTeam?.logo}
+                name={fixture.homeTeam?.name}
+                countryName={fixture.league?.countryName}
+                size={64}
+              />
               <p className="text-base md:text-2xl font-black leading-tight break-words w-full">{fixture.homeTeam?.name}</p>
             </div>
 
@@ -290,9 +376,12 @@ export default function FixtureDetail() {
             </div>
 
             <div className="flex-1 flex flex-col items-center gap-3 text-center min-w-0">
-              {fixture.awayTeam?.logo && (
-                <img src={fixture.awayTeam.logo} alt="" className="w-16 h-16 object-contain" />
-              )}
+              <TeamLogo
+                logo={fixture.awayTeam?.logo}
+                name={fixture.awayTeam?.name}
+                countryName={fixture.league?.countryName}
+                size={64}
+              />
               <p className="text-base md:text-2xl font-black leading-tight break-words w-full">{fixture.awayTeam?.name}</p>
             </div>
           </div>
