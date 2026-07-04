@@ -71,8 +71,8 @@ async function upsertLeague(
       name = EXCLUDED.name,
       country_key = EXCLUDED.country_key,
       country_name = EXCLUDED.country_name,
-      country_logo = EXCLUDED.country_logo,
-      league_logo = EXCLUDED.league_logo
+      country_logo = COALESCE(EXCLUDED.country_logo, leagues.country_logo),
+      league_logo = COALESCE(EXCLUDED.league_logo, leagues.league_logo)
     RETURNING id
   `);
   return (result.rows[0] as any).id as number;
@@ -82,7 +82,9 @@ async function upsertTeam(name: string, logo: string | null, externalId: string)
   const result = await db.execute(sql`
     INSERT INTO teams (name, logo, external_id)
     VALUES (${name}, ${logo}, ${externalId})
-    ON CONFLICT (external_id) DO UPDATE SET name = EXCLUDED.name, logo = EXCLUDED.logo
+    ON CONFLICT (external_id) DO UPDATE SET
+      name = EXCLUDED.name,
+      logo = COALESCE(EXCLUDED.logo, teams.logo)
     RETURNING id
   `);
   return (result.rows[0] as any).id as number;

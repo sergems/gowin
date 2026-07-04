@@ -528,7 +528,7 @@ export function Shell({ children }: { children: ReactNode }) {
                   ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
                   hover:bg-accent opacity-90 hover:opacity-100`}
               >
-                <img src="/store-badges/google-play.png" alt="Get it on Google Play" className="h-9 w-auto object-contain" />
+                <img src="/store-badges/google-play.png" alt="Get it on Google Play" className="h-12 w-auto object-contain" />
               </a>
             )}
 
@@ -561,7 +561,7 @@ export function Shell({ children }: { children: ReactNode }) {
                   ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
                   hover:bg-accent opacity-90 hover:opacity-100`}
               >
-                <img src="/store-badges/google-play.png" alt="Get it on Google Play" className="h-9 w-auto object-contain" />
+                <img src="/store-badges/google-play.png" alt="Get it on Google Play" className="h-12 w-auto object-contain" />
               </a>
             )}
 
@@ -882,7 +882,7 @@ export function Shell({ children }: { children: ReactNode }) {
             </Link>
             <a href="/gowin.apk" download="GoWin.apk"
               className="flex-1 flex items-center justify-center py-1.5 rounded-md transition-colors opacity-90 hover:opacity-100">
-              <img src="/store-badges/google-play.png" alt="Get it on Google Play" className="h-8 w-auto object-contain" />
+              <img src="/store-badges/google-play.png" alt="Get it on Google Play" className="h-[42px] w-auto object-contain" />
             </a>
           </>
         ) : (
@@ -895,7 +895,7 @@ export function Shell({ children }: { children: ReactNode }) {
             </Link>
             <a href="/gowin.apk" download="GoWin.apk"
               className="flex-1 flex items-center justify-center py-1.5 rounded-md transition-colors opacity-90 hover:opacity-100">
-              <img src="/store-badges/google-play.png" alt="Get it on Google Play" className="h-8 w-auto object-contain" />
+              <img src="/store-badges/google-play.png" alt="Get it on Google Play" className="h-[42px] w-auto object-contain" />
             </a>
             <Link href="/login"
               className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-md transition-colors
