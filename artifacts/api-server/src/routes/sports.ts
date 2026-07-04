@@ -158,7 +158,15 @@ router.get("/leagues", async (req, res): Promise<void> => {
       l.league_logo AS "leagueLogo",
       s.id AS "sport_id",
       s.name AS "sport_name",
-      s.icon AS "sport_icon"
+      s.icon AS "sport_icon",
+      (
+        SELECT COUNT(DISTINCT f.id)::int
+        FROM fixtures f
+        JOIN markets m ON m.fixture_id = f.id
+        JOIN odds o ON o.market_id = m.id
+        WHERE f.league_id = l.id
+          AND f.status = 'upcoming'
+      ) AS "fixtureCount"
     FROM leagues l
     LEFT JOIN sports s ON s.id = l.sport_id
     WHERE (${sportId !== undefined ? sql`l.sport_id = ${sportId}` : sql`TRUE`})
@@ -182,6 +190,7 @@ router.get("/leagues", async (req, res): Promise<void> => {
     countryLogo: r.countryLogo,
     countryKey: r.countryKey,
     leagueLogo: r.leagueLogo,
+    fixtureCount: r.fixtureCount ?? 0,
     sport: { id: r.sport_id, name: r.sport_name, icon: r.sport_icon },
   }));
 

@@ -8,11 +8,73 @@ import { fmtUTCTime, utcDateKey, utcDateLabel } from "@/lib/formatUTC";
 import { useBetSlip } from "@/contexts/BetSlipContext";
 import { sortOdds } from "@/lib/sortOdds";
 
+// ── Country flag helpers ──────────────────────────────────────────────────────
+
+const COUNTRY_ISO2: Record<string, string> = {
+  "afghanistan":"af","albania":"al","algeria":"dz","angola":"ao","argentina":"ar",
+  "armenia":"am","australia":"au","austria":"at","azerbaijan":"az","bahrain":"bh",
+  "bangladesh":"bd","belarus":"by","belgium":"be","bolivia":"bo",
+  "bosnia":"ba","bosnia and herzegovina":"ba","botswana":"bw","brazil":"br",
+  "bulgaria":"bg","cambodia":"kh","cameroon":"cm","canada":"ca","chile":"cl",
+  "china":"cn","colombia":"co","costa rica":"cr","croatia":"hr","cyprus":"cy",
+  "czech republic":"cz","czechia":"cz","denmark":"dk","ecuador":"ec","egypt":"eg",
+  "el salvador":"sv","england":"gb-eng","estonia":"ee","ethiopia":"et","europe":"eu",
+  "finland":"fi","france":"fr","georgia":"ge","germany":"de","ghana":"gh",
+  "greece":"gr","guatemala":"gt","honduras":"hn","hong kong":"hk","hungary":"hu",
+  "iceland":"is","india":"in","indonesia":"id","iran":"ir","iraq":"iq",
+  "ireland":"ie","israel":"il","italy":"it","ivory coast":"ci","jamaica":"jm",
+  "japan":"jp","jordan":"jo","kazakhstan":"kz","kenya":"ke","kosovo":"xk",
+  "kuwait":"kw","latvia":"lv","lebanon":"lb","libya":"ly","lithuania":"lt",
+  "luxembourg":"lu","malaysia":"my","malta":"mt","mexico":"mx","moldova":"md",
+  "montenegro":"me","morocco":"ma","mozambique":"mz","namibia":"na",
+  "netherlands":"nl","new zealand":"nz","nicaragua":"ni","nigeria":"ng",
+  "north korea":"kp","north macedonia":"mk","northern ireland":"gb-nir",
+  "norway":"no","oman":"om","pakistan":"pk","palestine":"ps","panama":"pa",
+  "paraguay":"py","peru":"pe","philippines":"ph","poland":"pl","portugal":"pt",
+  "qatar":"qa","romania":"ro","russia":"ru","saudi arabia":"sa","scotland":"gb-sct",
+  "senegal":"sn","serbia":"rs","singapore":"sg","slovakia":"sk","slovenia":"si",
+  "south africa":"za","south korea":"kr","spain":"es","sudan":"sd","sweden":"se",
+  "switzerland":"ch","syria":"sy","taiwan":"tw","tanzania":"tz","thailand":"th",
+  "tunisia":"tn","turkey":"tr","uganda":"ug","ukraine":"ua",
+  "united arab emirates":"ae","united states":"us","usa":"us","uruguay":"uy",
+  "uzbekistan":"uz","venezuela":"ve","vietnam":"vn","wales":"gb-wls",
+  "yemen":"ye","zambia":"zm","zimbabwe":"zw",
+};
+
+function countryFlagUrl(name: string | null | undefined): string | null {
+  if (!name) return null;
+  const iso2 = COUNTRY_ISO2[name.toLowerCase().trim()];
+  return iso2 ? `https://flagcdn.com/20x15/${iso2}.png` : null;
+}
+
+/** Normalise tennis circuit category names into readable labels */
+function normaliseTennisCategory(raw: string): string {
+  const l = raw.toLowerCase();
+  if (l.includes("itf men"))       return "ITF Men's Singles";
+  if (l.includes("itf women"))     return "ITF Women's Singles";
+  if (l.includes("itf"))           return "ITF";
+  if (l.includes("challenger men") || l.includes("atp challenger")) return "ATP Challenger";
+  if (l.includes("challenger wom") || l.includes("wta challenger")) return "WTA Challenger";
+  if (l.includes("challenger"))    return "Challenger";
+  if (l.includes("wta"))           return "WTA";
+  if (l.includes("atp"))           return "ATP";
+  return raw;
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function Logo({ src, alt, size = 24 }: { src: string | null | undefined; alt: string; size?: number }) {
+function Logo({
+  src, alt, size = 24, fallback,
+}: {
+  src: string | null | undefined;
+  alt: string;
+  size?: number;
+  fallback?: React.ReactNode;
+}) {
   const [failed, setFailed] = useState(false);
-  if (!src || failed) return <Shield className="text-muted-foreground shrink-0" style={{ width: size, height: size }} />;
+  if (!src || failed) {
+    return <>{fallback ?? <Shield className="text-muted-foreground shrink-0" style={{ width: size, height: size }} />}</>;
+  }
   return (
     <img
       src={src}
@@ -21,6 +83,24 @@ function Logo({ src, alt, size = 24 }: { src: string | null | undefined; alt: st
       height={size}
       className="object-contain shrink-0"
       style={{ width: size, height: size }}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+/** Small country flag from flagcdn; renders nothing when no flag is found */
+function CountryFlag({ name, size = 20 }: { name: string | null | undefined; size?: number }) {
+  const [failed, setFailed] = useState(false);
+  const url = countryFlagUrl(name);
+  if (!url || failed) return <Globe className="w-4 h-4 text-muted-foreground shrink-0" />;
+  return (
+    <img
+      src={url}
+      alt={name ?? ""}
+      width={size}
+      height={Math.round(size * 0.75)}
+      className="object-cover rounded-sm shrink-0"
+      style={{ width: size, height: Math.round(size * 0.75) }}
       onError={() => setFailed(true)}
     />
   );
@@ -108,8 +188,8 @@ function FixtureCard({ fixture }: { fixture: any }) {
         <div className="p-4 cursor-pointer hover:bg-accent/20 transition-colors">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-1.5 min-w-0">
-              <Logo src={fixture.league?.countryLogo} alt={fixture.league?.countryName ?? ""} size={14} />
-              <Logo src={fixture.league?.logo} alt={fixture.league?.name ?? ""} size={14} />
+              <CountryFlag name={fixture.league?.countryName} size={16} />
+              <Logo src={fixture.league?.logo} alt={fixture.league?.name ?? ""} size={14} fallback={null} />
               <span className="text-xs text-muted-foreground truncate">{fixture.league?.name}</span>
             </div>
             <div className="shrink-0">
@@ -218,6 +298,24 @@ function FixtureCard({ fixture }: { fixture: any }) {
 
 // ── League browser (for non-football sports) ──────────────────────────────────
 
+/** Label shown in the group header — cleans up tennis circuit names and cricket */
+function groupLabel(sportName: string, rawCountry: string): string {
+  const sn = sportName.toLowerCase();
+  if (sn === "tennis") return normaliseTennisCategory(rawCountry);
+  if (sn === "cricket" && rawCountry.toLowerCase() === "cricket") return "International";
+  if (rawCountry.toLowerCase() === "world") return "International";
+  return rawCountry;
+}
+
+/** True when the group key represents a real country (not a circuit/category) */
+function isRealCountry(sportName: string, rawCountry: string): boolean {
+  const sn = sportName.toLowerCase();
+  if (sn === "tennis") return false;   // tennis uses circuit categories
+  const lc = rawCountry.toLowerCase();
+  if (lc === "cricket" || lc === "world" || lc === "international") return false;
+  return true;
+}
+
 function LeagueBrowser({
   sportId,
   sportName,
@@ -227,10 +325,25 @@ function LeagueBrowser({
   sportName: string;
   onSelectLeague: (id: number, name: string) => void;
 }) {
-  const { data: leagues = [], isLoading } = useListLeagues({ sportId });
-  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+  const { data: rawLeagues = [], isLoading } = useListLeagues({ sportId });
+  const leagues = rawLeagues as Array<League & { fixtureCount?: number }>;
 
   const sportMeta = getSportMeta(sportName);
+
+  // Auto-open all groups on first load so the user sees leagues immediately
+  const groupKeys = (() => {
+    const keys = new Set<string>();
+    for (const l of leagues) keys.add(l.countryName ?? "International");
+    return keys;
+  })();
+  const [openGroups, setOpenGroups] = useState<Set<string>>(groupKeys);
+
+  // Keep openGroups in sync when data loads
+  const [initialised, setInitialised] = useState(false);
+  if (!initialised && leagues.length > 0) {
+    setOpenGroups(new Set([...leagues.map((l) => l.countryName ?? "International")]));
+    setInitialised(true);
+  }
 
   if (isLoading) {
     return (
@@ -252,73 +365,105 @@ function LeagueBrowser({
     );
   }
 
-  // Group by country
-  const grouped = new Map<string, League[]>();
+  // Group leagues by their raw countryName key
+  const grouped = new Map<string, typeof leagues>();
   for (const league of leagues) {
-    const country = league.countryName ?? "International";
-    if (!grouped.has(country)) grouped.set(country, []);
-    grouped.get(country)!.push(league);
+    const key = league.countryName ?? "International";
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key)!.push(league);
   }
 
-  const toggleGroup = (country: string) => {
+  const toggleGroup = (key: string) => {
     setOpenGroups((prev) => {
       const next = new Set(prev);
-      next.has(country) ? next.delete(country) : next.add(country);
+      next.has(key) ? next.delete(key) : next.add(key);
       return next;
     });
   };
 
-  const entries = [...grouped.entries()].sort(([a], [b]) => {
-    if (a === "International") return -1;
-    if (b === "International") return 1;
-    return a.localeCompare(b);
+  // Sort: "International" / "World" last; otherwise alphabetical by display label
+  const entries = [...grouped.entries()].sort(([ka], [kb]) => {
+    const la = groupLabel(sportName, ka);
+    const lb = groupLabel(sportName, kb);
+    const isIntlA = ["International", "World"].includes(la);
+    const isIntlB = ["International", "World"].includes(lb);
+    if (isIntlA && !isIntlB) return 1;
+    if (!isIntlA && isIntlB) return -1;
+    return la.localeCompare(lb);
   });
 
   return (
     <div className="space-y-2">
-      {entries.map(([country, countryLeagues]) => {
-        const isOpen = openGroups.has(country);
-        const countryLogo = countryLeagues[0]?.countryLogo;
+      {entries.map(([rawKey, groupLeagues]) => {
+        const isOpen = openGroups.has(rawKey);
+        const label = groupLabel(sportName, rawKey);
+        const showFlag = isRealCountry(sportName, rawKey);
+        // Use DB logo first, fall back to flagcdn
+        const dbLogo = groupLeagues[0]?.countryLogo;
+        const flagUrl = showFlag ? (dbLogo || countryFlagUrl(rawKey)) : null;
+        const totalFixtures = groupLeagues.reduce((s, l) => s + (l.fixtureCount ?? 0), 0);
+
         return (
-          <div key={country} className="bg-card border border-border rounded-xl overflow-hidden">
+          <div key={rawKey} className="bg-card border border-border rounded-xl overflow-hidden">
+            {/* Group header */}
             <button
-              onClick={() => toggleGroup(country)}
+              onClick={() => toggleGroup(rawKey)}
               className="w-full flex items-center gap-3 px-4 py-3 hover:bg-accent/30 transition-colors"
             >
-              {countryLogo ? (
+              {flagUrl ? (
                 <img
-                  src={countryLogo}
-                  alt={country}
+                  src={flagUrl}
+                  alt={label}
                   width={20}
-                  height={14}
+                  height={15}
                   className="object-cover rounded-sm shrink-0"
-                  style={{ width: 20, height: 14 }}
+                  style={{ width: 20, height: 15 }}
                   onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                 />
               ) : (
                 <Globe className="w-4 h-4 text-muted-foreground shrink-0" />
               )}
-              <span className="flex-1 text-sm font-semibold text-left">{country}</span>
+              <span className="flex-1 text-sm font-semibold text-left">{label}</span>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">{countryLeagues.length}</span>
+                {totalFixtures > 0 && (
+                  <span className="text-xs text-muted-foreground bg-accent/50 px-1.5 py-0.5 rounded-full">
+                    {totalFixtures}
+                  </span>
+                )}
+                <span className="text-xs text-muted-foreground/60">{groupLeagues.length}</span>
                 {isOpen
                   ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
                   : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
               </div>
             </button>
 
+            {/* League rows */}
             {isOpen && (
               <div className="border-t border-border/50">
-                {countryLeagues.map((league) => (
+                {groupLeagues.map((league) => (
                   <button
                     key={league.id}
                     onClick={() => onSelectLeague(league.id, league.name)}
                     className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-accent/40 transition-colors text-left group border-b border-border/30 last:border-b-0"
                   >
-                    <Logo src={league.leagueLogo} alt={league.name} size={18} />
+                    <Logo
+                      src={league.leagueLogo}
+                      alt={league.name}
+                      size={20}
+                      fallback={
+                        <span className="text-base leading-none shrink-0 w-5 h-5 flex items-center justify-center">
+                          {sportMeta.icon}
+                        </span>
+                      }
+                    />
                     <span className="flex-1 text-sm text-foreground/90 group-hover:text-primary transition-colors truncate">
                       {league.name}
                     </span>
+                    {(league.fixtureCount ?? 0) > 0 && (
+                      <span className="text-xs text-muted-foreground/70 shrink-0 tabular-nums">
+                        {league.fixtureCount}
+                      </span>
+                    )}
                     <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/40 group-hover:text-primary/60 transition-colors shrink-0" />
                   </button>
                 ))}
@@ -408,7 +553,18 @@ export default function SportsPage() {
       <div className="flex flex-col gap-2">
         {(selectedLeagueName || selectedSportId) && (
           <button
-            onClick={() => window.history.back()}
+            onClick={() => {
+              if (selectedLeagueName && selectedSportId) {
+                // League fixture view → back to sport's league browser
+                navigate(`/sports?sportId=${selectedSportId}&sportName=${encodeURIComponent(selectedSportName ?? "")}`);
+              } else if (selectedLeagueName && !selectedSportId) {
+                // Football league view (from home sidebar) → back to football all-fixtures
+                navigate("/sports");
+              } else {
+                // Sport league browser → back to home
+                navigate("/");
+              }
+            }}
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors self-start"
           >
             <ChevronLeft className="w-4 h-4" /> Back
