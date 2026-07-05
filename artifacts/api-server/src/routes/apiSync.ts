@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, settingsTable, sportsTable, leaguesTable, teamsTable, fixturesTable, marketsTable, oddsTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { requireAdmin, setJwtSecret, type AuthRequest } from "../middlewares/auth";
 import { refreshAllUpcomingOdds } from "../lib/oddsRefresh";
 import { sendTestEmail } from "../lib/email";
@@ -30,7 +30,9 @@ function mapStatus(eventStatus: string): "upcoming" | "live" | "finished" | "can
   const s = eventStatus.toLowerCase();
   if (s === "finished" || s === "ft" || s === "aet" || s === "pen" || s === "completed" || s === "complete") return "finished";
   if (s === "cancelled" || s === "postponed" || s === "abandoned" || s === "walkover" || s === "retired") return "cancelled";
-  if (["1h", "ht", "2h", "et", "p", "live", "inprogress", "in play", "in_play",
+  // "p" alone = penalty shootout; use exact match to avoid matching "Suspended", "Interrupted", etc.
+  // Other live indicators are matched by substring (safe — no false positives for these strings).
+  if (s === "p" || ["1h", "ht", "2h", "et", "live", "inprogress", "in play", "in_play",
        "q1", "q2", "q3", "q4", "ot", "1st", "2nd", "3rd", "4th",
        "break", "progress", "innings"].some((k) => s.includes(k))) return "live";
   return "upcoming";
@@ -370,6 +372,8 @@ interface SportSyncConfig {
   name: string;
   icon: string;
   apiBase: string;
+  /** Maximum real-time duration of one match in minutes, used for status merge protection */
+  matchDurationMs: number;
   getLeagueExternalId: (e: any) => string;
   getLeagueName: (e: any) => string;
   getLeagueLogo: (e: any) => string | null;
@@ -395,6 +399,7 @@ const SPORT_CONFIGS: SportSyncConfig[] = [
     name: "Football",
     icon: "⚽",
     apiBase: "football",
+    matchDurationMs: 150 * 60 * 1000,
     getLeagueExternalId: (e) => String(e.league_key),
     getLeagueName: (e) => e.league_name ?? "Unknown League",
     getLeagueLogo: (e) => e.league_logo ?? null,
@@ -418,6 +423,7 @@ const SPORT_CONFIGS: SportSyncConfig[] = [
     name: "Basketball",
     icon: "🏀",
     apiBase: "basketball",
+    matchDurationMs: 200 * 60 * 1000,
     getLeagueExternalId: (e) => "bball_league_" + String(e.league_key ?? e.event_key),
     getLeagueName: (e) => e.league_name ?? e.event_league ?? "Unknown League",
     getLeagueLogo: (e) => e.league_logo ?? null,
@@ -441,6 +447,7 @@ const SPORT_CONFIGS: SportSyncConfig[] = [
     name: "Tennis",
     icon: "🎾",
     apiBase: "tennis",
+    matchDurationMs: 360 * 60 * 1000,
     getLeagueExternalId: (e) => "tennis_league_" + String(e.league_key ?? e.event_key),
     getLeagueName: (e) => e.league_name ?? e.tournament_name ?? "Unknown Tournament",
     getLeagueLogo: (e) => e.league_logo ?? null,
@@ -465,6 +472,7 @@ const SPORT_CONFIGS: SportSyncConfig[] = [
     name: "Cricket",
     icon: "🏏",
     apiBase: "cricket",
+    matchDurationMs: 2880 * 60 * 1000,
     getLeagueExternalId: (e) => "cricket_league_" + String(e.league_key ?? e.event_key),
     getLeagueName: (e) => e.league_name ?? "Unknown Competition",
     getLeagueLogo: (e) => e.league_logo ?? null,
@@ -558,14 +566,45 @@ async function syncSportFixtures(
       const rawStatus = mapStatus(config.getStatus(event));
       const score = parseScore(config.getResult(event));
 
-      const [existing] = await db.select({ id: fixturesTable.id }).from(fixturesTable).where(eq(fixturesTable.externalId, fixtureExtId)).limit(1);
+      const [existing] = await db
+        .select({ id: fixturesTable.id, status: fixturesTable.status, startTime: fixturesTable.startTime })
+        .from(fixturesTable)
+        .where(eq(fixturesTable.externalId, fixtureExtId))
+        .limit(1);
 
       if (existing) {
-        const updateFields: Record<string, unknown> = { status: rawStatus, scoreHome: score.home, scoreAway: score.away };
-        if (rawStatus === "upcoming") {
+        // ── Status merge rules ──────────────────────────────────────────────
+        // 1. Never demote live → upcoming: the API can lag behind real state.
+        //    Only allow the demotion once the stored kick-off is older than the
+        //    full match window (game is clearly over and API just hasn't caught up).
+        // 2. Never promote finished → live/upcoming: once settled it stays settled.
+        const now = new Date();
+        const matchCutoff = new Date(now.getTime() - config.matchDurationMs);
+        let mergedStatus = rawStatus;
+
+        if (existing.status === "live" && rawStatus === "upcoming") {
+          // Keep as live only if the game is still within its expected match window
+          mergedStatus = existing.startTime >= matchCutoff ? "live" : rawStatus;
+        }
+        if (existing.status === "finished" && (rawStatus === "live" || rawStatus === "upcoming")) {
+          mergedStatus = "finished";
+        }
+
+        const updateFields: Record<string, unknown> = { status: mergedStatus, scoreHome: score.home, scoreAway: score.away };
+        // Only update startTime when the API says the game hasn't started yet and we agree
+        if (rawStatus === "upcoming" && mergedStatus === "upcoming") {
           updateFields.startTime = startTime;
         }
-        await db.update(fixturesTable).set(updateFields).where(eq(fixturesTable.id, existing.id));
+        // Race-safe: don't regress a "finished" record back to live/upcoming if expiry
+        // or another worker moved it between our SELECT and this UPDATE.
+        await db
+          .update(fixturesTable)
+          .set(updateFields)
+          .where(
+            mergedStatus === "finished"
+              ? eq(fixturesTable.id, existing.id)
+              : and(eq(fixturesTable.id, existing.id), ne(fixturesTable.status, "finished")),
+          );
         updated++;
       } else {
         const [fixture] = await db.insert(fixturesTable).values({
