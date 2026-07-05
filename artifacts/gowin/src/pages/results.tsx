@@ -342,22 +342,29 @@ function SportFixtureView({
   fixtures: any[];
   renderCard: (f: any) => React.ReactNode;
 }) {
-  // Compute available sports sorted by fixture count (desc)
+  // Compute available sports — Football always first, rest sorted by count desc
   const sportCounts = new Map<string, number>();
   for (const f of fixtures) {
     const name = f.league?.sport?.name ?? f.sportName ?? "Football";
     sportCounts.set(name, (sportCounts.get(name) ?? 0) + 1);
   }
   const sports = [...sportCounts.entries()]
-    .sort(([, a], [, b]) => b - a)
+    .sort(([nameA, a], [nameB, b]) => {
+      if (nameA === "Football") return -1;
+      if (nameB === "Football") return 1;
+      return b - a;
+    })
     .map(([name, count]) => ({ name, count }));
 
-  const [selectedSport, setSelectedSport] = useState<string>(() => sports[0]?.name ?? "Football");
+  const [selectedSport, setSelectedSport] = useState<string>(() =>
+    sportCounts.has("Football") ? "Football" : (sports[0]?.name ?? "Football")
+  );
 
-  // Reset selection when available sports change
+  // Reset selection when available sports change — prefer Football
   useEffect(() => {
     if (sports.length > 0 && !sports.find((s) => s.name === selectedSport)) {
-      setSelectedSport(sports[0].name);
+      const preferred = sports.find((s) => s.name === "Football") ?? sports[0];
+      setSelectedSport(preferred.name);
     }
   }, [sports.map((s) => s.name).join(",")]);
 

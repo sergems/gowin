@@ -89,9 +89,12 @@ export default function LivePage() {
 
   const fixtures = data?.fixtures ?? [];
 
-  // Group by league
-  const leagueMap = new Map<number, { name: string; countryName?: string; logo?: string | null; countryLogo?: string | null; fixtures: any[] }>();
+  // Group by sport first (Football always first), then by league alphabetically
+  const sportMap = new Map<string, { leagues: Map<number, { name: string; countryName?: string; logo?: string | null; countryLogo?: string | null; fixtures: any[] }> }>();
   for (const f of fixtures) {
+    const sportName = f.league?.sport?.name ?? f.sportName ?? "Football";
+    if (!sportMap.has(sportName)) sportMap.set(sportName, { leagues: new Map() });
+    const leagueMap = sportMap.get(sportName)!.leagues;
     const lid = f.leagueId ?? 0;
     if (!leagueMap.has(lid)) {
       leagueMap.set(lid, {
@@ -104,7 +107,34 @@ export default function LivePage() {
     }
     leagueMap.get(lid)!.fixtures.push(f);
   }
-  const leagueGroups = Array.from(leagueMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+
+  const SPORT_ICONS: Record<string, string> = { Football: "⚽", Basketball: "🏀", Tennis: "🎾", Cricket: "🏏" };
+
+  const sportGroups = [...sportMap.entries()]
+    .sort(([a], [b]) => {
+      if (a === "Football") return -1;
+      if (b === "Football") return 1;
+      return a.localeCompare(b);
+    })
+    .map(([name, { leagues }]) => ({
+      name,
+      icon: SPORT_ICONS[name] ?? "🏟️",
+      leagueGroups: Array.from(leagues.values()).sort((a, b) => a.name.localeCompare(b.name)),
+      count: Array.from(leagues.values()).reduce((s, l) => s + l.fixtures.length, 0),
+    }));
+
+  const [selectedSport, setSelectedSport] = useState<string>(() =>
+    sportMap.has("Football") ? "Football" : (sportGroups[0]?.name ?? "Football")
+  );
+  useEffect(() => {
+    if (sportGroups.length > 0 && !sportGroups.find((s) => s.name === selectedSport)) {
+      const preferred = sportGroups.find((s) => s.name === "Football") ?? sportGroups[0];
+      setSelectedSport(preferred.name);
+    }
+  }, [sportGroups.map((s) => s.name).join(",")]);
+
+  const activeSport = sportGroups.find((s) => s.name === selectedSport);
+  const leagueGroups = activeSport?.leagueGroups ?? [];
 
   const timeStr = lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
@@ -146,23 +176,45 @@ export default function LivePage() {
           </div>
         </div>
       ) : (
-        <div className="space-y-6">
-          {leagueGroups.map((league) => (
-            <div key={league.name}>
-              {/* League header */}
-              <div className="flex items-center gap-2 mb-3">
-                <Logo src={league.countryLogo} alt={league.countryName ?? ""} size={16} />
-                <Logo src={league.logo} alt={league.name} size={16} />
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{league.name}</span>
-                <span className="text-[10px] text-muted-foreground/50 ml-1">
-                  {league.fixtures.length} match{league.fixtures.length !== 1 ? "es" : ""}
-                </span>
-              </div>
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                {league.fixtures.map((f: any) => <LiveCard key={f.id} fixture={f} />)}
-              </div>
+        <div className="space-y-4">
+          {/* Sport tabs — Football always first */}
+          {sportGroups.length > 1 && (
+            <div className="flex gap-1 flex-wrap">
+              {sportGroups.map((s) => (
+                <button
+                  key={s.name}
+                  onClick={() => setSelectedSport(s.name)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                    selectedSport === s.name
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-card border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
+                  }`}
+                >
+                  <span>{s.icon}</span>
+                  <span>{s.name}</span>
+                  <span className={`tabular-nums ${selectedSport === s.name ? "text-primary-foreground/70" : "text-muted-foreground/60"}`}>{s.count}</span>
+                </button>
+              ))}
             </div>
-          ))}
+          )}
+
+          <div className="space-y-6">
+            {leagueGroups.map((league) => (
+              <div key={league.name}>
+                <div className="flex items-center gap-2 mb-3">
+                  <Logo src={league.countryLogo} alt={league.countryName ?? ""} size={16} />
+                  <Logo src={league.logo} alt={league.name} size={16} />
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{league.name}</span>
+                  <span className="text-[10px] text-muted-foreground/50 ml-1">
+                    {league.fixtures.length} match{league.fixtures.length !== 1 ? "es" : ""}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                  {league.fixtures.map((f: any) => <LiveCard key={f.id} fixture={f} />)}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
