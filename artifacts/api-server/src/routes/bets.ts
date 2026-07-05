@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, betsTable, betSelectionsTable, walletsTable, transactionsTable, fixturesTable, usersTable, teamsTable, leaguesTable } from "@workspace/db";
+import { db, betsTable, betSelectionsTable, walletsTable, transactionsTable, fixturesTable, usersTable, teamsTable, leaguesTable, oddsTable, marketsTable } from "@workspace/db";
 import { eq, desc, and, count, inArray, ne } from "drizzle-orm";
 import { requireAuth, requireAdmin, requireAdminOrManager, type AuthRequest } from "../middlewares/auth";
 import {
@@ -48,13 +48,59 @@ router.post("/bets", requireAuth, async (req: AuthRequest, res): Promise<void> =
     return;
   }
 
-  // Allow betting on both upcoming (pre-match) and live fixtures;
-  // odds are frozen at submission time from the client-supplied value
+  // Allow betting on both upcoming (pre-match) and live fixtures
   const closedFixtures = fixtures.filter((f) => f.status !== "upcoming" && f.status !== "live");
   if (closedFixtures.length > 0) {
     res.status(400).json({ error: "One or more events have already finished and are no longer open for betting." });
     return;
   }
+
+  // Verify odds server-side — prevents clients from submitting manipulated odds.
+  // Also binds each oddsId to its fixtureId, market type, and selection to prevent
+  // cross-fixture oddsId injection (e.g. pairing a high-priced unrelated oddsId).
+  const oddsIds = [...new Set(selections.map((s) => s.oddsId))];
+  const dbOddsRows = oddsIds.length > 0
+    ? await db
+        .select({
+          id: oddsTable.id,
+          oddsValue: oddsTable.oddsValue,
+          selection: oddsTable.selection,
+          marketId: oddsTable.marketId,
+          fixtureId: marketsTable.fixtureId,
+          marketType: marketsTable.marketType,
+          suspended: marketsTable.suspended,
+        })
+        .from(oddsTable)
+        .innerJoin(marketsTable, eq(marketsTable.id, oddsTable.marketId))
+        .where(inArray(oddsTable.id, oddsIds))
+    : [];
+
+  if (dbOddsRows.length !== oddsIds.length) {
+    res.status(400).json({ error: "One or more selected odds are no longer available. Please refresh and try again." });
+    return;
+  }
+
+  const dbOddsMap = new Map(dbOddsRows.map((o) => [o.id, o]));
+
+  // Validate each selection against the DB — reject any mismatch
+  for (const s of selections) {
+    const row = dbOddsMap.get(s.oddsId);
+    if (!row) {
+      res.status(400).json({ error: "One or more selected odds are no longer available. Please refresh and try again." });
+      return;
+    }
+    if (row.suspended) {
+      res.status(400).json({ error: "One or more selected markets are currently suspended." });
+      return;
+    }
+    if (row.fixtureId !== s.fixtureId || row.marketType !== s.market || row.selection !== s.selection) {
+      res.status(400).json({ error: "Bet selection data is invalid. Please refresh the page and try again." });
+      return;
+    }
+  }
+
+  // Use DB odds values — never trust client-supplied odds
+  const dbOddsValueMap = new Map(dbOddsRows.map((o) => [o.id, parseFloat(o.oddsValue)]));
 
   const [userRecord] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
   if (!userRecord?.phoneNumber) {
@@ -69,7 +115,7 @@ router.post("/bets", requireAuth, async (req: AuthRequest, res): Promise<void> =
   }
 
   const MAX_WIN = 1_000_000;
-  const totalOdds = selections.reduce((acc, s) => acc * s.odds, 1);
+  const totalOdds = selections.reduce((acc, s) => acc * (dbOddsValueMap.get(s.oddsId) ?? s.odds), 1);
   const rawPotentialWin = stake * totalOdds;
   const potentialWin = Math.min(rawPotentialWin, MAX_WIN);
   const code = await uniqueBetCode();
@@ -98,7 +144,7 @@ router.post("/bets", requireAuth, async (req: AuthRequest, res): Promise<void> =
       fixtureId: s.fixtureId,
       market: s.market,
       selection: s.selection,
-      odds: s.odds.toFixed(4),
+      odds: (dbOddsValueMap.get(s.oddsId) ?? s.odds).toFixed(4),
     }))
   );
 
@@ -289,6 +335,13 @@ router.get("/bets/:id", requireAuth, async (req: AuthRequest, res): Promise<void
   const [bet] = await db.select().from(betsTable).where(eq(betsTable.id, params.data.id)).limit(1);
   if (!bet) {
     res.status(404).json({ error: "Bet not found" });
+    return;
+  }
+
+  // Ownership check — only the bet owner, admin, or manager may view a bet
+  const isAdminOrManager = req.userRole === "admin" || req.userRole === "manager";
+  if (!isAdminOrManager && bet.userId !== req.userId) {
+    res.status(403).json({ error: "You do not have permission to view this bet" });
     return;
   }
 

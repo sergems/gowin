@@ -87,10 +87,14 @@ export async function autoSettleFinishedFixtures(): Promise<{
 
     let hasLoss = false;
     let hasPending = false;
+    // Product of odds for void (unrecognised) legs — used to reduce potentialWin
+    // so that voided selections contribute odds=1.0 rather than their stored value.
+    let voidOddsDivisor = 1.0;
 
     for (const sel of allBetSelections) {
       const fixture = fixtureMap[sel.fixtureId];
       if (!fixture || fixture.scoreHome === null || fixture.scoreAway === null) {
+        // Fixture not yet finished — keep waiting
         hasPending = true;
         continue;
       }
@@ -100,7 +104,10 @@ export async function autoSettleFinishedFixtures(): Promise<{
         break;
       }
       if (outcome === null) {
-        hasPending = true;
+        // Fixture IS finished but market type is unrecognised — treat as void.
+        // Track the stored odds so we can divide them out of potentialWin below.
+        // Do NOT set hasPending here, or the bet will be stuck forever.
+        voidOddsDivisor *= parseFloat(sel.odds as string);
       }
     }
 
@@ -122,7 +129,12 @@ export async function autoSettleFinishedFixtures(): Promise<{
     // auto-credited — the winner claims cash at the payout desk instead.
     // Regular online-user bets are credited to their wallet as before.
     if (!bet.branchId) {
-      const payout = parseFloat(bet.potentialWin as any);
+      const storedPotentialWin = parseFloat(bet.potentialWin as any);
+      const stake = parseFloat(bet.stake as any);
+      // Divide out void-leg odds contributions; if all legs are void this equals stake (full refund).
+      const payout = voidOddsDivisor > 1.0
+        ? Math.max(stake, storedPotentialWin / voidOddsDivisor)
+        : storedPotentialWin;
       const [wallet] = await db
         .select()
         .from(walletsTable)

@@ -189,11 +189,37 @@ router.post("/auth/forgot-password", async (req, res): Promise<void> => {
   res.json({ message: "If an account with that email exists, an OTP has been sent." });
 });
 
+// ── OTP rate limiting — max 5 failed attempts per email per 10-minute window ──
+const otpAttempts = new Map<string, { count: number; resetAt: number }>();
+const OTP_MAX_ATTEMPTS = 5;
+const OTP_WINDOW_MS = 10 * 60 * 1000;
+
+function checkOtpRateLimit(email: string): boolean {
+  const now = Date.now();
+  const entry = otpAttempts.get(email);
+  if (!entry || entry.resetAt <= now) {
+    otpAttempts.set(email, { count: 1, resetAt: now + OTP_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= OTP_MAX_ATTEMPTS) return false;
+  entry.count++;
+  return true;
+}
+
+function clearOtpRateLimit(email: string): void {
+  otpAttempts.delete(email);
+}
+
 // ── Verify OTP ────────────────────────────────────────────────────────────────
 router.post("/auth/verify-otp", async (req, res): Promise<void> => {
   const { email, otp } = req.body as { email?: string; otp?: string };
   if (!email || typeof email !== "string" || !email.includes("@") || !otp || typeof otp !== "string" || otp.length !== 6) {
     res.status(400).json({ error: "Invalid input" });
+    return;
+  }
+
+  if (!checkOtpRateLimit(email)) {
+    res.status(429).json({ error: "Too many attempts. Please request a new OTP and try again." });
     return;
   }
 
@@ -214,6 +240,8 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
 
   if (!matchedRecord) { res.status(400).json({ error: "Invalid or expired OTP" }); return; }
 
+  // OTP matched — clear the rate limit counter
+  clearOtpRateLimit(email);
   await db.update(passwordResetOtpsTable).set({ usedAt: now }).where(eq(passwordResetOtpsTable.id, matchedRecord.id));
 
   const resetToken = jwt.sign({ userId: user.id, type: "password_reset" }, getJwtSecret(), { expiresIn: "15m" });

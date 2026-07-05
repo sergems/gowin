@@ -160,6 +160,7 @@ function Router() {
         <Route path="/reset-password" component={ResetPassword} />
         <Route path="/change-password" component={() => <ProtectedRoute component={ChangePassword} />} />
         <Route path="/live">{() => { const [, nav] = useLocation(); useEffect(() => { nav("/"); }, []); return null; }}</Route>
+        <Route path="/live-betting" component={LiveBetting} />
         <Route path="/sports" component={SportsHub} />
         <Route path="/sports/:sportId" component={SportsHub} />
         <Route path="/basketball">{() => <SportRedirect name="Basketball" />}</Route>

@@ -80,7 +80,7 @@ router.post("/wallet/deposit", requireAuth, async (req: AuthRequest, res): Promi
 });
 
 router.post("/wallet/withdraw", requireAuth, async (req: AuthRequest, res): Promise<void> => {
-  if (["agent", "branch_admin", "payout"].includes(req.userRole!)) {
+  if (["agent", "branch_admin", "payout", "payment_clerk", "manager"].includes(req.userRole!)) {
     res.status(403).json({ error: "Staff accounts cannot withdraw funds" });
     return;
   }

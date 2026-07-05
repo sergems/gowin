@@ -384,6 +384,11 @@ router.post("/clerk/withdrawals/:id/authorize", requirePaymentClerk, async (req:
   const phoneNumber = withdrawal.phoneNumber ?? withdrawal.bankDetails;
   const operator = withdrawal.operator;
 
+  if (!phoneNumber || !phoneNumber.trim()) {
+    res.status(400).json({ error: "No phone number set on this withdrawal. The user must set their payment account in their profile." });
+    return;
+  }
+
   if (!operator) {
     res.status(400).json({ error: "No operator set on this withdrawal. The user must set their payment account in their profile." });
     return;
