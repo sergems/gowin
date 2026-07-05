@@ -574,25 +574,40 @@ async function syncSportFixtures(
 
       if (existing) {
         // ── Status merge rules ──────────────────────────────────────────────
-        // 1. Never demote live → upcoming: the API can lag behind real state.
-        //    Only allow the demotion once the stored kick-off is older than the
-        //    full match window (game is clearly over and API just hasn't caught up).
-        // 2. Never promote finished → live/upcoming: once settled it stays settled.
         const now = new Date();
         const matchCutoff = new Date(now.getTime() - config.matchDurationMs);
+        // 10-minute buffer: don't trust "live" from the API for games whose
+        // stored kick-off is more than 10 minutes in the future.
+        const tenMinFromNow = new Date(now.getTime() + 10 * 60 * 1000);
         let mergedStatus = rawStatus;
 
-        if (existing.status === "live" && rawStatus === "upcoming") {
-          // Keep as live only if the game is still within its expected match window
-          mergedStatus = existing.startTime >= matchCutoff ? "live" : rawStatus;
+        // 1. Reject "live" when DB start_time is clearly in the future.
+        //    This handles rescheduled games: API marks them live today but the DB
+        //    still holds the old future date, which would create "future_but_live"
+        //    records that flood the Live tab with upcoming fixtures.
+        if (rawStatus === "live" && existing.startTime > tenMinFromNow) {
+          mergedStatus = "upcoming";
         }
-        if (existing.status === "finished" && (rawStatus === "live" || rawStatus === "upcoming")) {
+
+        // 2. Never demote live → upcoming unless the game is past its match window.
+        if (existing.status === "live" && mergedStatus === "upcoming") {
+          mergedStatus = existing.startTime >= matchCutoff ? "live" : "upcoming";
+        }
+
+        // 3. Never promote finished → live/upcoming: once settled it stays settled.
+        if (existing.status === "finished" && (mergedStatus === "live" || mergedStatus === "upcoming")) {
           mergedStatus = "finished";
         }
 
         const updateFields: Record<string, unknown> = { status: mergedStatus, scoreHome: score.home, scoreAway: score.away };
-        // Only update startTime when the API says the game hasn't started yet and we agree
+        // Only update startTime when both API and merged status agree the game hasn't started.
         if (rawStatus === "upcoming" && mergedStatus === "upcoming") {
+          updateFields.startTime = startTime;
+        }
+        // If transitioning to live but DB startTime is still in the future, the game was
+        // rescheduled to an earlier date. Sync startTime so subsequent time-based checks
+        // (fixtureExpiry, fixtureSync) work correctly.
+        if (mergedStatus === "live" && existing.startTime > now) {
           updateFields.startTime = startTime;
         }
         // Race-safe: don't regress a "finished" record back to live/upcoming if expiry
