@@ -524,10 +524,11 @@ export function Shell({ children }: { children: ReactNode }) {
                 href="/gowin.apk"
                 download="GoWin.apk"
                 title={t("footer.download_title")}
-                className={`flex items-center gap-3 rounded-md transition-colors
+                className={`flex flex-col items-center gap-1 rounded-md transition-colors
                   ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
                   hover:bg-accent opacity-90 hover:opacity-100`}
               >
+                {open && <span className="text-[11px] font-semibold text-center leading-tight text-foreground">Download the Go Win RDC Official App</span>}
                 <img src="/store-badges/google-play.png" alt="Get it on Google Play" className="h-12 w-auto object-contain" />
               </a>
             )}
@@ -557,10 +558,11 @@ export function Shell({ children }: { children: ReactNode }) {
                 href="/gowin.apk"
                 download="GoWin.apk"
                 title={t("footer.download_title")}
-                className={`flex items-center gap-3 rounded-md transition-colors
+                className={`flex flex-col items-center gap-1 rounded-md transition-colors
                   ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
                   hover:bg-accent opacity-90 hover:opacity-100`}
               >
+                {open && <span className="text-[11px] font-semibold text-center leading-tight text-foreground">Download the Go Win RDC Official App</span>}
                 <img src="/store-badges/google-play.png" alt="Get it on Google Play" className="h-12 w-auto object-contain" />
               </a>
             )}
