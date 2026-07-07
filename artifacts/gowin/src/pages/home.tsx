@@ -34,7 +34,7 @@ function BannerSlider() {
 
   return (
     <div
-      className="relative w-full overflow-hidden select-none mb-2 -mt-14 -mx-4 md:-mx-5 lg:-mx-6"
+      className="relative w-full overflow-hidden select-none mb-2 rounded-xl"
       style={{ aspectRatio: "956 / 412" }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
