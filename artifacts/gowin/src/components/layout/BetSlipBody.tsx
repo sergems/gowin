@@ -337,7 +337,7 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
               </span>
             </div>
             {isMaxWinCapped && (
-              <p className="text-[11px] text-amber-400 mt-1 text-right">{t("betslip.max_win_capped")} {formatCurrency(1000000)}</p>
+              <p className="text-[11px] text-amber-400 mt-1 text-right">{t("betslip.max_win_capped")} {formatCurrency(potentialWin)}</p>
             )}
           </div>
           <Button

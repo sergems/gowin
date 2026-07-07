@@ -50,10 +50,11 @@ export default function AdminSettings() {
   const { currency: activeCurrency, language: activeLanguage } = useSiteSettings();
 
   // ── Site Settings state ─────────────────────────────────────────────────────
-  const { exchangeRate: activeExchangeRate } = useSiteSettings();
+  const { exchangeRate: activeExchangeRate, maxWin: activeMaxWin } = useSiteSettings();
   const [siteCurrency, setSiteCurrency] = useState(activeCurrency);
   const [siteLanguage, setSiteLanguage] = useState(activeLanguage);
   const [exchangeRate, setExchangeRate] = useState(String(activeExchangeRate));
+  const [maxWin, setMaxWin] = useState(String(activeMaxWin));
   const [isFetchingRate, setIsFetchingRate] = useState(false);
 
   // ── JWT Secret state ────────────────────────────────────────────────────────
@@ -371,7 +372,7 @@ export default function AdminSettings() {
       const res = await fetch("/api/admin/site-settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ currency: siteCurrency, language: siteLanguage, exchangeRate: parseFloat(exchangeRate) || 2800 }),
+        body: JSON.stringify({ currency: siteCurrency, language: siteLanguage, exchangeRate: parseFloat(exchangeRate) || 2800, maxWin: parseFloat(maxWin) || 1000000 }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -499,6 +500,24 @@ export default function AdminSettings() {
             />
             <p className="text-xs text-muted-foreground">
               All balances are stored in USD. This rate is used to display amounts in CDF across the site.
+            </p>
+          </div>
+
+          {/* Max Win */}
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+              Max Win (per bet slip)
+            </Label>
+            <Input
+              type="number"
+              min="1"
+              step="1"
+              value={maxWin}
+              onChange={(e) => setMaxWin(e.target.value)}
+              placeholder="e.g. 1000000"
+            />
+            <p className="text-xs text-muted-foreground">
+              Maximum payout a player can win from a single bet slip, in USD. Bets that would exceed this are capped at this amount.
             </p>
           </div>
 

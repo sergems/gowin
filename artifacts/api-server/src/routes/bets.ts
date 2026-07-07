@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, betsTable, betSelectionsTable, walletsTable, transactionsTable, fixturesTable, usersTable, teamsTable, leaguesTable, oddsTable, marketsTable } from "@workspace/db";
+import { db, betsTable, betSelectionsTable, walletsTable, transactionsTable, fixturesTable, usersTable, teamsTable, leaguesTable, oddsTable, marketsTable, settingsTable } from "@workspace/db";
 import { eq, desc, and, count, inArray, ne } from "drizzle-orm";
 import { requireAuth, requireAdmin, requireAdminOrManager, type AuthRequest } from "../middlewares/auth";
 import {
@@ -11,6 +11,11 @@ import {
 } from "@workspace/api-zod";
 
 const router = Router();
+
+async function getSetting(key: string): Promise<string | null> {
+  const [row] = await db.select().from(settingsTable).where(eq(settingsTable.key, key)).limit(1);
+  return row?.value ?? null;
+}
 
 // ── Bet code generation ───────────────────────────────────────────────────────
 const CODE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -114,7 +119,8 @@ router.post("/bets", requireAuth, async (req: AuthRequest, res): Promise<void> =
     return;
   }
 
-  const MAX_WIN = 1_000_000;
+  const maxWinSetting = await getSetting("max_win");
+  const MAX_WIN = maxWinSetting ? parseFloat(maxWinSetting) : 1_000_000;
   const totalOdds = selections.reduce((acc, s) => acc * (dbOddsValueMap.get(s.oddsId) ?? s.odds), 1);
   const rawPotentialWin = stake * totalOdds;
   const potentialWin = Math.min(rawPotentialWin, MAX_WIN);

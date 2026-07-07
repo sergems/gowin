@@ -72,7 +72,7 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
     setStake(0);
   };
 
-  const MAX_WIN = 1_000_000;
+  const { maxWin: MAX_WIN } = useSiteSettings();
   const totalOdds = selections.reduce((acc, curr) => acc * curr.odds, 1);
   const rawPotentialWin = stake * totalOdds;
   const potentialWin = Math.min(rawPotentialWin, MAX_WIN);

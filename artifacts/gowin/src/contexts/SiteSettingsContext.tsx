@@ -6,12 +6,14 @@ interface SiteSettings {
   currency: string;
   language: Language;
   exchangeRate: number;
+  maxWin: number;
 }
 
 interface SiteSettingsContextValue {
   currency: string;
   language: Language;
   exchangeRate: number;
+  maxWin: number;
   t: (key: TranslationKey) => string;
   formatCurrency: (amount: number | string) => string;
   parseAmount: (amount: number | string) => number;
@@ -21,8 +23,9 @@ const SiteSettingsContext = createContext<SiteSettingsContextValue>({
   currency: "USD",
   language: "en",
   exchangeRate: 2800,
+  maxWin: 1_000_000,
   t: (key) => key,
-  formatCurrency: (amount) => `$${Number(amount).toFixed(2)}`,
+  formatCurrency: (amount) => `${Number(amount).toFixed(2)}`,
   parseAmount: (amount) => Number(amount),
 });
 
@@ -43,6 +46,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
   const currency = data?.currency ?? "USD";
   const language: Language = data?.language ?? "en";
   const exchangeRate = data?.exchangeRate ?? 2800;
+  const maxWin = data?.maxWin ?? 1_000_000;
 
   const t = (key: TranslationKey) => translate(key, language);
   const formatCurrency = (amount: number | string) =>
@@ -53,7 +57,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     parseCurrencyInput(Number(amount), currency, exchangeRate);
 
   return (
-    <SiteSettingsContext.Provider value={{ currency, language, exchangeRate, t, formatCurrency, parseAmount }}>
+    <SiteSettingsContext.Provider value={{ currency, language, exchangeRate, maxWin, t, formatCurrency, parseAmount }}>
       {children}
     </SiteSettingsContext.Provider>
   );

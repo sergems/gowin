@@ -652,35 +652,39 @@ async function syncSportFixtures(
 
 // ── GET /site-settings (public) ──────────────────────────────────────────────
 router.get("/site-settings", async (_req, res): Promise<void> => {
-  const [currency, language, exchangeRate] = await Promise.all([
+  const [currency, language, exchangeRate, maxWin] = await Promise.all([
     getSetting("site_currency"),
     getSetting("site_language"),
     getSetting("usd_to_cdf_rate"),
+    getSetting("max_win"),
   ]);
   res.json({
     currency: currency ?? "USD",
     language: language ?? "en",
     exchangeRate: parseFloat(exchangeRate ?? "2800"),
+    maxWin: parseFloat(maxWin ?? "1000000"),
   });
 });
 
 // ── GET /admin/site-settings ──────────────────────────────────────────────────
 router.get("/admin/site-settings", requireAdmin, async (_req, res): Promise<void> => {
-  const [currency, language, exchangeRate] = await Promise.all([
+  const [currency, language, exchangeRate, maxWin] = await Promise.all([
     getSetting("site_currency"),
     getSetting("site_language"),
     getSetting("usd_to_cdf_rate"),
+    getSetting("max_win"),
   ]);
   res.json({
     currency: currency ?? "USD",
     language: language ?? "en",
     exchangeRate: parseFloat(exchangeRate ?? "2800"),
+    maxWin: parseFloat(maxWin ?? "1000000"),
   });
 });
 
 // ── PUT /admin/site-settings ──────────────────────────────────────────────────
 router.put("/admin/site-settings", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
-  const { currency, language, exchangeRate } = req.body;
+  const { currency, language, exchangeRate, maxWin } = req.body;
   const saves: Promise<void>[] = [];
   if (currency && typeof currency === "string" && currency.trim()) {
     saves.push(setSetting("site_currency", currency.trim().toUpperCase()));
@@ -692,6 +696,12 @@ router.put("/admin/site-settings", requireAdmin, async (req: AuthRequest, res): 
     const rate = parseFloat(String(exchangeRate));
     if (!isNaN(rate) && rate > 0) {
       saves.push(setSetting("usd_to_cdf_rate", String(rate)));
+    }
+  }
+  if (maxWin !== undefined) {
+    const mw = parseFloat(String(maxWin));
+    if (!isNaN(mw) && mw > 0) {
+      saves.push(setSetting("max_win", String(mw)));
     }
   }
   await Promise.all(saves);
