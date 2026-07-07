@@ -92,7 +92,7 @@ export default function LivePage() {
   // Group by sport first (Football always first), then by league alphabetically
   const sportMap = new Map<string, { leagues: Map<number, { name: string; countryName?: string; logo?: string | null; countryLogo?: string | null; fixtures: any[] }> }>();
   for (const f of fixtures) {
-    const sportName = f.league?.sport?.name ?? f.sportName ?? "Football";
+    const sportName = f.league?.sport?.name ?? "Football";
     if (!sportMap.has(sportName)) sportMap.set(sportName, { leagues: new Map() });
     const leagueMap = sportMap.get(sportName)!.leagues;
     const lid = f.leagueId ?? 0;

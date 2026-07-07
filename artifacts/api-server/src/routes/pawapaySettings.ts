@@ -147,7 +147,7 @@ router.get("/admin/pawapay/test/deposit/:depositId", requireAdmin, async (req, r
   if (!config) { res.status(503).json({ error: "PawaPay not configured" }); return; }
   try {
     const { getDepositStatus } = await import("../lib/pawapay.js");
-    const result = await getDepositStatus(config, depositId);
+    const result = await getDepositStatus(config, depositId as string);
     // v2 wraps status check: { status: "FOUND", data: { status: "COMPLETED", ... } }
     const txData = result.data?.data ?? result.data;
     res.json({ httpStatus: result.status, ok: result.ok, response: txData });
@@ -192,7 +192,7 @@ router.get("/admin/pawapay/test/payout/:payoutId", requireAdmin, async (req, res
   const config = await getPawapayConfig();
   if (!config) { res.status(503).json({ error: "PawaPay not configured" }); return; }
   try {
-    const result = await getPayoutStatus(config, payoutId);
+    const result = await getPayoutStatus(config, payoutId as string);
     // v2 wraps status check: { status: "FOUND", data: { status: "COMPLETED", ... } }
     const txData = result.data?.data ?? result.data;
     res.json({ httpStatus: result.status, ok: result.ok, response: txData });
