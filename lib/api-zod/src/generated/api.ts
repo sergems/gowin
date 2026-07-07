@@ -46,7 +46,7 @@ export const LoginResponse = zod.object({
   "id": zod.number(),
   "username": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['user', 'admin']),
+  "role": zod.enum(['user', 'admin', 'manager', 'branch_admin', 'agent', 'payout', 'payment_clerk']),
   "disabled": zod.boolean().optional(),
   "mustChangePassword": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
@@ -62,7 +62,7 @@ export const GetMeResponse = zod.object({
   "id": zod.number(),
   "username": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['user', 'admin']),
+  "role": zod.enum(['user', 'admin', 'manager', 'branch_admin', 'agent', 'payout', 'payment_clerk']),
   "disabled": zod.boolean().optional(),
   "mustChangePassword": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
@@ -133,7 +133,7 @@ export const ChangePasswordResponse = zod.object({
   "id": zod.number(),
   "username": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['user', 'admin']),
+  "role": zod.enum(['user', 'admin', 'manager', 'branch_admin', 'agent', 'payout', 'payment_clerk']),
   "disabled": zod.boolean().optional(),
   "mustChangePassword": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
@@ -159,7 +159,7 @@ export const ListUsersResponse = zod.object({
   "id": zod.number(),
   "username": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['user', 'admin']),
+  "role": zod.enum(['user', 'admin', 'manager', 'branch_admin', 'agent', 'payout', 'payment_clerk']),
   "disabled": zod.boolean().optional(),
   "disabledReason": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
@@ -188,7 +188,7 @@ export const GetUserResponse = zod.object({
   "id": zod.number(),
   "username": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['user', 'admin']),
+  "role": zod.enum(['user', 'admin', 'manager', 'branch_admin', 'agent', 'payout', 'payment_clerk']),
   "disabled": zod.boolean().optional(),
   "disabledReason": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
@@ -652,11 +652,16 @@ export const ListAllBetsResponse = zod.object({
   "id": zod.number(),
   "username": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['user', 'admin']),
+  "role": zod.enum(['user', 'admin', 'manager', 'branch_admin', 'agent', 'payout', 'payment_clerk']),
   "disabled": zod.boolean().optional(),
   "mustChangePassword": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
-}).optional()
+}).optional(),
+  "qualifyingSelections": zod.number().optional(),
+  "bonusPercentage": zod.number().optional(),
+  "baseWin": zod.number().optional(),
+  "bonusAmount": zod.number().optional(),
+  "maxWinApplied": zod.boolean().optional()
 })),
   "total": zod.number(),
   "page": zod.number(),
@@ -689,11 +694,16 @@ export const GetMyBetsResponse = zod.object({
   "id": zod.number(),
   "username": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['user', 'admin']),
+  "role": zod.enum(['user', 'admin', 'manager', 'branch_admin', 'agent', 'payout', 'payment_clerk']),
   "disabled": zod.boolean().optional(),
   "mustChangePassword": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
-}).optional()
+}).optional(),
+  "qualifyingSelections": zod.number().optional(),
+  "bonusPercentage": zod.number().optional(),
+  "baseWin": zod.number().optional(),
+  "bonusAmount": zod.number().optional(),
+  "maxWinApplied": zod.boolean().optional()
 })),
   "total": zod.number(),
   "page": zod.number(),
@@ -720,11 +730,16 @@ export const GetBetResponse = zod.object({
   "id": zod.number(),
   "username": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['user', 'admin']),
+  "role": zod.enum(['user', 'admin', 'manager', 'branch_admin', 'agent', 'payout', 'payment_clerk']),
   "disabled": zod.boolean().optional(),
   "mustChangePassword": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
 }).optional(),
+  "qualifyingSelections": zod.number().optional(),
+  "bonusPercentage": zod.number().optional(),
+  "baseWin": zod.number().optional(),
+  "bonusAmount": zod.number().optional(),
+  "maxWinApplied": zod.boolean().optional(),
   "selections": zod.array(zod.object({
   "id": zod.number(),
   "betId": zod.number(),
@@ -790,11 +805,16 @@ export const VoidBetResponse = zod.object({
   "id": zod.number(),
   "username": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['user', 'admin']),
+  "role": zod.enum(['user', 'admin', 'manager', 'branch_admin', 'agent', 'payout', 'payment_clerk']),
   "disabled": zod.boolean().optional(),
   "mustChangePassword": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
-}).optional()
+}).optional(),
+  "qualifyingSelections": zod.number().optional(),
+  "bonusPercentage": zod.number().optional(),
+  "baseWin": zod.number().optional(),
+  "bonusAmount": zod.number().optional(),
+  "maxWinApplied": zod.boolean().optional()
 })
 
 
@@ -830,11 +850,16 @@ export const GetRecentBetsResponseItem = zod.object({
   "id": zod.number(),
   "username": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['user', 'admin']),
+  "role": zod.enum(['user', 'admin', 'manager', 'branch_admin', 'agent', 'payout', 'payment_clerk']),
   "disabled": zod.boolean().optional(),
   "mustChangePassword": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
-}).optional()
+}).optional(),
+  "qualifyingSelections": zod.number().optional(),
+  "bonusPercentage": zod.number().optional(),
+  "baseWin": zod.number().optional(),
+  "bonusAmount": zod.number().optional(),
+  "maxWinApplied": zod.boolean().optional()
 })
 export const GetRecentBetsResponse = zod.array(GetRecentBetsResponseItem)
 

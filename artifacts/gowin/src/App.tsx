@@ -40,6 +40,7 @@ import AdminSlides from "@/pages/admin/slides";
 import AdminFixtureUpdate from "@/pages/admin/fixture-update";
 import AdminBranches from "@/pages/admin/BranchesPage";
 import ApiMonitorPage from "@/pages/admin/ApiMonitorPage";
+import AdminWinBonus from "@/pages/admin/win-bonus";
 
 // Branch Admin Pages
 import BranchDashboard from "@/pages/branch/DashboardPage";
@@ -189,6 +190,7 @@ function Router() {
         <Route path="/admin/settings" component={() => <ProtectedRoute component={AdminSettings} adminOnly />} />
         <Route path="/admin/slides" component={() => <ProtectedRoute component={AdminSlides} adminOnly />} />
         <Route path="/admin/api-monitor" component={() => <ProtectedRoute component={ApiMonitorPage} adminOnly />} />
+        <Route path="/admin/win-bonus" component={() => <ProtectedRoute component={AdminWinBonus} adminOnly />} />
 
         {/* Branch Admin Routes */}
         <Route path="/branch" component={() => <ProtectedRoute component={BranchDashboard} allowedRoles={["branch_admin"]} />} />

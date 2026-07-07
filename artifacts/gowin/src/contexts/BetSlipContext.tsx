@@ -1,9 +1,40 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { usePlaceBet } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import type { BetSelectionInput } from "@workspace/api-client-react";
 import { useAuth } from "./AuthContext";
 import { useSiteSettings } from "./SiteSettingsContext";
+
+// ── Win Bonus types ────────────────────────────────────────────────────────────
+
+export interface WinBonusTier {
+  selections: number;
+  bonusPercent: number;
+}
+
+export interface WinBonusConfig {
+  enabled: boolean;
+  title: string;
+  description: string;
+  minQualifyingSelections: number;
+  maxSelections: number;
+  minQualifyingOdds: number;
+  maxPayout: number;
+  bonusTable: WinBonusTier[];
+}
+
+// ── Client-side bonus calculation (mirrors server logic) ───────────────────────
+
+function getBonusPercentage(qualifyingSelections: number, config: WinBonusConfig): number {
+  if (qualifyingSelections < config.minQualifyingSelections) return 0;
+  const sorted = [...config.bonusTable].sort((a, b) => a.selections - b.selections);
+  let bonusPercent = 0;
+  for (const entry of sorted) {
+    if (qualifyingSelections >= entry.selections) bonusPercent = entry.bonusPercent;
+  }
+  return bonusPercent;
+}
 
 interface BetSlipItem extends BetSelectionInput {
   fixtureName: string;
@@ -20,6 +51,10 @@ export interface PlacedBetDetails {
   stake: number;
   totalOdds: number;
   potentialWin: number;
+  bonusPercentage: number;
+  bonusAmount: number;
+  baseWin: number;
+  qualifyingSelections: number;
   selections: BetSlipItem[];
   placedAt: Date;
 }
@@ -34,6 +69,14 @@ interface BetSlipContextType {
   totalOdds: number;
   potentialWin: number;
   isMaxWinCapped: boolean;
+  // Win Bonus
+  winBonusConfig: WinBonusConfig | null;
+  qualifyingSelections: number;
+  bonusPercentage: number;
+  baseWin: number;
+  bonusAmount: number;
+  isWinBonusActive: boolean;
+  // Actions
   placeBet: () => Promise<void>;
   isPlacing: boolean;
   bookBet: () => Promise<string | null>;
@@ -45,6 +88,8 @@ interface BetSlipContextType {
 
 const BetSlipContext = createContext<BetSlipContextType | undefined>(undefined);
 
+const DEFAULT_MAX_SELECTIONS = 50;
+
 export function BetSlipProvider({ children }: { children: ReactNode }) {
   const [selections, setSelections] = useState<BetSlipItem[]>([]);
   const [stake, setStake] = useState<number>(0);
@@ -52,19 +97,38 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
   const [lastPlacedBet, setLastPlacedBet] = useState<PlacedBetDetails | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
-  const { formatCurrency } = useSiteSettings();
+  const { formatCurrency, maxWin: siteMaxWin } = useSiteSettings();
 
   const placeBetMutation = usePlaceBet();
 
+  // ── Win Bonus config ──────────────────────────────────────────────────────────
+  const { data: winBonusConfig } = useQuery<WinBonusConfig>({
+    queryKey: ["win-bonus-config"],
+    queryFn: () => fetch("/api/win-bonus").then((r) => r.json()),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const maxSelections = winBonusConfig?.maxSelections ?? DEFAULT_MAX_SELECTIONS;
+
   const addSelection = (item: BetSlipItem) => {
-    setSelections(prev => {
-      const filtered = prev.filter(s => s.fixtureId !== item.fixtureId);
+    setSelections((prev) => {
+      // Replace existing selection for same fixture (only one market per fixture)
+      const filtered = prev.filter((s) => s.fixtureId !== item.fixtureId);
+      // Enforce max selections
+      if (filtered.length >= maxSelections) {
+        toast({
+          title: "Maximum selections reached",
+          description: `Maximum of ${maxSelections} selections allowed.`,
+          variant: "destructive",
+        });
+        return prev;
+      }
       return [...filtered, item];
     });
   };
 
   const removeSelection = (oddsId: number) => {
-    setSelections(prev => prev.filter(s => s.oddsId !== oddsId));
+    setSelections((prev) => prev.filter((s) => s.oddsId !== oddsId));
   };
 
   const clearSlip = () => {
@@ -72,12 +136,32 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
     setStake(0);
   };
 
-  const { maxWin: MAX_WIN } = useSiteSettings();
+  // ── Odds & bonus calculations ─────────────────────────────────────────────────
   const totalOdds = selections.reduce((acc, curr) => acc * curr.odds, 1);
-  const rawPotentialWin = stake * totalOdds;
-  const potentialWin = Math.min(rawPotentialWin, MAX_WIN);
-  const isMaxWinCapped = rawPotentialWin > MAX_WIN;
+  const baseWin = stake * totalOdds;
 
+  const minQualifyingOdds = winBonusConfig?.minQualifyingOdds ?? 1.5;
+  const qualifyingSelections =
+    selections.length >= 2
+      ? selections.filter((s) => s.odds > minQualifyingOdds).length
+      : 0;
+
+  const bonusPercentage =
+    winBonusConfig?.enabled && selections.length >= 2
+      ? getBonusPercentage(qualifyingSelections, winBonusConfig ?? { minQualifyingSelections: 10, bonusTable: [], enabled: false, title: "", description: "", maxSelections: 50, minQualifyingOdds: 1.5, maxPayout: 1_000_000 })
+      : 0;
+
+  const rawBonusAmount = baseWin * (bonusPercentage / 100);
+  const effectiveMaxPayout = winBonusConfig?.maxPayout ?? siteMaxWin;
+  const rawPotentialWin = baseWin + rawBonusAmount;
+  const potentialWin = Math.min(rawPotentialWin, effectiveMaxPayout);
+  const isMaxWinCapped = rawPotentialWin > effectiveMaxPayout;
+
+  // Clamp bonus amount if payout is capped
+  const bonusAmount = isMaxWinCapped ? Math.max(0, potentialWin - baseWin) : rawBonusAmount;
+  const isWinBonusActive = bonusPercentage > 0;
+
+  // ── Place bet ─────────────────────────────────────────────────────────────────
   const placeBet = async () => {
     if (!user) {
       toast({ title: "Authentication Required", description: "Please login to place a bet.", variant: "destructive" });
@@ -94,9 +178,9 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
         data: {
           stake,
           selections: selections.map(({ oddsId, fixtureId, market, selection, odds }) => ({
-            oddsId, fixtureId, market, selection, odds
-          }))
-        }
+            oddsId, fixtureId, market, selection, odds,
+          })),
+        },
       });
 
       const placed: PlacedBetDetails = {
@@ -104,18 +188,27 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
         stake,
         totalOdds: selections.length > 0 ? totalOdds : 0,
         potentialWin,
+        bonusPercentage: (result as any).bonusPercentage ?? bonusPercentage,
+        bonusAmount: (result as any).bonusAmount ?? bonusAmount,
+        baseWin: (result as any).baseWin ?? baseWin,
+        qualifyingSelections: (result as any).qualifyingSelections ?? qualifyingSelections,
         selections: [...selections],
         placedAt: new Date(),
       };
       setLastPlacedBet(placed);
 
-      toast({ title: "Bet Placed Successfully", description: `Your bet has been placed. Potential win: ${formatCurrency(potentialWin)}` });
+      const winMsg = isWinBonusActive
+        ? `Potential win: ${formatCurrency(potentialWin)} (incl. ${bonusPercentage}% bonus!)`
+        : `Potential win: ${formatCurrency(potentialWin)}`;
+
+      toast({ title: "Bet Placed Successfully", description: winMsg });
       clearSlip();
     } catch (err: any) {
       toast({ title: "Failed to place bet", description: err.message || "An error occurred.", variant: "destructive" });
     }
   };
 
+  // ── Book bet ──────────────────────────────────────────────────────────────────
   const bookBet = async (): Promise<string | null> => {
     if (selections.length === 0) return null;
     setIsBooking(true);
@@ -139,6 +232,7 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // ── Load booking ──────────────────────────────────────────────────────────────
   const loadBooking = async (code: string): Promise<void> => {
     const res = await fetch(`/api/bet-bookings/${encodeURIComponent(code.trim().toUpperCase())}`);
     if (!res.ok) {
@@ -163,24 +257,32 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
   const clearLastPlacedBet = () => setLastPlacedBet(null);
 
   return (
-    <BetSlipContext.Provider value={{
-      selections,
-      addSelection,
-      removeSelection,
-      clearSlip,
-      stake,
-      setStake,
-      totalOdds: selections.length > 0 ? totalOdds : 0,
-      potentialWin: selections.length > 0 ? potentialWin : 0,
-      isMaxWinCapped: selections.length > 0 ? isMaxWinCapped : false,
-      placeBet,
-      isPlacing: placeBetMutation.isPending,
-      bookBet,
-      isBooking,
-      loadBooking,
-      lastPlacedBet,
-      clearLastPlacedBet,
-    }}>
+    <BetSlipContext.Provider
+      value={{
+        selections,
+        addSelection,
+        removeSelection,
+        clearSlip,
+        stake,
+        setStake,
+        totalOdds: selections.length > 0 ? totalOdds : 0,
+        potentialWin: selections.length > 0 ? potentialWin : 0,
+        isMaxWinCapped: selections.length > 0 ? isMaxWinCapped : false,
+        winBonusConfig: winBonusConfig ?? null,
+        qualifyingSelections,
+        bonusPercentage,
+        baseWin: selections.length > 0 ? baseWin : 0,
+        bonusAmount: selections.length > 0 ? bonusAmount : 0,
+        isWinBonusActive: selections.length > 0 ? isWinBonusActive : false,
+        placeBet,
+        isPlacing: placeBetMutation.isPending,
+        bookBet,
+        isBooking,
+        loadBooking,
+        lastPlacedBet,
+        clearLastPlacedBet,
+      }}
+    >
       {children}
     </BetSlipContext.Provider>
   );

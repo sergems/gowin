@@ -12,4 +12,9 @@ export type UserDetailRole = typeof UserDetailRole[keyof typeof UserDetailRole];
 export const UserDetailRole = {
   user: 'user',
   admin: 'admin',
+  manager: 'manager',
+  branch_admin: 'branch_admin',
+  agent: 'agent',
+  payout: 'payout',
+  payment_clerk: 'payment_clerk',
 } as const;

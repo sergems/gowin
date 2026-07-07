@@ -1024,7 +1024,7 @@ components:
           type: string
         role:
           type: string
-          enum: [user, admin]
+          enum: [user, admin, manager, branch_admin, agent, payout, payment_clerk]
         disabled:
           type: boolean
         mustChangePassword:
@@ -1045,7 +1045,7 @@ components:
           type: string
         role:
           type: string
-          enum: [user, admin]
+          enum: [user, admin, manager, branch_admin, agent, payout, payment_clerk]
         disabled:
           type: boolean
         disabledReason:
@@ -1559,6 +1559,19 @@ components:
           format: date-time
         user:
           $ref: "#/components/schemas/User"
+        qualifyingSelections:
+          type: integer
+        bonusPercentage:
+          type: number
+          format: double
+        baseWin:
+          type: number
+          format: double
+        bonusAmount:
+          type: number
+          format: double
+        maxWinApplied:
+          type: boolean
 
     BetDetail:
       type: object
@@ -1585,6 +1598,19 @@ components:
           format: date-time
         user:
           $ref: "#/components/schemas/User"
+        qualifyingSelections:
+          type: integer
+        bonusPercentage:
+          type: number
+          format: double
+        baseWin:
+          type: number
+          format: double
+        bonusAmount:
+          type: number
+          format: double
+        maxWinApplied:
+          type: boolean
         selections:
           type: array
           items:
@@ -1604,6 +1630,70 @@ components:
           type: integer
         limit:
           type: integer
+
+    WinBonusTier:
+      type: object
+      required: [selections, bonusPercent]
+      properties:
+        selections:
+          type: integer
+        bonusPercent:
+          type: number
+          format: double
+
+    WinBonusConfig:
+      type: object
+      required: [enabled, title, description, minQualifyingSelections, maxSelections, minQualifyingOdds, maxPayout, bonusTable]
+      properties:
+        enabled:
+          type: boolean
+        title:
+          type: string
+        description:
+          type: string
+        minQualifyingSelections:
+          type: integer
+        maxSelections:
+          type: integer
+        minQualifyingOdds:
+          type: number
+          format: double
+        maxPayout:
+          type: number
+          format: double
+        bonusTable:
+          type: array
+          items:
+            $ref: "#/components/schemas/WinBonusTier"
+
+    WinBonusCalculation:
+      type: object
+      required: [stake, combinedOdds, totalSelections, qualifyingSelections, bonusPercentage, baseWin, bonusAmount, potentialWin, maxWinApplied]
+      properties:
+        stake:
+          type: number
+          format: double
+        combinedOdds:
+          type: number
+          format: double
+        totalSelections:
+          type: integer
+        qualifyingSelections:
+          type: integer
+        bonusPercentage:
+          type: number
+          format: double
+        baseWin:
+          type: number
+          format: double
+        bonusAmount:
+          type: number
+          format: double
+        potentialWin:
+          type: number
+          format: double
+        maxWinApplied:
+          type: boolean
 
     # ── Admin ─────────────────────────────────────────────────────────────
     AdminStats:

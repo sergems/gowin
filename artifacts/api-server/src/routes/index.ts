@@ -24,6 +24,7 @@ import fixturesPdfRouter from "./fixturesPdf";
 import pawapayRouter from "./pawapay";
 import pawapaySettingsRouter from "./pawapaySettings";
 import notificationsRouter from "./notifications";
+import winBonusRouter from "./winBonus";
 
 const router: IRouter = Router();
 
@@ -52,5 +53,6 @@ router.use(fixturesPdfRouter);
 router.use(pawapayRouter);
 router.use(pawapaySettingsRouter);
 router.use(notificationsRouter);
+router.use(winBonusRouter);
 
 export default router;

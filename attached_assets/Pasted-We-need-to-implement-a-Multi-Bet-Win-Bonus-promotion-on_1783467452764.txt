@@ -1,0 +1,442 @@
+We need to implement a Multi Bet Win Bonus promotion on the existing sportsbook.
+
+The feature must be configurable, secure, calculated on the backend, and displayed dynamically on the frontend.
+
+Feature Name
+
+Up to 1250% Win Bonus
+
+Promotional Text
+
+Display the following on the sportsbook and betslip:
+
+Headline
+
+Build Bigger Multis and Get up to 1250% Win Bonus!
+
+Description
+
+The more qualifying selections you add to your accumulator, the bigger your Win Bonus and the bigger your potential payout.
+
+Only selections with decimal odds greater than 1.50 count towards the Win Bonus.
+
+Eligible Bets
+
+The promotion only applies to:
+
+Accumulator (Multi) bets
+
+It does NOT apply to:
+
+Singles
+System Bets
+Lucky Bets
+Any other bet type
+Maximum Selections
+
+Maximum selections per betslip:
+
+50
+
+If the user attempts to add more than 50 selections:
+
+Prevent the addition.
+Show:
+
+Maximum of 50 selections allowed.
+
+Qualifying Selections
+
+This is extremely important.
+
+The accumulator may contain any odds.
+
+However, only selections with decimal odds greater than 1.50 qualify for the bonus calculation.
+
+Examples:
+
+Decimal Odds	Counts Toward Bonus
+1.10	❌
+1.20	❌
+1.35	❌
+1.50	❌
+1.51	✅
+1.65	✅
+1.80	✅
+2.00	✅
+3.50	✅
+
+Selections with odds of 1.50 or lower:
+
+remain part of the accumulator
+affect combined odds normally
+DO NOT increase the Win Bonus percentage
+Minimum Qualifying Selections
+
+Bonus starts only when there are 10 qualifying selections.
+
+Example:
+
+Total selections:
+
+15
+
+Qualifying selections:
+
+9
+
+Bonus:
+
+0%
+
+Example:
+
+Total selections:
+
+15
+
+Qualifying selections:
+
+10
+
+Bonus:
+
+25%
+
+Bonus Table
+
+Use the number of qualifying selections, NOT total selections.
+
+Qualifying Selections	Bonus
+1-9	0%
+10	10%
+11	15%
+12	17%
+13	20%
+14	22%
+15	25%
+16	30%
+17	35%
+18	40%
+19	45%
+20	50%
+21	75%
+22	85%
+23	90%
+24	95%
+25	100%
+26	150%
+27	200%
+28	250%
+29	300%
+30	350%
+31	400%
+32	450%
+33	500%
+34	550%
+35	600%
+36	650%
+37	700%
+38	1025%
+39	1050%
+40	1075%
+41	1100%
+42	1125%
+43	1150%
+44	1175%
+45	1200%
+46	1215%
+47	1225%
+48	1235%
+49	1245%
+50	1250%
+Bonus Calculation
+
+Bonus is calculated using the total winnings, not the stake.
+
+Formula:
+
+Base Win = Stake × Combined Odds
+
+Bonus Amount = Base Win × (Bonus Percentage / 100)
+
+Potential Win = Base Win + Bonus Amount
+
+Example
+
+Stake:
+
+$20
+
+Combined Odds:
+
+150.00
+
+Base Win:
+
+20 × 150 = 3,000
+
+Qualifying selections:
+
+50
+
+Bonus:
+
+1250%
+
+Bonus Amount:
+
+3,000 × 12.5 = 37,500
+
+Potential Win:
+
+40,500
+
+Maximum Win
+
+Maximum payout is
+
+USD 1,000,000
+
+After bonus calculation:
+
+Final Potential Win =
+MIN(Base Win + Bonus Amount, 1,000,000)
+
+If capped, display:
+
+Maximum payout of USD 1,000,000 applied.
+
+Betslip Display
+
+The betslip should display:
+
+Stake
+
+Combined Odds
+
+Total Selections
+
+Qualifying Selections
+
+Current Bonus %
+
+Base Win
+
+Bonus Amount
+
+Potential Win
+
+Example
+
+Stake:
+$20
+
+Combined Odds:
+125.40
+
+Selections:
+18
+
+Qualifying:
+15
+
+Win Bonus:
+150%
+
+Base Win:
+$2,508
+
+Bonus:
+$3,762
+
+Potential Win:
+$6,270
+Progress Indicator
+
+Show a progress bar inside the betslip.
+
+Example:
+
+Qualifying Selections
+
+15 / 50
+
+Current Bonus
+
+150%
+
+Add more qualifying selections to unlock bigger bonuses.
+
+If bonus not yet unlocked:
+
+9 Qualifying Selections
+
+Add 1 more qualifying selection to unlock the Win Bonus.
+Dynamic Updates
+
+Whenever the customer:
+
+adds a selection
+removes a selection
+changes stake
+odds change
+
+Automatically update:
+
+Combined Odds
+Total Selections
+Qualifying Selections
+Bonus %
+Bonus Amount
+Potential Win
+
+No page refresh.
+
+Odds Changes
+
+If odds change before the bet is placed:
+
+Recalculate:
+
+qualifying selections
+combined odds
+bonus percentage
+potential payout
+
+If a selection drops from:
+
+1.60
+
+to
+
+1.45
+
+it immediately becomes non-qualifying.
+
+Ticket Storage
+
+Store the following with every bet:
+
+Stake
+
+Combined Odds
+
+Total Selections
+
+Qualifying Selections
+
+Bonus Percentage
+
+Bonus Amount
+
+Base Win
+
+Potential Win
+
+These values become fixed once the bet is accepted.
+
+Future changes to the promotion must not affect already placed bets.
+
+Settlement
+
+When the bet wins:
+
+Use the stored values.
+
+Never recalculate using current promotion settings.
+
+Settlement:
+
+Final Win
+
+=
+
+Base Win
+
++
+
+Bonus Amount
+
+Apply
+
+Maximum payout
+
+=
+
+USD 1,000,000
+Admin Panel
+
+Create a new section.
+
+Promotions
+
+↓
+
+Win Bonus
+
+Admin should be able to configure:
+
+Enable / Disable Promotion
+Promotion Title
+Promotion Description
+Minimum qualifying selections
+Maximum selections
+Minimum qualifying odds (default 1.50)
+Bonus table
+Maximum payout
+
+Everything should be editable without changing code.
+
+API Response
+
+Return:
+
+{
+  "stake":20,
+  "combinedOdds":150.0,
+  "totalSelections":18,
+  "qualifyingSelections":15,
+  "bonusPercentage":150,
+  "baseWin":3000,
+  "bonusAmount":4500,
+  "potentialWin":7500,
+  "maxWinApplied":false
+}
+Backend Validation
+
+The backend is the authoritative source.
+
+Never trust calculations from the frontend.
+
+The backend must verify:
+
+Combined odds
+Stake
+Qualifying selections
+Bonus percentage
+Bonus amount
+Maximum payout
+
+before accepting the bet and again when settling it.
+
+Performance
+
+The feature should:
+
+calculate instantly
+update in real time
+not slow down betslip rendering
+reuse existing betslip state where possible
+avoid duplicate calculations
+Important Business Rules
+Bonus applies only to accumulator (multi) bets.
+Only selections with decimal odds greater than 1.50 count toward the bonus qualification.
+Selections with odds of 1.50 or below still contribute to the combined odds but do not count toward the bonus percentage.
+Bonus starts at 10 qualifying selections.
+Maximum selections allowed is 50.
+Maximum bonus is 1250% at 50 qualifying selections.
+The bonus is calculated on the base winnings (Stake × Combined Odds), not on the stake.
+The final payout is Base Win + Bonus Amount, subject to a maximum payout cap of USD 1,000,000.
+The backend must perform all calculations and validations to prevent manipulation.
+The promotion should be fully configurable through the admin panel without requiring code changes.

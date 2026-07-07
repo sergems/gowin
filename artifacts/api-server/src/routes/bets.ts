@@ -9,6 +9,7 @@ import {
   GetBetParams,
   VoidBetParams,
 } from "@workspace/api-zod";
+import { getWinBonusConfig, calculateWinBonus } from "../lib/winBonus";
 
 const router = Router();
 
@@ -119,11 +120,20 @@ router.post("/bets", requireAuth, async (req: AuthRequest, res): Promise<void> =
     return;
   }
 
-  const maxWinSetting = await getSetting("max_win");
-  const MAX_WIN = maxWinSetting ? parseFloat(maxWinSetting) : 1_000_000;
-  const totalOdds = selections.reduce((acc, s) => acc * (dbOddsValueMap.get(s.oddsId) ?? s.odds), 1);
-  const rawPotentialWin = stake * totalOdds;
-  const potentialWin = Math.min(rawPotentialWin, MAX_WIN);
+  // Load win bonus config and calculate bonus
+  const winBonusConfig = await getWinBonusConfig();
+
+  // Enforce max selections server-side
+  if (selections.length > winBonusConfig.maxSelections) {
+    res.status(400).json({ error: `Maximum of ${winBonusConfig.maxSelections} selections allowed.` });
+    return;
+  }
+
+  const oddsValues = selections.map((s) => dbOddsValueMap.get(s.oddsId) ?? s.odds);
+  const totalOdds = oddsValues.reduce((acc, o) => acc * o, 1);
+  const bonus = calculateWinBonus(oddsValues, stake, winBonusConfig);
+  const potentialWin = bonus.potentialWin;
+
   const code = await uniqueBetCode();
   const isAgent = userRecord.role === "agent";
 
@@ -144,6 +154,11 @@ router.post("/bets", requireAuth, async (req: AuthRequest, res): Promise<void> =
       totalOdds: totalOdds.toFixed(4),
       potentialWin: potentialWin.toFixed(2),
       status: "pending",
+      qualifyingSelections: bonus.qualifyingSelections,
+      bonusPercentage: bonus.bonusPercentage.toFixed(2),
+      baseWin: bonus.baseWin.toFixed(2),
+      bonusAmount: bonus.bonusAmount.toFixed(2),
+      maxWinApplied: bonus.maxWinApplied,
       ...(isAgent && {
         agentId: req.userId!,
         branchId: userRecord.branchId ?? undefined,
@@ -190,6 +205,12 @@ function formatBet(bet: any, user?: any) {
     status: bet.status,
     createdAt: bet.createdAt,
     user: user || undefined,
+    // Win bonus fields
+    qualifyingSelections: bet.qualifyingSelections ?? 0,
+    bonusPercentage: parseFloat(bet.bonusPercentage ?? "0"),
+    baseWin: parseFloat(bet.baseWin ?? "0"),
+    bonusAmount: parseFloat(bet.bonusAmount ?? "0"),
+    maxWinApplied: bet.maxWinApplied ?? false,
   };
 }
 

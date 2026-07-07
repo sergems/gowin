@@ -6,3 +6,4 @@
 - [Fixture status logic](fixture-status-logic.md) — all status-transition rules, bugs fixed, and the "future_but_live" root cause (rescheduled games + stale startTime)
 - [AllSportsAPI odds format](allsports-odds-format.md) — football odds are flat bookmaker rows; Basketball/Tennis/Cricket are nested per-market objects — parsers must branch by sport
 - [api-server runs from dist bundle](api-server-dist-bundle.md) — `pnpm dev` runs `dist/index.mjs`, not source; must rebuild before restart_workflow picks up src/ changes
+- [Win Bonus promotion](win-bonus.md) — Multi Bet Win Bonus fully implemented; config stored in settings table as `win_bonus_config` JSON; UserRole openapi enum must include all roles or codegen breaks TS comparisons

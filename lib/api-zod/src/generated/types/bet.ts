@@ -17,4 +17,9 @@ export interface Bet {
   status: BetStatus;
   createdAt: Date;
   user?: User;
+  qualifyingSelections?: number;
+  bonusPercentage?: number;
+  baseWin?: number;
+  bonusAmount?: number;
+  maxWinApplied?: boolean;
 }

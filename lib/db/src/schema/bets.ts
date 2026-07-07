@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, numeric, text, timestamp, pgEnum, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, numeric, text, timestamp, pgEnum, jsonb, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -17,6 +17,12 @@ export const betsTable = pgTable("bets", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   agentId: integer("agent_id").references(() => usersTable.id, { onDelete: "set null" }),
   branchId: integer("branch_id"),
+  // Win Bonus fields — stored at placement, never recomputed after acceptance
+  qualifyingSelections: integer("qualifying_selections").notNull().default(0),
+  bonusPercentage: numeric("bonus_percentage", { precision: 8, scale: 2 }).notNull().default("0"),
+  baseWin: numeric("base_win", { precision: 15, scale: 2 }).notNull().default("0"),
+  bonusAmount: numeric("bonus_amount", { precision: 15, scale: 2 }).notNull().default("0"),
+  maxWinApplied: boolean("max_win_applied").notNull().default(false),
 });
 
 export const betSelectionsTable = pgTable("bet_selections", {

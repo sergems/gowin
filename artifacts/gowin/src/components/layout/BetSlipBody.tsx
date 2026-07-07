@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { fmtUTCDateTimeShort } from "@/lib/formatUTC";
 import { Link } from "wouter";
 import { useBetSlip } from "@/contexts/BetSlipContext";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import {
   PanelRightClose, Trophy, X, AlertTriangle, Upload,
-  BookMarked, Copy, Check,
+  BookMarked, Copy, Check, Sparkles, ChevronRight,
 } from "lucide-react";
 
 interface BetSlipBodyProps {
@@ -29,6 +29,8 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
   const {
     selections, removeSelection, stake, setStake,
     totalOdds, potentialWin, isMaxWinCapped,
+    winBonusConfig, qualifyingSelections, bonusPercentage,
+    baseWin, bonusAmount, isWinBonusActive,
     placeBet, isPlacing, bookBet, isBooking, loadBooking,
   } = useBetSlip();
   const { user } = useAuth();
@@ -43,53 +45,34 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
   const [liveData, setLiveData] = useState<Map<number, FixtureLiveData>>(new Map());
 
   const prevLen = useRef(selections.length);
-  useEffect(() => {
-    if (prevLen.current > 0 && selections.length === 0) {
-      setStakeInput("");
-    }
-    prevLen.current = selections.length;
-  }, [selections.length]);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Poll fixture status every 15s to keep live scores and statuses current
+  // Keep stake input in sync when selections are cleared
+  if (prevLen.current > 0 && selections.length === 0 && stakeInput !== "") {
+    setStakeInput("");
+  }
+  prevLen.current = selections.length;
+
+  // Poll fixture status every 15s for live scores
   const fixtureIdsKey = [...new Set(selections.map((s) => s.fixtureId))].sort().join(",");
-  useEffect(() => {
-    if (!fixtureIdsKey) return;
 
-    async function fetchLiveData() {
-      const ids = fixtureIdsKey.split(",").map(Number).filter(Boolean);
-      if (ids.length === 0) return;
-      try {
-        const results = await Promise.all(
-          ids.map((id) =>
-            fetch(`/api/fixtures/${id}`)
-              .then((r) => (r.ok ? r.json() : null))
-              .catch(() => null),
-          ),
-        );
-        const map = new Map<number, FixtureLiveData>();
-        for (const f of results) {
-          if (f?.id != null) {
-            map.set(f.id, {
-              status: f.status,
-              scoreHome: f.scoreHome ?? null,
-              scoreAway: f.scoreAway ?? null,
-            });
-          }
-        }
-        setLiveData(map);
-      } catch {
-        // non-fatal — keep showing last known state
-      }
-    }
+  // Derived Win Bonus UI values
+  const config = winBonusConfig;
+  const maxSel = config?.maxSelections ?? 50;
+  const minQual = config?.minQualifyingSelections ?? 10;
+  const isAccumulator = selections.length >= 2;
+  const selectionCount = selections.length;
+  const nextBonusTier = config?.bonusTable
+    ?.slice()
+    .sort((a, b) => a.selections - b.selections)
+    .find((t) => t.selections > qualifyingSelections);
 
-    fetchLiveData();
-    const interval = setInterval(fetchLiveData, 15_000);
-    return () => clearInterval(interval);
-  }, [fixtureIdsKey]);
+  const progressPct = Math.min((qualifyingSelections / maxSel) * 100, 100);
 
-  const hasStartedSelections = selections.some((s) => {
+  const hasStartedSelections = [...liveData.values()].some(
+    (d) => d.status === "finished" || d.status === "cancelled",
+  ) && selections.some((s) => {
     const d = liveData.get(s.fixtureId);
-    // Only block for finished/cancelled games — live games are fine to bet on
     return d && (d.status === "finished" || d.status === "cancelled");
   });
 
@@ -139,7 +122,7 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
         </span>
         <div className="ml-auto flex items-center gap-1">
           <button
-            onClick={() => setShowLoadInput(v => !v)}
+            onClick={() => setShowLoadInput((v) => !v)}
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-accent"
             title={t("betslip.load_booked")}
           >
@@ -163,8 +146,8 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
               className="h-8 text-xs font-mono uppercase"
               placeholder={t("betslip.enter_booking_code")}
               value={loadCodeInput}
-              onChange={e => { setLoadCodeInput(e.target.value.toUpperCase()); setLoadCodeError(""); }}
-              onKeyDown={e => e.key === "Enter" && handleLoadCode()}
+              onChange={(e) => { setLoadCodeInput(e.target.value.toUpperCase()); setLoadCodeError(""); }}
+              onKeyDown={(e) => e.key === "Enter" && handleLoadCode()}
             />
             <Button
               size="sm"
@@ -179,13 +162,28 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
         </div>
       )}
 
+      {/* Win Bonus promo banner (show when promotion is enabled and no selections yet, or before threshold) */}
+      {config?.enabled && selections.length === 0 && (
+        <div className="mx-3 mt-3 rounded-lg border border-primary/30 bg-primary/10 p-3">
+          <div className="flex items-center gap-2 mb-1">
+            <Sparkles className="w-4 h-4 text-primary shrink-0" />
+            <p className="text-xs font-bold text-primary">{config.title}</p>
+          </div>
+          <p className="text-[11px] text-muted-foreground leading-snug">
+            Build an accumulator with 10+ qualifying selections (odds &gt; {config.minQualifyingOdds}) to unlock up to {Math.max(...config.bonusTable.map((t) => t.bonusPercent))}% extra winnings.
+          </p>
+        </div>
+      )}
+
       {/* Selections */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-4
-        [&::-webkit-scrollbar]:w-1.5
-        [&::-webkit-scrollbar-track]:bg-transparent
-        [&::-webkit-scrollbar-thumb]:rounded-full
-        [&::-webkit-scrollbar-thumb]:bg-yellow-400/70
-        [&::-webkit-scrollbar-thumb:hover]:bg-yellow-400">
+      <div
+        className="flex-1 min-h-0 overflow-y-auto p-4
+          [&::-webkit-scrollbar]:w-1.5
+          [&::-webkit-scrollbar-track]:bg-transparent
+          [&::-webkit-scrollbar-thumb]:rounded-full
+          [&::-webkit-scrollbar-thumb]:bg-yellow-400/70
+          [&::-webkit-scrollbar-thumb:hover]:bg-yellow-400"
+      >
         {user && !(user as any).phoneNumber && (
           <Link href="/profile" onClick={onClose}>
             <div className="flex items-start gap-2 p-3 rounded-lg border border-amber-500/40 bg-amber-500/10 mb-4 cursor-pointer hover:bg-amber-500/15 transition-colors">
@@ -198,7 +196,7 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
           </Link>
         )}
         {selections.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-4 mt-20">
+          <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-4 mt-8">
             <div className="w-16 h-16 rounded-full bg-accent flex items-center justify-center">
               <Trophy className="w-8 h-8 opacity-50" />
             </div>
@@ -217,6 +215,7 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
               const isLive = live?.status === "live";
               const isFinished = live?.status === "finished" || live?.status === "cancelled";
               const hasScore = live != null && (live.scoreHome != null || live.scoreAway != null);
+              const qualifies = config ? sel.odds > config.minQualifyingOdds : sel.odds > 1.5;
 
               return (
                 <div
@@ -225,8 +224,8 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
                     isLive
                       ? "bg-red-500/5 border-red-500/30"
                       : isFinished
-                      ? "bg-accent/20 border-border opacity-70"
-                      : "bg-accent/40 border-border"
+                        ? "bg-accent/20 border-border opacity-70"
+                        : "bg-accent/40 border-border"
                   }`}
                 >
                   <button
@@ -236,7 +235,6 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
                     <X className="w-4 h-4" />
                   </button>
 
-                  {/* Live / FT status badge */}
                   {(isLive || isFinished) && (
                     <div className="flex items-center gap-2 mb-1.5">
                       {isLive ? (
@@ -267,14 +265,30 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
                       {[
                         sel.competitionName,
                         sel.startTime ? fmtUTCDateTimeShort(sel.startTime) : null,
-                      ].filter(Boolean).join("  ·  ")}
+                      ]
+                        .filter(Boolean)
+                        .join("  ·  ")}
                     </p>
                   )}
                   <div className="flex items-center justify-between mt-2">
                     <span className="text-xs bg-background/50 px-2 py-1 rounded text-muted-foreground">
                       {sel.marketName}
                     </span>
-                    <span className="font-bold text-primary">{sel.odds.toFixed(2)}</span>
+                    <div className="flex items-center gap-1.5">
+                      {config?.enabled && isAccumulator && (
+                        <span
+                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                            qualifies
+                              ? "bg-primary/20 text-primary"
+                              : "bg-muted/50 text-muted-foreground"
+                          }`}
+                          title={qualifies ? "Qualifies for Win Bonus" : "Odds too low for bonus"}
+                        >
+                          {qualifies ? "✓ BONUS" : "NO BONUS"}
+                        </span>
+                      )}
+                      <span className="font-bold text-primary">{sel.odds.toFixed(2)}</span>
+                    </div>
                   </div>
                 </div>
               );
@@ -294,11 +308,59 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
               </p>
             </div>
           )}
+
+          {/* Win Bonus progress bar — only for accumulators when promotion is on */}
+          {config?.enabled && isAccumulator && (
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-xs font-semibold text-primary">Win Bonus</span>
+                </div>
+                <span className="text-xs font-bold text-primary">
+                  {bonusPercentage > 0 ? `${bonusPercentage}%` : "Locked"}
+                </span>
+              </div>
+
+              {/* Progress bar */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                  <span>Qualifying: {qualifyingSelections} / {maxSel}</span>
+                  <span>{selectionCount} selections total</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-border overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all duration-300"
+                    style={{ width: `${progressPct}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Status text */}
+              {bonusPercentage === 0 ? (
+                <p className="text-[10px] text-muted-foreground leading-snug">
+                  {qualifyingSelections < minQual
+                    ? `Add ${minQual - qualifyingSelections} more qualifying selection${minQual - qualifyingSelections === 1 ? "" : "s"} (odds > ${config.minQualifyingOdds}) to unlock the Win Bonus.`
+                    : "Add more qualifying selections to unlock the Win Bonus."}
+                </p>
+              ) : nextBonusTier ? (
+                <p className="text-[10px] text-muted-foreground leading-snug flex items-center gap-1">
+                  <ChevronRight className="w-3 h-3 text-primary shrink-0" />
+                  Add {nextBonusTier.selections - qualifyingSelections} more qualifying selection{nextBonusTier.selections - qualifyingSelections === 1 ? "" : "s"} to reach{" "}
+                  <span className="font-bold text-primary ml-0.5">{nextBonusTier.bonusPercent}% bonus</span>
+                </p>
+              ) : (
+                <p className="text-[10px] text-primary font-semibold">🏆 Maximum bonus unlocked!</p>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">{t("betslip.total_odds")}</span>
-              <span className="font-bold">{totalOdds.toFixed(2)}</span>
+              <span className="font-bold">{(selections.length > 0 ? totalOdds : 0).toFixed(2)}</span>
             </div>
+
             <div className="flex justify-between items-center text-sm pt-2">
               <span className="text-muted-foreground">{t("betslip.stake")} ({currency})</span>
               <Input
@@ -312,8 +374,6 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
                   if (raw === "" || /^\d*\.?\d*$/.test(raw)) {
                     setStakeInput(raw);
                     const parsed = parseFloat(raw);
-                    // stake is always tracked internally in USD; the input is in the
-                    // site's active display currency (e.g. CDF), so convert it back.
                     setStake(!isNaN(parsed) ? parseAmount(parsed) : 0);
                   }
                 }}
@@ -329,17 +389,47 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
                 ≈ ${stake.toFixed(2)} USD
               </p>
             )}
+
             <Separator className="my-2" />
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">{t("betslip.potential_win")}</span>
-              <span className="font-bold text-primary">
-                {formatCurrency(potentialWin)}
-              </span>
-            </div>
+
+            {/* Win Bonus breakdown */}
+            {isWinBonusActive && stake > 0 ? (
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Base Win</span>
+                  <span className="font-medium">{formatCurrency(baseWin)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="flex items-center gap-1 text-primary">
+                    <Sparkles className="w-3 h-3" />
+                    Bonus ({bonusPercentage}%)
+                  </span>
+                  <span className="font-medium text-primary">+ {formatCurrency(bonusAmount)}</span>
+                </div>
+                <Separator className="my-1" />
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground font-semibold">{t("betslip.potential_win")}</span>
+                  <span className="font-bold text-primary text-base">
+                    {formatCurrency(potentialWin)}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{t("betslip.potential_win")}</span>
+                <span className="font-bold text-primary">
+                  {formatCurrency(potentialWin)}
+                </span>
+              </div>
+            )}
+
             {isMaxWinCapped && (
-              <p className="text-[11px] text-amber-400 mt-1 text-right">{t("betslip.max_win_capped")} {formatCurrency(potentialWin)}</p>
+              <p className="text-[11px] text-amber-400 mt-1 text-right">
+                Maximum payout of {formatCurrency(config?.maxPayout ?? 1_000_000)} applied.
+              </p>
             )}
           </div>
+
           <Button
             className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold h-11"
             onClick={() => placeBet()}

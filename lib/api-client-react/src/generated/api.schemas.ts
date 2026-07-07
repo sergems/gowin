@@ -61,6 +61,11 @@ export type UserDetailRole = typeof UserDetailRole[keyof typeof UserDetailRole];
 export const UserDetailRole = {
   user: 'user',
   admin: 'admin',
+  manager: 'manager',
+  branch_admin: 'branch_admin',
+  agent: 'agent',
+  payout: 'payout',
+  payment_clerk: 'payment_clerk',
 } as const;
 
 export interface Wallet {
@@ -386,6 +391,11 @@ export interface Bet {
   status: BetStatus;
   createdAt: string;
   user?: User;
+  qualifyingSelections?: number;
+  bonusPercentage?: number;
+  baseWin?: number;
+  bonusAmount?: number;
+  maxWinApplied?: boolean;
 }
 
 export type BetDetailStatus = typeof BetDetailStatus[keyof typeof BetDetailStatus];
@@ -407,6 +417,11 @@ export interface BetDetail {
   status: BetDetailStatus;
   createdAt: string;
   user?: User;
+  qualifyingSelections?: number;
+  bonusPercentage?: number;
+  baseWin?: number;
+  bonusAmount?: number;
+  maxWinApplied?: boolean;
   selections: BetSelection[];
 }
 
@@ -415,6 +430,34 @@ export interface BetListResponse {
   total: number;
   page: number;
   limit: number;
+}
+
+export interface WinBonusTier {
+  selections: number;
+  bonusPercent: number;
+}
+
+export interface WinBonusConfig {
+  enabled: boolean;
+  title: string;
+  description: string;
+  minQualifyingSelections: number;
+  maxSelections: number;
+  minQualifyingOdds: number;
+  maxPayout: number;
+  bonusTable: WinBonusTier[];
+}
+
+export interface WinBonusCalculation {
+  stake: number;
+  combinedOdds: number;
+  totalSelections: number;
+  qualifyingSelections: number;
+  bonusPercentage: number;
+  baseWin: number;
+  bonusAmount: number;
+  potentialWin: number;
+  maxWinApplied: boolean;
 }
 
 export interface AdminStats {

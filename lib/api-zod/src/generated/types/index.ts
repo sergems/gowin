@@ -75,3 +75,6 @@ export * from './userRole';
 export * from './verifyOtpInput';
 export * from './wallet';
 export * from './walletAdjustInput';
+export * from './winBonusCalculation';
+export * from './winBonusConfig';
+export * from './winBonusTier';
