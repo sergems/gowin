@@ -66,6 +66,7 @@ import ClerkWithdrawals from "@/pages/clerk/WithdrawalsPage";
 // Legal Pages
 import PrivacyPolicy from "@/pages/privacy-policy";
 import TermsOfService from "@/pages/terms-of-service";
+import BettingRules from "@/pages/betting-rules";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -213,6 +214,7 @@ function Router() {
         {/* Legal Pages */}
         <Route path="/privacy" component={PrivacyPolicy} />
         <Route path="/terms" component={TermsOfService} />
+        <Route path="/betting-rules" component={BettingRules} />
 
         <Route component={NotFound} />
       </Switch>

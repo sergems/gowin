@@ -848,6 +848,8 @@ export function Shell({ children }: { children: ReactNode }) {
             <a href="/privacy" className="hover:text-muted-foreground transition-colors">{t("footer.privacy")}</a>
             <span>·</span>
             <a href="/terms" className="hover:text-muted-foreground transition-colors">{t("footer.terms")}</a>
+            <span>·</span>
+            <a href="/betting-rules" className="hover:text-muted-foreground transition-colors">{t("footer.betting_rules")}</a>
           </div>
         </footer>
       </main>
