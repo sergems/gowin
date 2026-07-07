@@ -512,7 +512,7 @@ export default function SportsPage() {
   const queryParams: any = { status: "upcoming", withMarkets: true };
   if (selectedLeagueId) {
     queryParams.leagueId = selectedLeagueId;
-    queryParams.limit = 50;
+    queryParams.limit = 200;
   } else if (selectedSportId) {
     queryParams.sportId = selectedSportId;
     queryParams.limit = 50;

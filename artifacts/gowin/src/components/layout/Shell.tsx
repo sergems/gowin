@@ -220,6 +220,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const [sportsOpen, setSportsOpen] = useState(false);
   const [openCountries, setOpenCountries] = useState<Set<string>>(new Set());
   const [intlOpen, setIntlOpen] = useState(false);
+  const [popularOpen, setPopularOpen] = useState(true);
   const [mobileBetSlipOpen, setMobileBetSlipOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
@@ -280,13 +281,14 @@ export function Shell({ children }: { children: ReactNode }) {
     setMobileSidebarOpen(false);
   };
 
-  const COUNTRY_PRIORITY = ["England", "France", "Germany", "International", "Italy", "Spain", "Netherlands", "Portugal", "Turkey", "Congo DR"];
+  const POPULAR_COUNTRY_NAMES = new Set(["England", "France", "Germany", "Italy", "Spain"]);
+  const SECONDARY_PRIORITY = ["Netherlands", "Portugal", "Turkey", "Congo DR"];
 
   const sortedCountries = (countries: CountryEntry[]) => {
-    const priorityMap = new Map(COUNTRY_PRIORITY.map((n, i) => [n, i]));
+    const secondaryMap = new Map(SECONDARY_PRIORITY.map((n, i) => [n, i]));
     return [...countries].sort((a, b) => {
-      const ai = priorityMap.has(a.name) ? priorityMap.get(a.name)! : COUNTRY_PRIORITY.length;
-      const bi = priorityMap.has(b.name) ? priorityMap.get(b.name)! : COUNTRY_PRIORITY.length;
+      const ai = secondaryMap.has(a.name) ? secondaryMap.get(a.name)! : SECONDARY_PRIORITY.length;
+      const bi = secondaryMap.has(b.name) ? secondaryMap.get(b.name)! : SECONDARY_PRIORITY.length;
       if (ai !== bi) return ai - bi;
       return a.name.localeCompare(b.name);
     });
@@ -422,33 +424,82 @@ export function Shell({ children }: { children: ReactNode }) {
                           </div>
                         )}
 
-                        {footballData.international.length > 0 && (
-                          <div>
-                            <button onClick={() => setIntlOpen((v) => !v)}
-                              className="w-full flex items-center gap-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 hover:text-muted-foreground transition-colors">
-                              <Globe className="w-3 h-3 shrink-0" />
-                              <span className="flex-1 text-left">International</span>
-                              <span className="mr-1">{footballData.international.length}</span>
-                              {intlOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                            </button>
-                            {intlOpen && footballData.international.map((lg) => (
-                              <button key={lg.id} onClick={() => selectLeague(lg.id, lg.name)}
-                                className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-accent/30 hover:text-foreground transition-colors">
-                                <LeagueLogo src={lg.logo} alt={lg.name} />
-                                <span className="flex-1 text-left truncate">{lg.name}</span>
-                                <span className="text-[10px] text-muted-foreground/50 shrink-0">{lg.fixtureCount}</span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
+                        {/* ── Popular Countries section ── */}
+                        {(() => {
+                          const popularCountries = footballData.countries
+                            .filter((c) => POPULAR_COUNTRY_NAMES.has(c.name))
+                            .sort((a, b) => a.name.localeCompare(b.name));
+                          const hasIntl = footballData.international.length > 0;
+                          if (popularCountries.length === 0 && !hasIntl) return null;
 
-                        {sortedCountries(footballData.countries).map((country) => (
+                          // Build interleaved list: popular countries + International, sorted A-Z
+                          type PopularItem =
+                            | { kind: "country"; country: CountryEntry }
+                            | { kind: "international" };
+                          const items: (PopularItem & { sortKey: string })[] = [
+                            ...popularCountries.map((c) => ({ kind: "country" as const, country: c, sortKey: c.name })),
+                            ...(hasIntl ? [{ kind: "international" as const, sortKey: "International" }] : []),
+                          ].sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+
+                          return (
+                            <div>
+                              <button onClick={() => setPopularOpen((v) => !v)}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 hover:text-muted-foreground transition-colors">
+                                <span className="text-[10px] shrink-0">⭐</span>
+                                <span className="flex-1 text-left">Popular Countries</span>
+                                {popularOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                              </button>
+                              {popularOpen && items.map((item) =>
+                                item.kind === "international" ? (
+                                  <div key="international">
+                                    <button onClick={() => setIntlOpen((v) => !v)}
+                                      className="w-full flex items-center gap-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 hover:text-muted-foreground transition-colors pl-5">
+                                      <Globe className="w-3 h-3 shrink-0" />
+                                      <span className="flex-1 text-left normal-case text-xs font-medium">International</span>
+                                      <span className="mr-1 text-[10px]">{footballData.international.reduce((s, l) => s + l.fixtureCount, 0)}</span>
+                                      {intlOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                                    </button>
+                                    {intlOpen && footballData.international.map((lg) => (
+                                      <button key={lg.id} onClick={() => selectLeague(lg.id, lg.name)}
+                                        className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-accent/30 hover:text-foreground transition-colors pl-7">
+                                        <LeagueLogo src={lg.logo} alt={lg.name} />
+                                        <span className="flex-1 text-left truncate">{lg.name}</span>
+                                        <span className="text-[10px] text-muted-foreground/50 shrink-0">{lg.fixtureCount}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div key={item.country.name}>
+                                    <button onClick={() => toggleCountry(item.country.name)}
+                                      className="w-full flex items-center gap-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 hover:text-muted-foreground transition-colors pl-5">
+                                      <FlagImg src={item.country.logo} alt={item.country.name} />
+                                      <span className="flex-1 text-left truncate normal-case text-xs font-medium">{item.country.name}</span>
+                                      <span className="mr-1 text-[10px]">{item.country.leagues.reduce((s, l) => s + l.fixtureCount, 0)}</span>
+                                      {openCountries.has(item.country.name) ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                                    </button>
+                                    {openCountries.has(item.country.name) && item.country.leagues.map((lg) => (
+                                      <button key={lg.id} onClick={() => selectLeague(lg.id, lg.name)}
+                                        className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-accent/30 hover:text-foreground transition-colors pl-7">
+                                        <LeagueLogo src={lg.logo} alt={lg.name} />
+                                        <span className="flex-1 text-left truncate">{lg.name}</span>
+                                        <span className="text-[10px] text-muted-foreground/50 shrink-0">{lg.fixtureCount}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          );
+                        })()}
+
+                        {/* ── Other Countries ── */}
+                        {sortedCountries(footballData.countries.filter((c) => !POPULAR_COUNTRY_NAMES.has(c.name))).map((country) => (
                           <div key={country.name}>
                             <button onClick={() => toggleCountry(country.name)}
                               className="w-full flex items-center gap-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 hover:text-muted-foreground transition-colors">
                               <FlagImg src={country.logo} alt={country.name} />
                               <span className="flex-1 text-left truncate normal-case text-xs font-medium">{country.name}</span>
-                              <span className="mr-1 text-[10px]">{country.leagues.length}</span>
+                              <span className="mr-1 text-[10px]">{country.leagues.reduce((s, l) => s + l.fixtureCount, 0)}</span>
                               {openCountries.has(country.name) ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
                             </button>
                             {openCountries.has(country.name) && country.leagues.map((lg) => (
