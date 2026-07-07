@@ -235,6 +235,15 @@ router.get("/fixtures", async (req, res): Promise<void> => {
   if (status) conditions.push(eq(fixturesTable.status, status as any));
   if (status === "upcoming") conditions.push(gte(fixturesTable.startTime, new Date()));
   if (sportId) conditions.push(eq(leaguesTable.sportId, sportId));
+  // Only return fixtures that have at least one market with at least one odd
+  if (withMarkets) {
+    conditions.push(sql`EXISTS (
+      SELECT 1 FROM markets m
+      JOIN odds o ON o.market_id = m.id
+      WHERE m.fixture_id = ${fixturesTable.id}
+      LIMIT 1
+    )`);
+  }
   if (dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     const dayStart = new Date(dateStr + "T00:00:00.000Z");
     const dayEnd = new Date(dateStr + "T23:59:59.999Z");
@@ -363,7 +372,9 @@ router.get("/fixtures", async (req, res): Promise<void> => {
     .map((f: any) => ({
       ...f,
       markets: marketsMap.get(f.id) ?? [],
-    }));
+    }))
+    // Only surface fixtures that have at least one market with at least one odd
+    .filter((f: any) => f.markets.length > 0 && f.markets.some((m: any) => m.odds && m.odds.length > 0));
 
   res.json({ fixtures: fixturesWithMarkets, total: totalResult.count, page, limit });
 });
