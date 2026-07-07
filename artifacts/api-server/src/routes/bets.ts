@@ -125,40 +125,49 @@ router.post("/bets", requireAuth, async (req: AuthRequest, res): Promise<void> =
   const rawPotentialWin = stake * totalOdds;
   const potentialWin = Math.min(rawPotentialWin, MAX_WIN);
   const code = await uniqueBetCode();
-
-  const newBalance = parseFloat(wallet.balance) - stake;
-  await db.update(walletsTable).set({ balance: newBalance.toFixed(2) }).where(eq(walletsTable.id, wallet.id));
-
   const isAgent = userRecord.role === "agent";
 
-  const [bet] = await db.insert(betsTable).values({
-    code,
-    userId: req.userId!,
-    stake: stake.toFixed(2),
-    totalOdds: totalOdds.toFixed(4),
-    potentialWin: potentialWin.toFixed(2),
-    status: "pending",
-    ...(isAgent && {
-      agentId: req.userId!,
-      branchId: userRecord.branchId ?? undefined,
-    }),
-  }).returning();
+  const bet = await db.transaction(async (tx) => {
+    // Re-read wallet inside transaction for a consistent balance
+    const [freshWallet] = await tx.select().from(walletsTable).where(eq(walletsTable.userId, req.userId!)).limit(1);
+    if (!freshWallet || parseFloat(freshWallet.balance) < stake) {
+      throw new Error("Insufficient wallet balance");
+    }
 
-  await db.insert(betSelectionsTable).values(
-    selections.map((s) => ({
-      betId: bet.id,
-      fixtureId: s.fixtureId,
-      market: s.market,
-      selection: s.selection,
-      odds: (dbOddsValueMap.get(s.oddsId) ?? s.odds).toFixed(4),
-    }))
-  );
+    const newBalance = parseFloat(freshWallet.balance) - stake;
+    await tx.update(walletsTable).set({ balance: newBalance.toFixed(2) }).where(eq(walletsTable.id, freshWallet.id));
 
-  await db.insert(transactionsTable).values({
-    walletId: wallet.id,
-    amount: stake.toFixed(2),
-    type: "bet_placed",
-    description: `Bet ${bet.code ?? "#" + bet.id} placed`,
+    const [newBet] = await tx.insert(betsTable).values({
+      code,
+      userId: req.userId!,
+      stake: stake.toFixed(2),
+      totalOdds: totalOdds.toFixed(4),
+      potentialWin: potentialWin.toFixed(2),
+      status: "pending",
+      ...(isAgent && {
+        agentId: req.userId!,
+        branchId: userRecord.branchId ?? undefined,
+      }),
+    }).returning();
+
+    await tx.insert(betSelectionsTable).values(
+      selections.map((s) => ({
+        betId: newBet.id,
+        fixtureId: s.fixtureId,
+        market: s.market,
+        selection: s.selection,
+        odds: (dbOddsValueMap.get(s.oddsId) ?? s.odds).toFixed(4),
+      }))
+    );
+
+    await tx.insert(transactionsTable).values({
+      walletId: freshWallet.id,
+      amount: stake.toFixed(2),
+      type: "bet_placed",
+      description: `Bet ${newBet.code ?? "#" + newBet.id} placed`,
+    });
+
+    return newBet;
   });
 
   const [user] = await db.select({ id: usersTable.id, username: usersTable.username, email: usersTable.email, role: usersTable.role, createdAt: usersTable.createdAt })

@@ -10,35 +10,37 @@ function getSelectionOutcome(
   scoreAway: number,
 ): boolean | null {
   const total = scoreHome + scoreAway;
+  const m = market.trim().toLowerCase();
+  const s = selection.trim().toLowerCase();
 
-  if (market === "1X2" || market === "Match Result") {
-    if (scoreHome > scoreAway) return selection === "Home" || selection === "Home Win";
-    if (scoreAway > scoreHome) return selection === "Away" || selection === "Away Win";
-    return selection === "Draw";
+  if (m === "1x2" || m === "match result") {
+    if (scoreHome > scoreAway) return s === "home" || s === "home win" || s === "1";
+    if (scoreAway > scoreHome) return s === "away" || s === "away win" || s === "2";
+    return s === "draw" || s === "x";
   }
 
-  if (market === "Double Chance") {
+  if (m === "double chance") {
     const homeWin = scoreHome > scoreAway;
     const awayWin = scoreAway > scoreHome;
     const draw = scoreHome === scoreAway;
-    if (selection === "1X") return homeWin || draw;
-    if (selection === "X2") return awayWin || draw;
-    if (selection === "12") return homeWin || awayWin;
+    if (s === "1x") return homeWin || draw;
+    if (s === "x2") return awayWin || draw;
+    if (s === "12") return homeWin || awayWin;
     return false;
   }
 
-  if (market === "Both Teams To Score") {
+  if (m === "both teams to score" || m === "btts") {
     const bothScored = scoreHome > 0 && scoreAway > 0;
-    if (selection === "Yes") return bothScored;
-    if (selection === "No") return !bothScored;
+    if (s === "yes") return bothScored;
+    if (s === "no") return !bothScored;
     return false;
   }
 
-  const ouMatch = market.match(/^Over\/Under (\d+(?:\.\d+)?)$/);
+  const ouMatch = market.match(/^Over\/Under\s+(\d+(?:\.\d+)?)$/i);
   if (ouMatch) {
     const line = parseFloat(ouMatch[1]!);
-    if (selection.startsWith("Over")) return total > line;
-    if (selection.startsWith("Under")) return total < line;
+    if (s.startsWith("over")) return total > line;
+    if (s.startsWith("under")) return total < line;
     return false;
   }
 
@@ -135,25 +137,27 @@ export async function autoSettleFinishedFixtures(): Promise<{
       const payout = voidOddsDivisor > 1.0
         ? Math.max(stake, storedPotentialWin / voidOddsDivisor)
         : storedPotentialWin;
-      const [wallet] = await db
-        .select()
-        .from(walletsTable)
-        .where(eq(walletsTable.userId, bet.userId))
-        .limit(1);
-      if (wallet) {
-        const newBalance = parseFloat(wallet.balance) + payout;
-        await db
-          .update(walletsTable)
-          .set({ balance: newBalance.toFixed(2) })
-          .where(eq(walletsTable.id, wallet.id));
-        await db.insert(transactionsTable).values({
-          walletId: wallet.id,
-          amount: payout.toFixed(2),
-          type: "bet_won",
-          description: `Bet #${bet.id} won`,
-        });
-        notifyBetWon(bet.userId, payout.toFixed(2), wallet.currency ?? "USD", bet.id).catch(() => {});
-      }
+      await db.transaction(async (tx) => {
+        const [wallet] = await tx
+          .select()
+          .from(walletsTable)
+          .where(eq(walletsTable.userId, bet.userId))
+          .limit(1);
+        if (wallet) {
+          const newBalance = parseFloat(wallet.balance) + payout;
+          await tx
+            .update(walletsTable)
+            .set({ balance: newBalance.toFixed(2) })
+            .where(eq(walletsTable.id, wallet.id));
+          await tx.insert(transactionsTable).values({
+            walletId: wallet.id,
+            amount: payout.toFixed(2),
+            type: "bet_won",
+            description: `Bet #${bet.id} won`,
+          });
+          notifyBetWon(bet.userId, payout.toFixed(2), wallet.currency ?? "USD", bet.id).catch(() => {});
+        }
+      });
     }
   }
 

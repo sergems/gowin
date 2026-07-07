@@ -542,7 +542,7 @@ export default function SportsPage() {
     (f) => new Date(f.startTime) > now,
   );
 
-  const firstFixtureSportName = fixtures[0]?.sportName ?? null;
+  const firstFixtureSportName = (fixtures[0] as any)?.league?.sport?.name ?? null;
   const effectiveSportName = selectedSportName ?? firstFixtureSportName;
 
   // When no params, it's the Football default view
