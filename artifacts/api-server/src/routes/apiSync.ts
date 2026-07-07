@@ -502,12 +502,18 @@ const SPORT_CONFIGS: SportSyncConfig[] = [
 
 // ── Core sync function for a single sport ─────────────────────────────────────
 
+// Countries that always get 60 days of fixtures synced ahead.
+const PRIORITY_FOOTBALL_COUNTRIES = new Set([
+  "England", "France", "Germany", "International", "Italy", "Spain",
+]);
+
 async function syncSportFixtures(
   config: SportSyncConfig,
   apiKey: string,
   countryMap: Map<string, CountryInfo>,
   today: Date,
   future: Date,
+  countryFilter?: Set<string>,
 ): Promise<{ imported: number; updated: number; total: number; errors: string[] }> {
   const url = `https://apiv2.allsportsapi.com/${config.apiBase}/?met=Fixtures&APIkey=${apiKey}&from=${dateStr(today)}&to=${dateStr(future)}`;
 
@@ -542,6 +548,9 @@ async function syncSportFixtures(
       const countryKeyStr = config.getCountryKey(event);
       const countryInfo = countryMap.get(countryKeyStr);
       const countryName = config.getCountryName(event) ?? countryInfo?.name ?? "Unknown";
+
+      // When a country filter is active, skip events that don't belong to a priority country.
+      if (countryFilter && !countryFilter.has(countryName)) continue;
       const countryLogo = config.getCountryLogo(event) ?? countryInfo?.logo ?? null;
       const leagueLogo = config.getLeagueLogo(event);
 
@@ -835,6 +844,34 @@ export async function runFullFixtureSync(sportFilter?: string): Promise<{
     totalUpdated += result.updated;
     totalEvents += result.total;
     allErrors.push(...result.errors);
+  }
+
+  // 3. Priority football extension: fetch days 15–60 for the 6 priority countries.
+  // AllSportsAPI enforces a 15-day max window per request, so we make 3 extra calls
+  // (days 15-29, 30-44, 45-60) using a country filter to avoid inserting the full
+  // world fixture set for dates far in the future.
+  const footballConfig = SPORT_CONFIGS.find((c) => c.name === "Football");
+  const shouldSyncFootball = !sportFilter || sportFilter.toLowerCase() === "football";
+  if (footballConfig && shouldSyncFootball) {
+    const BATCH_SIZE = 15;
+    const PRIORITY_DAYS = 60;
+    for (let startDay = 14; startDay < PRIORITY_DAYS; startDay += BATCH_SIZE) {
+      const batchFrom = new Date(today);
+      batchFrom.setDate(batchFrom.getDate() + startDay);
+      const batchTo = new Date(today);
+      batchTo.setDate(batchTo.getDate() + Math.min(startDay + BATCH_SIZE, PRIORITY_DAYS));
+      try {
+        const result = await syncSportFixtures(
+          footballConfig, apiKey, countryMap, batchFrom, batchTo, PRIORITY_FOOTBALL_COUNTRIES,
+        );
+        totalImported += result.imported;
+        totalUpdated += result.updated;
+        totalEvents += result.total;
+        allErrors.push(...result.errors);
+      } catch (err: any) {
+        allErrors.push(`Priority football batch day ${startDay}: ${err.message}`);
+      }
+    }
   }
 
   const timestamp = new Date().toISOString();
