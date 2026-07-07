@@ -882,10 +882,6 @@ export function Shell({ children }: { children: ReactNode }) {
               <Wallet className="w-5 h-5" />
               <span className="text-[10px] font-medium">Wallet</span>
             </Link>
-            <a href="/gowin.apk" download="GoWin.apk"
-              className="flex-1 flex items-center justify-center py-1.5 rounded-md transition-colors opacity-90 hover:opacity-100">
-              <img src="/store-badges/google-play.png" alt="Get it on Google Play" className="h-[42px] w-auto object-contain" />
-            </a>
           </>
         ) : (
           <>
@@ -895,10 +891,6 @@ export function Shell({ children }: { children: ReactNode }) {
               <CheckCircle2 className="w-5 h-5" />
               <span className="text-[10px] font-medium">{t("nav.results")}</span>
             </Link>
-            <a href="/gowin.apk" download="GoWin.apk"
-              className="flex-1 flex items-center justify-center py-1.5 rounded-md transition-colors opacity-90 hover:opacity-100">
-              <img src="/store-badges/google-play.png" alt="Get it on Google Play" className="h-[42px] w-auto object-contain" />
-            </a>
             <Link href="/login"
               className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-md transition-colors
                 ${location.startsWith("/login") ? "text-primary" : "text-muted-foreground"}`}>
