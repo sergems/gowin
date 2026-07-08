@@ -255,11 +255,11 @@ export default function WinBonusPage() {
               min={1}
               step={0.01}
               value={config.minQualifyingOdds}
-              onChange={(e) => updateField("minQualifyingOdds", parseFloat(e.target.value) || 1.5)}
+              onChange={(e) => updateField("minQualifyingOdds", parseFloat(e.target.value) || 1.4)}
             />
             <p className="text-[11px] text-muted-foreground">
               Selections with odds <strong>greater than</strong> this value count toward the bonus.
-              e.g. 1.50 means odds of 1.51+ qualify.
+              e.g. 1.40 means odds of 1.41+ qualify.
             </p>
           </div>
         </div>
