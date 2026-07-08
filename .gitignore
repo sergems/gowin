@@ -47,3 +47,6 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Runtime-generated uploads (PDF reports etc.)
+artifacts/api-server/uploads/

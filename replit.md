@@ -2,6 +2,16 @@
 
 A sports betting platform with live fixtures, bet placement, wallet management, and full user/admin management.
 
+## Replit Dev Setup
+
+To get this project running on Replit from a fresh import:
+
+1. **Install dependencies** — `pnpm install` (run once; pnpm workspaces handle all packages)
+2. **Database** — Replit provides PostgreSQL automatically; `DATABASE_URL` is injected at runtime. To seed from a dump: `psql $DATABASE_URL -f byh.sql`
+3. **Build the API server** — `pnpm --filter @workspace/api-server run build` (must run before first start; the dev workflow does this automatically)
+4. **Start workflows** — start both `artifacts/api-server: API Server` (port 8080) and `artifacts/gowin: web` (port 5000) via the Replit workflow panel
+5. **Secrets** — `SESSION_SECRET` is set. SMTP vars (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_FROM`, `SMTP_SECURE`) are set as env vars. `SMTP_PASS` must be added as a Replit Secret. `JWT_SECRET` is loaded from the database settings table on first boot; set it as a Replit Secret as a safe fallback.
+
 ## Run & Operate
 
 - `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080)
