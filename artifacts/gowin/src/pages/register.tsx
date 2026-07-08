@@ -12,6 +12,7 @@ import { Gift } from "lucide-react";
 export default function Register() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [referralCode, setReferralCode] = useState("");
   const { register, isLoading } = useAuth();
@@ -29,7 +30,13 @@ export default function Register() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await register({ username, email, password, referralCode: referralCode.trim() || undefined });
+      await register({
+        username,
+        email,
+        phoneNumber: phoneNumber.trim() || undefined,
+        password,
+        referralCode: referralCode.trim() || undefined,
+      });
       setLocation("/");
     } catch (err: any) {
       toast({
@@ -69,6 +76,22 @@ export default function Register() {
                 required
                 minLength={3}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">
+                Phone Number <span className="text-muted-foreground font-normal">(optional)</span>
+              </Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="08X XXX XXXX"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                autoComplete="tel"
+              />
+              <p className="text-xs text-muted-foreground">
+                Used to log in via phone — any DRC format accepted (08X, +243…, 243…)
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>

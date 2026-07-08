@@ -14,37 +14,51 @@ const router = Router();
 const MAX_LOGIN_ATTEMPTS = 3;
 
 /**
- * Given a phone input, return every storage variant that could represent the
- * same DRC (+243) number.  Handles all formats seen in the wild:
- *   +243XXXXXXXXX  →  canonical E.164
- *   243XXXXXXXXX   →  E.164 without leading +
- *   0XXXXXXXXX     →  local 10-digit (leading 0 replaces +243)
- *   XXXXXXXXX      →  bare 9-digit national number
- * Spaces, dashes, dots and parentheses are stripped before parsing.
+ * Parse any common DRC (+243) phone format into the 9-digit national segment.
+ * Returns null if the input cannot be resolved to exactly 9 national digits.
+ *
+ * Accepted inputs (after stripping spaces, dashes, dots, parens):
+ *   +243XXXXXXXXX  — E.164
+ *   243XXXXXXXXX   — E.164 without leading +
+ *   0XXXXXXXXX     — local 10-digit
+ *   XXXXXXXXX      — bare 9-digit national
  */
-function drcPhoneVariants(raw: string): string[] {
+function parseDrcNational(raw: string): string | null {
   const cleaned = raw.replace(/[\s\-\.()\u00a0]/g, "");
-  const seen = new Set<string>([cleaned]); // always include exact input
 
   let national: string | null = null;
 
-  if (cleaned.startsWith("+243") && cleaned.length >= 12) {
+  if (cleaned.startsWith("+243")) {
     national = cleaned.slice(4);
-  } else if (cleaned.startsWith("243") && cleaned.length >= 12) {
+  } else if (cleaned.startsWith("243") && cleaned.length === 12) {
     national = cleaned.slice(3);
-  } else if (cleaned.startsWith("0") && cleaned.length >= 9) {
+  } else if (cleaned.startsWith("0") && cleaned.length === 10) {
     national = cleaned.slice(1);
   } else if (/^\d{9}$/.test(cleaned)) {
     national = cleaned;
   }
 
-  if (national) {
-    seen.add(`+243${national}`);
-    seen.add(`243${national}`);
-    seen.add(`0${national}`);
-  }
+  // National segment must be exactly 9 digits and all numeric
+  if (national && /^\d{9}$/.test(national)) return national;
+  return null;
+}
 
-  return [...seen];
+/**
+ * Return all four storage variants for a DRC phone number so that any common
+ * format stored in the DB is matched regardless of which variant was saved.
+ * Returns the raw input unchanged (in a one-element array) if it cannot be
+ * parsed as a DRC number — this preserves exact-match behaviour for any
+ * non-DRC or free-form values already in the database.
+ */
+function drcPhoneVariants(raw: string): string[] {
+  const national = parseDrcNational(raw);
+  if (!national) return [raw.replace(/[\s\-\.()\u00a0]/g, "")];
+  return [
+    `+243${national}`,
+    `243${national}`,
+    `0${national}`,
+    national,
+  ];
 }
 
 function formatUser(user: any) {
@@ -97,6 +111,19 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   const { username, email, password } = parsed.data;
   const referralCodeInput = typeof req.body.referralCode === "string" ? req.body.referralCode.trim().toUpperCase() : null;
 
+  // Normalise phone: store in canonical E.164 (+243XXXXXXXXX) if supplied.
+  // Reject inputs that look like a number but cannot be parsed as a valid DRC number.
+  const rawPhone = typeof parsed.data.phoneNumber === "string" ? parsed.data.phoneNumber.trim() : null;
+  let phoneNumber: string | null = null;
+  if (rawPhone) {
+    const national = parseDrcNational(rawPhone);
+    if (!national) {
+      res.status(400).json({ error: "Invalid phone number — please use a DRC number (e.g. 08X XXX XXXX or +243 8X XXX XXXX)" });
+      return;
+    }
+    phoneNumber = `+243${national}`;
+  }
+
   const existing = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
   if (existing.length > 0) {
     res.status(409).json({ error: "Email already registered" });
@@ -107,6 +134,18 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   if (existingUsername.length > 0) {
     res.status(409).json({ error: "Username already taken" });
     return;
+  }
+
+  if (phoneNumber) {
+    const existingPhone = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(inArray(usersTable.phoneNumber, drcPhoneVariants(phoneNumber)))
+      .limit(1);
+    if (existingPhone.length > 0) {
+      res.status(409).json({ error: "Phone number already registered" });
+      return;
+    }
   }
 
   // Resolve referrer
@@ -133,6 +172,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
       role: "user",
       publicId,
       referralCode: myReferralCode,
+      ...(phoneNumber ? { phoneNumber } : {}),
       ...(referredBy ? { referredBy } : {}),
     })
     .returning();

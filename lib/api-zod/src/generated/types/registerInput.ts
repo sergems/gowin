@@ -10,6 +10,8 @@ export interface RegisterInput {
   /** @minLength 3 */
   username: string;
   email: string;
+  /** DRC mobile number in any common format (0812345678, +243812345678, 243812345678) */
+  phoneNumber?: string;
   /** @minLength 6 */
   password: string;
   referralCode?: string;

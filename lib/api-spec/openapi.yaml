@@ -987,6 +987,9 @@ components:
         email:
           type: string
           format: email
+        phoneNumber:
+          type: string
+          description: DRC mobile number in any common format (0812345678, +243812345678, 243812345678)
         password:
           type: string
           minLength: 6
