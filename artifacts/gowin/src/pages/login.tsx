@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, Lock, ShieldOff } from "lucide-react";
+import gowinLogo from "@/assets/logo.png";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 
 export default function Login() {
@@ -55,7 +56,9 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md border-border bg-card">
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold">GoWin</CardTitle>
+          <div className="flex justify-center">
+            <img src={gowinLogo} alt="GoWin" className="h-10 w-auto" />
+          </div>
           <CardDescription>{t("auth.login_desc")}</CardDescription>
         </CardHeader>
         <CardContent>

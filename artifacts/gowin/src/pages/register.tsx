@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Gift } from "lucide-react";
+import gowinLogo from "@/assets/logo.png";
 
 export default function Register() {
   const [username, setUsername] = useState("");
@@ -56,7 +57,9 @@ export default function Register() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md border-border bg-card">
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold">GoWin</CardTitle>
+          <div className="flex justify-center">
+            <img src={gowinLogo} alt="GoWin" className="h-10 w-auto" />
+          </div>
           <CardDescription>Create an account to start betting</CardDescription>
           {isReferred && (
             <div className="flex items-center justify-center gap-2 pt-1">
