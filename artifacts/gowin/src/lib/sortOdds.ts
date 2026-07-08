@@ -1,5 +1,5 @@
 const SELECTION_ORDER: Record<string, string[]> = {
-  "1X2": ["Home", "Draw", "Away"],
+  "1X2": ["Home", "Home 1UP", "Home 2UP", "Draw", "Away", "Away 1UP", "Away 2UP"],
   "Double Chance": ["1X", "12", "X2"],
   "Both Teams To Score": ["Yes", "No"],
   "Draw No Bet": ["Home", "Away"],

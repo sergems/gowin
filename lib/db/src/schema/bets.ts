@@ -32,6 +32,7 @@ export const betSelectionsTable = pgTable("bet_selections", {
   market: text("market").notNull(),
   selection: text("selection").notNull(),
   odds: numeric("odds", { precision: 10, scale: 4 }).notNull(),
+  upWon: boolean("up_won").notNull().default(false),
 });
 
 export const betBookingsTable = pgTable("bet_bookings", {

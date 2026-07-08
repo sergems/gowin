@@ -1,0 +1,150 @@
+Implement a new betting market feature called "1UP / 2UP Markets" for all Football Match Winner markets.
+
+IMPORTANT:
+This is NOT a promotion and NOT an early payout feature applied to existing bets.
+These are completely new betting selections that are generated from the existing Home and Away selections.
+
+Requirements:
+
+1. Every Match Winner market must automatically generate the following selections:
+
+- Home
+- Home 1UP
+- Home 2UP
+- Draw
+- Away
+- Away 1UP
+- Away 2UP
+
+Draw remains exactly as supplied by the odds provider and does not have 1UP or 2UP variants.
+
+2. The odds for Home 1UP, Home 2UP, Away 1UP and Away 2UP must be calculated from the original Home or Away odds using configurable percentages.
+
+Example:
+
+Original Home Odd = 2.40
+
+If Admin configured:
+
+1UP Percentage = 45%
+
+2UP Percentage = 75%
+
+Then:
+
+Home 1UP = 2.40 × 45%
+
+Home 2UP = 2.40 × 75%
+
+The same calculation applies to Away.
+
+These percentages must NOT be hardcoded.
+
+3. Create an Admin configuration page where administrators can:
+
+- Enable/Disable 1UP Markets
+- Enable/Disable 2UP Markets
+- Set the 1UP Percentage
+- Set the 2UP Percentage
+- Change these values at any time without requiring a deployment
+- Save the configuration in the database
+
+4. Whenever odds are imported or refreshed from the odds provider:
+
+- Read the latest configuration
+- Recalculate every 1UP and 2UP market
+- Store the calculated odds
+- Display them together with the original Match Winner market
+
+5. Settlement Rules
+
+Home 1UP
+
+Wins immediately if the Home team leads by at least 1 goal at ANY time during the match.
+
+Examples:
+1-0
+2-1
+3-2
+
+Home 2UP
+
+Wins immediately if the Home team leads by at least 2 goals at ANY time during the match.
+
+Examples:
+2-0
+3-1
+4-2
+
+Away 1UP
+
+Wins immediately if the Away team leads by at least 1 goal at ANY time during the match.
+
+Examples:
+0-1
+1-2
+2-3
+
+Away 2UP
+
+Wins immediately if the Away team leads by at least 2 goals at ANY time during the match.
+
+Examples:
+0-2
+1-3
+2-4
+
+Once a 1UP or 2UP bet has been settled as a winner, it must remain settled regardless of the final match result.
+
+6. Live Settlement
+
+Use live score updates to monitor every goal.
+
+After each goal:
+
+- Recalculate the current goal difference.
+- Find all unsettled 1UP/2UP bets for that fixture.
+- Immediately settle qualifying bets as winners.
+- Credit the user's winnings according to the calculated 1UP or 2UP odds.
+
+This process must be automatic and real-time.
+
+7. User Interface
+
+Under the Match Winner market, display:
+
+Home
+Home 1UP
+Home 2UP
+Draw
+Away
+Away 1UP
+Away 2UP
+
+The UI should clearly identify the new 1UP and 2UP selections while maintaining the existing betting slip functionality.
+
+8. Bet Slip
+
+When a user selects one of these markets, the bet slip must:
+
+- Show the correct market name
+- Show the calculated odds
+- Calculate payouts normally
+- Support Singles and Accumulators exactly like any other market
+
+9. Admin Reporting
+
+The admin panel should display:
+
+- Number of 1UP bets
+- Number of 2UP bets
+- Total turnover
+- Total payouts
+- Profit/Loss
+- Ability to filter reports by market type
+
+10. Implementation
+
+The feature must integrate with the existing betting engine, settlement engine, live score service, wallet, payout system, reporting, and admin dashboard without breaking any existing markets or functionality.
+
+Maintain the existing coding style, architecture, and database conventions already used throughout the project.

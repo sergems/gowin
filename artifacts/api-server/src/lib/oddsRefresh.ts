@@ -1,6 +1,7 @@
 import { db, settingsTable, fixturesTable, marketsTable, oddsTable, leaguesTable, sportsTable } from "@workspace/db";
 import { eq, and, sql, lte } from "drizzle-orm";
 import { logger } from "./logger";
+import { getUpMarketsConfig, injectUpMarkets } from "./upMarkets";
 
 const CONCURRENCY = 8;
 const REFRESH_WINDOW_DAYS = 60;
@@ -421,14 +422,21 @@ async function refreshFixture(
   fixtureId: number,
   externalId: string,
   sportName: string,
+  upConfig: Awaited<ReturnType<typeof getUpMarketsConfig>>,
 ): Promise<boolean> {
   const base = sportApiBase(sportName);
+  let ok: boolean;
   switch (base) {
-    case "basketball": return refreshBasketballFixture(apiKey, fixtureId, externalId);
-    case "tennis":     return refreshTennisFixture(apiKey, fixtureId, externalId);
-    case "cricket":    return refreshCricketFixture(apiKey, fixtureId, externalId);
-    default:           return refreshFootballFixture(apiKey, fixtureId, externalId);
+    case "basketball": ok = await refreshBasketballFixture(apiKey, fixtureId, externalId); break;
+    case "tennis":     ok = await refreshTennisFixture(apiKey, fixtureId, externalId); break;
+    case "cricket":    ok = await refreshCricketFixture(apiKey, fixtureId, externalId); break;
+    default:           ok = await refreshFootballFixture(apiKey, fixtureId, externalId); break;
   }
+  // Inject 1UP/2UP markets for football fixtures after base odds are written
+  if (ok && base === "football") {
+    await injectUpMarkets(fixtureId, upConfig).catch(() => {});
+  }
+  return ok;
 }
 
 export async function refreshAllUpcomingOdds(): Promise<{ total: number; fromApi: number; noData: number }> {
@@ -438,6 +446,7 @@ export async function refreshAllUpcomingOdds(): Promise<{ total: number; fromApi
     return { total: 0, fromApi: 0, noData: 0 };
   }
 
+  const upConfig = await getUpMarketsConfig();
   const cutoff = new Date(Date.now() + REFRESH_WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
   // Join through leagues → sports to get sport name per fixture
@@ -460,7 +469,7 @@ export async function refreshAllUpcomingOdds(): Promise<{ total: number; fromApi
     const batch = fixtureRows.slice(i, i + CONCURRENCY);
     await Promise.all(
       batch.map(async (f) => {
-        const ok = await refreshFixture(apiKey, f.id, f.external_id, f.sport_name);
+        const ok = await refreshFixture(apiKey, f.id, f.external_id, f.sport_name, upConfig);
         if (ok) fromApi++;
         else noData++;
       }),

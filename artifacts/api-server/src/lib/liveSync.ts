@@ -3,6 +3,7 @@ import { eq, inArray } from "drizzle-orm";
 import { logger } from "./logger";
 import { liveCache, type LiveFixture, type LiveMarket, type LiveStats } from "./liveCache";
 import { broadcast } from "./wsServer";
+import { settleUpMarketBets, getUpMarketsConfig, injectUpMarkets } from "./upMarkets";
 
 async function getApiKey(): Promise<string | null> {
   try {
@@ -316,6 +317,14 @@ export async function syncLiveFixtures(): Promise<void> {
           "LiveSync: goal detected — triggering immediate odds refresh",
         );
         significantEvent = true;
+
+        // 1UP/2UP live settlement: run asynchronously so it doesn't block sync
+        if (f.scoreHome !== null && f.scoreAway !== null && (f.sportName ?? "Football").toLowerCase() === "football") {
+          const sh = f.scoreHome, sa = f.scoreAway;
+          settleUpMarketBets(f.id, sh, sa).catch((err) => {
+            logger.warn({ err, fixtureId: f.id }, "LiveSync: 1UP/2UP settlement failed");
+          });
+        }
       }
 
       // Halftime kick-off
@@ -354,9 +363,16 @@ export async function syncLiveOdds(): Promise<void> {
     if (apiKey) {
       const liveWithExtId = currentFixtures.filter((f) => f.externalId);
       let anyApiSuccess = false;
+      const upConfig = await getUpMarketsConfig().catch(() => null);
       for (const fixture of liveWithExtId) {
         const ok = await fetchAndUpdateLiveOdds(apiKey, fixture.id, fixture.externalId!);
-        if (ok) anyApiSuccess = true;
+        if (ok) {
+          anyApiSuccess = true;
+          // Refresh 1UP/2UP odds in-place after base 1X2 odds are updated
+          if (upConfig && (fixture.sportName ?? "Football").toLowerCase() === "football") {
+            await injectUpMarkets(fixture.id, upConfig).catch(() => {});
+          }
+        }
       }
       if (!anyApiSuccess && liveWithExtId.length > 0) {
         liveCache.recordWorkerError("odds", "AllSports odds API returned no data for live fixtures");

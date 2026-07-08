@@ -2,6 +2,7 @@ import { db, fixturesTable, betsTable, betSelectionsTable, walletsTable, transac
 import { eq, and, inArray, isNotNull } from "drizzle-orm";
 import { logger } from "./logger";
 import { notifyBetWon, notifyBetLost } from "./notifications";
+import { UP_SELECTIONS } from "./upMarkets";
 
 function getSelectionOutcome(
   selection: string,
@@ -14,6 +15,8 @@ function getSelectionOutcome(
   const s = selection.trim().toLowerCase();
 
   if (m === "1x2" || m === "match result") {
+    // 1UP/2UP selections are handled separately via upWon flag — treat as null (void) here
+    if (s === "home 1up" || s === "home 2up" || s === "away 1up" || s === "away 2up") return null;
     if (scoreHome > scoreAway) return s === "home" || s === "home win" || s === "1";
     if (scoreAway > scoreHome) return s === "away" || s === "away win" || s === "2";
     return s === "draw" || s === "x";
@@ -95,6 +98,25 @@ export async function autoSettleFinishedFixtures(): Promise<{
 
     for (const sel of allBetSelections) {
       const fixture = fixtureMap[sel.fixtureId];
+
+      // ── 1UP / 2UP selections ──────────────────────────────────────────────
+      // These are settled in real-time by the live worker (up_won = true).
+      // At final settlement: if up_won is true → won; if fixture finished but
+      // up_won is false → lost (condition was never met during the match).
+      if (UP_SELECTIONS.has(sel.selection)) {
+        if (sel.upWon) {
+          continue; // Live worker already settled this leg as won
+        }
+        if (!fixture) {
+          hasPending = true; // Fixture not finished yet — wait
+          continue;
+        }
+        // Fixture finished and condition was never met → lost
+        hasLoss = true;
+        break;
+      }
+      // ─────────────────────────────────────────────────────────────────────
+
       if (!fixture || fixture.scoreHome === null || fixture.scoreAway === null) {
         // Fixture not yet finished — keep waiting
         hasPending = true;

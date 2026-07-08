@@ -19,7 +19,7 @@ import {
   Activity, LayoutDashboard, History, Wallet, Trophy, LogOut, Users, Settings, X,
   ArrowLeftRight, Ticket, UserCircle, AlertTriangle, Banknote, SlidersHorizontal,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, ChevronDown, ChevronRight, Globe, Shield, CheckCircle2,
-  Home, Menu, Images, Printer, Clock, Building2, Target, BarChart3, FileText, DollarSign, Radio, Bell, Sparkles, Share2,
+  Home, Menu, Images, Printer, Clock, Building2, Target, BarChart3, FileText, DollarSign, Radio, Bell, Sparkles, Share2, TrendingUp,
 } from "lucide-react";
 import type { PlacedBetDetails } from "@/contexts/BetSlipContext";
 import { printBetSlip } from "@/lib/printBetSlip";
@@ -341,6 +341,7 @@ export function Shell({ children }: { children: ReactNode }) {
     { href: "/admin/fixture-update",  icon: Clock,             label: t("nav.fixture_update"), match: (l: string) => l === "/admin/fixture-update" },
     { href: "/admin/api-monitor",     icon: BarChart3,         label: t("nav.api_monitor"),    match: (l: string) => l === "/admin/api-monitor" },
     { href: "/admin/win-bonus",       icon: Sparkles,          label: t("shell.win_bonus"),          match: (l: string) => l === "/admin/win-bonus" },
+    { href: "/admin/up-markets",      icon: TrendingUp,        label: t("shell.up_markets"),         match: (l: string) => l === "/admin/up-markets" },
     { href: "/admin/referral",        icon: Share2,            label: t("shell.referral_program"),   match: (l: string) => l === "/admin/referral" },
     { href: "/admin/settings",        icon: SlidersHorizontal, label: t("nav.settings"),       match: (l: string) => l === "/admin/settings" },
   ] : [];
