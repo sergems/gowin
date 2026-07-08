@@ -477,7 +477,7 @@ export default function BranchesPage() {
       {debitBranch && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold text-white mb-1">Debit Branch Balance</h2>
+            <h2 className="text-xl font-bold text-white mb-1">{t("branches.debit_title")}</h2>
             <p className="text-sm text-zinc-400 mb-1">{t("branches.branch_label")}: <span className="text-white font-medium">{debitBranch.name}</span></p>
             <p className="text-sm text-zinc-400 mb-4">{t("branches.current_balance")}: <span className="text-emerald-400 font-bold">{formatCurrency(parseFloat(String(debitBranch.balance ?? "0")))}</span></p>
             {error && <p className="text-red-400 text-sm mb-3 bg-red-900/20 rounded-lg px-3 py-2">{error}</p>}
@@ -533,7 +533,7 @@ export default function BranchesPage() {
                   }
                 }}
                 className="flex-1 bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50">
-                {debitLoading ? "Debiting…" : "Debit Balance"}
+                {debitLoading ? t("branches.debiting") : t("branches.debit_balance")}
               </button>
             </div>
           </div>
@@ -549,7 +549,7 @@ export default function BranchesPage() {
               {t("branches.for_branch")}: <span className="text-white">{branches.find((b) => b.id === showAddAdmin)?.name}</span>
             </p>
             <p className="text-xs text-zinc-500 mb-4 bg-zinc-800 rounded-lg p-3">
-              This creates a <strong className="text-zinc-300">new</strong> branch admin account. To assign an existing user as branch admin or agent, go to the <strong className="text-zinc-300">Users</strong> page and edit their role.
+              {t("branches.create_admin_hint")}
             </p>
             {error && <p className="text-red-400 text-sm mb-3 bg-red-900/20 rounded-lg px-3 py-2">{error}</p>}
             <div className="space-y-3">

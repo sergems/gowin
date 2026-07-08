@@ -7,6 +7,7 @@ import { ChevronDown, Radio, Wifi, WifiOff, AlertTriangle, Shield, TrendingUp, T
 import { useQuery } from "@tanstack/react-query";
 import type { LiveMarket as ApiLiveMarket } from "@/hooks/useLiveSocket";
 import { sortOdds } from "@/lib/sortOdds";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 
 const MAIN_MARKETS = ["1X2", "Double Chance", "Over/Under 2.5"];
 
@@ -170,6 +171,7 @@ interface FixtureCardProps {
 
 function FixtureCard({ fixture, getOddsDirection, allSuspended }: FixtureCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const { t } = useSiteSettings();
 
   const mainMarkets = fixture.markets
     .filter((m) => MAIN_MARKETS.includes(m.marketType) && hasValue(m));
@@ -203,7 +205,7 @@ function FixtureCard({ fixture, getOddsDirection, allSuspended }: FixtureCardPro
           )}
           <span className="flex items-center gap-1 text-xs font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full">
             <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-            LIVE
+            {t("payout.live_badge")}
           </span>
         </div>
       </div>
@@ -248,10 +250,10 @@ function FixtureCard({ fixture, getOddsDirection, allSuspended }: FixtureCardPro
         className="w-full flex items-center justify-between px-3 py-2 text-xs text-muted-foreground hover:text-primary transition-colors border-t border-border/30"
       >
         {expanded ? (
-          <span className="font-medium text-primary">Hide markets ↑</span>
+          <span className="font-medium text-primary">{t("live.hide_markets")}</span>
         ) : (
           <>
-            <span className="font-medium">More markets</span>
+            <span className="font-medium">{t("live.more_markets")}</span>
             <ChevronDown className="w-3.5 h-3.5" />
           </>
         )}
@@ -282,32 +284,32 @@ function FixtureCard({ fixture, getOddsDirection, allSuspended }: FixtureCardPro
           )}
 
           {!loadingMarkets && extraMarkets.length === 0 && (
-            <p className="text-xs text-muted-foreground/50 italic text-center pt-2">No additional markets available</p>
+            <p className="text-xs text-muted-foreground/50 italic text-center pt-2">{t("live.no_extra_markets")}</p>
           )}
 
           {stats && (
             <div className="mt-2 pt-3 border-t border-border/30">
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold mb-2">
-                Match Statistics
+                {t("live.match_stats")}
               </p>
               <div className="space-y-1.5">
                 {stats.possessionHome != null && (
-                  <StatRow label="Possession" home={stats.possessionHome} away={stats.possessionAway} />
+                  <StatRow label={t("live.stat_possession")} home={stats.possessionHome} away={stats.possessionAway} />
                 )}
                 {stats.shotsHome != null && (
-                  <StatRow label="Shots" home={String(stats.shotsHome)} away={String(stats.shotsAway ?? 0)} />
+                  <StatRow label={t("live.stat_shots")} home={String(stats.shotsHome)} away={String(stats.shotsAway ?? 0)} />
                 )}
                 {stats.shotsOnTargetHome != null && (
-                  <StatRow label="On Target" home={String(stats.shotsOnTargetHome)} away={String(stats.shotsOnTargetAway ?? 0)} />
+                  <StatRow label={t("live.stat_on_target")} home={String(stats.shotsOnTargetHome)} away={String(stats.shotsOnTargetAway ?? 0)} />
                 )}
                 {stats.cornersHome != null && (
-                  <StatRow label="Corners" home={String(stats.cornersHome)} away={String(stats.cornersAway ?? 0)} />
+                  <StatRow label={t("live.stat_corners")} home={String(stats.cornersHome)} away={String(stats.cornersAway ?? 0)} />
                 )}
                 {stats.yellowCardsHome != null && (
-                  <StatRow label="Yellow Cards" home={String(stats.yellowCardsHome)} away={String(stats.yellowCardsAway ?? 0)} />
+                  <StatRow label={t("live.stat_yellow_cards")} home={String(stats.yellowCardsHome)} away={String(stats.yellowCardsAway ?? 0)} />
                 )}
                 {stats.redCardsHome != null && (
-                  <StatRow label="Red Cards" home={String(stats.redCardsHome)} away={String(stats.redCardsAway ?? 0)} />
+                  <StatRow label={t("live.stat_red_cards")} home={String(stats.redCardsHome)} away={String(stats.redCardsAway ?? 0)} />
                 )}
               </div>
             </div>
@@ -358,6 +360,7 @@ function buildSortedLeagueGroups(fixtures: LiveFixture[]): LeagueGroup[] {
 
 export default function LiveBetting() {
   const { fixtures: wsFixtures, connected, allSuspended, getOddsDirection } = useLiveSocket();
+  const { t } = useSiteSettings();
   const [dataWarning, setDataWarning] = useState<string | null>(null);
 
   const { data: initialData, isLoading } = useQuery<{ fixtures: LiveFixture[]; dataWarning?: string }>({
@@ -384,19 +387,19 @@ export default function LiveBetting() {
               <Radio className="w-6 h-6 text-red-500" />
               <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 animate-ping" />
             </div>
-            Live In-Play
+            {t("nav.live")}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {isLoading && wsFixtures.length === 0
-              ? "Loading…"
-              : `${fixtures.length} match${fixtures.length !== 1 ? "es" : ""} in play`}
+              ? t("common.loading")
+              : `${fixtures.length} ${t(fixtures.length !== 1 ? "live.match_plural" : "live.match_singular")} ${t("live.in_play")}`}
           </p>
         </div>
 
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           {connected
-            ? <><Wifi className="w-3.5 h-3.5 text-green-400" /><span>Live updates</span></>
-            : <><WifiOff className="w-3.5 h-3.5 text-muted-foreground/50" /><span>Reconnecting…</span></>}
+            ? <><Wifi className="w-3.5 h-3.5 text-green-400" /><span>{t("live.live_updates")}</span></>
+            : <><WifiOff className="w-3.5 h-3.5 text-muted-foreground/50" /><span>{t("live.reconnecting")}</span></>}
         </div>
       </div>
 
@@ -404,7 +407,7 @@ export default function LiveBetting() {
       {allSuspended && (
         <div className="flex items-center gap-2 rounded-md border border-orange-500/40 bg-orange-500/10 px-3 py-2.5 text-sm text-orange-400">
           <Lock className="w-4 h-4 shrink-0 animate-pulse" />
-          <span className="font-medium">All odds suspended — reconnecting to live feed…</span>
+          <span className="font-medium">{t("live.suspended_msg")}</span>
           <WifiOff className="w-3.5 h-3.5 ml-auto shrink-0 opacity-60" />
         </div>
       )}
@@ -433,8 +436,8 @@ export default function LiveBetting() {
           <div className="w-16 h-16 rounded-full bg-accent/30 flex items-center justify-center">
             <Radio className="w-8 h-8 text-muted-foreground/40" />
           </div>
-          <p className="text-lg font-semibold">No live matches right now</p>
-          <p className="text-sm text-center">Check back soon — live markets appear here automatically when matches kick off.</p>
+          <p className="text-lg font-semibold">{t("live.no_live_matches")}</p>
+          <p className="text-sm text-center">{t("live.no_matches_live_desc")}</p>
         </div>
       )}
 

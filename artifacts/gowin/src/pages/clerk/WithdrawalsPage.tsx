@@ -118,12 +118,13 @@ function AgingBadge({ createdAt }: { createdAt: string }) {
   );
 }
 
-const TABS = [
-  { key: "approved",   label: "Pending Authorisation" },
-  { key: "processing", label: "Processing" },
-  { key: "completed",  label: "Completed" },
-  { key: "failed",     label: "Failed" },
-  { key: "rejected",   label: "Rejected" },
+// Tab labels are set in component using t() — see TABS_KEYS
+const TABS_KEYS = [
+  { key: "approved",   labelKey: "clerk.tab_pending_auth" as const },
+  { key: "processing", labelKey: "clerk.tab_processing" as const },
+  { key: "completed",  labelKey: "clerk.tab_completed" as const },
+  { key: "failed",     labelKey: "clerk.tab_failed" as const },
+  { key: "rejected",   labelKey: "clerk.tab_rejected" as const },
 ];
 
 const POLL_INTERVAL_MS = 10_000;
@@ -131,7 +132,7 @@ const POLL_INTERVAL_MS = 10_000;
 export default function ClerkWithdrawalsPage() {
   const { token } = useAuth();
   const { toast } = useToast();
-  const { formatCurrency } = useSiteSettings();
+  const { formatCurrency, t } = useSiteSettings();
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState("approved");
@@ -201,12 +202,12 @@ export default function ClerkWithdrawalsPage() {
       return d;
     },
     onSuccess: () => {
-      toast({ title: "Payout initiated", description: "PawaPay payout has been sent. Live polling will update the status." });
+      toast({ title: t("clerk.payout_initiated"), description: t("clerk.payout_sent_desc") });
       setAuthoriseModal(null);
       queryClient.invalidateQueries({ queryKey: ["/api/clerk/withdrawals"] });
       setActiveTab("processing");
     },
-    onError: (e: any) => toast({ title: "Payout failed", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast({ title: t("clerk.payout_failed"), description: e.message, variant: "destructive" }),
   });
 
   const rejectMutation = useMutation({
@@ -221,35 +222,35 @@ export default function ClerkWithdrawalsPage() {
       return d;
     },
     onSuccess: () => {
-      toast({ title: "Withdrawal rejected", description: "Balance restored to user wallet" });
+      toast({ title: t("clerk.withdrawal_rejected"), description: t("clerk.balance_restored") });
       setRejectModal(null);
       setRejectReason("");
       queryClient.invalidateQueries({ queryKey: ["/api/clerk/withdrawals"] });
     },
-    onError: (e: any) => toast({ title: "Action failed", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast({ title: t("clerk.action_failed"), description: e.message, variant: "destructive" }),
   });
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-3xl font-black tracking-tight mb-2">Withdrawal Payouts</h1>
-          <p className="text-muted-foreground">Authorise and process approved withdrawal requests via PawaPay</p>
+          <h1 className="text-3xl font-black tracking-tight mb-2">{t("clerk.withdrawals_title")}</h1>
+          <p className="text-muted-foreground">{t("clerk.withdrawals_page_desc")}</p>
         </div>
       </div>
 
       {/* Flow */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
-        <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-blue-500" /> Admin Approved</span>
+        <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-blue-500" /> {t("clerk.flow_approved")}</span>
         <ChevronRight className="w-4 h-4" />
-        <span className="flex items-center gap-1.5"><Banknote className="w-4 h-4 text-violet-500" /> Clerk Authorises</span>
+        <span className="flex items-center gap-1.5"><Banknote className="w-4 h-4 text-violet-500" /> {t("clerk.flow_authorise")}</span>
         <ChevronRight className="w-4 h-4" />
-        <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-primary" /> PawaPay Completes</span>
+        <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-primary" /> {t("clerk.flow_complete")}</span>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-2 flex-wrap">
-        {TABS.map((tab) => (
+        {TABS_KEYS.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
@@ -259,7 +260,7 @@ export default function ClerkWithdrawalsPage() {
                 : "bg-accent/50 text-muted-foreground hover:bg-accent"
             }`}
           >
-            {tab.label}
+            {t(tab.labelKey)}
             {tab.key === "approved" && data && activeTab === "approved" && data.length > 0 && (
               <span className="ml-2 bg-amber-500 text-white text-xs px-1.5 py-0.5 rounded-full leading-none">
                 {data.length}
@@ -273,8 +274,8 @@ export default function ClerkWithdrawalsPage() {
       {activeTab === "processing" && (
         <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-violet-500/30 bg-violet-500/5 text-sm">
           <Wifi className="w-4 h-4 text-violet-400 animate-pulse" />
-          <span className="text-violet-300 font-medium">Live polling PawaPay every {POLL_INTERVAL_MS / 1000}s</span>
-          <span className="text-muted-foreground ml-auto text-xs">Next check in {countdown}s</span>
+          <span className="text-violet-300 font-medium">{t("clerk.live_polling").replace("{n}", String(POLL_INTERVAL_MS / 1000))}</span>
+          <span className="text-muted-foreground ml-auto text-xs">{t("clerk.next_check").replace("{n}", String(countdown))}</span>
         </div>
       )}
 
@@ -286,7 +287,7 @@ export default function ClerkWithdrawalsPage() {
       ) : !data || data.length === 0 ? (
         <div className="py-16 text-center border border-dashed border-border rounded-xl">
           <Banknote className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
-          <p className="text-muted-foreground">No {TABS.find(t => t.key === activeTab)?.label.toLowerCase()} withdrawals</p>
+          <p className="text-muted-foreground">{t("common.no_results")}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -321,7 +322,7 @@ export default function ClerkWithdrawalsPage() {
                       <p className="text-xs text-muted-foreground">PawaPay: <span className="font-mono font-semibold">{w.pawapayStatus}</span></p>
                     )}
                     {w.status === "processing" && (
-                      <p className="text-xs text-violet-400 flex items-center gap-1"><Wifi className="w-3 h-3" /> Auto-updating</p>
+                      <p className="text-xs text-violet-400 flex items-center gap-1"><Wifi className="w-3 h-3" /> {t("clerk.auto_updating")}</p>
                     )}
                     {w.clerkNote && <p className="text-xs text-muted-foreground italic">Note: {w.clerkNote}</p>}
                   </div>
@@ -331,10 +332,10 @@ export default function ClerkWithdrawalsPage() {
                   {w.status === "approved" && (
                     <div className="flex gap-2">
                       <Button size="sm" onClick={() => setAuthoriseModal(w)}>
-                        Authorise
+                        {t("clerk.authorise_btn")}
                       </Button>
                       <Button size="sm" variant="destructive" onClick={() => { setRejectModal(w); setRejectReason(""); }}>
-                        Reject
+                        {t("clerk.reject_btn")}
                       </Button>
                     </div>
                   )}
@@ -349,29 +350,29 @@ export default function ClerkWithdrawalsPage() {
       <Dialog open={!!authoriseModal} onOpenChange={(o) => !o && setAuthoriseModal(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Authorise Payout</DialogTitle>
+            <DialogTitle>{t("clerk.authorise_title")}</DialogTitle>
           </DialogHeader>
           {authoriseModal && (
             <div className="space-y-4 py-2">
               <div className="p-4 rounded-lg bg-accent/30 border border-border space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground text-sm">User</span>
+                  <span className="text-muted-foreground text-sm">{t("clerk.user_label")}</span>
                   <span className="font-semibold text-sm">{displayName(authoriseModal.user)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground text-sm">Amount</span>
+                  <span className="text-muted-foreground text-sm">{t("common.amount")}</span>
                   <span className="font-bold">{formatCurrency(authoriseModal.amount)} {authoriseModal.currency}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground text-sm">Phone</span>
+                  <span className="text-muted-foreground text-sm">{t("clerk.phone_label")}</span>
                   <span className="font-mono text-sm">{authoriseModal.phoneNumber ?? authoriseModal.bankDetails}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground text-sm">Operator</span>
+                  <span className="text-muted-foreground text-sm">{t("clerk.operator_label")}</span>
                   <span className="text-sm font-semibold">
                     {authoriseModal.operator
                       ? authoriseModal.operator.replace(/_/g, " ")
-                      : <span className="text-destructive">Not set</span>}
+                      : <span className="text-destructive">{t("clerk.not_set")}</span>}
                   </span>
                 </div>
               </div>
@@ -379,7 +380,7 @@ export default function ClerkWithdrawalsPage() {
                 <div className="flex items-start gap-2 p-3 rounded-lg border border-destructive/30 bg-destructive/5">
                   <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
                   <p className="text-xs text-destructive">
-                    No operator is set on this withdrawal. The user must set their primary payment account in their profile before a payout can be processed.
+                    {t("clerk.no_operator_warning")}
                   </p>
                 </div>
               )}
@@ -392,12 +393,12 @@ export default function ClerkWithdrawalsPage() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAuthoriseModal(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setAuthoriseModal(null)}>{t("common.cancel")}</Button>
             <Button
               disabled={!authoriseModal?.operator || authoriseMutation.isPending}
               onClick={() => authoriseModal && authoriseMutation.mutate(authoriseModal.id)}
             >
-              {authoriseMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending…</> : "Send Payout"}
+              {authoriseMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("clerk.sending")}</> : t("clerk.send_payout")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -407,17 +408,17 @@ export default function ClerkWithdrawalsPage() {
       <Dialog open={!!rejectModal} onOpenChange={(o) => !o && setRejectModal(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reject Withdrawal</DialogTitle>
+            <DialogTitle>{t("clerk.reject_title")}</DialogTitle>
           </DialogHeader>
           {rejectModal && (
             <div className="space-y-4 py-2">
               <p className="text-sm text-muted-foreground">
-                Rejecting this withdrawal will refund <span className="font-bold text-foreground">{formatCurrency(rejectModal.amount)} {rejectModal.currency}</span> back to the user's wallet.
+                {t("clerk.reject_desc_pre")} <span className="font-bold text-foreground">{formatCurrency(rejectModal.amount)} {rejectModal.currency}</span> {t("clerk.reject_desc_post")}
               </p>
               <div className="space-y-2">
-                <Label>Reason (optional)</Label>
+                <Label>{t("clerk.reason_optional")}</Label>
                 <Input
-                  placeholder="Reason for rejection…"
+                  placeholder={t("clerk.reject_reason_ph")}
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
                 />
@@ -425,13 +426,13 @@ export default function ClerkWithdrawalsPage() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRejectModal(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setRejectModal(null)}>{t("common.cancel")}</Button>
             <Button
               variant="destructive"
               disabled={rejectMutation.isPending}
               onClick={() => rejectModal && rejectMutation.mutate({ id: rejectModal.id, reason: rejectReason })}
             >
-              {rejectMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Rejecting…</> : "Reject & Refund"}
+              {rejectMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("clerk.rejecting")}</> : t("clerk.reject_refund")}
             </Button>
           </DialogFooter>
         </DialogContent>

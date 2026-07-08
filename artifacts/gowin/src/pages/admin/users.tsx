@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useListUsers, useCreditWallet, useDebitWallet, getListUsersQueryKey } from "@workspace/api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { TranslationKey } from "@/lib/i18n";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -64,19 +65,19 @@ interface AdminUser {
 interface Branch { id: number; name: string; code: string; }
 
 const ROLE_TABS = [
-  { key: "all",          label: "All Users" },
-  { key: "admin",        label: "Admins" },
-  { key: "manager",      label: "Managers" },
-  { key: "branch_admin", label: "Branch Admins" },
-  { key: "agent",        label: "Agents" },
-  { key: "payout",       label: "Payout Clerks" },
-  { key: "user",         label: "Users" },
+  { key: "all",          labelKey: "admin.users.tab_all" },
+  { key: "admin",        labelKey: "admin.users.tab_admin" },
+  { key: "manager",      labelKey: "admin.users.tab_manager" },
+  { key: "branch_admin", labelKey: "admin.users.tab_branch_admin" },
+  { key: "agent",        labelKey: "admin.users.tab_agent" },
+  { key: "payout",       labelKey: "admin.users.tab_payout" },
+  { key: "user",         labelKey: "admin.users.tab_user" },
 ] as const;
 
 type RoleTab = typeof ROLE_TABS[number]["key"];
 
 export default function AdminUsers() {
-  const { formatCurrency, parseAmount, currency } = useSiteSettings();
+  const { formatCurrency, parseAmount, currency, t } = useSiteSettings();
   const isForeignCurrency = currency !== "USD";
   const [activeTab, setActiveTab] = useState<RoleTab>("all");
   const [searchInput, setSearchInput] = useState("");
@@ -148,12 +149,12 @@ export default function AdminUsers() {
       const payload = { userId: selectedUser.id, amount: parseAmount(parseFloat(amount) || 0), description: description || `Admin ${actionType}` };
       if (actionType === "credit") await creditMutation.mutateAsync({ data: payload });
       else await debitMutation.mutateAsync({ data: payload });
-      toast({ title: "Success", description: `Successfully ${actionType}ed wallet.` });
+      toast({ title: t("admin.users.success"), description: `Successfully ${actionType}ed wallet.` });
       queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
       setIsWalletDialogOpen(false);
       resetWalletForm();
     } catch (err: any) {
-      toast({ title: "Action failed", description: err.message, variant: "destructive" });
+      toast({ title: t("admin.users.action_failed"), description: err.message, variant: "destructive" });
     }
   };
 
@@ -162,7 +163,7 @@ export default function AdminUsers() {
     try {
       await apiFetch(`/api/users/${user.id}/disable`, "PATCH", { disabled: !user.disabled }, token);
       toast({
-        title: user.disabled ? "Account enabled" : "Account blocked",
+        title: user.disabled ? t("admin.users.enabled") : t("admin.users.blocked_msg"),
         description: `${user.username} has been ${user.disabled ? "unblocked" : "blocked"}.`,
         variant: user.disabled ? "default" : "destructive",
       });
@@ -238,17 +239,17 @@ export default function AdminUsers() {
       }
 
       if (calls.length === 0) {
-        toast({ title: "No changes", description: "Nothing was modified." });
+        toast({ title: t("admin.users.no_changes"), description: t("admin.users.no_changes_desc") });
         setIsEditDialogOpen(false);
         return;
       }
 
       await Promise.all(calls);
-      toast({ title: "User updated", description: `${editForm.username}'s details have been saved.` });
+      toast({ title: t("admin.users.updated"), description: `${editForm.username}'s details have been saved.` });
       queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
       setIsEditDialogOpen(false);
     } catch (err: any) {
-      toast({ title: "Update failed", description: err.message, variant: "destructive" });
+      toast({ title: t("admin.users.update_failed"), description: err.message, variant: "destructive" });
     } finally {
       setEditLoading(false);
     }
@@ -266,7 +267,7 @@ export default function AdminUsers() {
       setResetResult(result);
       queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
     } catch (err: any) {
-      toast({ title: "Reset failed", description: err.message, variant: "destructive" });
+      toast({ title: t("admin.users.reset_failed"), description: err.message, variant: "destructive" });
     } finally {
       setResetLoading(false);
     }
@@ -285,8 +286,8 @@ export default function AdminUsers() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-black tracking-tight mb-2">User Management</h1>
-        <p className="text-muted-foreground">Manage users, roles, wallet balances, and account access</p>
+        <h1 className="text-3xl font-black tracking-tight mb-2">{t("admin.users.title")}</h1>
+        <p className="text-muted-foreground">{t("admin.users.desc")}</p>
       </div>
 
       {/* Role tabs */}
@@ -297,14 +298,14 @@ export default function AdminUsers() {
           return (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => setActiveTab(tab.key as RoleTab)}
               className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors flex items-center gap-1.5
                 ${isActive
                   ? "border-primary text-primary bg-primary/5"
                   : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
                 }`}
             >
-              {tab.label}
+              {t(tab.labelKey as TranslationKey)}
               <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
                 {tabCount}
               </span>
@@ -317,7 +318,7 @@ export default function AdminUsers() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           <Input
-            placeholder="Search by email, phone or username…"
+            placeholder={t("admin.users.search_ph")}
             value={searchInput}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-9 pr-9"
@@ -330,7 +331,7 @@ export default function AdminUsers() {
         </div>
         {search && (
           <p className="text-sm text-muted-foreground">
-            {isLoading ? "Searching…" : `${(data as any)?.total ?? 0} result${(data as any)?.total === 1 ? "" : "s"}`}
+            {isLoading ? t("admin.users.searching") : `${(data as any)?.total ?? 0} ${(data as any)?.total === 1 ? t("admin.users.result") : t("admin.users.results")}`}
           </p>
         )}
       </div>
@@ -340,22 +341,22 @@ export default function AdminUsers() {
           <Table className="min-w-[1000px]">
             <TableHeader className="bg-accent/10">
               <TableRow>
-                <TableHead className="w-12">ID</TableHead>
-                <TableHead>Username</TableHead>
-                <TableHead>Name / Email</TableHead>
-                <TableHead className="w-32">Role</TableHead>
-                <TableHead className="w-36">Branch</TableHead>
-                <TableHead className="w-24">Status</TableHead>
-                <TableHead className="w-28">Joined</TableHead>
-                <TableHead className="text-right w-24">Balance</TableHead>
-                <TableHead className="text-right w-52">Actions</TableHead>
+                <TableHead className="w-12">{t("admin.users.col_id")}</TableHead>
+                <TableHead>{t("admin.users.col_username")}</TableHead>
+                <TableHead>{t("admin.users.col_name_email")}</TableHead>
+                <TableHead className="w-32">{t("admin.users.col_role")}</TableHead>
+                <TableHead className="w-36">{t("admin.users.col_branch")}</TableHead>
+                <TableHead className="w-24">{t("admin.users.col_status")}</TableHead>
+                <TableHead className="w-28">{t("admin.users.col_joined")}</TableHead>
+                <TableHead className="text-right w-24">{t("admin.users.col_balance")}</TableHead>
+                <TableHead className="text-right w-52">{t("admin.users.col_actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={9} className="text-center py-8">Loading...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center py-8">{t("common.loading")}…</TableCell></TableRow>
               ) : users.length === 0 ? (
-                <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No users found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">{t("admin.users.no_users")}</TableCell></TableRow>
               ) : (
                 users.map((user) => {
                   const isSelf = user.id === (currentUser as any)?.id;
@@ -384,11 +385,11 @@ export default function AdminUsers() {
                       </TableCell>
                       <TableCell>
                         {isSystemLocked ? (
-                          <Badge variant="destructive" className="text-xs">Locked</Badge>
+                          <Badge variant="destructive" className="text-xs">{t("admin.users.status_locked")}</Badge>
                         ) : isAdminDisabled ? (
-                          <Badge variant="destructive" className="text-xs">Blocked</Badge>
+                          <Badge variant="destructive" className="text-xs">{t("admin.users.status_blocked")}</Badge>
                         ) : (
-                          <Badge variant="outline" className="text-xs text-green-600 border-green-600/40">Active</Badge>
+                          <Badge variant="outline" className="text-xs text-green-600 border-green-600/40">{t("admin.users.status_active")}</Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-xs">
@@ -411,16 +412,16 @@ export default function AdminUsers() {
                             className={`h-8 w-8 ${user.disabled ? "text-green-600 hover:text-green-600 hover:bg-green-600/10" : "text-destructive hover:text-destructive hover:bg-destructive/10"}`}
                             onClick={() => handleDisableToggle(user)}
                             disabled={disableLoadingId === user.id || isSelf}
-                            title={isSelf ? "Cannot disable your own account" : user.disabled ? "Unblock account" : "Block account"}
+                            title={isSelf ? t("admin.users.cannot_disable_self") : user.disabled ? t("admin.users.unblock") : t("admin.users.block")}
                           >
                             {disableLoadingId === user.id ? (
                               <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
                             ) : user.disabled ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />}
                           </Button>
                           <Button variant="outline" size="sm" className="h-7 text-xs px-2 text-green-600 border-green-600/40 hover:bg-green-600/10"
-                            onClick={() => openWalletDialog(user, "credit")}>Credit</Button>
+                            onClick={() => openWalletDialog(user, "credit")}>{t("admin.users.credit")}</Button>
                           <Button variant="outline" size="sm" className="h-7 text-xs px-2 text-destructive border-destructive/40 hover:bg-destructive/10"
-                            onClick={() => openWalletDialog(user, "debit")}>Debit</Button>
+                            onClick={() => openWalletDialog(user, "debit")}>{t("admin.users.debit")}</Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -436,35 +437,35 @@ export default function AdminUsers() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Edit User — {editUser?.username}</DialogTitle>
+            <DialogTitle>{t("admin.users.edit_title")} — {editUser?.username}</DialogTitle>
           </DialogHeader>
           {editUser && (
             <form onSubmit={handleEditSubmit} className="space-y-4 pt-2">
               {/* Profile section */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>First Name</Label>
-                  <Input value={editForm.firstName} onChange={(e) => setEditForm(f => ({ ...f, firstName: e.target.value }))} placeholder="First name" />
+                  <Label>{t("admin.users.first_name")}</Label>
+                  <Input value={editForm.firstName} onChange={(e) => setEditForm(f => ({ ...f, firstName: e.target.value }))} placeholder={t("admin.users.first_name")} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Last Name</Label>
-                  <Input value={editForm.lastName} onChange={(e) => setEditForm(f => ({ ...f, lastName: e.target.value }))} placeholder="Last name" />
+                  <Label>{t("admin.users.last_name")}</Label>
+                  <Input value={editForm.lastName} onChange={(e) => setEditForm(f => ({ ...f, lastName: e.target.value }))} placeholder={t("admin.users.last_name")} />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Username</Label>
+                <Label>{t("admin.users.username")}</Label>
                 <Input value={editForm.username} onChange={(e) => setEditForm(f => ({ ...f, username: e.target.value }))} required />
               </div>
               <div className="space-y-2">
-                <Label>Email</Label>
+                <Label>{t("common.email")}</Label>
                 <Input type="email" value={editForm.email} onChange={(e) => setEditForm(f => ({ ...f, email: e.target.value }))} required />
               </div>
               {/* Mobile Payment Method */}
               <div className="border-t border-border pt-4 space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Mobile Payment Method</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("admin.users.mobile_payment")}</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Primary Phone</Label>
+                    <Label className="text-xs">{t("admin.users.primary_phone")}</Label>
                     <Input
                       value={editForm.phoneNumber}
                       onChange={(e) => setEditForm(f => ({ ...f, phoneNumber: e.target.value }))}
@@ -472,13 +473,13 @@ export default function AdminUsers() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Primary Operator</Label>
+                    <Label className="text-xs">{t("admin.users.primary_operator")}</Label>
                     <Select value={editForm.mobileOperator || "none"} onValueChange={(v) => setEditForm(f => ({ ...f, mobileOperator: v === "none" ? "" : v }))}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select operator" />
+                        <SelectValue placeholder={t("admin.users.not_set")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">— Not set —</SelectItem>
+                        <SelectItem value="none">{t("admin.users.not_set")}</SelectItem>
                         {DRC_OPERATORS.map(op => (
                           <SelectItem key={op.code} value={op.code}>{op.name}</SelectItem>
                         ))}
@@ -486,7 +487,7 @@ export default function AdminUsers() {
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Secondary Phone <span className="text-muted-foreground/60">(optional)</span></Label>
+                    <Label className="text-xs">{t("admin.users.secondary_phone")}</Label>
                     <Input
                       value={editForm.secondaryPhoneNumber}
                       onChange={(e) => setEditForm(f => ({ ...f, secondaryPhoneNumber: e.target.value }))}
@@ -494,13 +495,13 @@ export default function AdminUsers() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Secondary Operator</Label>
+                    <Label className="text-xs">{t("admin.users.secondary_operator")}</Label>
                     <Select value={editForm.secondaryMobileOperator || "none"} onValueChange={(v) => setEditForm(f => ({ ...f, secondaryMobileOperator: v === "none" ? "" : v }))}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select operator" />
+                        <SelectValue placeholder={t("admin.users.not_set")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">— Not set —</SelectItem>
+                        <SelectItem value="none">{t("admin.users.not_set")}</SelectItem>
                         {DRC_OPERATORS.map(op => (
                           <SelectItem key={op.code} value={op.code}>{op.name}</SelectItem>
                         ))}
@@ -513,33 +514,33 @@ export default function AdminUsers() {
 
               {/* Role & Access section */}
               <div className="border-t border-border pt-4 space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Role & Access</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("admin.users.role_access")}</p>
                 <div className="space-y-2">
-                  <Label>Role</Label>
+                  <Label>{t("admin.users.role")}</Label>
                   <Select value={editForm.role} onValueChange={(v) => setEditForm(f => ({ ...f, role: v, branchId: ["branch_admin","agent","payout"].includes(v) ? f.branchId : "" }))}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="user">User</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="manager">Manager</SelectItem>
-                      <SelectItem value="branch_admin">Branch Admin</SelectItem>
-                      <SelectItem value="agent">Agent</SelectItem>
-                      <SelectItem value="payout">Payout Clerk</SelectItem>
+                      <SelectItem value="user">{t("admin.users.tab_user")}</SelectItem>
+                      <SelectItem value="admin">{t("admin.users.tab_admin")}</SelectItem>
+                      <SelectItem value="manager">{t("admin.users.tab_manager")}</SelectItem>
+                      <SelectItem value="branch_admin">{t("admin.users.tab_branch_admin")}</SelectItem>
+                      <SelectItem value="agent">{t("admin.users.tab_agent")}</SelectItem>
+                      <SelectItem value="payout">{t("admin.users.tab_payout")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {needsBranch && (
                   <div className="space-y-2">
-                    <Label>Branch Assignment</Label>
+                    <Label>{t("admin.users.branch_assignment")}</Label>
                     <Select value={editForm.branchId} onValueChange={(v) => setEditForm(f => ({ ...f, branchId: v === "none" ? "" : v }))}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select branch…" />
+                        <SelectValue placeholder={t("admin.users.no_branch")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">— No Branch —</SelectItem>
+                        <SelectItem value="none">{t("admin.users.no_branch")}</SelectItem>
                         {branches.map(b => (
                           <SelectItem key={b.id} value={String(b.id)}>{b.name} ({b.code})</SelectItem>
                         ))}
@@ -550,7 +551,7 @@ export default function AdminUsers() {
 
                 {editForm.role === "agent" && (
                   <div className="space-y-2">
-                    <Label>Commission Rate (%)</Label>
+                    <Label>{t("admin.users.commission_rate")}</Label>
                     <Input
                       type="number" min="0" max="100" step="0.01"
                       value={editForm.commissionRate}
@@ -562,7 +563,7 @@ export default function AdminUsers() {
               </div>
 
               <Button type="submit" className="w-full" disabled={editLoading}>
-                {editLoading ? "Saving…" : "Save Changes"}
+                {editLoading ? `${t("common.saving")}…` : t("common.save_changes")}
               </Button>
             </form>
           )}
@@ -575,17 +576,17 @@ export default function AdminUsers() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <KeyRound className="w-4 h-4 text-amber-500" />
-              Reset Password — {resetUser?.username}
+              {t("admin.users.reset_password_title")} — {resetUser?.username}
             </DialogTitle>
           </DialogHeader>
           {resetResult ? (
             <div className="space-y-4 pt-2">
               <p className="text-sm text-muted-foreground">
-                A temporary password has been generated. It is valid for <strong>1 hour</strong>.
-                {resetResult.emailSent ? " An email has been sent to the user." : " Email delivery is not configured — share this password with the user directly."}
+                {t("admin.users.temp_password_desc")}
+                {resetResult.emailSent ? t("admin.users.email_sent") : t("admin.users.email_not_sent")}
               </p>
               <div className="space-y-2">
-                <Label>Temporary Password</Label>
+                <Label>{t("admin.users.temp_password")}</Label>
                 <div className="flex gap-2">
                   <Input readOnly value={resetResult.tempPassword} className="font-mono text-lg tracking-widest text-center" />
                   <Button variant="outline" size="icon" onClick={handleCopyPassword}>
@@ -593,25 +594,25 @@ export default function AdminUsers() {
                   </Button>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground">Expires: {format(new Date(resetResult.expiresAt), "MMM d, yyyy 'at' h:mm a")}</p>
+              <p className="text-xs text-muted-foreground">{t("admin.users.expires")} {format(new Date(resetResult.expiresAt), "MMM d, yyyy 'at' h:mm a")}</p>
               <p className="text-xs text-amber-600 bg-amber-500/10 border border-amber-500/20 rounded-md p-2">
-                The user will be required to set a new password immediately after logging in.
+                {t("admin.users.must_change_password")}
               </p>
               <Button className="w-full" onClick={() => { setIsResetDialogOpen(false); setResetResult(null); }}>Done</Button>
             </div>
           ) : (
             <div className="space-y-4 pt-2">
               <p className="text-sm text-muted-foreground">
-                This will generate a temporary password for <strong>{resetUser?.username}</strong> valid for 1 hour.
+                {t("admin.users.reset_confirm_desc")} <strong>{resetUser?.username}</strong> {t("admin.users.reset_valid")}
               </p>
               <div className="p-3 bg-accent/20 rounded-md border border-border text-sm">
-                <span className="text-muted-foreground">Email: </span>
+                <span className="text-muted-foreground">{t("admin.users.email_label")} </span>
                 <span className="font-medium">{resetUser?.email}</span>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => setIsResetDialogOpen(false)}>Cancel</Button>
+                <Button variant="outline" className="flex-1" onClick={() => setIsResetDialogOpen(false)}>{t("common.cancel")}</Button>
                 <Button className="flex-1 bg-amber-500 hover:bg-amber-600 text-white" onClick={handleResetPassword} disabled={resetLoading}>
-                  {resetLoading ? "Generating…" : "Generate Password"}
+                  {resetLoading ? t("admin.users.generating") : t("admin.users.generate_password")}
                 </Button>
               </div>
             </div>
@@ -623,16 +624,16 @@ export default function AdminUsers() {
       <Dialog open={isWalletDialogOpen} onOpenChange={(open) => { setIsWalletDialogOpen(open); if (!open) resetWalletForm(); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="capitalize">{actionType} Wallet</DialogTitle>
+            <DialogTitle>{actionType === "credit" ? t("admin.users.wallet_credit_title") : t("admin.users.wallet_debit_title")}</DialogTitle>
           </DialogHeader>
           {selectedUser && (
             <form onSubmit={handleWalletAction} className="space-y-4 pt-4">
               <div className="p-3 bg-accent/20 rounded-md border border-border mb-4">
-                <div className="text-sm text-muted-foreground mb-1">User: <span className="font-bold text-foreground">{selectedUser.username}</span></div>
-                <div className="text-sm text-muted-foreground">Current Balance: <span className="font-bold text-foreground">{formatCurrency(selectedUser.wallet?.balance ?? 0)}</span></div>
+                <div className="text-sm text-muted-foreground mb-1">{t("clerk.user_label")}: <span className="font-bold text-foreground">{selectedUser.username}</span></div>
+                <div className="text-sm text-muted-foreground">{t("admin.users.current_balance")} <span className="font-bold text-foreground">{formatCurrency(selectedUser.wallet?.balance ?? 0)}</span></div>
               </div>
               <div className="space-y-2">
-                <Label>Amount ({currency})</Label>
+                <Label>{t("common.amount")} ({currency})</Label>
                 <Input type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} required />
                 {isForeignCurrency && parseFloat(amount) > 0 && (
                   <p className="text-[11px] text-muted-foreground text-right">
@@ -641,11 +642,11 @@ export default function AdminUsers() {
                 )}
               </div>
               <div className="space-y-2">
-                <Label>Description (Optional)</Label>
+                <Label>{t("admin.users.description_optional")}</Label>
                 <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={`Manual ${actionType}`} />
               </div>
               <Button type="submit" className="w-full" disabled={creditMutation.isPending || debitMutation.isPending}>
-                Confirm {actionType}
+                {t("common.save")} {actionType === "credit" ? t("admin.users.credit") : t("admin.users.debit")}
               </Button>
             </form>
           )}

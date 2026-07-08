@@ -7,3 +7,4 @@
 - [AllSportsAPI odds format](allsports-odds-format.md) — football odds are flat bookmaker rows; Basketball/Tennis/Cricket are nested per-market objects — parsers must branch by sport
 - [api-server runs from dist bundle](api-server-dist-bundle.md) — `pnpm dev` runs `dist/index.mjs`, not source; must rebuild before restart_workflow picks up src/ changes
 - [Win Bonus promotion](win-bonus.md) — Multi Bet Win Bonus fully implemented; config stored in settings table as `win_bonus_config` JSON; UserRole openapi enum must include all roles or codegen breaks TS comparisons
+- [i18n translation pattern](i18n-pattern.md) — all UI strings belong in i18n.ts EN+FR sections; use t(key) via useSiteSettings(); avoid as-any casts; import TranslationKey for typed const arrays

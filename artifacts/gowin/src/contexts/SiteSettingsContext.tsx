@@ -34,7 +34,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     queryKey: ["/api/site-settings"],
     queryFn: async () => {
       const res = await fetch("/api/site-settings");
-      if (!res.ok) return { currency: "USD", language: "en" as Language, exchangeRate: 2800 };
+      if (!res.ok) return { currency: "USD", language: "en" as Language, exchangeRate: 2800, maxWin: 1_000_000 };
       return res.json();
     },
     staleTime: 0,

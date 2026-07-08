@@ -15,8 +15,8 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-black tracking-tight mb-2">Admin Dashboard</h1>
-        <p className="text-muted-foreground">Platform overview and statistics</p>
+        <h1 className="text-3xl font-black tracking-tight mb-2">{t("admin.dashboard.title")}</h1>
+        <p className="text-muted-foreground">{t("admin.dashboard.desc")}</p>
       </div>
 
       {isStatsLoading ? (
@@ -26,12 +26,12 @@ export default function AdminDashboard() {
       ) : stats ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {[
-            { label: "Total Users",     value: (stats as any).totalUsers,           icon: Users,      color: "bg-primary/20 text-primary" },
-            { label: "Branches",        value: (stats as any).totalBranches,        icon: Building2,  color: "bg-emerald-500/20 text-emerald-400" },
-            { label: "Branch Admins",   value: (stats as any).totalBranchAdmins,    icon: Users,      color: "bg-blue-500/20 text-blue-400" },
-            { label: "Agents",          value: (stats as any).totalAgents,          icon: Target,     color: "bg-violet-500/20 text-violet-400" },
+            { label: t("dashboard.total_users"),     value: (stats as any).totalUsers,           icon: Users,      color: "bg-primary/20 text-primary" },
+            { label: t("dashboard.branches"),        value: (stats as any).totalBranches,        icon: Building2,  color: "bg-emerald-500/20 text-emerald-400" },
+            { label: t("dashboard.branch_admins"),   value: (stats as any).totalBranchAdmins,    icon: Users,      color: "bg-blue-500/20 text-blue-400" },
+            { label: t("dashboard.agents"),          value: (stats as any).totalAgents,          icon: Target,     color: "bg-violet-500/20 text-violet-400" },
             { label: t("dashboard.total_turnover"),  value: formatCurrency((stats as any).totalTurnover),  icon: DollarSign, color: "bg-primary/20 text-primary" },
-            { label: "Active Fixtures", value: (stats as any).totalActiveFixtures,  icon: Activity,   color: "bg-orange-500/20 text-orange-400" },
+            { label: t("dashboard.active_fixtures"), value: (stats as any).totalActiveFixtures,  icon: Activity,   color: "bg-orange-500/20 text-orange-400" },
           ].map(({ label, value, icon: Icon, color }) => (
             <Card key={label} className="border-border bg-card">
               <CardContent className="p-4">
@@ -55,7 +55,7 @@ export default function AdminDashboard() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <ListTodo className="w-5 h-5 text-primary" />
-              <CardTitle>Recent Bets</CardTitle>
+              <CardTitle>{t("dashboard.recent_bets")}</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="flex-1">
@@ -64,7 +64,7 @@ export default function AdminDashboard() {
                 {[1, 2, 3].map(i => <div key={i} className="h-12 bg-accent/50 rounded-lg animate-pulse" />)}
               </div>
             ) : recentBets?.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">No recent bets</div>
+              <div className="text-center py-8 text-muted-foreground">{t("dashboard.no_recent_bets")}</div>
             ) : (
               <div className="space-y-3">
                 {recentBets?.map((bet: any) => (
@@ -80,7 +80,7 @@ export default function AdminDashboard() {
                     </div>
                     <div className="text-right">
                       <div className="font-bold">{formatCurrency(bet.stake)}</div>
-                      <div className="text-xs text-muted-foreground">Win: {formatCurrency(bet.potentialWin)}</div>
+                      <div className="text-xs text-muted-foreground">{t("dashboard.win_label")}: {formatCurrency(bet.potentialWin)}</div>
                     </div>
                   </div>
                 ))}
@@ -93,7 +93,7 @@ export default function AdminDashboard() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <Trophy className="w-5 h-5 text-primary" />
-              <CardTitle>Top Fixtures (By Volume)</CardTitle>
+              <CardTitle>{t("dashboard.top_fixtures")}</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="flex-1">
@@ -102,7 +102,7 @@ export default function AdminDashboard() {
                 {[1, 2, 3].map(i => <div key={i} className="h-12 bg-accent/50 rounded-lg animate-pulse" />)}
               </div>
             ) : topFixtures?.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">No top fixtures</div>
+              <div className="text-center py-8 text-muted-foreground">{t("dashboard.no_top_fixtures")}</div>
             ) : (
               <div className="space-y-3">
                 {topFixtures?.map((item: any) => (
@@ -118,7 +118,7 @@ export default function AdminDashboard() {
                     </div>
                     <div className="text-right">
                       <div className="font-bold text-primary">{formatCurrency(item.totalStake)}</div>
-                      <div className="text-xs text-muted-foreground">{item.totalBets} bets</div>
+                      <div className="text-xs text-muted-foreground">{item.totalBets} {t("dashboard.bets_label")}</div>
                     </div>
                   </div>
                 ))}

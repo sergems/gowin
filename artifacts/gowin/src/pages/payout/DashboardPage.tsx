@@ -16,7 +16,7 @@ interface PayoutStats {
 
 export default function PayoutDashboardPage() {
   const [, navigate] = useLocation();
-  const { formatCurrency } = useSiteSettings();
+  const { formatCurrency, t } = useSiteSettings();
 
   const { data, isLoading } = useQuery<PayoutStats>({
     queryKey: ["payout-stats"],
@@ -33,14 +33,14 @@ export default function PayoutDashboardPage() {
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <LayoutDashboard className="w-6 h-6 text-emerald-400" />
-            Payout Dashboard
+            {t("payout.dashboard_title")}
           </h1>
           <p className="text-zinc-400 text-sm mt-0.5">{format(new Date(), "EEEE, d MMMM yyyy")}</p>
         </div>
         <button
           onClick={() => navigate("/payout/desk")}
           className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
-          <Banknote className="w-4 h-4" /> Payout Desk <ArrowRight className="w-3.5 h-3.5" />
+          <Banknote className="w-4 h-4" /> {t("nav.payout_desk")} <ArrowRight className="w-3.5 h-3.5" />
         </button>
       </div>
 
@@ -56,7 +56,7 @@ export default function PayoutDashboardPage() {
           <div className="bg-emerald-900/20 border border-emerald-700/40 rounded-2xl p-4">
             <div className="flex items-center gap-2 mb-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Paid Today</p>
+              <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">{t("payout.paid_today")}</p>
             </div>
             <p className="text-3xl font-black text-white">{stats.paidToday}</p>
             <p className="text-sm text-emerald-300 font-semibold mt-0.5">{formatCurrency(stats.amountPaidToday)}</p>
@@ -65,16 +65,16 @@ export default function PayoutDashboardPage() {
           <div className={`border rounded-2xl p-4 ${stats.pendingClaims > 0 ? "bg-amber-900/20 border-amber-700/40" : "bg-zinc-800 border-zinc-700"}`}>
             <div className="flex items-center gap-2 mb-2">
               <Clock className={`w-4 h-4 ${stats.pendingClaims > 0 ? "text-amber-400" : "text-zinc-400"}`} />
-              <p className={`text-xs font-semibold uppercase tracking-wider ${stats.pendingClaims > 0 ? "text-amber-400" : "text-zinc-400"}`}>Pending Approval</p>
+              <p className={`text-xs font-semibold uppercase tracking-wider ${stats.pendingClaims > 0 ? "text-amber-400" : "text-zinc-400"}`}>{t("payout.pending_approval")}</p>
             </div>
             <p className="text-3xl font-black text-white">{stats.pendingClaims}</p>
-            <p className="text-xs text-zinc-500 mt-0.5">Claims awaiting admin</p>
+            <p className="text-xs text-zinc-500 mt-0.5">{t("payout.claims_awaiting")}</p>
           </div>
 
           <div className="bg-zinc-800 border border-zinc-700 rounded-2xl p-4">
             <div className="flex items-center gap-2 mb-2">
               <Banknote className="w-4 h-4 text-zinc-400" />
-              <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Total Paid Out</p>
+              <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">{t("payout.total_paid")}</p>
             </div>
             <p className="text-3xl font-black text-white">{stats.paidTotal}</p>
             <p className="text-sm text-zinc-300 font-semibold mt-0.5">{formatCurrency(stats.amountPaidTotal)}</p>
@@ -84,7 +84,7 @@ export default function PayoutDashboardPage() {
             <button
               onClick={() => navigate("/payout/desk")}
               className="w-full bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl py-3 font-bold text-sm transition-colors flex items-center justify-center gap-2">
-              <Banknote className="w-4 h-4" /> Verify Ticket
+              <Banknote className="w-4 h-4" /> {t("payout.verify_ticket")}
             </button>
           </div>
         </div>
@@ -93,7 +93,7 @@ export default function PayoutDashboardPage() {
       {/* Recent paid tickets */}
       {stats && stats.recentPaid.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">Recent Payouts</h2>
+          <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">{t("payout.recent_payouts")}</h2>
           <div className="bg-zinc-800 border border-zinc-700 rounded-2xl overflow-hidden">
             {stats.recentPaid.map((item, idx) => (
               <div key={item.id} className={`flex items-center justify-between px-4 py-3 ${idx < stats.recentPaid.length - 1 ? "border-b border-zinc-700/60" : ""}`}>
@@ -103,7 +103,7 @@ export default function PayoutDashboardPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold text-emerald-400">{formatCurrency(item.amount)}</p>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-900/40 text-emerald-400 font-semibold">Paid</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-900/40 text-emerald-400 font-semibold">{t("payout.paid_badge")}</span>
                 </div>
               </div>
             ))}
@@ -114,8 +114,8 @@ export default function PayoutDashboardPage() {
       {stats && stats.recentPaid.length === 0 && !isLoading && (
         <div className="text-center py-12 text-zinc-500">
           <Banknote className="w-10 h-10 mx-auto mb-3 opacity-20" />
-          <p className="text-sm">No tickets paid out yet.</p>
-          <p className="text-xs text-zinc-600 mt-1">Use the Payout Desk to verify and process winning tickets.</p>
+          <p className="text-sm">{t("payout.no_tickets")}</p>
+          <p className="text-xs text-zinc-600 mt-1">{t("payout.no_tickets_desc")}</p>
         </div>
       )}
     </div>

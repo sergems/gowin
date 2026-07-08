@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { Clock, Search, RefreshCw, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -64,6 +65,7 @@ async function patchFixture(id: number, body: Record<string, unknown>) {
 export default function FixtureUpdate() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useSiteSettings();
 
   const [selectedDate, setSelectedDate] = useState<string>(todayLocal);
   const [search, setSearch] = useState("");
@@ -120,12 +122,12 @@ export default function FixtureUpdate() {
       if (editScoreHome !== "") body.scoreHome = parseInt(editScoreHome, 10);
       if (editScoreAway !== "") body.scoreAway = parseInt(editScoreAway, 10);
       await patchFixture(editFixture.id, body);
-      toast({ title: "Fixture updated", description: `${editFixture.homeTeam?.name} vs ${editFixture.awayTeam?.name}` });
+      toast({ title: t("fixture_update.updated"), description: `${editFixture.homeTeam?.name} vs ${editFixture.awayTeam?.name}` });
       queryClient.invalidateQueries({ queryKey: getListFixturesQueryKey() });
       refetch();
       setEditFixture(null);
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({ title: t("fixture_update.error"), description: err.message, variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -133,7 +135,7 @@ export default function FixtureUpdate() {
 
   const isToday = selectedDate === todayLocal();
   const displayDateLabel = isToday
-    ? "Today"
+    ? t("fixture_update.today")
     : new Date(selectedDate + "T00:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
 
   return (
@@ -141,10 +143,10 @@ export default function FixtureUpdate() {
       <div>
         <h1 className="text-3xl font-black tracking-tight mb-1 flex items-center gap-2">
           <Clock className="w-7 h-7 text-primary" />
-          Fixture Update
+          {t("nav.fixture_update")}
         </h1>
         <p className="text-muted-foreground text-sm">
-          Upcoming fixtures for the selected day, ordered by kick-off time.
+          {t("fixture_update.desc")}
         </p>
       </div>
 
@@ -170,7 +172,7 @@ export default function FixtureUpdate() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           <Input
-            placeholder="Search team or league…"
+            placeholder={t("fixture_update.search_ph")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -188,13 +190,13 @@ export default function FixtureUpdate() {
           <table className="w-full text-sm">
             <thead className="bg-accent/20 border-b border-border">
               <tr>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">Match</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider hidden md:table-cell">League</th>
+                <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">{t("fixture_update.col_match")}</th>
+                <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider hidden md:table-cell">{t("fixture_update.col_league")}</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
-                  <span className="flex items-center gap-1.5"><CalendarDays className="w-3.5 h-3.5" />Kick-off</span>
+                  <span className="flex items-center gap-1.5"><CalendarDays className="w-3.5 h-3.5" />{t("fixture_update.col_kickoff")}</span>
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">Status</th>
-                <th className="text-right px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">Actions</th>
+                <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">{t("fixture_update.col_status")}</th>
+                <th className="text-right px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">{t("fixture_update.col_actions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/40">
@@ -209,7 +211,7 @@ export default function FixtureUpdate() {
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground">
-                    No upcoming fixtures for {displayDateLabel}
+                    {t("fixture_update.empty").replace("{date}", displayDateLabel)}
                   </td>
                 </tr>
               ) : (
@@ -238,7 +240,7 @@ export default function FixtureUpdate() {
                         className="h-7 text-xs"
                         onClick={() => openEdit(f)}
                       >
-                        Edit
+                        {t("fixture_update.edit")}
                       </Button>
                     </td>
                   </tr>
@@ -249,7 +251,7 @@ export default function FixtureUpdate() {
         </div>
         {filtered.length > 0 && (
           <div className="px-4 py-2 border-t border-border/40 text-xs text-muted-foreground bg-accent/5">
-            {filtered.length} fixture{filtered.length !== 1 ? "s" : ""}
+            {filtered.length} {filtered.length !== 1 ? t("fixture_update.fixtures") : t("fixture_update.fixture")}
           </div>
         )}
       </div>
@@ -258,7 +260,7 @@ export default function FixtureUpdate() {
       <Dialog open={!!editFixture} onOpenChange={(o) => !o && setEditFixture(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Fixture #{editFixture?.id}</DialogTitle>
+            <DialogTitle>{t("fixture_update.edit_title")} #{editFixture?.id}</DialogTitle>
           </DialogHeader>
           {editFixture && (
             <form onSubmit={handleSave} className="space-y-4 pt-2">
@@ -267,7 +269,7 @@ export default function FixtureUpdate() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-sm">Kick-off time (local)</Label>
+                <Label className="text-sm">{t("fixture_update.kickoff_label")}</Label>
                 <Input
                   type="datetime-local"
                   value={editStartTime}
@@ -275,28 +277,28 @@ export default function FixtureUpdate() {
                   required
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  Current: <span className="font-mono">{fmtDisplay(editFixture.startTime)}</span>
+                  {t("fixture_update.current")} <span className="font-mono">{fmtDisplay(editFixture.startTime)}</span>
                 </p>
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-sm">Status</Label>
+                <Label className="text-sm">{t("fixture_update.status_label")}</Label>
                 <Select value={editStatus} onValueChange={setEditStatus}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="upcoming">Upcoming</SelectItem>
-                    <SelectItem value="live">Live</SelectItem>
-                    <SelectItem value="finished">Finished</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                    <SelectItem value="upcoming">{t("fixture_update.status_upcoming")}</SelectItem>
+                    <SelectItem value="live">{t("fixture_update.status_live")}</SelectItem>
+                    <SelectItem value="finished">{t("fixture_update.status_finished")}</SelectItem>
+                    <SelectItem value="cancelled">{t("fixture_update.status_cancelled")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-sm">Home score</Label>
+                  <Label className="text-sm">{t("fixture_update.home_score")}</Label>
                   <Input
                     type="number"
                     min="0"
@@ -306,7 +308,7 @@ export default function FixtureUpdate() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-sm">Away score</Label>
+                  <Label className="text-sm">{t("fixture_update.away_score")}</Label>
                   <Input
                     type="number"
                     min="0"
@@ -319,10 +321,10 @@ export default function FixtureUpdate() {
 
               <div className="flex gap-2 pt-1">
                 <Button type="button" variant="outline" className="flex-1" onClick={() => setEditFixture(null)}>
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
                 <Button type="submit" className="flex-1" disabled={saving}>
-                  {saving ? "Saving…" : "Save changes"}
+                  {saving ? t("common.saving") : t("fixture_update.save")}
                 </Button>
               </div>
             </form>

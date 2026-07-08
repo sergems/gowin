@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { Search, CheckCircle2, XCircle, Clock, AlertTriangle, Banknote, Receipt, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
 
@@ -23,7 +24,6 @@ const STATUS_ICON: Record<string, React.ReactElement> = {
   pending: <Clock className="w-5 h-5 text-amber-400" />,
   void:    <XCircle className="w-5 h-5 text-zinc-400" />,
 };
-const STATUS_LABEL: Record<string, string> = { won: "Winner", lost: "Lost", pending: "Pending", void: "Void" };
 const STATUS_COLOR: Record<string, string> = {
   won: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30",
   lost: "text-red-400 bg-red-500/10 border-red-500/30",
@@ -37,6 +37,7 @@ const CLAIM_STATUS_COLOR: Record<string, string> = {
 export default function PayoutPage() {
   const { token } = useAuth();
   const { toast } = useToast();
+  const { t } = useSiteSettings();
 
   const [code, setCode] = useState("");
   const [searching, setSearching] = useState(false);
@@ -47,6 +48,13 @@ export default function PayoutPage() {
   const [showSelections, setShowSelections] = useState(false);
 
   const headers = { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+
+  const STATUS_LABEL: Record<string, string> = {
+    won: t("status.won"),
+    lost: t("status.lost"),
+    pending: t("status.pending"),
+    void: t("status.void"),
+  };
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,9 +86,9 @@ export default function PayoutPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Claim failed");
       setClaim(data.claim);
-      toast({ title: "Payout initiated", description: `$${bet.potentialWin.toFixed(2)} claim submitted for admin approval.` });
+      toast({ title: t("payout.claim_label"), description: `$${bet.potentialWin.toFixed(2)} ${t("payout.claim_pending_desc")}` });
     } catch (err: any) {
-      toast({ title: "Claim failed", description: err.message, variant: "destructive" });
+      toast({ title: t("clerk.action_failed"), description: err.message, variant: "destructive" });
     } finally {
       setClaiming(false);
     }
@@ -92,9 +100,9 @@ export default function PayoutPage() {
     <div className="p-4 max-w-xl mx-auto space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-          <Banknote className="w-7 h-7 text-emerald-400" /> Payout Desk
+          <Banknote className="w-7 h-7 text-emerald-400" /> {t("nav.payout_desk")}
         </h1>
-        <p className="text-zinc-400 text-sm mt-1">Verify a winning ticket and process payment</p>
+        <p className="text-zinc-400 text-sm mt-1">{t("payout.verify_desc")}</p>
       </div>
 
       {/* Search */}
@@ -103,7 +111,7 @@ export default function PayoutPage() {
           type="text"
           value={code}
           onChange={e => setCode(e.target.value.toUpperCase())}
-          placeholder="Enter ticket code…"
+          placeholder={t("payout.enter_code_ph")}
           className="flex-1 bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-3 text-white font-mono text-sm uppercase tracking-wider focus:outline-none focus:border-emerald-500 placeholder:normal-case placeholder:tracking-normal"
         />
         <button
@@ -112,7 +120,7 @@ export default function PayoutPage() {
           className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-5 py-3 rounded-xl flex items-center gap-2 text-sm font-semibold transition-colors"
         >
           <Search className="w-4 h-4" />
-          {searching ? "Searching…" : "Find"}
+          {searching ? t("payout.searching") : t("payout.find")}
         </button>
       </form>
 
@@ -121,8 +129,8 @@ export default function PayoutPage() {
         <div className="bg-red-900/20 border border-red-700/40 rounded-xl px-4 py-4 flex items-center gap-3 text-red-400">
           <AlertTriangle className="w-5 h-5 shrink-0" />
           <div>
-            <p className="font-semibold text-sm">Ticket not found</p>
-            <p className="text-xs text-red-300/70">Check the code and try again.</p>
+            <p className="font-semibold text-sm">{t("payout.not_found")}</p>
+            <p className="text-xs text-red-300/70">{t("payout.not_found_desc")}</p>
           </div>
         </div>
       )}
@@ -140,16 +148,16 @@ export default function PayoutPage() {
               </div>
             </div>
             <span className={`text-xs font-bold px-3 py-1 rounded-full border ${STATUS_COLOR[bet.status]}`}>
-              {STATUS_LABEL[bet.status]}
+              {STATUS_LABEL[bet.status] ?? bet.status}
             </span>
           </div>
 
           {/* Amounts */}
           <div className="grid grid-cols-3 divide-x divide-zinc-700 border-b border-zinc-700">
             {[
-              { label: "Stake", value: `$${bet.stake.toFixed(2)}`, color: "text-white" },
-              { label: "Odds", value: `×${bet.totalOdds.toFixed(2)}`, color: "text-zinc-300" },
-              { label: "Payout", value: `$${bet.potentialWin.toFixed(2)}`, color: "text-emerald-400 font-black" },
+              { label: t("betslip.stake"), value: `$${bet.stake.toFixed(2)}`, color: "text-white" },
+              { label: t("bets.odds"), value: `×${bet.totalOdds.toFixed(2)}`, color: "text-zinc-300" },
+              { label: t("payout.payout_label"), value: `$${bet.potentialWin.toFixed(2)}`, color: "text-emerald-400 font-black" },
             ].map(({ label, value, color }) => (
               <div key={label} className="px-4 py-3 text-center">
                 <p className="text-xs text-zinc-500 mb-0.5">{label}</p>
@@ -160,7 +168,7 @@ export default function PayoutPage() {
 
           {/* Player */}
           <div className="px-5 py-3 flex items-center justify-between border-b border-zinc-700/50">
-            <span className="text-xs text-zinc-500">Player</span>
+            <span className="text-xs text-zinc-500">{t("payout.player")}</span>
             <span className="text-sm font-medium text-zinc-200">{playerName}</span>
           </div>
 
@@ -169,7 +177,10 @@ export default function PayoutPage() {
             onClick={() => setShowSelections(v => !v)}
             className="w-full flex items-center justify-between px-5 py-3 text-xs text-zinc-400 hover:bg-zinc-700/30 transition-colors border-b border-zinc-700/50"
           >
-            <span className="flex items-center gap-1.5"><Receipt className="w-3.5 h-3.5" /> {bet.selections.length} selection{bet.selections.length !== 1 ? "s" : ""}</span>
+            <span className="flex items-center gap-1.5">
+              <Receipt className="w-3.5 h-3.5" />
+              {bet.selections.length} {bet.selections.length !== 1 ? t("payout.selections") : t("payout.selection")}
+            </span>
             {showSelections ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
 
@@ -196,7 +207,7 @@ export default function PayoutPage() {
                             live    ? "bg-emerald-900/60 text-emerald-400" :
                             "bg-amber-900/40 text-amber-400"
                           }`}>
-                            {settled ? "FT" : live ? "LIVE" : "Upcoming"}
+                            {settled ? t("payout.ft") : live ? t("payout.live_badge") : t("payout.upcoming")}
                           </span>
                         </div>
                       </div>
@@ -220,9 +231,12 @@ export default function PayoutPage() {
             {claim ? (
               <div className={`flex items-center gap-2 text-sm font-semibold ${CLAIM_STATUS_COLOR[claim.status] ?? "text-zinc-400"}`}>
                 <CheckCircle2 className="w-4 h-4" />
-                Claim {claim.status === "pending" ? "submitted — awaiting admin approval" :
-                       claim.status === "approved" ? "approved — pending payment" :
-                       claim.status === "paid" ? "paid out ✓" : `status: ${claim.status}`}
+                {t("payout.claim_label")} {
+                  claim.status === "pending"  ? t("payout.claim_pending_desc") :
+                  claim.status === "approved" ? t("payout.claim_approved_desc") :
+                  claim.status === "paid"     ? t("payout.claim_paid_desc") :
+                  `status: ${claim.status}`
+                }
               </div>
             ) : bet.status === "won" ? (
               <button
@@ -231,13 +245,13 @@ export default function PayoutPage() {
                 className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl py-3 font-bold text-sm transition-colors flex items-center justify-center gap-2"
               >
                 <Banknote className="w-4 h-4" />
-                {claiming ? "Processing…" : `Process Payment — $${bet.potentialWin.toFixed(2)}`}
+                {claiming ? t("payout.processing") : `${t("payout.process_payment")} — $${bet.potentialWin.toFixed(2)}`}
               </button>
             ) : (
               <p className="text-sm text-zinc-500 text-center">
-                {bet.status === "pending" ? "Ticket is still pending settlement." :
-                 bet.status === "lost" ? "This ticket did not win." :
-                 "This ticket cannot be paid out."}
+                {bet.status === "pending" ? t("payout.pending_desc") :
+                 bet.status === "lost"    ? t("payout.lost_desc") :
+                 t("payout.void_desc")}
               </p>
             )}
           </div>
