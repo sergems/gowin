@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,22 +19,22 @@ import { useToast } from "@/hooks/use-toast";
 import { Sparkles, RotateCcw, Save, Loader2 } from "lucide-react";
 import type { WinBonusConfig, WinBonusTier } from "@/contexts/BetSlipContext";
 
-async function fetchConfig(): Promise<WinBonusConfig> {
+async function fetchConfig(token: string | null): Promise<WinBonusConfig> {
   const res = await fetch("/api/admin/win-bonus", {
     credentials: "include",
-    headers: { Authorization: `Bearer ${localStorage.getItem("auth_token") || ""}` },
+    headers: { Authorization: `Bearer ${token ?? ""}` },
   });
   if (!res.ok) throw new Error("Failed to load config");
   return res.json();
 }
 
-async function saveConfig(config: WinBonusConfig): Promise<WinBonusConfig> {
+async function saveConfig(config: WinBonusConfig, token: string | null): Promise<WinBonusConfig> {
   const res = await fetch("/api/admin/win-bonus", {
     method: "PUT",
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${localStorage.getItem("auth_token") || ""}`,
+      Authorization: `Bearer ${token ?? ""}`,
     },
     body: JSON.stringify(config),
   });
@@ -91,10 +92,12 @@ const DEFAULT_BONUS_TABLE: WinBonusTier[] = [
 export default function WinBonusPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { token } = useAuth();
 
   const { data: serverConfig, isLoading } = useQuery<WinBonusConfig>({
     queryKey: ["admin-win-bonus-config"],
-    queryFn: fetchConfig,
+    queryFn: () => fetchConfig(token),
+    enabled: !!token,
   });
 
   const [local, setLocal] = useState<WinBonusConfig | null>(null);
@@ -106,7 +109,7 @@ export default function WinBonusPage() {
   }
 
   const mutation = useMutation({
-    mutationFn: saveConfig,
+    mutationFn: (cfg: WinBonusConfig) => saveConfig(cfg, token),
     onSuccess: (saved) => {
       setLocal(saved);
       queryClient.invalidateQueries({ queryKey: ["admin-win-bonus-config"] });
