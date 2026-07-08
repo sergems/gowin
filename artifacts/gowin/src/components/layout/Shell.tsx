@@ -58,6 +58,7 @@ const NOTIF_ICONS: Record<string, string> = {
 
 function NotificationBell() {
   const { token } = useAuth();
+  const { t } = useSiteSettings();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -144,10 +145,10 @@ function NotificationBell() {
       {open && (
         <div className="absolute right-0 top-full mt-2 w-80 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <h3 className="font-semibold text-sm">Notifications</h3>
+            <h3 className="font-semibold text-sm">{t("shell.notifications")}</h3>
             {notifications.length > 0 && (
               <button onClick={() => markAllRead.mutate()} className="text-xs text-primary hover:underline">
-                Mark all read
+                {t("shell.mark_all_read")}
               </button>
             )}
           </div>
@@ -155,7 +156,7 @@ function NotificationBell() {
             {notifications.length === 0 ? (
               <div className="py-10 text-center">
                 <Bell className="w-8 h-8 text-muted-foreground/20 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">No notifications yet</p>
+                <p className="text-sm text-muted-foreground">{t("shell.no_notifications")}</p>
               </div>
             ) : (
               notifications.map((n: any) => (
@@ -176,7 +177,7 @@ function NotificationBell() {
           {notifications.length > 0 && (
             <div className="px-4 py-2.5 border-t border-border bg-accent/20 flex items-center justify-between">
               <Link href="/wallet" onClick={() => setOpen(false)} className="text-xs text-primary hover:underline">
-                View wallet →
+                {t("shell.view_wallet")}
               </Link>
               <span className="text-xs text-muted-foreground/50">{notifications.length} total</span>
             </div>
@@ -323,8 +324,8 @@ export function Shell({ children }: { children: ReactNode }) {
   ] : [];
 
   const clerkLinks = isPaymentClerk ? [
-    { href: "/clerk",             icon: LayoutDashboard, label: "Dashboard",    match: (l: string) => l === "/clerk" },
-    { href: "/clerk/withdrawals", icon: Banknote,        label: "Withdrawals",  match: (l: string) => l === "/clerk/withdrawals" },
+    { href: "/clerk",             icon: LayoutDashboard, label: t("nav.dashboard"),   match: (l: string) => l === "/clerk" },
+    { href: "/clerk/withdrawals", icon: Banknote,        label: t("nav.withdrawals"), match: (l: string) => l === "/clerk/withdrawals" },
   ] : [];
 
   const adminLinks = user?.role === "admin" ? [
@@ -339,8 +340,8 @@ export function Shell({ children }: { children: ReactNode }) {
     { href: "/admin/slides",          icon: Images,            label: t("nav.slides"),         match: (l: string) => l === "/admin/slides" },
     { href: "/admin/fixture-update",  icon: Clock,             label: t("nav.fixture_update"), match: (l: string) => l === "/admin/fixture-update" },
     { href: "/admin/api-monitor",     icon: BarChart3,         label: t("nav.api_monitor"),    match: (l: string) => l === "/admin/api-monitor" },
-    { href: "/admin/win-bonus",       icon: Sparkles,          label: "Win Bonus",             match: (l: string) => l === "/admin/win-bonus" },
-    { href: "/admin/referral",        icon: Share2,            label: "Referral Program",      match: (l: string) => l === "/admin/referral" },
+    { href: "/admin/win-bonus",       icon: Sparkles,          label: t("shell.win_bonus"),          match: (l: string) => l === "/admin/win-bonus" },
+    { href: "/admin/referral",        icon: Share2,            label: t("shell.referral_program"),   match: (l: string) => l === "/admin/referral" },
     { href: "/admin/settings",        icon: SlidersHorizontal, label: t("nav.settings"),       match: (l: string) => l === "/admin/settings" },
   ] : [];
 

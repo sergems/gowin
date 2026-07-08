@@ -2,21 +2,11 @@ import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { ArrowDownRight, ArrowUpRight, Search, Receipt } from "lucide-react";
-
-const TYPE_META: Record<string, { label: string; color: string; credit: boolean }> = {
-  credit:      { label: "Deposit",      color: "bg-primary/20 text-primary border-primary/30",          credit: true  },
-  debit:       { label: "Withdrawal",   color: "bg-orange-500/20 text-orange-400 border-orange-500/30", credit: false },
-  bet_placed:  { label: "Bet Placed",   color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30", credit: false },
-  bet_won:     { label: "Bet Won",      color: "bg-primary/20 text-primary border-primary/30",          credit: true  },
-  bet_refund:  { label: "Bet Refund",   color: "bg-blue-500/20 text-blue-400 border-blue-500/30",       credit: true  },
-  bet_lost:    { label: "Bet Lost",     color: "bg-destructive/20 text-destructive border-destructive/30", credit: false },
-};
 
 function useFetchAdminTransactions(token: string | null, page: number, typeFilter: string, search: string) {
   return useQuery({
@@ -37,7 +27,7 @@ function useFetchAdminTransactions(token: string | null, page: number, typeFilte
 
 export default function AdminTransactions() {
   const { token } = useAuth();
-  const { formatCurrency } = useSiteSettings();
+  const { formatCurrency, t } = useSiteSettings();
   const [page, setPage] = useState(1);
   const [typeFilter, setTypeFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -55,20 +45,29 @@ export default function AdminTransactions() {
   const total: number = data?.total ?? 0;
   const totalPages = Math.ceil(total / 25);
 
+  const TYPE_META: Record<string, { label: string; color: string; credit: boolean }> = {
+    credit:      { label: t("admin.transactions.deposit"),    color: "bg-primary/20 text-primary border-primary/30",          credit: true  },
+    debit:       { label: t("admin.transactions.withdrawal"), color: "bg-orange-500/20 text-orange-400 border-orange-500/30", credit: false },
+    bet_placed:  { label: t("admin.transactions.bet_placed"), color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30", credit: false },
+    bet_won:     { label: t("admin.transactions.bet_won"),    color: "bg-primary/20 text-primary border-primary/30",          credit: true  },
+    bet_refund:  { label: t("admin.transactions.bet_refund"), color: "bg-blue-500/20 text-blue-400 border-blue-500/30",       credit: true  },
+    bet_lost:    { label: t("admin.transactions.bet_lost"),   color: "bg-destructive/20 text-destructive border-destructive/30", credit: false },
+  };
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-black tracking-tight mb-2">All Transactions</h1>
-        <p className="text-muted-foreground">Full ledger of every deposit, withdrawal, and bet across all users</p>
+        <h1 className="text-3xl font-black tracking-tight mb-2">{t("admin.transactions.title")}</h1>
+        <p className="text-muted-foreground">{t("admin.transactions.desc")}</p>
       </div>
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: "Total Records", value: total, sub: "transactions" },
-          { label: "Deposits",      value: data?.summary?.deposits   ?? "—", sub: "credits" },
-          { label: "Withdrawals",   value: data?.summary?.withdrawals ?? "—", sub: "debits"  },
-          { label: "Bets Placed",   value: data?.summary?.betsPlaced ?? "—", sub: "wagers"  },
+          { label: t("admin.transactions.total_records"), value: total, sub: t("admin.transactions.transactions") },
+          { label: t("admin.transactions.deposits"),      value: data?.summary?.deposits   ?? "—", sub: t("admin.transactions.credits") },
+          { label: t("admin.transactions.withdrawals_label"), value: data?.summary?.withdrawals ?? "—", sub: t("admin.transactions.debits") },
+          { label: t("admin.transactions.bets_placed"),   value: data?.summary?.betsPlaced ?? "—", sub: t("admin.transactions.wagers") },
         ].map((s) => (
           <Card key={s.label} className="border-border bg-card">
             <CardContent className="p-4">
@@ -85,7 +84,7 @@ export default function AdminTransactions() {
         <div className="relative flex-1 min-w-48">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search by username or description…"
+            placeholder={t("admin.transactions.search_ph")}
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
             className="pl-9"
@@ -93,15 +92,15 @@ export default function AdminTransactions() {
         </div>
         <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(1); }}>
           <SelectTrigger className="w-44">
-            <SelectValue placeholder="All types" />
+            <SelectValue placeholder={t("admin.transactions.all_types")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="credit">Deposit</SelectItem>
-            <SelectItem value="debit">Withdrawal</SelectItem>
-            <SelectItem value="bet_placed">Bet Placed</SelectItem>
-            <SelectItem value="bet_won">Bet Won</SelectItem>
-            <SelectItem value="bet_refund">Bet Refund</SelectItem>
+            <SelectItem value="all">{t("admin.transactions.all_types")}</SelectItem>
+            <SelectItem value="credit">{t("admin.transactions.deposit")}</SelectItem>
+            <SelectItem value="debit">{t("admin.transactions.withdrawal")}</SelectItem>
+            <SelectItem value="bet_placed">{t("admin.transactions.bet_placed")}</SelectItem>
+            <SelectItem value="bet_won">{t("admin.transactions.bet_won")}</SelectItem>
+            <SelectItem value="bet_refund">{t("admin.transactions.bet_refund")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -125,17 +124,17 @@ export default function AdminTransactions() {
           ) : transactions.length === 0 ? (
             <div className="py-16 text-center">
               <Receipt className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-muted-foreground">No transactions found.</p>
+              <p className="text-muted-foreground">{t("admin.transactions.none")}</p>
             </div>
           ) : (
             <div className="divide-y divide-border/40">
               {/* Header row */}
               <div className="hidden sm:grid grid-cols-[2fr_1fr_2fr_1fr_1fr] gap-4 px-5 py-2.5 bg-accent/10 text-xs text-muted-foreground font-semibold uppercase tracking-wider">
-                <span>User</span>
-                <span>Type</span>
-                <span>Description</span>
-                <span>Date</span>
-                <span className="text-right">Amount</span>
+                <span>{t("admin.transactions.col_user")}</span>
+                <span>{t("admin.transactions.col_type")}</span>
+                <span>{t("admin.transactions.col_desc")}</span>
+                <span>{t("admin.transactions.col_date")}</span>
+                <span className="text-right">{t("admin.transactions.col_amount")}</span>
               </div>
 
               {transactions.map((tx: any) => {
@@ -185,21 +184,21 @@ export default function AdminTransactions() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>Page {page} of {totalPages} &middot; {total} total</span>
+          <span>{t("admin.transactions.page_of").replace("{page}", String(page)).replace("{total}", String(totalPages))} · {total} {t("admin.transactions.total_count")}</span>
           <div className="flex gap-2">
             <button
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
               className="px-3 py-1.5 rounded border border-border hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              Previous
+              {t("admin.transactions.previous")}
             </button>
             <button
               disabled={page >= totalPages}
               onClick={() => setPage((p) => p + 1)}
               className="px-3 py-1.5 rounded border border-border hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              Next
+              {t("admin.transactions.next")}
             </button>
           </div>
         </div>

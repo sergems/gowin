@@ -33,7 +33,7 @@ interface Selection {
 
 export default function AgentPlaceBetPage() {
   const qc = useQueryClient();
-  const { formatCurrency, parseAmount, currency } = useSiteSettings();
+  const { formatCurrency, parseAmount, currency, t } = useSiteSettings();
   const isForeignCurrency = currency !== "USD";
   const { data: wallet, refetch: refetchWallet } = useGetMyWallet({ query: { queryKey: getGetMyWalletQueryKey() } });
   const [selections, setSelections] = useState<Selection[]>([]);
@@ -67,8 +67,6 @@ export default function AgentPlaceBetPage() {
     !search || f.homeTeam.toLowerCase().includes(search.toLowerCase()) || f.awayTeam.toLowerCase().includes(search.toLowerCase())
   );
 
-  // stake input is in the site's active display currency; convert to USD (the wallet/bet
-  // stake is always processed in USD) before doing any math or sending it to the backend.
   const stakeNum = parseAmount(parseFloat(stake) || 0);
   const totalOdds = selections.reduce((acc, s) => acc * s.odds, 1);
   const potentialWin = stakeNum * totalOdds;
@@ -87,16 +85,15 @@ export default function AgentPlaceBetPage() {
 
   const handlePlace = () => {
     setError("");
-    if (selections.length === 0) { setError("Add at least one selection"); return; }
-    if (stakeNum <= 0) { setError("Enter a valid stake"); return; }
-    if (stakeNum > balance) { setError("Insufficient balance"); return; }
+    if (selections.length === 0) { setError(t("agent.place_bet.add_selection_err")); return; }
+    if (stakeNum <= 0) { setError(t("agent.place_bet.valid_stake")); return; }
+    if (stakeNum > balance) { setError(t("agent.place_bet.insufficient")); return; }
     placeBetMut.mutate({
       selections: selections.map(({ home, away, ...s }) => s),
       stake: stakeNum,
     });
   };
 
-  // Basic odds display — fallback if fixture has no odds
   const defaultMarkets = (f: Fixture): { market: string; selection: string; odds: number }[] => {
     const markets: { market: string; selection: string; odds: number }[] = [];
     if (f.odds && f.odds.length > 0) {
@@ -116,17 +113,17 @@ export default function AgentPlaceBetPage() {
       <div className="mb-4">
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           <Target className="w-7 h-7 text-emerald-400" />
-          Place Bet
+          {t("agent.place_bet.title")}
         </h1>
-        <p className="text-zinc-400 mt-0.5 text-sm">Balance: <span className="text-emerald-400 font-semibold">{formatCurrency(balance)}</span></p>
+        <p className="text-zinc-400 mt-0.5 text-sm">{t("agent.place_bet.balance")}: <span className="text-emerald-400 font-semibold">{formatCurrency(balance)}</span></p>
       </div>
 
       {lastBet && (
         <div className="bg-emerald-900/30 border border-emerald-700 rounded-xl p-4 mb-4 flex items-start gap-3">
           <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
           <div>
-            <p className="font-semibold text-emerald-300">Bet Placed Successfully!</p>
-            <p className="text-sm text-zinc-300 mt-1">Code: <span className="font-mono text-white">{lastBet.code}</span> · Stake: ${lastBet.bet?.stake} · Potential Win: ${lastBet.bet?.potentialWin}</p>
+            <p className="font-semibold text-emerald-300">{t("agent.place_bet.success")}</p>
+            <p className="text-sm text-zinc-300 mt-1">{t("agent.place_bet.code")}: <span className="font-mono text-white">{lastBet.code}</span> · {t("agent.place_bet.stake")}: ${lastBet.bet?.stake} · {t("agent.place_bet.potential_win")}: ${lastBet.bet?.potentialWin}</p>
           </div>
           <button onClick={() => setLastBet(null)} className="ml-auto text-zinc-400 hover:text-white">✕</button>
         </div>
@@ -137,14 +134,14 @@ export default function AgentPlaceBetPage() {
         <div className="flex-1 overflow-hidden">
           <input
             className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-500 mb-3 focus:outline-none focus:border-emerald-500"
-            placeholder="Search teams..."
+            placeholder={t("agent.place_bet.search_ph")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
           {isLoading ? (
-            <div className="text-zinc-400 text-center py-8">Loading fixtures...</div>
+            <div className="text-zinc-400 text-center py-8">{t("agent.place_bet.loading")}</div>
           ) : filtered.length === 0 ? (
-            <div className="text-zinc-500 text-center py-8">No fixtures available</div>
+            <div className="text-zinc-500 text-center py-8">{t("agent.place_bet.no_fixtures")}</div>
           ) : (
             <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-1">
               {filtered.slice(0, 30).map((fixture) => {
@@ -196,11 +193,11 @@ export default function AgentPlaceBetPage() {
         <div className="w-72 shrink-0">
           <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-4 sticky top-4">
             <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
-              Bet Slip <span className="text-xs bg-emerald-600 text-white rounded-full px-2 py-0.5">{selections.length}</span>
+              {t("agent.place_bet.bet_slip")} <span className="text-xs bg-emerald-600 text-white rounded-full px-2 py-0.5">{selections.length}</span>
             </h3>
 
             {selections.length === 0 ? (
-              <p className="text-zinc-500 text-sm text-center py-4">Add selections from the list</p>
+              <p className="text-zinc-500 text-sm text-center py-4">{t("agent.place_bet.add_selections")}</p>
             ) : (
               <div className="space-y-2 mb-4">
                 {selections.map((s) => (
@@ -212,7 +209,7 @@ export default function AgentPlaceBetPage() {
                       </div>
                       <div className="text-right">
                         <p className="text-emerald-400 font-mono">{s.odds}</p>
-                        <button onClick={() => removeSelection(s.fixtureId)} className="text-zinc-500 hover:text-red-400 text-[10px]">remove</button>
+                        <button onClick={() => removeSelection(s.fixtureId)} className="text-zinc-500 hover:text-red-400 text-[10px]">{t("agent.place_bet.remove")}</button>
                       </div>
                     </div>
                   </div>
@@ -223,9 +220,9 @@ export default function AgentPlaceBetPage() {
             {selections.length > 0 && (
               <>
                 <div className="border-t border-zinc-700 pt-3 mb-3 text-xs space-y-1 text-zinc-400">
-                  <div className="flex justify-between"><span>Total Odds</span><span className="text-white font-mono">{totalOdds.toFixed(4)}</span></div>
+                  <div className="flex justify-between"><span>{t("agent.place_bet.total_odds")}</span><span className="text-white font-mono">{totalOdds.toFixed(4)}</span></div>
                 </div>
-                <label className="text-xs text-zinc-400 block mb-1">Stake ({currency})</label>
+                <label className="text-xs text-zinc-400 block mb-1">{t("agent.place_bet.stake")} ({currency})</label>
                 <input
                   type="number"
                   className="w-full bg-zinc-700 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-white mb-1 focus:outline-none focus:border-emerald-500"
@@ -238,7 +235,7 @@ export default function AgentPlaceBetPage() {
                 )}
                 {stakeNum > 0 && (
                   <div className="text-xs text-zinc-400 mb-3 flex justify-between">
-                    <span>Potential Win</span>
+                    <span>{t("agent.place_bet.potential_win")}</span>
                     <span className="text-emerald-400 font-semibold">{formatCurrency(potentialWin)}</span>
                   </div>
                 )}
@@ -247,10 +244,10 @@ export default function AgentPlaceBetPage() {
                   onClick={handlePlace}
                   disabled={placeBetMut.isPending || selections.length === 0}
                   className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50 transition-colors">
-                  {placeBetMut.isPending ? "Placing..." : "Place Bet"}
+                  {placeBetMut.isPending ? t("agent.place_bet.placing") : t("agent.place_bet.place")}
                 </button>
                 <button onClick={() => setSelections([])} className="w-full mt-2 text-xs text-zinc-500 hover:text-zinc-300">
-                  Clear all
+                  {t("agent.place_bet.clear_all")}
                 </button>
               </>
             )}

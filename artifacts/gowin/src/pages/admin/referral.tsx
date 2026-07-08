@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { Save, RotateCcw, Users, DollarSign, Gift, Info } from "lucide-react";
 
 interface ReferralConfig {
@@ -29,6 +30,7 @@ const DEFAULT: ReferralConfig = {
 
 export default function AdminReferralSettings() {
   const { token } = useAuth();
+  const { t } = useSiteSettings();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<ReferralConfig>(DEFAULT);
@@ -68,7 +70,7 @@ export default function AdminReferralSettings() {
     onSuccess: (data) => {
       setForm(data);
       queryClient.invalidateQueries({ queryKey: ["admin-referral-settings"] });
-      toast({ title: "Saved", description: "Referral settings updated successfully." });
+      toast({ title: t("admin.referral.saved"), description: t("admin.referral.saved_desc") });
     },
     onError: (err: any) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -77,7 +79,7 @@ export default function AdminReferralSettings() {
 
   const resetToDefaults = () => {
     setForm(DEFAULT);
-    toast({ title: "Reset", description: "Values reset to defaults. Click Save to apply." });
+    toast({ title: "Reset", description: t("admin.referral.reset_desc") });
   };
 
   const update = (field: keyof ReferralConfig, value: any) =>
@@ -95,13 +97,11 @@ export default function AdminReferralSettings() {
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Referral Program Settings</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Control the referral program rewards and bonus wallet requirements
-          </p>
+          <h1 className="text-2xl font-bold">{t("admin.referral.title")}</h1>
+          <p className="text-muted-foreground text-sm mt-1">{t("admin.referral.desc")}</p>
         </div>
         <Badge variant={form.enabled ? "default" : "secondary"} className="mt-1">
-          {form.enabled ? "Active" : "Disabled"}
+          {form.enabled ? t("admin.referral.active") : t("admin.referral.disabled_label")}
         </Badge>
       </div>
 
@@ -110,10 +110,8 @@ export default function AdminReferralSettings() {
         <CardContent className="p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium">Enable Referral Program</p>
-              <p className="text-sm text-muted-foreground">
-                When disabled, no new referral bonuses will be issued
-              </p>
+              <p className="font-medium">{t("admin.referral.enable_title")}</p>
+              <p className="text-sm text-muted-foreground">{t("admin.referral.enable_desc")}</p>
             </div>
             <Switch
               checked={form.enabled}
@@ -128,13 +126,13 @@ export default function AdminReferralSettings() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Gift className="h-4 w-4 text-primary" />
-            Reward Amounts
+            {t("admin.referral.rewards_title")}
           </CardTitle>
-          <CardDescription>Configure what users earn through the referral program</CardDescription>
+          <CardDescription>{t("admin.referral.rewards_desc")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-2">
-            <Label>New User Signup Bonus ($)</Label>
+            <Label>{t("admin.referral.signup_bonus")}</Label>
             <div className="flex items-center gap-2">
               <DollarSign className="h-4 w-4 text-muted-foreground" />
               <Input
@@ -146,15 +144,13 @@ export default function AdminReferralSettings() {
                 className="w-36"
               />
             </div>
-            <p className="text-xs text-muted-foreground">
-              Credited to the bonus wallet of the new user who signs up via a referral link
-            </p>
+            <p className="text-xs text-muted-foreground">{t("admin.referral.signup_bonus_desc")}</p>
           </div>
 
           <Separator />
 
           <div className="space-y-2">
-            <Label>Referrer Reward Percentage (%)</Label>
+            <Label>{t("admin.referral.referrer_pct")}</Label>
             <div className="flex items-center gap-2">
               <Input
                 type="number"
@@ -165,17 +161,15 @@ export default function AdminReferralSettings() {
                 onChange={(e) => update("referrerRewardPercent", parseFloat(e.target.value) || 0)}
                 className="w-36"
               />
-              <span className="text-sm text-muted-foreground">% of each deposit</span>
+              <span className="text-sm text-muted-foreground">{t("admin.referral.referrer_pct_unit")}</span>
             </div>
-            <p className="text-xs text-muted-foreground">
-              The referrer earns this percentage of each qualifying deposit made by their referred user
-            </p>
+            <p className="text-xs text-muted-foreground">{t("admin.referral.referrer_pct_desc")}</p>
           </div>
 
           <Separator />
 
           <div className="space-y-2">
-            <Label>Maximum Rewarded Deposits</Label>
+            <Label>{t("admin.referral.max_deposits")}</Label>
             <div className="flex items-center gap-2">
               <Input
                 type="number"
@@ -186,11 +180,9 @@ export default function AdminReferralSettings() {
                 onChange={(e) => update("maxReferralDeposits", parseInt(e.target.value) || 1)}
                 className="w-36"
               />
-              <span className="text-sm text-muted-foreground">deposits per referred user</span>
+              <span className="text-sm text-muted-foreground">{t("admin.referral.max_deposits_unit")}</span>
             </div>
-            <p className="text-xs text-muted-foreground">
-              The referrer earns rewards for this many deposits from each referred user (then stops)
-            </p>
+            <p className="text-xs text-muted-foreground">{t("admin.referral.max_deposits_desc")}</p>
           </div>
         </CardContent>
       </Card>
@@ -200,13 +192,13 @@ export default function AdminReferralSettings() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Users className="h-4 w-4 text-primary" />
-            Bonus Wallet Requirements
+            {t("admin.referral.rollover_title")}
           </CardTitle>
-          <CardDescription>Rollover rules that apply to all referral bonuses</CardDescription>
+          <CardDescription>{t("admin.referral.rollover_desc")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Rollover Multiplier (×)</Label>
+            <Label>{t("admin.referral.rollover_label")}</Label>
             <div className="flex items-center gap-2">
               <Input
                 type="number"
@@ -217,19 +209,14 @@ export default function AdminReferralSettings() {
                 onChange={(e) => update("rolloverMultiplier", parseInt(e.target.value) || 1)}
                 className="w-36"
               />
-              <span className="text-sm text-muted-foreground">× bonus amount must be wagered</span>
+              <span className="text-sm text-muted-foreground">{t("admin.referral.rollover_unit")}</span>
             </div>
-            <p className="text-xs text-muted-foreground">
-              E.g. a $2 bonus with 5× rollover requires $10 in bets before the bonus can be withdrawn
-            </p>
+            <p className="text-xs text-muted-foreground">{t("admin.referral.rollover_note")}</p>
           </div>
 
           <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-start gap-2 text-sm">
             <Info className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
-            <span className="text-muted-foreground">
-              Rollover tracks how much more the user must wager before their bonus balance is eligible for withdrawal.
-              It decreases automatically as bets are settled.
-            </span>
+            <span className="text-muted-foreground">{t("admin.referral.rollover_info")}</span>
           </div>
         </CardContent>
       </Card>
@@ -237,19 +224,19 @@ export default function AdminReferralSettings() {
       {/* Preview */}
       <Card className="border-dashed">
         <CardContent className="p-4">
-          <p className="text-sm font-medium mb-3">📊 Preview with current settings</p>
+          <p className="text-sm font-medium mb-3">{t("admin.referral.preview")}</p>
           <div className="space-y-1 text-sm text-muted-foreground">
             <div className="flex justify-between">
-              <span>New user signup bonus:</span>
+              <span>{t("admin.referral.preview_signup")}</span>
               <span className="font-medium text-foreground">${form.signupBonus.toFixed(2)} (requires ${(form.signupBonus * form.rolloverMultiplier).toFixed(2)} in bets to withdraw)</span>
             </div>
             <div className="flex justify-between">
-              <span>Example: referred user deposits $100:</span>
-              <span className="font-medium text-foreground">Referrer earns ${(100 * form.referrerRewardPercent / 100).toFixed(2)}</span>
+              <span>{t("admin.referral.preview_example")}</span>
+              <span className="font-medium text-foreground">{t("admin.referral.earns")} ${(100 * form.referrerRewardPercent / 100).toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
-              <span>Max referrer earnings per user:</span>
-              <span className="font-medium text-foreground">Up to {form.maxReferralDeposits} deposits</span>
+              <span>{t("admin.referral.preview_max")}</span>
+              <span className="font-medium text-foreground">{t("admin.referral.preview_up_to").replace("{n}", String(form.maxReferralDeposits))}</span>
             </div>
           </div>
         </CardContent>
@@ -258,7 +245,7 @@ export default function AdminReferralSettings() {
       {/* Actions */}
       <div className="flex gap-3 justify-end">
         <Button variant="outline" onClick={resetToDefaults} className="gap-2">
-          <RotateCcw className="h-4 w-4" /> Reset to defaults
+          <RotateCcw className="h-4 w-4" /> {t("admin.referral.reset")}
         </Button>
         <Button
           onClick={() => saveMutation.mutate(form)}
@@ -266,7 +253,7 @@ export default function AdminReferralSettings() {
           className="gap-2"
         >
           <Save className="h-4 w-4" />
-          {saveMutation.isPending ? "Saving…" : "Save changes"}
+          {saveMutation.isPending ? t("admin.referral.saving") : t("admin.referral.save")}
         </Button>
       </div>
     </div>

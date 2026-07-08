@@ -53,7 +53,7 @@ const STATUS_VARIANT: Record<string, any> = {
 // ── Bet Verifier ───────────────────────────────────────────────────────────────
 function BetVerifier() {
   const { token } = useAuth();
-  const { formatCurrency } = useSiteSettings();
+  const { formatCurrency, t } = useSiteSettings();
   const [code, setCode] = useState("");
   const [submitted, setSubmitted] = useState("");
 
@@ -82,19 +82,19 @@ function BetVerifier() {
     <div className="bg-card border border-border rounded-xl p-5 space-y-4">
       <div className="flex items-center gap-2">
         <Hash className="w-4 h-4 text-primary" />
-        <h2 className="font-bold text-base">Verify Bet by Code</h2>
+        <h2 className="font-bold text-base">{t("admin.bets.verify_title")}</h2>
       </div>
       <form onSubmit={handleSubmit} className="flex gap-2">
         <Input
           value={code}
           onChange={e => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6))}
-          placeholder="6-character code (e.g. AB12CD)"
+          placeholder={t("admin.bets.code_ph")}
           className="font-mono tracking-widest uppercase max-w-xs"
           maxLength={6}
         />
         <Button type="submit" disabled={code.trim().length !== 6 || isLoading} className="gap-2">
           <Search className="w-4 h-4" />
-          {isLoading ? "Looking up…" : "Verify"}
+          {isLoading ? t("admin.bets.looking_up") : t("admin.bets.verify")}
         </Button>
       </form>
 
@@ -102,35 +102,35 @@ function BetVerifier() {
         result === null || error ? (
           <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-4 py-3">
             <XCircle className="w-4 h-4 shrink-0" />
-            No bet found with code <span className="font-mono font-bold ml-1">{submitted}</span> at this branch.
+            {t("admin.bets.not_found")} <span className="font-mono font-bold ml-1">{submitted}</span> {t("admin.bets.at_branch")}.
           </div>
         ) : result && (
           <div className="border border-border rounded-xl overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 bg-accent/20 border-b border-border/60">
               <div className="flex items-center gap-3">
                 <span className="font-mono text-lg font-black tracking-widest text-primary">{result.code}</span>
-                <span className="text-muted-foreground text-sm">Bet #{result.id}</span>
+                <span className="text-muted-foreground text-sm">{t("admin.bets.col_bet")} #{result.id}</span>
                 <Badge variant={STATUS_VARIANT[result.status] ?? "outline"} className="uppercase text-xs">
                   {result.status}
                 </Badge>
               </div>
               <div className="flex gap-6 text-sm">
                 <div>
-                  <div className="text-xs text-muted-foreground">Agent</div>
+                  <div className="text-xs text-muted-foreground">{t("admin.bets.agent")}</div>
                   <div className="font-semibold">{result.agentUsername ?? "—"}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-muted-foreground">Stake</div>
+                  <div className="text-xs text-muted-foreground">{t("admin.bets.col_stake")}</div>
                   <div className="font-bold">{formatCurrency(Number(result.stake))}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-muted-foreground">{result.status === "won" ? "Won" : "To Win"}</div>
+                  <div className="text-xs text-muted-foreground">{result.status === "won" ? t("admin.bets.won") : t("admin.bets.to_win")}</div>
                   <div className={`font-black ${result.status === "won" ? "text-primary" : ""}`}>
                     {formatCurrency(Number(result.potentialWin))}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-muted-foreground">Placed</div>
+                  <div className="text-xs text-muted-foreground">{t("admin.bets.placed")}</div>
                   <div className="text-sm">{format(new Date(result.createdAt), "dd MMM yyyy, HH:mm")}</div>
                 </div>
               </div>
@@ -158,7 +158,7 @@ function BetVerifier() {
                       </div>
                     </div>
                     <div className="text-right ml-4 shrink-0">
-                      <div className="text-xs text-muted-foreground">Odds</div>
+                      <div className="text-xs text-muted-foreground">{t("admin.bets.col_odds")}</div>
                       <div className="font-bold text-primary">{Number(sel.odds).toFixed(2)}</div>
                     </div>
                   </div>
@@ -176,7 +176,7 @@ function BetVerifier() {
 export default function BranchBetsPage() {
   const { token } = useAuth();
   const { toast } = useToast();
-  const { formatCurrency } = useSiteSettings();
+  const { formatCurrency, t } = useSiteSettings();
   const queryClient = useQueryClient();
 
   const headers = { Authorization: `Bearer ${token}` };
@@ -190,7 +190,7 @@ export default function BranchBetsPage() {
   const bets = data?.bets ?? [];
 
   const handleVoid = async (betId: number) => {
-    if (!confirm("Void this bet and refund the stake?")) return;
+    if (!confirm(t("admin.bets.void_confirm"))) return;
     try {
       const res = await fetch(`/api/branch/bets/${betId}/void`, {
         method: "PATCH",
@@ -200,7 +200,7 @@ export default function BranchBetsPage() {
         const d = await res.json();
         throw new Error(d.error || "Void failed");
       }
-      toast({ title: "Bet Voided", description: "Stake has been refunded." });
+      toast({ title: t("admin.bets.void_success"), description: t("admin.bets.stake_refunded") });
       queryClient.invalidateQueries({ queryKey: ["branch-bets"] });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -210,8 +210,8 @@ export default function BranchBetsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-black tracking-tight mb-2">Bets Management</h1>
-        <p className="text-muted-foreground">All bets placed at this branch</p>
+        <h1 className="text-3xl font-black tracking-tight mb-2">{t("admin.bets.title")}</h1>
+        <p className="text-muted-foreground">{t("admin.bets.desc_branch")}</p>
       </div>
 
       <BetVerifier />
@@ -222,26 +222,26 @@ export default function BranchBetsPage() {
             <Table>
               <TableHeader className="bg-accent/10">
                 <TableRow>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Bet #</TableHead>
-                  <TableHead>Agent</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Stake</TableHead>
-                  <TableHead className="text-right">Odds</TableHead>
-                  <TableHead className="text-right">To Win</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t("admin.bets.col_code")}</TableHead>
+                  <TableHead>{t("admin.bets.col_bet")}</TableHead>
+                  <TableHead>{t("admin.bets.col_agent")}</TableHead>
+                  <TableHead>{t("admin.bets.col_date")}</TableHead>
+                  <TableHead className="text-right">{t("admin.bets.col_stake")}</TableHead>
+                  <TableHead className="text-right">{t("admin.bets.col_odds")}</TableHead>
+                  <TableHead className="text-right">{t("admin.bets.col_to_win")}</TableHead>
+                  <TableHead>{t("admin.bets.col_status")}</TableHead>
+                  <TableHead className="text-right">{t("admin.bets.col_actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8">Loading…</TableCell>
+                    <TableCell colSpan={9} className="text-center py-8">{t("admin.bets.loading")}</TableCell>
                   </TableRow>
                 ) : bets.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                      No bets recorded at this branch yet
+                      {t("admin.bets.no_branch_bets")}
                     </TableCell>
                   </TableRow>
                 ) : bets.map((bet: any) => (
@@ -277,7 +277,7 @@ export default function BranchBetsPage() {
                         disabled={bet.status !== "pending"}
                         className="hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
                       >
-                        Void
+                        {t("admin.bets.void")}
                       </Button>
                     </TableCell>
                   </TableRow>

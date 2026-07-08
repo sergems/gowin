@@ -189,8 +189,8 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
             <div className="flex items-start gap-2 p-3 rounded-lg border border-amber-500/40 bg-amber-500/10 mb-4 cursor-pointer hover:bg-amber-500/15 transition-colors">
               <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
               <div>
-                <p className="text-xs font-semibold text-amber-500">Phone required to bet</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Tap to complete your profile</p>
+                <p className="text-xs font-semibold text-amber-500">{t("betslip.phone_required")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("betslip.complete_profile")}</p>
               </div>
             </div>
           </Link>
@@ -253,7 +253,7 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
                         </span>
                       )}
                       {isFinished && (
-                        <span className="text-[10px] text-amber-400 ml-auto pr-6">bet may be rejected</span>
+                        <span className="text-[10px] text-amber-400 ml-auto pr-6">{t("betslip.may_be_rejected")}</span>
                       )}
                     </div>
                   )}
@@ -284,7 +284,7 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
                           }`}
                           title={qualifies ? "Qualifies for Win Bonus" : "Odds too low for bonus"}
                         >
-                          {qualifies ? "✓ BONUS" : "NO BONUS"}
+                          {qualifies ? t("betslip.qualifies") : t("betslip.no_bonus")}
                         </span>
                       )}
                       <span className="font-bold text-primary">{sel.odds.toFixed(2)}</span>
@@ -304,7 +304,7 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
             <div className="flex items-start gap-2 p-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10">
               <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
               <p className="text-xs text-amber-300 leading-snug">
-                One or more events have already started. Remove them to place your bet.
+                {t("betslip.events_started")}
               </p>
             </div>
           )}
@@ -315,18 +315,18 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-primary" />
-                  <span className="text-xs font-semibold text-primary">Win Bonus</span>
+                  <span className="text-xs font-semibold text-primary">{t("betslip.win_bonus")}</span>
                 </div>
                 <span className="text-xs font-bold text-primary">
-                  {bonusPercentage > 0 ? `${bonusPercentage}%` : "Locked"}
+                  {bonusPercentage > 0 ? `${bonusPercentage}%` : t("betslip.locked")}
                 </span>
               </div>
 
               {/* Progress bar */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                  <span>Qualifying: {qualifyingSelections} / {maxSel}</span>
-                  <span>{selectionCount} selections total</span>
+                  <span>{t("betslip.qualifying")} {qualifyingSelections} / {maxSel}</span>
+                  <span>{selectionCount} {t("betslip.selections_total")}</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-border overflow-hidden">
                   <div
@@ -350,7 +350,7 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
                   <span className="font-bold text-primary ml-0.5">{nextBonusTier.bonusPercent}% bonus</span>
                 </p>
               ) : (
-                <p className="text-[10px] text-primary font-semibold">🏆 Maximum bonus unlocked!</p>
+                <p className="text-[10px] text-primary font-semibold">{t("betslip.max_bonus")}</p>
               )}
             </div>
           )}
@@ -396,7 +396,7 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
             {isWinBonusActive && stake > 0 ? (
               <div className="space-y-1.5">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Base Win</span>
+                  <span className="text-muted-foreground">{t("betslip.base_win")}</span>
                   <span className="font-medium">{formatCurrency(baseWin)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -425,7 +425,7 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
 
             {isMaxWinCapped && (
               <p className="text-[11px] text-amber-400 mt-1 text-right">
-                Maximum payout of {formatCurrency(config?.maxPayout ?? 1_000_000)} applied.
+                {t("betslip.max_payout_applied").replace("{amount}", formatCurrency(config?.maxPayout ?? 1_000_000))}
               </p>
             )}
           </div>
@@ -435,7 +435,7 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
             onClick={() => placeBet()}
             disabled={isPlacing || stake <= 0 || !user || hasStartedSelections}
           >
-            {isPlacing ? "Placing Bet..." : !user ? "Login to Bet" : "Place Bet"}
+            {isPlacing ? t("betslip.placing") : !user ? t("betslip.login_to_bet") : t("betslip.place_bet")}
           </Button>
           <Button
             variant="outline"
@@ -444,7 +444,7 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
             disabled={isBooking}
           >
             <BookMarked className="w-4 h-4 mr-2" />
-            {isBooking ? "Booking..." : "Book Bet"}
+            {isBooking ? t("betslip.booking") : t("betslip.book_bet")}
           </Button>
         </div>
       )}
@@ -455,9 +455,9 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
           <div className="bg-card border border-border rounded-xl p-6 w-full max-w-xs text-center space-y-4">
             <BookMarked className="w-10 h-10 text-primary mx-auto" />
             <div>
-              <p className="font-bold text-lg">Bet Booked!</p>
+              <p className="font-bold text-lg">{t("betslip.bet_booked")}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Share this code so others can load your selections
+                {t("betslip.share_code")}
               </p>
             </div>
             <div className="bg-accent rounded-lg px-4 py-3 font-mono text-2xl font-bold tracking-widest select-all">
@@ -468,10 +468,10 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
               className="flex items-center gap-2 mx-auto text-sm text-primary hover:underline"
             >
               {copiedCode ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              {copiedCode ? "Copied!" : "Copy code"}
+              {copiedCode ? t("betslip.copied") : t("betslip.copy_code")}
             </button>
-            <p className="text-[11px] text-muted-foreground">Valid for 30 days</p>
-            <Button className="w-full" onClick={() => setBookingCode(null)}>Done</Button>
+            <p className="text-[11px] text-muted-foreground">{t("betslip.valid_days")}</p>
+            <Button className="w-full" onClick={() => setBookingCode(null)}>{t("betslip.done")}</Button>
           </div>
         </div>
       )}

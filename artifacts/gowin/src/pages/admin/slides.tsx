@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,7 @@ interface Slide {
 
 export default function AdminSlides() {
   const { token } = useAuth();
+  const { t } = useSiteSettings();
   const { toast } = useToast();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -44,7 +46,7 @@ export default function AdminSlides() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/admin/slides"] });
       qc.invalidateQueries({ queryKey: ["slides"] });
-      toast({ title: "Slide deleted" });
+      toast({ title: t("admin.slides.deleted") });
     },
     onError: (e: any) =>
       toast({ title: "Error", description: e.message, variant: "destructive" }),
@@ -123,10 +125,8 @@ export default function AdminSlides() {
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black tracking-tight">Slide Banners</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Upload and manage the banner images displayed on the home page.
-          </p>
+          <h1 className="text-2xl font-black tracking-tight">{t("admin.slides.title")}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{t("admin.slides.desc")}</p>
         </div>
         <div>
           <input
@@ -143,7 +143,7 @@ export default function AdminSlides() {
             className="gap-2"
           >
             <Upload className="w-4 h-4" />
-            {uploading ? "Uploading…" : "Upload Images"}
+            {uploading ? t("admin.slides.uploading") : t("admin.slides.upload")}
           </Button>
         </div>
       </div>
@@ -157,10 +157,8 @@ export default function AdminSlides() {
       ) : slides.length === 0 ? (
         <div className="py-20 text-center border border-dashed border-border rounded-xl">
           <ImageIcon className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground font-medium">No slides uploaded yet.</p>
-          <p className="text-xs text-muted-foreground/60 mt-1">
-            Upload banner images to display on the home page.
-          </p>
+          <p className="text-sm text-muted-foreground font-medium">{t("admin.slides.none")}</p>
+          <p className="text-xs text-muted-foreground/60 mt-1">{t("admin.slides.none_desc")}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -182,7 +180,7 @@ export default function AdminSlides() {
                   variant={slide.active ? "default" : "secondary"}
                   className="text-[10px] px-1.5 py-0.5"
                 >
-                  {slide.active ? "Active" : "Hidden"}
+                  {slide.active ? t("admin.slides.active") : t("admin.slides.hidden")}
                 </Badge>
               </div>
               <div className="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-sm px-3 py-2 flex items-center justify-between">
@@ -205,7 +203,7 @@ export default function AdminSlides() {
                   </button>
                   <button
                     onClick={() => {
-                      if (confirm("Delete this slide?")) deleteMutation.mutate(slide.id);
+                      if (confirm(t("admin.slides.delete_confirm"))) deleteMutation.mutate(slide.id);
                     }}
                     className="p-1.5 rounded-md bg-white/10 hover:bg-red-500/70 text-white transition-colors"
                     title="Delete slide"

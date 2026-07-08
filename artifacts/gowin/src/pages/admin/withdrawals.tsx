@@ -136,23 +136,25 @@ function EmptyState({ message }: { message: string }) {
 
 type TabKey = "pending" | "approved" | "processing" | "completed" | "paid" | "rejected";
 
-const TABS: { key: TabKey; label: string; emptyMsg: string }[] = [
-  { key: "pending",    label: "Requests",   emptyMsg: "No pending withdrawal requests" },
-  { key: "approved",   label: "Approved",   emptyMsg: "No withdrawals awaiting payment" },
-  { key: "processing", label: "Processing", emptyMsg: "No withdrawals in processing" },
-  { key: "completed",  label: "Completed",  emptyMsg: "No completed payouts yet" },
-  { key: "paid",       label: "Paid",       emptyMsg: "No manually paid withdrawals" },
-  { key: "rejected",   label: "Rejected",   emptyMsg: "No rejected withdrawals" },
-];
+const TAB_KEYS: TabKey[] = ["pending", "approved", "processing", "completed", "paid", "rejected"];
 
 const POLL_INTERVAL_MS = 10_000;
 
 export default function AdminWithdrawals() {
   const { token } = useAuth();
-  const { formatCurrency } = useSiteSettings();
+  const { formatCurrency, t } = useSiteSettings();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabKey>("pending");
+
+  const TABS: { key: TabKey; label: string; emptyMsg: string }[] = [
+    { key: "pending",    label: t("admin.withdrawals.tab_requests"),   emptyMsg: t("admin.withdrawals.empty_pending") },
+    { key: "approved",   label: t("admin.withdrawals.tab_approved"),   emptyMsg: t("admin.withdrawals.empty_approved") },
+    { key: "processing", label: t("admin.withdrawals.tab_processing"), emptyMsg: t("admin.withdrawals.empty_processing") },
+    { key: "completed",  label: t("admin.withdrawals.tab_completed"),  emptyMsg: t("admin.withdrawals.empty_completed") },
+    { key: "paid",       label: t("admin.withdrawals.tab_paid"),       emptyMsg: t("admin.withdrawals.empty_paid") },
+    { key: "rejected",   label: t("admin.withdrawals.tab_rejected"),   emptyMsg: t("admin.withdrawals.empty_rejected") },
+  ];
 
   const [payingId, setPayingId] = useState<number | null>(null);
   const [countdown, setCountdown] = useState(POLL_INTERVAL_MS / 1000);
@@ -242,13 +244,13 @@ export default function AdminWithdrawals() {
     },
     onSuccess: () => {
       setPayingId(null);
-      toast({ title: "Payout sent via PawaPay", description: "Auto-polling will update the status shortly." });
+      toast({ title: t("admin.withdrawals.payout_sent"), description: t("admin.withdrawals.payout_sent_desc") });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/withdrawals"] });
       setActiveTab("processing");
     },
     onError: (e: any) => {
       setPayingId(null);
-      toast({ title: "Payout failed", description: e.message, variant: "destructive" });
+      toast({ title: t("admin.withdrawals.payout_failed"), description: e.message, variant: "destructive" });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/withdrawals"] });
     },
   });
@@ -257,32 +259,32 @@ export default function AdminWithdrawals() {
     try {
       await updateWithdrawal.mutateAsync({ id, status });
       const labels: Record<string, string> = {
-        approved: "Approved — ready to send via PawaPay",
-        rejected: "Rejected — balance refunded",
-        paid: "Marked as paid",
+        approved: t("admin.withdrawals.approved_msg"),
+        rejected: t("admin.withdrawals.rejected_msg"),
+        paid: t("admin.withdrawals.paid_msg"),
       };
       toast({ title: labels[status] ?? "Updated" });
     } catch (e: any) {
-      toast({ title: "Action failed", description: e.message, variant: "destructive" });
+      toast({ title: t("admin.withdrawals.action_failed"), description: e.message, variant: "destructive" });
     }
   };
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-black tracking-tight mb-2">Withdrawals</h1>
-        <p className="text-muted-foreground">Review and send withdrawal payouts via PawaPay mobile money</p>
+        <h1 className="text-3xl font-black tracking-tight mb-2">{t("admin.withdrawals.title")}</h1>
+        <p className="text-muted-foreground">{t("admin.withdrawals.desc")}</p>
       </div>
 
       {/* Flow diagram */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
-        <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-amber-500" /> Request</span>
+        <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-amber-500" /> {t("admin.withdrawals.request")}</span>
         <ChevronRight className="w-4 h-4" />
-        <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-blue-500" /> Approve</span>
+        <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-blue-500" /> {t("admin.withdrawals.approve")}</span>
         <ChevronRight className="w-4 h-4" />
-        <span className="flex items-center gap-1.5"><Smartphone className="w-4 h-4 text-violet-400" /> Send via PawaPay</span>
+        <span className="flex items-center gap-1.5"><Smartphone className="w-4 h-4 text-violet-400" /> {t("admin.withdrawals.send_pawapay")}</span>
         <ChevronRight className="w-4 h-4" />
-        <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-primary" /> Completed</span>
+        <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-primary" /> {t("admin.withdrawals.tab_completed")}</span>
       </div>
 
       {/* Tabs */}
@@ -311,8 +313,8 @@ export default function AdminWithdrawals() {
       {activeTab === "processing" && (
         <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-violet-500/30 bg-violet-500/5 text-sm">
           <Wifi className="w-4 h-4 text-violet-400 animate-pulse" />
-          <span className="text-violet-300 font-medium">Live polling PawaPay</span>
-          <span className="text-muted-foreground ml-auto text-xs">Next check in {countdown}s</span>
+          <span className="text-violet-300 font-medium">{t("admin.withdrawals.live_polling")}</span>
+          <span className="text-muted-foreground ml-auto text-xs">{t("admin.withdrawals.next_check").replace("{n}", String(countdown))}</span>
         </div>
       )}
 
@@ -382,11 +384,11 @@ export default function AdminWithdrawals() {
                       <Button size="sm" onClick={() => handleAction(w.id, "approved")}
                         className="bg-blue-500 hover:bg-blue-600 text-white"
                         disabled={updateWithdrawal.isPending}>
-                        <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" /> Approve
+                        <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" /> {t("admin.withdrawals.approve")}
                       </Button>
                       <Button size="sm" variant="destructive" onClick={() => handleAction(w.id, "rejected")}
                         disabled={updateWithdrawal.isPending}>
-                        <XCircle className="w-3.5 h-3.5 mr-1.5" /> Reject
+                        <XCircle className="w-3.5 h-3.5 mr-1.5" /> {t("admin.withdrawals.reject")}
                       </Button>
                     </>
                   )}
@@ -409,13 +411,13 @@ export default function AdminWithdrawals() {
                         title={!w.operator ? "No operator set on this withdrawal" : ""}
                       >
                         {isThisPaying
-                          ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Sending…</>
-                          : <><Send className="w-3.5 h-3.5 mr-1.5" /> Send via PawaPay</>}
+                          ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> {t("admin.withdrawals.sending")}</>
+                          : <><Send className="w-3.5 h-3.5 mr-1.5" /> {t("admin.withdrawals.send_pawapay")}</>}
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => handleAction(w.id, "paid")}
                         disabled={updateWithdrawal.isPending}
                         title="Mark as manually paid (no PawaPay)">
-                        <Banknote className="w-3.5 h-3.5 mr-1.5" /> Mark Manual
+                        <Banknote className="w-3.5 h-3.5 mr-1.5" /> {t("admin.withdrawals.mark_manual")}
                       </Button>
                     </>
                   )}
@@ -423,7 +425,7 @@ export default function AdminWithdrawals() {
                   {isProcessing && (
                     <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                       <Wifi className="w-3 h-3 text-violet-400" />
-                      Auto-updating every {POLL_INTERVAL_MS / 1000}s
+                      {t("admin.withdrawals.auto_update").replace("{n}", String(POLL_INTERVAL_MS / 1000))}
                     </p>
                   )}
                 </div>

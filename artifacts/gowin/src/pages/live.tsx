@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { useListFixtures } from "@workspace/api-client-react";
 import { Shield, Radio } from "lucide-react";
 import { fmtUTCTime } from "@/lib/formatUTC";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 
 function Logo({ src, alt, size = 28 }: { src: string | null | undefined; alt: string; size?: number }) {
   const [failed, setFailed] = useState(false);
@@ -76,6 +77,7 @@ function LiveCard({ fixture }: { fixture: any }) {
 }
 
 export default function LivePage() {
+  const { t } = useSiteSettings();
   const [lastUpdated, setLastUpdated] = useState(() => new Date());
 
   const { data, isLoading, dataUpdatedAt } = useListFixtures(
@@ -145,16 +147,16 @@ export default function LivePage() {
         <div>
           <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
             <Radio className="w-6 h-6 text-red-500" />
-            Live Now
+            {t("live.title")}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {isLoading ? "Loading…" : `${fixtures.length} match${fixtures.length !== 1 ? "es" : ""} in play`}
+            {isLoading ? t("live.loading") : `${fixtures.length} ${fixtures.length !== 1 ? t("live.matches") : t("live.match")} in play`}
           </p>
         </div>
         <div className="text-right">
-          <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">Updated</p>
+          <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">{t("live.updated")}</p>
           <p className="text-xs font-mono text-muted-foreground">{timeStr}</p>
-          <p className="text-[10px] text-muted-foreground/50">auto-refresh 30s</p>
+          <p className="text-[10px] text-muted-foreground/50">{t("live.auto_refresh")}</p>
         </div>
       </div>
 
@@ -171,8 +173,8 @@ export default function LivePage() {
             <Radio className="w-8 h-8 text-muted-foreground/40" />
           </div>
           <div>
-            <p className="font-semibold text-muted-foreground">No live matches right now</p>
-            <p className="text-sm text-muted-foreground/60 mt-1">Check back during match times — scores update every 30 seconds</p>
+            <p className="font-semibold text-muted-foreground">{t("live.no_matches")}</p>
+            <p className="text-sm text-muted-foreground/60 mt-1">{t("live.no_matches_desc")}</p>
           </div>
         </div>
       ) : (
@@ -206,7 +208,7 @@ export default function LivePage() {
                   <Logo src={league.logo} alt={league.name} size={16} />
                   <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{league.name}</span>
                   <span className="text-[10px] text-muted-foreground/50 ml-1">
-                    {league.fixtures.length} match{league.fixtures.length !== 1 ? "es" : ""}
+                    {league.fixtures.length} {league.fixtures.length !== 1 ? t("live.matches") : t("live.match")}
                   </span>
                 </div>
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
