@@ -86,7 +86,7 @@ export default function Login() {
                 <Input
                   id="identifier"
                   type="text"
-                  placeholder="07xxxxxxxx or email@example.com"
+                  placeholder="08X XXX XXXX or email@example.com"
                   value={identifier}
                   onChange={(e) => { setIdentifier(e.target.value); clearError(); }}
                   autoComplete="username"

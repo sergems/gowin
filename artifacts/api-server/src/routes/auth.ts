@@ -2,7 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { db, usersTable, walletsTable, passwordResetOtpsTable } from "@workspace/db";
-import { eq, and, gt, isNull, or } from "drizzle-orm";
+import { eq, and, gt, isNull, or, inArray } from "drizzle-orm";
 import { signToken, requireAuth, getJwtSecret, type AuthRequest } from "../middlewares/auth";
 import { RegisterBody, LoginBody } from "@workspace/api-zod";
 import { sendOtpEmail, sendAccountLockedEmail } from "../lib/email";
@@ -12,6 +12,40 @@ import { getReferralConfig, generateUniqueReferralCode, creditBonusWallet } from
 const router = Router();
 
 const MAX_LOGIN_ATTEMPTS = 3;
+
+/**
+ * Given a phone input, return every storage variant that could represent the
+ * same DRC (+243) number.  Handles all formats seen in the wild:
+ *   +243XXXXXXXXX  →  canonical E.164
+ *   243XXXXXXXXX   →  E.164 without leading +
+ *   0XXXXXXXXX     →  local 10-digit (leading 0 replaces +243)
+ *   XXXXXXXXX      →  bare 9-digit national number
+ * Spaces, dashes, dots and parentheses are stripped before parsing.
+ */
+function drcPhoneVariants(raw: string): string[] {
+  const cleaned = raw.replace(/[\s\-\.()\u00a0]/g, "");
+  const seen = new Set<string>([cleaned]); // always include exact input
+
+  let national: string | null = null;
+
+  if (cleaned.startsWith("+243") && cleaned.length >= 12) {
+    national = cleaned.slice(4);
+  } else if (cleaned.startsWith("243") && cleaned.length >= 12) {
+    national = cleaned.slice(3);
+  } else if (cleaned.startsWith("0") && cleaned.length >= 9) {
+    national = cleaned.slice(1);
+  } else if (/^\d{9}$/.test(cleaned)) {
+    national = cleaned;
+  }
+
+  if (national) {
+    seen.add(`+243${national}`);
+    seen.add(`243${national}`);
+    seen.add(`0${national}`);
+  }
+
+  return [...seen];
+}
 
 function formatUser(user: any) {
   return {
@@ -132,20 +166,20 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   const identifier = rawIdentifier.trim();
 
   // Resolve by phone (priority) or email.
-  // Email path: normalize to lowercase for case-insensitive match.
-  // Phone path: try phoneNumber first, fall back to email in case user types their email without "@" being detected.
+  // Email path: normalise to lowercase for case-insensitive match.
+  // Phone path: expand the input into all DRC storage variants (+243X, 243X, 0X)
+  // so any common format the user types matches whatever is stored in the DB.
   const isEmail = identifier.includes("@");
-  const normalizedIdentifier = isEmail ? identifier.toLowerCase() : identifier;
 
   const [user] = await db
     .select()
     .from(usersTable)
     .where(
       isEmail
-        ? eq(usersTable.email, normalizedIdentifier)
+        ? eq(usersTable.email, identifier.toLowerCase())
         : or(
-            eq(usersTable.phoneNumber, normalizedIdentifier),
-            eq(usersTable.email, normalizedIdentifier),
+            inArray(usersTable.phoneNumber, drcPhoneVariants(identifier)),
+            eq(usersTable.email, identifier.toLowerCase()),
           ),
     )
     .limit(1);
