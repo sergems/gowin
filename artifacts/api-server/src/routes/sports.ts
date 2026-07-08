@@ -58,6 +58,10 @@ router.get("/football/countries", async (_req, res): Promise<void> => {
       FROM leagues l
       INNER JOIN sports s ON s.id = l.sport_id AND LOWER(s.name) = 'football'
       INNER JOIN fixtures f ON f.league_id = l.id AND f.status = 'upcoming'
+        AND EXISTS (
+          SELECT 1 FROM markets m JOIN odds o ON o.market_id = m.id
+          WHERE m.fixture_id = f.id LIMIT 1
+        )
       WHERE l.external_id NOT IN ('3', '4', '683', '1')
       GROUP BY l.id, l.name, l.league_logo, l.country_name, l.country_logo, l.country_key
       HAVING COUNT(DISTINCT f.id) > 0
@@ -73,6 +77,10 @@ router.get("/football/countries", async (_req, res): Promise<void> => {
       FROM leagues l
       INNER JOIN sports s ON s.id = l.sport_id AND LOWER(s.name) = 'football'
       INNER JOIN fixtures f ON f.league_id = l.id AND f.status = 'upcoming'
+        AND EXISTS (
+          SELECT 1 FROM markets m JOIN odds o ON o.market_id = m.id
+          WHERE m.fixture_id = f.id LIMIT 1
+        )
       WHERE l.external_id IN ('3', '4', '683', '1')
       GROUP BY l.id, l.name, l.league_logo, l.external_id
       ORDER BY ARRAY_POSITION(ARRAY['3','4','683','1'], l.external_id)
