@@ -38,6 +38,19 @@ router.get("/user/referral", requireAuth, async (req: AuthRequest, res): Promise
   });
 });
 
+// ── GET /api/referral-config — public, no auth required ──────────────────────
+router.get("/referral-config", async (_req, res): Promise<void> => {
+  const config = await getReferralConfig();
+  // Only expose fields users need to see; never expose internal admin-only settings
+  res.json({
+    enabled: config.enabled,
+    signupBonus: config.signupBonus,
+    referrerRewardPercent: config.referrerRewardPercent,
+    maxReferralDeposits: config.maxReferralDeposits,
+    rolloverMultiplier: config.rolloverMultiplier,
+  });
+});
+
 // ── GET /api/admin/referral-settings ─────────────────────────────────────────
 router.get("/admin/referral-settings", requireAdmin, async (_req, res): Promise<void> => {
   const config = await getReferralConfig();

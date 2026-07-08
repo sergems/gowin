@@ -42,14 +42,10 @@ export default function ReferralPage() {
   const { data: config } = useQuery<ReferralConfig>({
     queryKey: ["referral-config-public"],
     queryFn: async () => {
-      const res = await fetch("/api/user/referral", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      // We'll fetch config from the same endpoint or use defaults
-      if (!res.ok) throw new Error("Failed");
+      const res = await fetch("/api/referral-config");
+      if (!res.ok) throw new Error("Failed to load referral config");
       return res.json();
     },
-    enabled: false, // we show defaults inline
   });
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -72,7 +68,7 @@ export default function ReferralPage() {
   const shareLink = async () => {
     if (!referralLink) return;
     if (navigator.share) {
-      await navigator.share({ title: "Join GoWin", text: "Sign up with my referral link and get a $2 welcome bonus!", url: referralLink });
+      await navigator.share({ title: "Join GoWin", text: `Sign up with my referral link and get a ${config?.signupBonus ?? 2} welcome bonus!`, url: referralLink });
     } else {
       await copyLink();
     }
@@ -105,12 +101,18 @@ export default function ReferralPage() {
             <div className="text-center p-3 bg-background rounded-lg border">
               <div className="text-2xl mb-1">👤</div>
               <div className="font-medium text-sm">2. They sign up</div>
-              <div className="text-xs text-muted-foreground mt-1">They create an account & get <strong>$2 bonus</strong></div>
+              <div className="text-xs text-muted-foreground mt-1">They create an account & get{" "}
+                <strong>{config ? `${config.signupBonus} bonus` : "$2 bonus"}</strong>
+              </div>
             </div>
             <div className="text-center p-3 bg-background rounded-lg border">
               <div className="text-2xl mb-1">💰</div>
-              <div className="font-medium text-sm">3. You earn 5%</div>
-              <div className="text-xs text-muted-foreground mt-1">5% of their first 5 deposits credited to you</div>
+              <div className="font-medium text-sm">
+                3. You earn {config ? `${config.referrerRewardPercent}%` : "5%"}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {config ? `${config.referrerRewardPercent}% of their first ${config.maxReferralDeposits} deposits` : "5% of their first 5 deposits"} credited to you
+              </div>
             </div>
           </div>
 
@@ -118,7 +120,7 @@ export default function ReferralPage() {
             <Info className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
             <div className="text-muted-foreground">
               All bonuses are credited to your <strong>Bonus Wallet</strong> and must be wagered{" "}
-              <strong>5× before withdrawal</strong>.
+              <strong>{config ? `${config.rolloverMultiplier}×` : "5×"} before withdrawal</strong>.
             </div>
           </div>
         </CardContent>
@@ -211,9 +213,9 @@ export default function ReferralPage() {
           </h3>
           <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
             <li>Your friend must sign up using your referral link or code</li>
-            <li>New users receive a $2 welcome bonus instantly on sign-up</li>
-            <li>You earn 5% of each of their first 5 deposits</li>
-            <li>All bonuses go to the Bonus Wallet and require 5× wagering before withdrawal</li>
+            <li>New users receive a ${config?.signupBonus ?? 2} welcome bonus instantly on sign-up</li>
+            <li>You earn {config?.referrerRewardPercent ?? 5}% of each of their first {config?.maxReferralDeposits ?? 5} deposits</li>
+            <li>All bonuses go to the Bonus Wallet and require {config?.rolloverMultiplier ?? 5}× wagering before withdrawal</li>
             <li>Self-referrals or fraudulent accounts will be disqualified</li>
             <li>GoWin reserves the right to modify or end the referral program at any time</li>
           </ul>
