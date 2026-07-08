@@ -215,7 +215,7 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
               const isLive = live?.status === "live";
               const isFinished = live?.status === "finished" || live?.status === "cancelled";
               const hasScore = live != null && (live.scoreHome != null || live.scoreAway != null);
-              const qualifies = config ? sel.odds > config.minQualifyingOdds : sel.odds > 1.5;
+              const qualifies = config ? sel.odds > config.minQualifyingOdds : sel.odds > 1.4;
 
               return (
                 <div

@@ -81,10 +81,10 @@ export const DEFAULT_WIN_BONUS_CONFIG: WinBonusConfig = {
   enabled: true,
   title: "Up to 1250% Win Bonus",
   description:
-    "The more qualifying selections you add to your accumulator, the bigger your Win Bonus and the bigger your potential payout.\n\nOnly selections with decimal odds greater than 1.50 count towards the Win Bonus.",
+    "The more qualifying selections you add to your accumulator, the bigger your Win Bonus and the bigger your potential payout.\n\nOnly selections with decimal odds greater than 1.40 count towards the Win Bonus.",
   minQualifyingSelections: 10,
   maxSelections: 50,
-  minQualifyingOdds: 1.5,
+  minQualifyingOdds: 1.4,
   maxPayout: 1_000_000,
   bonusTable: DEFAULT_BONUS_TABLE,
 };

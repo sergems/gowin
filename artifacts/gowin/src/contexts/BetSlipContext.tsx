@@ -140,7 +140,7 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
   const totalOdds = selections.reduce((acc, curr) => acc * curr.odds, 1);
   const baseWin = stake * totalOdds;
 
-  const minQualifyingOdds = winBonusConfig?.minQualifyingOdds ?? 1.5;
+  const minQualifyingOdds = winBonusConfig?.minQualifyingOdds ?? 1.4;
   const qualifyingSelections =
     selections.length >= 2
       ? selections.filter((s) => s.odds > minQualifyingOdds).length
@@ -148,7 +148,7 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
 
   const bonusPercentage =
     winBonusConfig?.enabled && selections.length >= 2
-      ? getBonusPercentage(qualifyingSelections, winBonusConfig ?? { minQualifyingSelections: 10, bonusTable: [], enabled: false, title: "", description: "", maxSelections: 50, minQualifyingOdds: 1.5, maxPayout: 1_000_000 })
+      ? getBonusPercentage(qualifyingSelections, winBonusConfig ?? { minQualifyingSelections: 10, bonusTable: [], enabled: false, title: "", description: "", maxSelections: 50, minQualifyingOdds: 1.4, maxPayout: 1_000_000 })
       : 0;
 
   const rawBonusAmount = baseWin * (bonusPercentage / 100);
