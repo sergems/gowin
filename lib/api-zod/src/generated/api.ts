@@ -28,7 +28,8 @@ export const registerBodyPasswordMin = 6;
 export const RegisterBody = zod.object({
   "username": zod.string().min(registerBodyUsernameMin),
   "email": zod.string().email(),
-  "password": zod.string().min(registerBodyPasswordMin)
+  "password": zod.string().min(registerBodyPasswordMin),
+  "referralCode": zod.string().optional()
 })
 
 
@@ -168,7 +169,9 @@ export const ListUsersResponse = zod.object({
   "wallet": zod.object({
   "id": zod.number(),
   "userId": zod.number(),
-  "balance": zod.number()
+  "balance": zod.number(),
+  "bonusBalance": zod.number().optional(),
+  "bonusRolloverRemaining": zod.number().optional()
 })
 })),
   "total": zod.number(),
@@ -197,7 +200,9 @@ export const GetUserResponse = zod.object({
   "wallet": zod.object({
   "id": zod.number(),
   "userId": zod.number(),
-  "balance": zod.number()
+  "balance": zod.number(),
+  "bonusBalance": zod.number().optional(),
+  "bonusRolloverRemaining": zod.number().optional()
 })
 })
 
@@ -223,7 +228,9 @@ export const AdminResetPasswordResponse = zod.object({
 export const GetMyWalletResponse = zod.object({
   "id": zod.number(),
   "userId": zod.number(),
-  "balance": zod.number()
+  "balance": zod.number(),
+  "bonusBalance": zod.number().optional(),
+  "bonusRolloverRemaining": zod.number().optional()
 })
 
 
@@ -269,7 +276,9 @@ export const CreditWalletBody = zod.object({
 export const CreditWalletResponse = zod.object({
   "id": zod.number(),
   "userId": zod.number(),
-  "balance": zod.number()
+  "balance": zod.number(),
+  "bonusBalance": zod.number().optional(),
+  "bonusRolloverRemaining": zod.number().optional()
 })
 
 
@@ -289,7 +298,9 @@ export const DebitWalletBody = zod.object({
 export const DebitWalletResponse = zod.object({
   "id": zod.number(),
   "userId": zod.number(),
-  "balance": zod.number()
+  "balance": zod.number(),
+  "bonusBalance": zod.number().optional(),
+  "bonusRolloverRemaining": zod.number().optional()
 })
 
 
@@ -303,7 +314,9 @@ export const GetUserWalletParams = zod.object({
 export const GetUserWalletResponse = zod.object({
   "id": zod.number(),
   "userId": zod.number(),
-  "balance": zod.number()
+  "balance": zod.number(),
+  "bonusBalance": zod.number().optional(),
+  "bonusRolloverRemaining": zod.number().optional()
 })
 
 

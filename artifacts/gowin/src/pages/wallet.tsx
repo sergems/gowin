@@ -358,6 +358,17 @@ export default function Wallet() {
                   {isRestrictedRole ? t("wallet.balance_allocated") : t("wallet.balance")}
                 </p>
                 <h2 className="text-5xl font-black tracking-tight">{formatCurrency(wallet?.balance ?? 0)}</h2>
+                {(wallet?.bonusBalance ?? 0) > 0 && (
+                  <div className="mt-2 flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">Bonus Wallet:</span>
+                    <span className="font-semibold text-amber-500">{formatCurrency(wallet?.bonusBalance ?? 0)}</span>
+                    {(wallet?.bonusRolloverRemaining ?? 0) > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        (${Number(wallet?.bonusRolloverRemaining ?? 0).toFixed(2)} rollover remaining)
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>

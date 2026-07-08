@@ -990,6 +990,8 @@ components:
         password:
           type: string
           minLength: 6
+        referralCode:
+          type: string
 
     LoginInput:
       type: object
@@ -1152,6 +1154,12 @@ components:
         userId:
           type: integer
         balance:
+          type: number
+          format: double
+        bonusBalance:
+          type: number
+          format: double
+        bonusRolloverRemaining:
           type: number
           format: double
 
@@ -1665,6 +1673,38 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/WinBonusTier"
+
+    ReferralConfig:
+      type: object
+      required: [enabled, signupBonus, referrerRewardPercent, maxReferralDeposits, rolloverMultiplier]
+      properties:
+        enabled:
+          type: boolean
+        signupBonus:
+          type: number
+          format: double
+        referrerRewardPercent:
+          type: number
+          format: double
+        maxReferralDeposits:
+          type: integer
+        rolloverMultiplier:
+          type: integer
+
+    ReferralStats:
+      type: object
+      required: [referralCode, referredCount, totalRewards, totalDepositsRewarded]
+      properties:
+        referralCode:
+          type: string
+          nullable: true
+        referredCount:
+          type: integer
+        totalRewards:
+          type: number
+          format: double
+        totalDepositsRewarded:
+          type: integer
 
     WinBonusCalculation:
       type: object

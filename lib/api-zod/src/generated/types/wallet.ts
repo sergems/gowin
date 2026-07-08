@@ -10,4 +10,6 @@ export interface Wallet {
   id: number;
   userId: number;
   balance: number;
+  bonusBalance?: number;
+  bonusRolloverRemaining?: number;
 }

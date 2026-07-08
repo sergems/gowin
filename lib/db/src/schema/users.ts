@@ -26,6 +26,8 @@ export const usersTable = pgTable("users", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   branchId: integer("branch_id"),
   commissionRate: numeric("commission_rate", { precision: 5, scale: 2 }).default("0.00"),
+  referralCode: text("referral_code").unique(),
+  referredBy: integer("referred_by"),
 });
 
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true, createdAt: true });

@@ -7,6 +7,7 @@ import { signToken, requireAuth, getJwtSecret, type AuthRequest } from "../middl
 import { RegisterBody, LoginBody } from "@workspace/api-zod";
 import { sendOtpEmail, sendAccountLockedEmail } from "../lib/email";
 import { logger } from "../lib/logger";
+import { getReferralConfig, generateUniqueReferralCode, creditBonusWallet } from "../lib/referral";
 
 const router = Router();
 
@@ -60,6 +61,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     return;
   }
   const { username, email, password } = parsed.data;
+  const referralCodeInput = typeof req.body.referralCode === "string" ? req.body.referralCode.trim().toUpperCase() : null;
 
   const existing = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
   if (existing.length > 0) {
@@ -73,14 +75,47 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     return;
   }
 
+  // Resolve referrer
+  let referredBy: number | null = null;
+  if (referralCodeInput) {
+    const [referrer] = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.referralCode, referralCodeInput))
+      .limit(1);
+    if (referrer) referredBy = referrer.id;
+  }
+
   const passwordHash = await bcrypt.hash(password, 10);
   const publicId = await generatePublicId();
+  const myReferralCode = await generateUniqueReferralCode();
+
   const [user] = await db
     .insert(usersTable)
-    .values({ username, email, passwordHash, role: "user", publicId })
+    .values({
+      username,
+      email,
+      passwordHash,
+      role: "user",
+      publicId,
+      referralCode: myReferralCode,
+      ...(referredBy ? { referredBy } : {}),
+    })
     .returning();
 
   await db.insert(walletsTable).values({ userId: user.id, balance: "0.00" });
+
+  // Credit signup bonus to new user if referral is active
+  if (referredBy) {
+    try {
+      const config = await getReferralConfig();
+      if (config.enabled && config.signupBonus > 0) {
+        await creditBonusWallet(user.id, config.signupBonus, "Welcome bonus for signing up via referral link", config.rolloverMultiplier);
+      }
+    } catch (err) {
+      logger.error({ err }, "Failed to credit referral signup bonus");
+    }
+  }
 
   const token = signToken(user.id, user.role, null);
   res.status(201).json({ token, user: formatUser(user) });

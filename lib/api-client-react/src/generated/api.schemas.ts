@@ -19,6 +19,7 @@ export interface RegisterInput {
   email: string;
   /** @minLength 6 */
   password: string;
+  referralCode?: string;
 }
 
 export interface LoginInput {
@@ -72,6 +73,8 @@ export interface Wallet {
   id: number;
   userId: number;
   balance: number;
+  bonusBalance?: number;
+  bonusRolloverRemaining?: number;
 }
 
 export interface UserDetail {
@@ -446,6 +449,21 @@ export interface WinBonusConfig {
   minQualifyingOdds: number;
   maxPayout: number;
   bonusTable: WinBonusTier[];
+}
+
+export interface ReferralConfig {
+  enabled: boolean;
+  signupBonus: number;
+  referrerRewardPercent: number;
+  maxReferralDeposits: number;
+  rolloverMultiplier: number;
+}
+
+export interface ReferralStats {
+  referralCode: string | null;
+  referredCount: number;
+  totalRewards: number;
+  totalDepositsRewarded: number;
 }
 
 export interface WinBonusCalculation {

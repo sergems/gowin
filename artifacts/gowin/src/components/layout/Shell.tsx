@@ -19,7 +19,7 @@ import {
   Activity, LayoutDashboard, History, Wallet, Trophy, LogOut, Users, Settings, X,
   ArrowLeftRight, Ticket, UserCircle, AlertTriangle, Banknote, SlidersHorizontal,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, ChevronDown, ChevronRight, Globe, Shield, CheckCircle2,
-  Home, Menu, Images, Printer, Clock, Building2, Target, BarChart3, FileText, DollarSign, Radio, Bell, Sparkles,
+  Home, Menu, Images, Printer, Clock, Building2, Target, BarChart3, FileText, DollarSign, Radio, Bell, Sparkles, Share2,
 } from "lucide-react";
 import type { PlacedBetDetails } from "@/contexts/BetSlipContext";
 import { printBetSlip } from "@/lib/printBetSlip";
@@ -340,6 +340,7 @@ export function Shell({ children }: { children: ReactNode }) {
     { href: "/admin/fixture-update",  icon: Clock,             label: t("nav.fixture_update"), match: (l: string) => l === "/admin/fixture-update" },
     { href: "/admin/api-monitor",     icon: BarChart3,         label: t("nav.api_monitor"),    match: (l: string) => l === "/admin/api-monitor" },
     { href: "/admin/win-bonus",       icon: Sparkles,          label: "Win Bonus",             match: (l: string) => l === "/admin/win-bonus" },
+    { href: "/admin/referral",        icon: Share2,            label: "Referral Program",      match: (l: string) => l === "/admin/referral" },
     { href: "/admin/settings",        icon: SlidersHorizontal, label: t("nav.settings"),       match: (l: string) => l === "/admin/settings" },
   ] : [];
 
@@ -602,6 +603,16 @@ export function Shell({ children }: { children: ReactNode }) {
                   ${location.startsWith("/wallet") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
                 <Wallet className="w-4 h-4 shrink-0" />
                 {open && <span className="flex-1">{t("nav.wallet")}</span>}
+              </Link>
+            )}
+
+            {user && user.role === "user" && (
+              <Link href="/referral" title={!open ? "Refer & Earn" : undefined} onClick={onNav}
+                className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                  ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
+                  ${location.startsWith("/referral") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
+                <Share2 className="w-4 h-4 shrink-0" />
+                {open && <span className="flex-1">Refer &amp; Earn</span>}
               </Link>
             )}
 

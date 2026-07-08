@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db, pawapayDepositsTable, walletsTable, transactionsTable, webhookLogsTable, withdrawalsTable, usersTable } from "@workspace/db";
+import { processReferralReward } from "../lib/referral";
 import { notifyPayoutCompleted, notifyPayoutFailed, notifyDepositCompleted } from "../lib/notifications";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 import {
@@ -263,6 +264,11 @@ router.get("/pawapay/deposits/:depositId", requireAuth, async (req: AuthRequest,
           .update(pawapayDepositsTable)
           .set({ walletCredited: true, status: "COMPLETED" })
           .where(eq(pawapayDepositsTable.id, deposit.id));
+
+        // Process referral reward for referrer (fire-and-forget)
+        processReferralReward(deposit.userId, parseFloat(deposit.amount)).catch((err) =>
+          logger.error({ err }, "processReferralReward (polling) failed"),
+        );
       }
     }
 
@@ -326,6 +332,10 @@ router.post("/pawapay/webhook", async (req, res): Promise<void> => {
               .set({ walletCredited: true, status: "COMPLETED", pawapayStatus: status, updatedAt: new Date() })
               .where(eq(pawapayDepositsTable.id, deposit.id));
             notifyDepositCompleted(deposit.userId, deposit.amount, deposit.currency ?? "USD", deposit.id).catch(() => {});
+            // Process referral reward for referrer (fire-and-forget)
+            processReferralReward(deposit.userId, parseFloat(deposit.amount)).catch((err) =>
+              logger.error({ err }, "processReferralReward (webhook) failed"),
+            );
           }
         } else if (deposit && status === "FAILED") {
           await db

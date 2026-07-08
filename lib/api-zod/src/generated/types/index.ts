@@ -54,6 +54,8 @@ export * from './messageResponse';
 export * from './odds';
 export * from './oddsInput';
 export * from './oddsUpdate';
+export * from './referralConfig';
+export * from './referralStats';
 export * from './registerInput';
 export * from './resetPasswordInput';
 export * from './resetTokenPayload';

@@ -41,6 +41,8 @@ import AdminFixtureUpdate from "@/pages/admin/fixture-update";
 import AdminBranches from "@/pages/admin/BranchesPage";
 import ApiMonitorPage from "@/pages/admin/ApiMonitorPage";
 import AdminWinBonus from "@/pages/admin/win-bonus";
+import AdminReferral from "@/pages/admin/referral";
+import ReferralPage from "@/pages/referral";
 
 // Branch Admin Pages
 import BranchDashboard from "@/pages/branch/DashboardPage";
@@ -191,6 +193,8 @@ function Router() {
         <Route path="/admin/slides" component={() => <ProtectedRoute component={AdminSlides} adminOnly />} />
         <Route path="/admin/api-monitor" component={() => <ProtectedRoute component={ApiMonitorPage} adminOnly />} />
         <Route path="/admin/win-bonus" component={() => <ProtectedRoute component={AdminWinBonus} adminOnly />} />
+        <Route path="/admin/referral" component={() => <ProtectedRoute component={AdminReferral} adminOnly />} />
+        <Route path="/referral" component={() => <ProtectedRoute component={ReferralPage} allowedRoles={["user", "admin"]} />} />
 
         {/* Branch Admin Routes */}
         <Route path="/branch" component={() => <ProtectedRoute component={BranchDashboard} allowedRoles={["branch_admin"]} />} />

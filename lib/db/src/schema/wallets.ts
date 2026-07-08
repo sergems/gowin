@@ -10,6 +10,8 @@ export const transactionTypeEnum = pgEnum("transaction_type", [
   "bet_won",
   "bet_refund",
   "voucher_redeem",
+  "bonus_credit",
+  "bonus_debit",
 ]);
 
 export const walletsTable = pgTable("wallets", {
@@ -17,6 +19,8 @@ export const walletsTable = pgTable("wallets", {
   userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   balance: numeric("balance", { precision: 15, scale: 2 }).notNull().default("0.00"),
   currency: varchar("currency", { length: 3 }).notNull().default("USD"),
+  bonusBalance: numeric("bonus_balance", { precision: 15, scale: 2 }).notNull().default("0.00"),
+  bonusRolloverRemaining: numeric("bonus_rollover_remaining", { precision: 15, scale: 2 }).notNull().default("0.00"),
 });
 
 export const transactionsTable = pgTable("transactions", {

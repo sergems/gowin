@@ -25,6 +25,7 @@ import pawapayRouter from "./pawapay";
 import pawapaySettingsRouter from "./pawapaySettings";
 import notificationsRouter from "./notifications";
 import winBonusRouter from "./winBonus";
+import referralRouter from "./referral";
 
 const router: IRouter = Router();
 
@@ -54,5 +55,6 @@ router.use(pawapayRouter);
 router.use(pawapaySettingsRouter);
 router.use(notificationsRouter);
 router.use(winBonusRouter);
+router.use(referralRouter);
 
 export default router;
