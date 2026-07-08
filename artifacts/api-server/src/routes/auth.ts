@@ -108,21 +108,18 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { username, email, password } = parsed.data;
+  const { username, firstName, lastName, email, password } = parsed.data;
   const referralCodeInput = typeof req.body.referralCode === "string" ? req.body.referralCode.trim().toUpperCase() : null;
 
-  // Normalise phone: store in canonical E.164 (+243XXXXXXXXX) if supplied.
-  // Reject inputs that look like a number but cannot be parsed as a valid DRC number.
-  const rawPhone = typeof parsed.data.phoneNumber === "string" ? parsed.data.phoneNumber.trim() : null;
-  let phoneNumber: string | null = null;
-  if (rawPhone) {
-    const national = parseDrcNational(rawPhone);
-    if (!national) {
-      res.status(400).json({ error: "Invalid phone number — please use a DRC number (e.g. 08X XXX XXXX or +243 8X XXX XXXX)" });
-      return;
-    }
-    phoneNumber = `+243${national}`;
+  // Normalise phone: store in canonical E.164 (+243XXXXXXXXX).
+  // phoneNumber is required — reject if it cannot be parsed as a valid DRC number.
+  const rawPhone = parsed.data.phoneNumber.trim();
+  const national = parseDrcNational(rawPhone);
+  if (!national) {
+    res.status(400).json({ error: "Invalid phone number — please use a DRC number (e.g. 08X XXX XXXX or +243 8X XXX XXXX)" });
+    return;
   }
+  const phoneNumber = `+243${national}`;
 
   const existing = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
   if (existing.length > 0) {
@@ -167,12 +164,14 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     .insert(usersTable)
     .values({
       username,
+      firstName,
+      lastName,
       email,
       passwordHash,
       role: "user",
       publicId,
       referralCode: myReferralCode,
-      ...(phoneNumber ? { phoneNumber } : {}),
+      phoneNumber,
       ...(referredBy ? { referredBy } : {}),
     })
     .returning();

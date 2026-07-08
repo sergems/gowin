@@ -11,6 +11,8 @@ import { Gift } from "lucide-react";
 
 export default function Register() {
   const [username, setUsername] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
@@ -20,7 +22,6 @@ export default function Register() {
   const { toast } = useToast();
   const search = useSearch();
 
-  // Pre-fill referral code from URL ?ref=XXXXXXXX
   useEffect(() => {
     const params = new URLSearchParams(search);
     const ref = params.get("ref");
@@ -32,8 +33,10 @@ export default function Register() {
     try {
       await register({
         username,
+        firstName,
+        lastName,
         email,
-        phoneNumber: phoneNumber.trim() || undefined,
+        phoneNumber,
         password,
         referralCode: referralCode.trim() || undefined,
       });
@@ -66,6 +69,32 @@ export default function Register() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Name row */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name</Label>
+                <Input
+                  id="firstName"
+                  placeholder="Jean"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                  autoComplete="given-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  placeholder="Mukeba"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                  autoComplete="family-name"
+                />
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
               <Input
@@ -75,24 +104,26 @@ export default function Register() {
                 onChange={(e) => setUsername(e.target.value)}
                 required
                 minLength={3}
+                autoComplete="username"
               />
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="phone">
-                Phone Number <span className="text-muted-foreground font-normal">(optional)</span>
-              </Label>
+              <Label htmlFor="phone">Phone Number</Label>
               <Input
                 id="phone"
                 type="tel"
                 placeholder="08X XXX XXXX"
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
+                required
                 autoComplete="tel"
               />
               <p className="text-xs text-muted-foreground">
-                Used to log in via phone — any DRC format accepted (08X, +243…, 243…)
+                Any DRC format accepted — 08X XXX XXXX, +243…, or 243…
               </p>
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -102,8 +133,10 @@ export default function Register() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                autoComplete="email"
               />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
@@ -113,8 +146,10 @@ export default function Register() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
+                autoComplete="new-password"
               />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="referralCode">
                 Referral Code <span className="text-muted-foreground font-normal">(optional)</span>
@@ -132,6 +167,7 @@ export default function Register() {
                 </p>
               )}
             </div>
+
             <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isLoading}>
               {isLoading ? "Creating account..." : "Sign Up"}
             </Button>
