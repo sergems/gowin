@@ -37,7 +37,7 @@ export const RegisterBody = zod.object({
  * @summary Login and get JWT token
  */
 export const LoginBody = zod.object({
-  "email": zod.string(),
+  "identifier": zod.string(),
   "password": zod.string()
 })
 

@@ -9,7 +9,7 @@ import { AlertCircle, Lock, ShieldOff } from "lucide-react";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 
 export default function Login() {
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const { login, isLoading } = useAuth();
   const [, setLocation] = useLocation();
@@ -26,7 +26,7 @@ export default function Login() {
     setLockedError(false);
     setInlineError(null);
     try {
-      const result = await login({ email, password });
+      const result = await login({ identifier, password });
       if (result?.mustChangePassword) {
         setLocation("/change-password");
       } else {
@@ -46,6 +46,11 @@ export default function Login() {
     }
   };
 
+  // For the "forgot password" link, pass the value only if it looks like an email
+  const forgotPasswordHref = identifier.includes("@")
+    ? `/forgot-password?email=${encodeURIComponent(identifier)}`
+    : "/forgot-password";
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md border-border bg-card">
@@ -63,7 +68,7 @@ export default function Login() {
                   <p className="text-sm text-muted-foreground mt-1">{t("auth.account_locked_desc")}</p>
                 </div>
               </div>
-              <Link href={`/forgot-password?email=${encodeURIComponent(email)}`}>
+              <Link href={forgotPasswordHref}>
                 <Button className="w-full">{t("auth.reset_password")}</Button>
               </Link>
               <button
@@ -77,20 +82,21 @@ export default function Login() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">{t("common.email")}</Label>
+                <Label htmlFor="identifier">Phone number or Email</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="m@example.com"
-                  value={email}
-                  onChange={(e) => { setEmail(e.target.value); clearError(); }}
+                  id="identifier"
+                  type="text"
+                  placeholder="07xxxxxxxx or email@example.com"
+                  value={identifier}
+                  onChange={(e) => { setIdentifier(e.target.value); clearError(); }}
+                  autoComplete="username"
                   required
                 />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">{t("common.password")}</Label>
-                  <Link href="/forgot-password" className="text-xs text-primary hover:underline">
+                  <Link href={forgotPasswordHref} className="text-xs text-primary hover:underline">
                     {t("auth.forgot_password")}
                   </Link>
                 </div>
@@ -99,6 +105,7 @@ export default function Login() {
                   type="password"
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); clearError(); }}
+                  autoComplete="current-password"
                   required
                 />
               </div>

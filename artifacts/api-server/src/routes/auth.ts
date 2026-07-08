@@ -2,7 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { db, usersTable, walletsTable, passwordResetOtpsTable } from "@workspace/db";
-import { eq, and, gt, isNull } from "drizzle-orm";
+import { eq, and, gt, isNull, or } from "drizzle-orm";
 import { signToken, requireAuth, getJwtSecret, type AuthRequest } from "../middlewares/auth";
 import { RegisterBody, LoginBody } from "@workspace/api-zod";
 import { sendOtpEmail, sendAccountLockedEmail } from "../lib/email";
@@ -128,9 +128,27 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { email, password } = parsed.data;
+  const { identifier: rawIdentifier, password } = parsed.data;
+  const identifier = rawIdentifier.trim();
 
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
+  // Resolve by phone (priority) or email.
+  // Email path: normalize to lowercase for case-insensitive match.
+  // Phone path: try phoneNumber first, fall back to email in case user types their email without "@" being detected.
+  const isEmail = identifier.includes("@");
+  const normalizedIdentifier = isEmail ? identifier.toLowerCase() : identifier;
+
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(
+      isEmail
+        ? eq(usersTable.email, normalizedIdentifier)
+        : or(
+            eq(usersTable.phoneNumber, normalizedIdentifier),
+            eq(usersTable.email, normalizedIdentifier),
+          ),
+    )
+    .limit(1);
   if (!user) {
     res.status(401).json({ error: "Invalid credentials" });
     return;
@@ -161,7 +179,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
       .where(eq(usersTable.id, user.id));
 
     if (shouldLock) {
-      sendAccountLockedEmail(user.email, user.username).catch(() => {});
+      sendAccountLockedEmail(user.email ?? "", user.username).catch(() => {});
       res.status(403).json({ error: "Your account has been locked after too many failed attempts. Please reset your password to regain access.", code: "account_locked" });
       return;
     }

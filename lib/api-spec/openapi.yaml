@@ -995,10 +995,11 @@ components:
 
     LoginInput:
       type: object
-      required: [email, password]
+      required: [identifier, password]
       properties:
-        email:
+        identifier:
           type: string
+          description: Phone number or email address
         password:
           type: string
 

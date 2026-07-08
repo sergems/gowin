@@ -23,7 +23,8 @@ export interface RegisterInput {
 }
 
 export interface LoginInput {
-  email: string;
+  /** Phone number or email address */
+  identifier: string;
   password: string;
 }
 

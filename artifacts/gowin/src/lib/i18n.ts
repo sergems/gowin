@@ -223,7 +223,7 @@ const translations = {
     "common.no_results": "No results found.",
     "common.close": "Close",
 
-    "auth.login_desc": "Enter your email below to login to your account",
+    "auth.login_desc": "Enter your phone number or email to login",
     "auth.sign_in": "Sign In",
     "auth.signing_in": "Signing in...",
     "auth.forgot_password": "Forgot password?",
@@ -610,7 +610,7 @@ const translations = {
     "common.no_results": "Aucun résultat.",
     "common.close": "Fermer",
 
-    "auth.login_desc": "Entrez votre email pour vous connecter",
+    "auth.login_desc": "Entrez votre numéro ou email pour vous connecter",
     "auth.sign_in": "Se connecter",
     "auth.signing_in": "Connexion en cours...",
     "auth.forgot_password": "Mot de passe oublié ?",
