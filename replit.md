@@ -7,7 +7,7 @@ A sports betting platform with live fixtures, bet placement, wallet management, 
 To get this project running on Replit from a fresh import:
 
 1. **Install dependencies** — `pnpm install` (run once; pnpm workspaces handle all packages)
-2. **Database** — Replit provides PostgreSQL automatically; `DATABASE_URL` is injected at runtime. Push the schema first (`pnpm --filter @workspace/db run push`), then seed from the dump: `psql $DATABASE_URL -f bkt.sql`.
+2. **Database** — Replit provides PostgreSQL automatically; `DATABASE_URL` is injected at runtime. Push the schema first (`pnpm --filter @workspace/db run push`), then seed from the dump: `psql $DATABASE_URL -f bt.sql`.
    - **FK-ordering caveat**: `bkt.sql`'s `COPY` statements populate `fixtures`/`leagues`/`markets`/etc. *before* the tables they reference (`sports`/`teams` are copied near the end of the file); the dump relies on adding all FK constraints via `ALTER TABLE ... ADD CONSTRAINT` at the very end. Since `drizzle-kit push` already creates those FKs beforehand, a direct `psql -f bkt.sql` will fail most inserts with FK violations. Work around it once per fresh import:
      ```sql
      -- drop existing FKs so COPY can insert out of order
