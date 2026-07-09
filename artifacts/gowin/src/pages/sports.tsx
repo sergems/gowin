@@ -158,13 +158,34 @@ function OddsButton({
   );
 }
 
+// ── 1UP / 2UP virtual market builder ─────────────────────────────────────────
+
+const UP_CORE_SELS = new Set(["Home 1UP", "Home 2UP", "Away 1UP", "Away 2UP"]);
+
+function buildVirtualMarkets(rawMarkets: any[]): any[] {
+  const result: any[] = [];
+  for (const m of rawMarkets) {
+    if (m.marketType === "1X2") {
+      const core = (m.odds ?? []).filter((o: any) => !UP_CORE_SELS.has(o.selection));
+      const oneUp = (m.odds ?? []).filter((o: any) => o.selection === "Home 1UP" || o.selection === "Away 1UP");
+      const twoUp = (m.odds ?? []).filter((o: any) => o.selection === "Home 2UP" || o.selection === "Away 2UP");
+      if (core.length > 0) result.push({ ...m, odds: core });
+      if (oneUp.length > 0) result.push({ ...m, id: String(m.id) + "_1up", marketType: "1UP", odds: oneUp });
+      if (twoUp.length > 0) result.push({ ...m, id: String(m.id) + "_2up", marketType: "2UP", odds: twoUp });
+    } else {
+      result.push(m);
+    }
+  }
+  return result;
+}
+
 // ── Fixture card ──────────────────────────────────────────────────────────────
 
 function FixtureCard({ fixture }: { fixture: any }) {
   const isLive = fixture.status === "live";
   const isFinished = fixture.status === "finished";
   const showScore = isLive || isFinished;
-  const markets: any[] = fixture.markets ?? [];
+  const markets: any[] = buildVirtualMarkets(fixture.markets ?? []);
   const [expanded, setExpanded] = useState(false);
   const [activeMarketIdx, setActiveMarketIdx] = useState(0);
 

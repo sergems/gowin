@@ -300,6 +300,16 @@ export default function History() {
                                               FT
                                             </span>
                                           )}
+                                          {(sel.selection?.includes("1UP") || sel.selection?.includes("2UP")) && (
+                                            <span className="text-[9px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded leading-none">
+                                              {sel.selection?.includes("1UP") ? "1UP" : "2UP"}
+                                            </span>
+                                          )}
+                                          {sel.upWon && (
+                                            <span className="text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded leading-none">
+                                              ✓ LOCKED IN
+                                            </span>
+                                          )}
                                         </div>
                                         <div className="text-sm text-muted-foreground truncate">
                                           {sel.fixture?.homeTeam?.name ?? "—"} vs {sel.fixture?.awayTeam?.name ?? "—"}

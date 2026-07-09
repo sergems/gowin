@@ -259,7 +259,14 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
                   )}
 
                   <p className="text-xs text-muted-foreground mb-1 pr-6">{sel.fixtureName}</p>
-                  <p className="font-semibold text-sm leading-tight">{sel.selection}</p>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <p className="font-semibold text-sm leading-tight">{sel.selection}</p>
+                    {(sel.selection.includes("1UP") || sel.selection.includes("2UP")) && (
+                      <span className="text-[9px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded leading-none shrink-0">
+                        {sel.selection.includes("1UP") ? "1UP" : "2UP"}
+                      </span>
+                    )}
+                  </div>
                   {(sel.competitionName || sel.startTime) && (
                     <p className="text-[11px] text-muted-foreground/70 mt-0.5 mb-1 leading-tight">
                       {[

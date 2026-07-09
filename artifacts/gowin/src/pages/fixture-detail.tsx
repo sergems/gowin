@@ -96,6 +96,8 @@ const CATEGORIES: { label: string; types?: string[]; prefix?: string }[] = [
     label: "Popular",
     types: [
       "1X2",
+      "1UP",
+      "2UP",
       "Both Teams To Score",
       "Over/Under 2.5",
       "Over/Under 1.5",
@@ -107,6 +109,8 @@ const CATEGORIES: { label: string; types?: string[]; prefix?: string }[] = [
     label: "Match",
     types: [
       "1X2",
+      "1UP",
+      "2UP",
       "Double Chance",
       "Draw No Bet",
       "Both Teams To Score",
@@ -283,6 +287,29 @@ export default function FixtureDetail() {
   const marketsWithOdds = markets.filter((m) => (m.odds ?? []).length > 0);
   const marketsByType = new Map<string, any>();
   for (const m of marketsWithOdds) marketsByType.set(m.marketType, m);
+
+  // Split 1X2 market into core (Home/Draw/Away) + virtual 1UP and 2UP markets
+  const _UP_SELS = new Set(["Home 1UP", "Home 2UP", "Away 1UP", "Away 2UP"]);
+  const _raw1X2 = marketsByType.get("1X2");
+  if (_raw1X2) {
+    const _coreOdds = (_raw1X2.odds ?? []).filter((o: any) => !_UP_SELS.has(o.selection));
+    const _oneUpOdds = (_raw1X2.odds ?? []).filter((o: any) => o.selection === "Home 1UP" || o.selection === "Away 1UP");
+    const _twoUpOdds = (_raw1X2.odds ?? []).filter((o: any) => o.selection === "Home 2UP" || o.selection === "Away 2UP");
+    const _core1X2 = { ..._raw1X2, odds: _coreOdds };
+    marketsByType.set("1X2", _core1X2);
+    const _idx = marketsWithOdds.findIndex((m: any) => m.marketType === "1X2");
+    if (_idx !== -1) marketsWithOdds[_idx] = _core1X2;
+    if (_oneUpOdds.length > 0) {
+      const _mkt1UP = { ..._raw1X2, id: String(_raw1X2.id) + "_1up", marketType: "1UP", odds: _oneUpOdds };
+      marketsByType.set("1UP", _mkt1UP);
+      marketsWithOdds.push(_mkt1UP);
+    }
+    if (_twoUpOdds.length > 0) {
+      const _mkt2UP = { ..._raw1X2, id: String(_raw1X2.id) + "_2up", marketType: "2UP", odds: _twoUpOdds };
+      marketsByType.set("2UP", _mkt2UP);
+      marketsWithOdds.push(_mkt2UP);
+    }
+  }
 
   function getMarketsForCategory(cat: (typeof CATEGORIES)[number]): any[] {
     if (cat.prefix) return marketsWithOdds.filter((m) => m.marketType.startsWith(cat.prefix!));

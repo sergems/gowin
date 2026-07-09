@@ -266,6 +266,7 @@ router.get("/bets/my", requireAuth, async (req: AuthRequest, res): Promise<void>
     selectionsByBet[s.betId].push({
       id: s.id, betId: s.betId, fixtureId: s.fixtureId,
       market: s.market, selection: s.selection, odds: parseFloat(s.odds),
+      upWon: s.upWon,
       fixture: fixtureMap[s.fixtureId] || null,
     });
   }
@@ -319,6 +320,7 @@ router.get("/admin/bets/lookup/:code", requireAdminOrManager, async (req: AuthRe
     selections: selections.map((s) => ({
       id: s.id, betId: s.betId, fixtureId: s.fixtureId,
       market: s.market, selection: s.selection, odds: parseFloat(s.odds),
+      upWon: s.upWon,
       fixture: fixtureMap[s.fixtureId] || null,
     })),
   });
@@ -397,6 +399,7 @@ router.get("/bets/:id", requireAuth, async (req: AuthRequest, res): Promise<void
     selections: selections.map((s) => ({
       id: s.id, betId: s.betId, fixtureId: s.fixtureId,
       market: s.market, selection: s.selection, odds: parseFloat(s.odds),
+      upWon: s.upWon,
       fixture: fixtureMap[s.fixtureId] || null,
     })),
   });
