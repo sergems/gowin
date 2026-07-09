@@ -551,13 +551,22 @@ export function Shell({ children }: { children: ReactNode }) {
             )}
 
             {!isStaffRole && (
-              <Link href="/live" title={!open ? t("nav.live") : undefined} onClick={onNav}
-                className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
-                  ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
-                  ${location.startsWith("/live") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
+              <div
+                title={t("nav.coming_soon")}
+                aria-disabled="true"
+                className={`flex items-center gap-3 rounded-md text-sm font-medium cursor-not-allowed opacity-50
+                  ${open ? "px-3 py-2" : "px-0 py-2 justify-center"} text-muted-foreground`}
+              >
                 <Radio className="w-4 h-4 shrink-0" />
-                {open && <span className="flex-1">{t("nav.live")}</span>}
-              </Link>
+                {open && (
+                  <span className="flex-1 flex items-center gap-2">
+                    {t("nav.live")}
+                    <span className="text-[10px] uppercase tracking-wide bg-muted px-1.5 py-0.5 rounded">
+                      {t("nav.coming_soon")}
+                    </span>
+                  </span>
+                )}
+              </div>
             )}
 
             {!isStaffRole && (
