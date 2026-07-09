@@ -44,6 +44,32 @@ function isInternational(countryName: string | null): boolean {
 
 const UEFA_FEATURED_EXTERNAL_IDS = ['3', '4', '683', '1'];
 
+// AllSportsAPI's country_logo for the UK home nations is the Union Jack, not each
+// nation's own flag. Force the correct per-nation flag for these.
+const COUNTRY_FLAG_OVERRIDES: Record<string, string> = {
+  "england": "https://flagcdn.com/40x30/gb-eng.png",
+  "scotland": "https://flagcdn.com/40x30/gb-sct.png",
+  "wales": "https://flagcdn.com/40x30/gb-wls.png",
+  "northern ireland": "https://flagcdn.com/40x30/gb-nir.png",
+};
+
+// AllSportsAPI's league_logo for some competitions is out of date. Override
+// with a current, locally-hosted crest (served by the gowin frontend).
+const LEAGUE_LOGO_OVERRIDES: Record<string, string> = {
+  "premier league": "/league-logos/premier-league.png",
+  "championship": "/league-logos/championship.png",
+};
+
+function resolveCountryLogo(name: string | null, dbLogo: string | null): string | null {
+  const key = (name ?? "").toLowerCase().trim();
+  return COUNTRY_FLAG_OVERRIDES[key] ?? dbLogo;
+}
+
+function resolveLeagueLogo(name: string, dbLogo: string | null): string | null {
+  const key = name.toLowerCase().trim();
+  return LEAGUE_LOGO_OVERRIDES[key] ?? dbLogo;
+}
+
 router.get("/football/countries", async (_req, res): Promise<void> => {
   const [rows, featuredRows] = await Promise.all([
     db.execute(sql`
@@ -90,7 +116,7 @@ router.get("/football/countries", async (_req, res): Promise<void> => {
   const featured = (featuredRows.rows as any[]).map((row) => ({
     id: row.id,
     name: row.name,
-    logo: row.league_logo,
+    logo: resolveLeagueLogo(row.name, row.league_logo),
     externalId: row.external_id,
     fixtureCount: Number(row.fixture_count),
   }));
@@ -102,7 +128,7 @@ router.get("/football/countries", async (_req, res): Promise<void> => {
     const league = {
       id: row.id,
       name: row.name,
-      logo: row.league_logo,
+      logo: resolveLeagueLogo(row.name, row.league_logo),
       fixtureCount: Number(row.fixture_count),
     };
 
@@ -111,7 +137,7 @@ router.get("/football/countries", async (_req, res): Promise<void> => {
     } else {
       const key = row.country_name ?? "Other";
       if (!countriesMap.has(key)) {
-        countriesMap.set(key, { name: key, logo: row.country_logo, leagues: [] });
+        countriesMap.set(key, { name: key, logo: resolveCountryLogo(key, row.country_logo), leagues: [] });
       }
       countriesMap.get(key)!.leagues.push(league);
     }
