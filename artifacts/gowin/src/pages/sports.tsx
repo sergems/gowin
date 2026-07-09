@@ -516,14 +516,6 @@ function LeagueBrowser({
   );
 }
 
-// ── Top countries (always shown even without odds in default football view) ────
-
-const TOP_COUNTRIES = [
-  "England", "Spain", "Germany", "Italy", "France",
-  "Netherlands", "Portugal", "Turkey", "Congo DR",
-];
-const TOP_COUNTRIES_PARAM = TOP_COUNTRIES.join(",");
-
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function SportsPage() {
@@ -580,35 +572,19 @@ export default function SportsPage() {
     },
   );
 
-  // Secondary query: top-country fixtures without the markets requirement, so
-  // games from priority leagues always appear even before odds are available.
-  // Only active in the default football view (not when drilling into a specific
-  // sport or league, where the user chose to filter themselves).
-  const { data: topCountryData } = useListFixtures(
-    { status: "upcoming", sportId: effectiveSportId, countryNames: TOP_COUNTRIES_PARAM, limit: 300 } as any,
-    {
-      query: {
-        queryKey: ["fixtures", "sports", "top-countries", effectiveSportId],
-        enabled: isDefaultFootballView && effectiveSportId !== null,
-        refetchInterval: 20 * 1000,
-      },
-    },
-  );
-
   const now = new Date();
-  const mainFixtures = (fixturesData?.fixtures ?? []).filter(
-    (f) => new Date(f.startTime) > now,
-  );
+  // "Today" default view (no sport/league selected): only today's fixtures, and
+  // only ones that already have odds — fixtures without markets are excluded.
+  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
-  // Merge top-country fixtures that don't have odds yet (not in mainFixtures)
-  const mainIds = new Set(mainFixtures.map((f) => f.id));
-  const extraFixtures = isDefaultFootballView
-    ? (topCountryData?.fixtures ?? []).filter(
-        (f) => new Date(f.startTime) > now && !mainIds.has(f.id),
-      )
-    : [];
+  const mainFixtures = (fixturesData?.fixtures ?? []).filter((f) => {
+    const start = new Date(f.startTime);
+    if (start <= now) return false;
+    if (isDefaultFootballView && start > endOfToday) return false;
+    return true;
+  });
 
-  const fixtures = [...mainFixtures, ...extraFixtures].sort(
+  const fixtures = [...mainFixtures].sort(
     (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
   );
 
