@@ -201,8 +201,8 @@ function FixtureCard({ fixture }: { fixture: any }) {
   const activeMarket = expanded ? (markets[activeMarketIdx] ?? defaultMarket) : defaultMarket;
 
   const [currentPath] = useLocation();
-  const currentSearch = useSearch(); // wouter returns search string including the leading "?"
-  const fromUrl = currentPath + currentSearch; // e.g. "/sports?sportId=2&sportName=Basketball"
+  const currentSearch = useSearch(); // wouter returns the search string WITHOUT the leading "?"
+  const fromUrl = currentPath + (currentSearch ? `?${currentSearch}` : ""); // e.g. "/sports?sportId=2&sportName=Basketball"
 
   const handleToggle = (e: React.MouseEvent) => {
     e.preventDefault();
