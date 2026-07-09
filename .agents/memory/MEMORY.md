@@ -8,4 +8,5 @@
 - [api-server runs from dist bundle](api-server-dist-bundle.md) — `pnpm dev` runs `dist/index.mjs`, not source; must rebuild before restart_workflow picks up src/ changes
 - [Win Bonus promotion](win-bonus.md) — Multi Bet Win Bonus fully implemented; config stored in settings table as `win_bonus_config` JSON; UserRole openapi enum must include all roles or codegen breaks TS comparisons
 - [i18n translation pattern](i18n-pattern.md) — all UI strings belong in i18n.ts EN+FR sections; use t(key) via useSiteSettings(); avoid as-any casts; import TranslationKey for typed const arrays
+- [Wouter render-prop hooks violation](wouter-render-prop-hooks.md) — hooks inside wouter Route children() run in Route's fiber; when path stops matching, hook count drops → error #310; always use component= prop instead
 - [1UP/2UP Markets](up-markets.md) — Football 1X2 sub-markets fully implemented; up_won column on bet_selections drives live settlement; config in settings table as up_markets_config JSON

@@ -11,6 +11,30 @@ import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 
 const MAIN_MARKETS = ["1X2", "Double Chance", "Over/Under 2.5"];
 
+const UP_LIVE_SELS = new Set(["Home 1UP", "Home 2UP", "Away 1UP", "Away 2UP"]);
+
+function splitLive1X2(markets: LiveMarket[]): {
+  coreMarkets: LiveMarket[];
+  virtualUpMarkets: LiveMarket[];
+} {
+  const coreMarkets: LiveMarket[] = [];
+  const virtualUpMarkets: LiveMarket[] = [];
+  for (const m of markets) {
+    if (m.marketType === "1X2") {
+      const odds = m.odds ?? [];
+      const core = odds.filter((o) => !UP_LIVE_SELS.has(o.selection));
+      const oneUp = odds.filter((o) => o.selection === "Home 1UP" || o.selection === "Away 1UP");
+      const twoUp = odds.filter((o) => o.selection === "Home 2UP" || o.selection === "Away 2UP");
+      if (core.length > 0) coreMarkets.push({ ...m, odds: core });
+      if (oneUp.length > 0) virtualUpMarkets.push({ ...m, id: m.id * 1000 + 1, marketType: "1UP", odds: oneUp });
+      if (twoUp.length > 0) virtualUpMarkets.push({ ...m, id: m.id * 1000 + 2, marketType: "2UP", odds: twoUp });
+    } else {
+      coreMarkets.push(m);
+    }
+  }
+  return { coreMarkets, virtualUpMarkets };
+}
+
 // World Cup / international tournaments first, then top European leagues
 const COUNTRY_PRIORITY = [
   "World",           // FIFA World Cup, Nations League, etc.
@@ -173,15 +197,20 @@ function FixtureCard({ fixture, getOddsDirection, allSuspended }: FixtureCardPro
   const [expanded, setExpanded] = useState(false);
   const { t } = useSiteSettings();
 
-  const mainMarkets = fixture.markets
-    .filter((m) => MAIN_MARKETS.includes(m.marketType) && hasValue(m));
-
+  // All hooks must come before any computation that can throw
   const { data: fullMarkets, isLoading: loadingMarkets } = useQuery<{ markets: ApiLiveMarket[] }>({
     queryKey: ["live-markets", fixture.id],
     queryFn: () => fetch(`/api/live/fixtures/${fixture.id}/markets`).then((r) => r.json()),
     enabled: expanded,
     staleTime: 10_000,
   });
+
+  const { coreMarkets, virtualUpMarkets } = splitLive1X2(fixture.markets ?? []);
+
+  const mainMarkets = coreMarkets
+    .filter((m) => MAIN_MARKETS.includes(m.marketType) && hasValue(m));
+
+  const liveUpMarkets = virtualUpMarkets.filter((m) => hasValue(m));
 
   const extraMarkets = (fullMarkets?.markets ?? [])
     .filter((m) => !MAIN_MARKETS.includes(m.marketType) && hasValue(m as LiveMarket));
@@ -262,6 +291,21 @@ function FixtureCard({ fixture, getOddsDirection, allSuspended }: FixtureCardPro
       {/* Expanded extra markets + stats */}
       {expanded && (
         <div className="border-t border-border/30 px-3 pb-3 space-y-3">
+          {/* 1UP / 2UP virtual markets — available immediately from live WebSocket data */}
+          {liveUpMarkets.length > 0 && (
+            <div className="space-y-3 pt-2">
+              {liveUpMarkets.map((m) => (
+                <MarketSection
+                  key={m.marketType}
+                  fixture={fixture}
+                  market={m}
+                  getOddsDirection={getOddsDirection}
+                  suspended={allSuspended}
+                />
+              ))}
+            </div>
+          )}
+
           {loadingMarkets && (
             <div className="space-y-2 pt-2">
               <Skeleton className="h-10 w-full" />
@@ -283,7 +327,7 @@ function FixtureCard({ fixture, getOddsDirection, allSuspended }: FixtureCardPro
             </div>
           )}
 
-          {!loadingMarkets && extraMarkets.length === 0 && (
+          {!loadingMarkets && extraMarkets.length === 0 && liveUpMarkets.length === 0 && (
             <p className="text-xs text-muted-foreground/50 italic text-center pt-2">{t("live.no_extra_markets")}</p>
           )}
 
