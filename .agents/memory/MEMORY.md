@@ -1,6 +1,6 @@
 - [Orval schema name collision](orval-schema-collision.md) — OpenAPI component names must not match `<operationId>Response` or orval generates duplicate exports
 - [No zod in api-server](no-zod-api-server.md) — esbuild can't resolve `zod` in api-server; use plain JS guards for request validation
-- [DB push workaround](db-push-workaround.md) — drizzle-kit push fails non-TTY; use raw psql for schema changes
+- [DB push workaround](db-push-workaround.md) — drizzle-kit push fails on fresh DB; drop public schema + apply bt.sql directly instead (scripts/schema.sql is stale, don't use it)
 - [PawaPay integration](pawapay-integration.md) — PawaPay mobile money gateway integrated; multi-currency wallets, payment_clerk role, full deposit/withdrawal/clerk flow
 - [Multi-sport sync pattern](multi-sport-sync.md) — SportSyncConfig interface drives Football/Basketball/Tennis/Cricket sync from AllSportsAPI; Tennis uses first_player/second_player fields; sport nav items are dynamic (fetched from /api/sports, Football excluded since it has its own dropdown)
 - [Fixture status logic](fixture-status-logic.md) — all status-transition rules, bugs fixed, and the "future_but_live" root cause (rescheduled games + stale startTime)
