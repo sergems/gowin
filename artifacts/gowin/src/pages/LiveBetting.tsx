@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { LiveMarket as ApiLiveMarket } from "@/hooks/useLiveSocket";
 import { sortOdds } from "@/lib/sortOdds";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
+import { resolveLeagueLogoUrl } from "@/lib/leagueLogoOverrides";
 
 const MAIN_MARKETS = ["1X2", "Double Chance", "Over/Under 2.5"];
 
@@ -389,7 +390,7 @@ function buildSortedLeagueGroups(fixtures: LiveFixture[]): LeagueGroup[] {
       map.set(key, {
         leagueName: f.leagueName,
         countryName: f.countryName,
-        leagueLogo: f.leagueLogo,
+        leagueLogo: resolveLeagueLogoUrl(f.leagueName, f.leagueLogo),
         fixtures: [],
       });
     }

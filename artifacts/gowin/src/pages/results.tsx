@@ -4,6 +4,8 @@ import type { ListFixturesParams } from "@workspace/api-client-react";
 import { fmtUTCTime, utcDateLabel } from "@/lib/formatUTC";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { CalendarDays, CheckCircle2, Shield, Globe, Radio, ChevronDown, Trophy } from "lucide-react";
+import { resolveLeagueLogoUrl } from "@/lib/leagueLogoOverrides";
+import { resolveCountryFlagUrl } from "@/lib/countryFlags";
 
 const INITIAL_SHOW = 4;
 
@@ -147,7 +149,7 @@ function groupByCountryLeague(fixtures: any[], useFootballGrouping: boolean): Co
       leagueMap.set(lid, {
         leagueId: lid,
         leagueName: f.league?.name ?? "Unknown",
-        leagueLogo: f.league?.leagueLogo,
+        leagueLogo: resolveLeagueLogoUrl(f.league?.name, f.league?.leagueLogo),
         countryName: f.league?.countryName,
         countryLogo: f.league?.countryLogo,
         fixtures: [],
@@ -165,7 +167,7 @@ function groupByCountryLeague(fixtures: any[], useFootballGrouping: boolean): Co
     for (const l of all) {
       const cat = l.countryName ?? "International";
       if (!byCategory.has(cat)) {
-        byCategory.set(cat, { countryName: cat, countryLogo: l.countryLogo, leagues: [] });
+        byCategory.set(cat, { countryName: cat, countryLogo: resolveCountryFlagUrl(cat, l.countryLogo), leagues: [] });
       }
       byCategory.get(cat)!.leagues.push(l);
     }
@@ -184,7 +186,7 @@ function groupByCountryLeague(fixtures: any[], useFootballGrouping: boolean): Co
   const countryMap = new Map<string, CountryGroup>();
   for (const l of countryLeagues) {
     const cn = l.countryName ?? "Other";
-    if (!countryMap.has(cn)) countryMap.set(cn, { countryName: cn, countryLogo: l.countryLogo, leagues: [] });
+    if (!countryMap.has(cn)) countryMap.set(cn, { countryName: cn, countryLogo: resolveCountryFlagUrl(cn, l.countryLogo), leagues: [] });
     countryMap.get(cn)!.leagues.push(l);
   }
   countryMap.forEach((cg) => cg.leagues.sort((a, b) => a.leagueName.localeCompare(b.leagueName)));

@@ -7,45 +7,8 @@ import { ChevronDown, ChevronLeft, ChevronRight, CalendarDays, Shield, Trophy, G
 import { fmtUTCTime, utcDateKey, utcDateLabel } from "@/lib/formatUTC";
 import { useBetSlip } from "@/contexts/BetSlipContext";
 import { sortOdds, isHotFavorite, shortSelectionLabel } from "@/lib/sortOdds";
-
-// ── Country flag helpers ──────────────────────────────────────────────────────
-
-const COUNTRY_ISO2: Record<string, string> = {
-  "afghanistan":"af","albania":"al","algeria":"dz","angola":"ao","argentina":"ar",
-  "armenia":"am","australia":"au","austria":"at","azerbaijan":"az","bahrain":"bh",
-  "bangladesh":"bd","belarus":"by","belgium":"be","bolivia":"bo",
-  "bosnia":"ba","bosnia and herzegovina":"ba","botswana":"bw","brazil":"br",
-  "bulgaria":"bg","cambodia":"kh","cameroon":"cm","canada":"ca","chile":"cl",
-  "china":"cn","colombia":"co","costa rica":"cr","croatia":"hr","cyprus":"cy",
-  "czech republic":"cz","czechia":"cz","denmark":"dk","ecuador":"ec","egypt":"eg",
-  "el salvador":"sv","england":"gb-eng","estonia":"ee","ethiopia":"et","europe":"eu",
-  "finland":"fi","france":"fr","georgia":"ge","germany":"de","ghana":"gh",
-  "greece":"gr","guatemala":"gt","honduras":"hn","hong kong":"hk","hungary":"hu",
-  "iceland":"is","india":"in","indonesia":"id","iran":"ir","iraq":"iq",
-  "ireland":"ie","israel":"il","italy":"it","ivory coast":"ci","jamaica":"jm",
-  "japan":"jp","jordan":"jo","kazakhstan":"kz","kenya":"ke","kosovo":"xk",
-  "kuwait":"kw","latvia":"lv","lebanon":"lb","libya":"ly","lithuania":"lt",
-  "luxembourg":"lu","malaysia":"my","malta":"mt","mexico":"mx","moldova":"md",
-  "montenegro":"me","morocco":"ma","mozambique":"mz","namibia":"na",
-  "netherlands":"nl","new zealand":"nz","nicaragua":"ni","nigeria":"ng",
-  "north korea":"kp","north macedonia":"mk","northern ireland":"gb-nir",
-  "norway":"no","oman":"om","pakistan":"pk","palestine":"ps","panama":"pa",
-  "paraguay":"py","peru":"pe","philippines":"ph","poland":"pl","portugal":"pt",
-  "qatar":"qa","romania":"ro","russia":"ru","saudi arabia":"sa","scotland":"gb-sct",
-  "senegal":"sn","serbia":"rs","singapore":"sg","slovakia":"sk","slovenia":"si",
-  "south africa":"za","south korea":"kr","spain":"es","sudan":"sd","sweden":"se",
-  "switzerland":"ch","syria":"sy","taiwan":"tw","tanzania":"tz","thailand":"th",
-  "tunisia":"tn","turkey":"tr","uganda":"ug","ukraine":"ua",
-  "united arab emirates":"ae","united states":"us","usa":"us","uruguay":"uy",
-  "uzbekistan":"uz","venezuela":"ve","vietnam":"vn","wales":"gb-wls",
-  "yemen":"ye","zambia":"zm","zimbabwe":"zw",
-};
-
-function countryFlagUrl(name: string | null | undefined): string | null {
-  if (!name) return null;
-  const iso2 = COUNTRY_ISO2[name.toLowerCase().trim()];
-  return iso2 ? `https://flagcdn.com/20x15/${iso2}.png` : null;
-}
+import { resolveCountryFlagUrl } from "@/lib/countryFlags";
+import { resolveLeagueLogoUrl } from "@/lib/leagueLogoOverrides";
 
 /** Normalise tennis circuit category names into readable labels */
 function normaliseTennisCategory(raw: string): string {
@@ -91,7 +54,7 @@ function Logo({
 /** Small country flag from flagcdn; renders nothing when no flag is found */
 function CountryFlag({ name, size = 20 }: { name: string | null | undefined; size?: number }) {
   const [failed, setFailed] = useState(false);
-  const url = countryFlagUrl(name);
+  const url = resolveCountryFlagUrl(name, null);
   if (!url || failed) return <Globe className="w-4 h-4 text-muted-foreground shrink-0" />;
   return (
     <img
@@ -218,7 +181,7 @@ function FixtureCard({ fixture }: { fixture: any }) {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-1.5 min-w-0">
               <CountryFlag name={fixture.league?.countryName} size={16} />
-              <Logo src={fixture.league?.logo} alt={fixture.league?.name ?? ""} size={14} fallback={null} />
+              <Logo src={resolveLeagueLogoUrl(fixture.league?.name, fixture.league?.logo)} alt={fixture.league?.name ?? ""} size={14} fallback={null} />
               <span className="text-xs text-muted-foreground truncate">{fixture.league?.name}</span>
             </div>
             <div className="shrink-0">
@@ -440,7 +403,7 @@ function LeagueBrowser({
         const showFlag = isRealCountry(sportName, rawKey);
         // Use DB logo first, fall back to flagcdn
         const dbLogo = groupLeagues[0]?.countryLogo;
-        const flagUrl = showFlag ? (dbLogo || countryFlagUrl(rawKey)) : null;
+        const flagUrl = showFlag ? resolveCountryFlagUrl(rawKey, dbLogo) : null;
         const totalFixtures = groupLeagues.reduce((s, l) => s + (l.fixtureCount ?? 0), 0);
 
         return (

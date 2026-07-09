@@ -4,6 +4,7 @@ import { useListFixtures } from "@workspace/api-client-react";
 import { Shield, Radio } from "lucide-react";
 import { fmtUTCTime } from "@/lib/formatUTC";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
+import { resolveLeagueLogoUrl } from "@/lib/leagueLogoOverrides";
 
 function Logo({ src, alt, size = 28 }: { src: string | null | undefined; alt: string; size?: number }) {
   const [failed, setFailed] = useState(false);
@@ -27,7 +28,7 @@ function LiveCard({ fixture }: { fixture: any }) {
         <div className="px-4 pt-3 pb-2 flex items-center justify-between">
           <div className="flex items-center gap-1.5 min-w-0">
             <Logo src={fixture.league?.countryLogo} alt={fixture.league?.countryName ?? ""} size={14} />
-            <Logo src={fixture.league?.logo} alt={fixture.league?.name ?? ""} size={14} />
+            <Logo src={resolveLeagueLogoUrl(fixture.league?.name, fixture.league?.logo)} alt={fixture.league?.name ?? ""} size={14} />
             <span className="text-xs text-muted-foreground truncate">{fixture.league?.name}</span>
           </div>
           <div className="flex items-center gap-1 shrink-0">
@@ -102,7 +103,7 @@ export default function LivePage() {
       leagueMap.set(lid, {
         name: f.league?.name ?? "Unknown",
         countryName: f.league?.countryName ?? undefined,
-        logo: f.league?.leagueLogo,
+        logo: resolveLeagueLogoUrl(f.league?.name, f.league?.leagueLogo),
         countryLogo: f.league?.countryLogo,
         fixtures: [],
       });
