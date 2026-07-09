@@ -19,7 +19,7 @@ import {
   Activity, LayoutDashboard, History, Wallet, Trophy, LogOut, Users, Settings, X,
   ArrowLeftRight, Ticket, UserCircle, AlertTriangle, Banknote, SlidersHorizontal,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, ChevronDown, ChevronRight, Globe, Shield, CheckCircle2,
-  Home, Menu, Images, Printer, Clock, Building2, Target, BarChart3, FileText, DollarSign, Radio, Bell, Sparkles, Share2, TrendingUp,
+  Home, Menu, Images, Printer, Clock, Building2, Target, BarChart3, FileText, DollarSign, Radio, Bell, Sparkles, Share2, TrendingUp, CalendarDays,
 } from "lucide-react";
 import type { PlacedBetDetails } from "@/contexts/BetSlipContext";
 import { printBetSlip } from "@/lib/printBetSlip";
@@ -254,7 +254,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const { data: footballData } = useQuery<FootballData>({
     queryKey: ["football-countries"],
     queryFn: () => fetch("/api/football/countries").then((r) => r.json()),
-    enabled: sportsOpen && !isAdmin && !isStaffRole,
+    enabled: sportsOpen && !isStaffRole,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -376,15 +376,15 @@ export function Shell({ children }: { children: ReactNode }) {
             )}
 
 
-            {!isStaffRole && isAdmin ? (
-              <Link href="/sports" title={!open ? t("nav.football") : undefined} onClick={onNav}
-                className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
-                  ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
-                  ${location.startsWith("/sports") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
-                <span className="w-4 h-4 shrink-0 text-base leading-none flex items-center justify-center">⚽</span>
-                {open && <span className="flex-1">{t("nav.football")}</span>}
-              </Link>
-            ) : !isStaffRole ? (
+            <Link href="/sports" title={!open ? t("nav.today") : undefined} onClick={onNav}
+              className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
+                ${location === "/sports" ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
+              <CalendarDays className="w-4 h-4 shrink-0" />
+              {open && <span className="flex-1">{t("nav.today")}</span>}
+            </Link>
+
+            {!isStaffRole ? (
               <> 
                 <button title={!open ? t("nav.football") : undefined}
                   onClick={() => {
@@ -540,15 +540,13 @@ export function Shell({ children }: { children: ReactNode }) {
               </Link>
             ))}
 
-            {!isAdmin && !isStaffRole && (
-              <Link href="/results" title={!open ? t("nav.results") : undefined} onClick={onNav}
-                className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
-                  ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
-                  ${location.startsWith("/results") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                {open && <span className="flex-1">{t("nav.results")}</span>}
-              </Link>
-            )}
+            <Link href="/results" title={!open ? t("nav.results") : undefined} onClick={onNav}
+              className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
+                ${location.startsWith("/results") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              {open && <span className="flex-1">{t("nav.results")}</span>}
+            </Link>
 
             {!isStaffRole && (
               <div
