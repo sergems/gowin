@@ -591,7 +591,7 @@ export function Shell({ children }: { children: ReactNode }) {
                   ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
                   hover:bg-accent opacity-90 hover:opacity-100`}
               >
-                {open && <span className="text-[11px] font-semibold text-center leading-tight text-foreground">Download the Go Win RDC Official App</span>}
+                {open && <span className="text-[11px] font-semibold text-center leading-tight text-foreground">Get the Go Win RDC Official App</span>}
                 <img src="/store-badges/google-play.png" alt="Get it on Google Play" className="h-12 w-auto object-contain" />
               </a>
             )}
@@ -635,7 +635,7 @@ export function Shell({ children }: { children: ReactNode }) {
                   ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
                   hover:bg-accent opacity-90 hover:opacity-100`}
               >
-                {open && <span className="text-[11px] font-semibold text-center leading-tight text-foreground">Download the Go Win RDC Official App</span>}
+                {open && <span className="text-[11px] font-semibold text-center leading-tight text-foreground">Get the Go Win RDC Official App</span>}
                 <img src="/store-badges/google-play.png" alt="Get it on Google Play" className="h-12 w-auto object-contain" />
               </a>
             )}
