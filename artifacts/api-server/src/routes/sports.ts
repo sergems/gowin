@@ -65,7 +65,7 @@ router.get("/football/countries", async (_req, res): Promise<void> => {
       WHERE l.external_id NOT IN ('3', '4', '683', '1')
       GROUP BY l.id, l.name, l.league_logo, l.country_name, l.country_logo, l.country_key
       HAVING COUNT(DISTINCT f.id) > 0
-      ORDER BY l.country_name ASC, l.name ASC
+      ORDER BY l.country_name ASC, l.sort_order ASC, l.name ASC
     `),
     db.execute(sql`
       SELECT
@@ -177,7 +177,7 @@ router.get("/leagues", async (req, res): Promise<void> => {
           AND f.status = 'upcoming'
         LIMIT 1
       )
-    ORDER BY l.country_name ASC, l.name ASC
+    ORDER BY l.country_name ASC, l.sort_order ASC, l.name ASC
   `);
 
   const leagues = (rows.rows as any[]).map((r) => ({
@@ -237,12 +237,19 @@ router.get("/fixtures", async (req, res): Promise<void> => {
   const dateToStr = req.query.dateTo as string | undefined;
   const startAfterStr = req.query.startAfter as string | undefined;
   const withMarkets = req.query.withMarkets === "true";
+  const countryNamesStr = req.query.countryNames as string | undefined;
+  const countryNamesFilter = countryNamesStr
+    ? countryNamesStr.split(",").map((s) => s.trim()).filter(Boolean)
+    : null;
 
   const conditions = [];
   if (leagueId) conditions.push(eq(fixturesTable.leagueId, leagueId));
   if (status) conditions.push(eq(fixturesTable.status, status as any));
   if (status === "upcoming") conditions.push(gte(fixturesTable.startTime, new Date()));
   if (sportId) conditions.push(eq(leaguesTable.sportId, sportId));
+  if (countryNamesFilter && countryNamesFilter.length > 0) {
+    conditions.push(inArray(leaguesTable.countryName, countryNamesFilter));
+  }
   // Only return fixtures that have at least one market with at least one odd
   if (withMarkets) {
     conditions.push(sql`EXISTS (

@@ -22,7 +22,7 @@ function LiveCard({ fixture }: { fixture: any }) {
   const awayLeading = awayScore > homeScore;
 
   return (
-    <Link href={`/fixtures/${fixture.id}`}>
+    <Link href={`/fixtures/${fixture.id}?from=/live`}>
       <div className="bg-card border border-red-500/30 rounded-xl overflow-hidden hover:border-red-500/60 transition-all cursor-pointer hover:bg-accent/10 group">
         <div className="px-4 pt-3 pb-2 flex items-center justify-between">
           <div className="flex items-center gap-1.5 min-w-0">

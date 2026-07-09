@@ -200,6 +200,10 @@ function FixtureCard({ fixture }: { fixture: any }) {
   const fixtureName = `${fixture.homeTeam?.name ?? "Home"} vs ${fixture.awayTeam?.name ?? "Away"}`;
   const activeMarket = expanded ? (markets[activeMarketIdx] ?? defaultMarket) : defaultMarket;
 
+  const [currentPath] = useLocation();
+  const currentSearch = useSearch(); // wouter returns search string including the leading "?"
+  const fromUrl = currentPath + currentSearch; // e.g. "/sports?sportId=2&sportName=Basketball"
+
   const handleToggle = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -209,7 +213,7 @@ function FixtureCard({ fixture }: { fixture: any }) {
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/30 transition-all">
-      <Link href={`/fixtures/${fixture.id}`}>
+      <Link href={`/fixtures/${fixture.id}?from=${encodeURIComponent(fromUrl)}`}>
         <div className="p-4 cursor-pointer hover:bg-accent/20 transition-colors">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-1.5 min-w-0">
@@ -512,6 +516,14 @@ function LeagueBrowser({
   );
 }
 
+// ── Top countries (always shown even without odds in default football view) ────
+
+const TOP_COUNTRIES = [
+  "England", "Spain", "Germany", "Italy", "France",
+  "Netherlands", "Portugal", "Turkey", "Congo DR",
+];
+const TOP_COUNTRIES_PARAM = TOP_COUNTRIES.join(",");
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function SportsPage() {
@@ -534,6 +546,9 @@ export default function SportsPage() {
 
   // When no sport or league is selected, default to football so games are never mixed
   const effectiveSportId = selectedSportId ?? (!selectedLeagueId ? footballSportId : null);
+
+  // When no params, it's the Football default view
+  const isDefaultFootballView = !selectedSportId && !selectedLeagueId;
 
   const queryParams: any = { status: "upcoming", withMarkets: true };
   if (selectedLeagueId) {
@@ -565,16 +580,41 @@ export default function SportsPage() {
     },
   );
 
+  // Secondary query: top-country fixtures without the markets requirement, so
+  // games from priority leagues always appear even before odds are available.
+  // Only active in the default football view (not when drilling into a specific
+  // sport or league, where the user chose to filter themselves).
+  const { data: topCountryData } = useListFixtures(
+    { status: "upcoming", sportId: effectiveSportId, countryNames: TOP_COUNTRIES_PARAM, limit: 300 } as any,
+    {
+      query: {
+        queryKey: ["fixtures", "sports", "top-countries", effectiveSportId],
+        enabled: isDefaultFootballView && effectiveSportId !== null,
+        refetchInterval: 20 * 1000,
+      },
+    },
+  );
+
   const now = new Date();
-  const fixtures = (fixturesData?.fixtures ?? []).filter(
+  const mainFixtures = (fixturesData?.fixtures ?? []).filter(
     (f) => new Date(f.startTime) > now,
+  );
+
+  // Merge top-country fixtures that don't have odds yet (not in mainFixtures)
+  const mainIds = new Set(mainFixtures.map((f) => f.id));
+  const extraFixtures = isDefaultFootballView
+    ? (topCountryData?.fixtures ?? []).filter(
+        (f) => new Date(f.startTime) > now && !mainIds.has(f.id),
+      )
+    : [];
+
+  const fixtures = [...mainFixtures, ...extraFixtures].sort(
+    (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
   );
 
   const firstFixtureSportName = (fixtures[0] as any)?.league?.sport?.name ?? null;
   const effectiveSportName = selectedSportName ?? firstFixtureSportName;
 
-  // When no params, it's the Football default view
-  const isDefaultFootballView = !selectedSportId && !selectedLeagueId;
   const pageTitle = selectedLeagueName ?? (
     selectedSportId
       ? (selectedSportName ? `${sportMeta.icon} ${selectedSportName}` : `${sportMeta.icon} ${sportMeta.label}`)

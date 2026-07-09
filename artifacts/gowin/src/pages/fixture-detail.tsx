@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useRoute } from "wouter";
+import { useRoute, useSearch, useLocation } from "wouter";
 import { useGetFixture, getGetFixtureQueryKey } from "@workspace/api-client-react";
 import { useBetSlip } from "@/contexts/BetSlipContext";
 import { sortOdds, isHotFavorite, shortSelectionLabel } from "@/lib/sortOdds";
@@ -267,6 +267,16 @@ export default function FixtureDetail() {
   const [, params] = useRoute("/fixtures/:id");
   const fixtureId = params?.id ? parseInt(params.id) : 0;
   const [activeTab, setActiveTab] = useState("Popular");
+  const rawSearch = useSearch();
+  const [, navigate] = useLocation();
+  const fromParam = new URLSearchParams(rawSearch).get("from");
+  const handleBack = () => {
+    if (fromParam) {
+      navigate(fromParam);
+    } else {
+      window.history.back();
+    }
+  };
 
   const { data: fixture, isLoading } = useGetFixture(fixtureId, {
     query: {
@@ -361,7 +371,7 @@ export default function FixtureDetail() {
   return (
     <div className="space-y-5 pb-8">
       {/* Back link */}
-      <button onClick={() => window.history.back()} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+      <button onClick={handleBack} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
         <ChevronLeft className="w-4 h-4" /> Back
       </button>
 

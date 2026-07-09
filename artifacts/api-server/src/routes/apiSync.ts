@@ -57,6 +57,46 @@ interface CountryInfo {
   iso2: string | null;
 }
 
+/** Derive a sort_order value from a league name so top divisions appear first in the UI. */
+function leagueSortOrder(name: string): number {
+  const n = name.toLowerCase();
+  // Tier 1 — top domestic divisions
+  const tier1 = [
+    "premier league","premiership","serie a","ligue 1","bundesliga",
+    "la liga","eredivisie","primeira liga","super lig","süper lig",
+    "primera division","primera división","superliga","super league",
+    "ekstraklasa","jupiler pro league","pro league","allsvenskan",
+    "eliteserien","veikkausliiga","linafoot","division 1",
+  ];
+  if (tier1.includes(n)) return 1;
+  if ((n.startsWith("premier league") || n === "premiership") && !n.includes("cup")) return 1;
+  if (n.includes("serie a") && !n.includes("cup")) return 1;
+  if (n.includes("ligue 1") && !n.includes("cup")) return 1;
+  if (n.includes("bundesliga") && !n.startsWith("2.") && !n.startsWith("3.")) return 1;
+  if (n.startsWith("primeira liga")) return 1;
+  if (n.includes("super lig") && !n.includes("cup")) return 1;
+  // Tier 2
+  if (n.includes("championship") && !n.includes("group") && !n.includes("round") && !n.includes("final") && !n.includes("u18") && !n.includes("u20") && !n.includes("u23")) return 2;
+  if (n.includes("2. bundesliga") || (n.includes("segunda") && !n.includes("cup"))) return 2;
+  if (n.includes("ligue 2") && !n.includes("cup")) return 2;
+  if (n.includes("serie b") && !n.includes("cup")) return 2;
+  if (n.includes("division 2") || n.includes("second division")) return 2;
+  // Tier 3
+  if (n.includes("league one") && !n.includes("cup")) return 3;
+  if (n.includes("3. liga") || n.includes("tercera")) return 3;
+  if (n.includes("serie c")) return 3;
+  // Tier 4
+  if (n.includes("league two")) return 4;
+  // Cups / knockouts
+  if ((n.includes("cup") || n.includes("pokal") || n.includes("coupe") || n.includes("coppa") || n.includes("copa")) && !n.includes("super cup") && !n.includes("supercup")) return 50;
+  if (n.includes("trophy") || n.includes("shield")) return 60;
+  if (n.includes("super cup") || n.includes("supercup")) return 60;
+  // Youth / women
+  if (n.includes("u17") || n.includes("u18") || n.includes("u19") || n.includes("u20") || n.includes("u21") || n.includes("u23")) return 80;
+  if (n.includes("women") || n.includes("feminin")) return 90;
+  return 999;
+}
+
 async function upsertLeague(
   sportId: number,
   name: string,
@@ -66,15 +106,17 @@ async function upsertLeague(
   countryLogo: string | null,
   leagueLogo: string | null,
 ): Promise<number> {
+  const sortOrder = leagueSortOrder(name);
   const result = await db.execute(sql`
-    INSERT INTO leagues (sport_id, name, external_id, country_key, country_name, country_logo, league_logo)
-    VALUES (${sportId}, ${name}, ${externalId}, ${countryKey}, ${countryName}, ${countryLogo}, ${leagueLogo})
+    INSERT INTO leagues (sport_id, name, external_id, country_key, country_name, country_logo, league_logo, sort_order)
+    VALUES (${sportId}, ${name}, ${externalId}, ${countryKey}, ${countryName}, ${countryLogo}, ${leagueLogo}, ${sortOrder})
     ON CONFLICT (external_id) DO UPDATE SET
       name = EXCLUDED.name,
       country_key = EXCLUDED.country_key,
       country_name = EXCLUDED.country_name,
       country_logo = COALESCE(EXCLUDED.country_logo, leagues.country_logo),
-      league_logo = COALESCE(EXCLUDED.league_logo, leagues.league_logo)
+      league_logo = COALESCE(EXCLUDED.league_logo, leagues.league_logo),
+      sort_order = CASE WHEN leagues.sort_order = 999 THEN EXCLUDED.sort_order ELSE leagues.sort_order END
     RETURNING id
   `);
   return (result.rows[0] as any).id as number;

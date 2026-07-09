@@ -29,6 +29,7 @@ export const leaguesTable = pgTable("leagues", {
   countryKey: text("country_key"),
   countryLogo: text("country_logo"),
   leagueLogo: text("league_logo"),
+  sortOrder: integer("sort_order").notNull().default(999),
 });
 
 export const teamsTable = pgTable("teams", {

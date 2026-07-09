@@ -80,8 +80,11 @@ export async function injectUpMarkets(fixtureId: number, config: UpMarketsConfig
   const toUpsert: Array<{ selection: string; oddsValue: string }> = [];
 
   if (config.enabled1UP) {
-    const home1UP = homeBase * config.percentage1UP / 100;
-    const away1UP = awayBase * config.percentage1UP / 100;
+    let home1UP = homeBase * config.percentage1UP / 100;
+    let away1UP = awayBase * config.percentage1UP / 100;
+    // Cap 1UP odds at 2.2 when the base odd exceeds 3
+    if (homeBase > 3) home1UP = Math.min(home1UP, 2.2);
+    if (awayBase > 3) away1UP = Math.min(away1UP, 2.2);
     if (home1UP > 1.01) toUpsert.push({ selection: "Home 1UP", oddsValue: home1UP.toFixed(2) });
     if (away1UP > 1.01) toUpsert.push({ selection: "Away 1UP", oddsValue: away1UP.toFixed(2) });
   }
