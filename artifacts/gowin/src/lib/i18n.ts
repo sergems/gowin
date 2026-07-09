@@ -138,6 +138,9 @@ const translations = {
     "betslip.print": "Print / Save PDF",
     "betslip.load_panel_title": "Load Booked Bet",
     "betslip.enter_booking_code": "Enter booking code",
+    "betslip.may_be_rejected": "bet may be rejected",
+    "betslip.qualifies": "Qualifies",
+    "betslip.no_bonus": "No bonus",
 
     "home.no_competitions": "No competitions available right now.",
     "home.check_back": "Check back later for upcoming matches.",
@@ -1107,6 +1110,9 @@ const translations = {
     "status.void": "Annulé",
 
     "betslip.title": "Coupon",
+    "betslip.may_be_rejected": "le pari peut être rejeté",
+    "betslip.qualifies": "Éligible",
+    "betslip.no_bonus": "Aucun bonus",
     "betslip.load": "Charger",
     "betslip.empty": "Votre coupon est vide",
     "betslip.load_booked": "Charger un pari réservé",

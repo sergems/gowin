@@ -390,7 +390,7 @@ function buildSortedLeagueGroups(fixtures: LiveFixture[]): LeagueGroup[] {
       map.set(key, {
         leagueName: f.leagueName,
         countryName: f.countryName,
-        leagueLogo: resolveLeagueLogoUrl(f.leagueName, f.leagueLogo),
+        leagueLogo: resolveLeagueLogoUrl(f.leagueName, f.leagueLogo) ?? null,
         fixtures: [],
       });
     }
