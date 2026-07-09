@@ -29,6 +29,9 @@ description: Architecture and settlement rules for the football 1UP/2UP market f
 
 - `sortOdds.ts` 1X2 order: `["Home", "Home 1UP", "Home 2UP", "Draw", "Away", "Away 1UP", "Away 2UP"]`
 - Admin page: `/admin/up-markets` (route + nav item with `TrendingUp` icon)
+- Saving the admin config triggers `recalculateAllUpMarkets` (bounded-concurrency batch over all upcoming/live football fixtures), which broadcasts full per-fixture market snapshots over `LIVE_ODDS_UPDATE` (never a partial market list — the client reducer replaces a fixture's whole `markets` array) and returns `fixturesUpdated` in the PUT response for the admin toast
+- Pre-match odds (sports listing + fixture-detail pages, not covered by the live websocket) rely on `refetchInterval` polling (~20s) in `useListFixtures`/`useGetFixture` to pick up admin-triggered repricing
+- Resolve "football" sport dynamically by name (`ilike(sportsTable.name, 'football')`) rather than hardcoding an ID — sport IDs are seed-data-dependent, not stable across environments
 
 **Why:**
 Once a 1UP/2UP condition is met during a match, the outcome is locked regardless of final score — so the live worker must mark `up_won` before the fixture finishes, and autoSettle must honour that flag rather than re-evaluating from the final score.

@@ -5,6 +5,7 @@ import { requireAdmin } from "../middlewares/auth";
 import {
   getUpMarketsConfig,
   saveUpMarketsConfig,
+  recalculateAllUpMarkets,
   DEFAULT_UP_MARKETS_CONFIG,
   type UpMarketsConfig,
 } from "../lib/upMarkets";
@@ -41,7 +42,10 @@ router.put("/admin/up-markets", requireAdmin, async (req, res): Promise<void> =>
   const current = await getUpMarketsConfig();
   const updated: UpMarketsConfig = { ...current, ...body };
   await saveUpMarketsConfig(updated);
-  res.json(updated);
+
+  const { fixturesUpdated } = await recalculateAllUpMarkets(updated);
+
+  res.json({ ...updated, fixturesUpdated });
 });
 
 // ── GET /admin/up-markets/stats ────────────────────────────────────────────────

@@ -1,10 +1,18 @@
 import {
   db, settingsTable, marketsTable, oddsTable,
   betsTable, betSelectionsTable, walletsTable, transactionsTable,
+  fixturesTable, leaguesTable, sportsTable,
 } from "@workspace/db";
-import { eq, and, inArray, sql, or, isNull } from "drizzle-orm";
+import { eq, and, inArray, sql, or, isNull, ilike } from "drizzle-orm";
 import { logger } from "./logger";
 import { notifyBetWon } from "./notifications";
+import { broadcast } from "./wsServer";
+
+async function getFootballSportId(): Promise<number | null> {
+  const [row] = await db.select({ id: sportsTable.id }).from(sportsTable)
+    .where(ilike(sportsTable.name, "football")).limit(1);
+  return row?.id ?? null;
+}
 
 // ── Config ─────────────────────────────────────────────────────────────────────
 
@@ -50,24 +58,24 @@ export async function saveUpMarketsConfig(config: UpMarketsConfig): Promise<void
  * Uses upsert-by-selection-name to preserve row IDs so live clients track
  * direction movement correctly.
  */
-export async function injectUpMarkets(fixtureId: number, config: UpMarketsConfig): Promise<void> {
-  if (!config.enabled1UP && !config.enabled2UP) return;
+export async function injectUpMarkets(fixtureId: number, config: UpMarketsConfig): Promise<boolean> {
+  if (!config.enabled1UP && !config.enabled2UP) return false;
 
   const markets = await db.select().from(marketsTable)
     .where(eq(marketsTable.fixtureId, fixtureId));
   const market1X2 = markets.find((m) => m.marketType === "1X2");
-  if (!market1X2) return;
+  if (!market1X2) return false;
 
   const existingOdds = await db.select().from(oddsTable)
     .where(eq(oddsTable.marketId, market1X2.id));
 
   const homeOdd = existingOdds.find((o) => o.selection === "Home");
   const awayOdd = existingOdds.find((o) => o.selection === "Away");
-  if (!homeOdd || !awayOdd) return;
+  if (!homeOdd || !awayOdd) return false;
 
   const homeBase = parseFloat(homeOdd.oddsValue);
   const awayBase = parseFloat(awayOdd.oddsValue);
-  if (!isFinite(homeBase) || !isFinite(awayBase)) return;
+  if (!isFinite(homeBase) || !isFinite(awayBase)) return false;
 
   const toUpsert: Array<{ selection: string; oddsValue: string }> = [];
 
@@ -85,16 +93,113 @@ export async function injectUpMarkets(fixtureId: number, config: UpMarketsConfig
     if (away2UP > 1.01) toUpsert.push({ selection: "Away 2UP", oddsValue: away2UP.toFixed(2) });
   }
 
+  let changed = false;
   for (const { selection, oddsValue } of toUpsert) {
     const existing = existingOdds.find((o) => o.selection === selection);
     if (existing) {
       if (existing.oddsValue !== oddsValue) {
         await db.update(oddsTable).set({ oddsValue }).where(eq(oddsTable.id, existing.id));
+        changed = true;
       }
     } else {
       await db.insert(oddsTable).values({ marketId: market1X2.id, selection, oddsValue });
+      changed = true;
     }
   }
+  return changed;
+}
+
+/**
+ * Recalculate 1UP/2UP odds for every upcoming/live football fixture using the
+ * given config, and broadcast the refreshed odds over the websocket so
+ * connected clients see the new prices immediately (no page reload needed).
+ * Call this right after an admin updates the 1UP/2UP percentages/toggles.
+ */
+const RECALC_CONCURRENCY = 25;
+
+export async function recalculateAllUpMarkets(
+  config: UpMarketsConfig,
+): Promise<{ fixturesUpdated: number }> {
+  const footballSportId = await getFootballSportId();
+  if (footballSportId === null) {
+    logger.warn("1UP/2UP recalculation skipped: no 'Football' sport row found");
+    return { fixturesUpdated: 0 };
+  }
+
+  const rows = await db
+    .select({ fixtureId: fixturesTable.id })
+    .from(fixturesTable)
+    .innerJoin(leaguesTable, eq(leaguesTable.id, fixturesTable.leagueId))
+    .where(
+      and(
+        eq(leaguesTable.sportId, footballSportId),
+        inArray(fixturesTable.status, ["upcoming", "live"]),
+      ),
+    );
+
+  const fixtureIds = [...new Set(rows.map((r) => r.fixtureId))];
+  if (fixtureIds.length === 0) return { fixturesUpdated: 0 };
+
+  let fixturesUpdated = 0;
+  const updates: Array<{ fixtureId: number; markets: Array<{
+    id: number; marketType: string; suspended: boolean;
+    odds: Array<{ id: number; selection: string; oddsValue: number }>;
+  }> }> = [];
+
+  async function processOne(fixtureId: number): Promise<void> {
+    try {
+      const changed = await injectUpMarkets(fixtureId, config);
+      if (!changed) return;
+      fixturesUpdated++;
+
+      // Broadcast the fixture's FULL market set (not just 1X2) so the live
+      // socket reducer — which replaces a fixture's entire markets array on
+      // ODDS_UPDATE — doesn't drop other markets (O/U, BTTS, etc.) mid-match.
+      const markets = await db.select().from(marketsTable)
+        .where(eq(marketsTable.fixtureId, fixtureId));
+      if (markets.length === 0) return;
+
+      const marketIds = markets.map((m) => m.id);
+      const odds = await db.select().from(oddsTable)
+        .where(inArray(oddsTable.marketId, marketIds));
+      const oddsByMarket = new Map<number, typeof odds>();
+      for (const o of odds) {
+        if (!oddsByMarket.has(o.marketId)) oddsByMarket.set(o.marketId, []);
+        oddsByMarket.get(o.marketId)!.push(o);
+      }
+
+      updates.push({
+        fixtureId,
+        markets: markets.map((m) => ({
+          id: m.id,
+          marketType: m.marketType,
+          suspended: m.suspended,
+          odds: (oddsByMarket.get(m.id) ?? []).map((o) => ({
+            id: o.id,
+            selection: o.selection,
+            oddsValue: parseFloat(o.oddsValue),
+          })),
+        })),
+      });
+    } catch (err) {
+      logger.warn({ err, fixtureId }, "Failed to recalculate 1UP/2UP odds for fixture");
+    }
+  }
+
+  // Bounded-concurrency batches keep DB load reasonable across thousands of fixtures
+  // while still finishing well within a normal HTTP request timeout.
+  for (let i = 0; i < fixtureIds.length; i += RECALC_CONCURRENCY) {
+    const batch = fixtureIds.slice(i, i + RECALC_CONCURRENCY);
+    await Promise.all(batch.map(processOne));
+  }
+
+  if (updates.length > 0) broadcast("LIVE_ODDS_UPDATE", { updates });
+
+  logger.info(
+    { fixturesUpdated, total: fixtureIds.length },
+    "1UP/2UP odds recalculated after admin config change",
+  );
+  return { fixturesUpdated };
 }
 
 // ── Outcome evaluation ─────────────────────────────────────────────────────────

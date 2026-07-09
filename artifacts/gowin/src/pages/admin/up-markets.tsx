@@ -54,7 +54,10 @@ async function fetchConfig(token: string | null): Promise<UpMarketsConfig> {
   return res.json();
 }
 
-async function putConfig(config: UpMarketsConfig, token: string | null): Promise<UpMarketsConfig> {
+async function putConfig(
+  config: UpMarketsConfig,
+  token: string | null,
+): Promise<UpMarketsConfig & { fixturesUpdated?: number }> {
   const res = await fetch("/api/admin/up-markets", {
     method: "PUT",
     credentials: "include",
@@ -100,9 +103,13 @@ export default function AdminUpMarkets() {
 
   const saveMutation = useMutation({
     mutationFn: (cfg: UpMarketsConfig) => putConfig(cfg, token),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["admin-up-markets-config"] });
-      toast({ title: t("admin.up_markets.saved"), description: t("admin.up_markets.saved_desc") });
+      const count = data.fixturesUpdated ?? 0;
+      toast({
+        title: t("admin.up_markets.saved"),
+        description: `${t("admin.up_markets.saved_desc")} (${count} fixtures re-priced)`,
+      });
     },
     onError: () => {
       toast({ title: t("admin.up_markets.save_failed"), variant: "destructive" });

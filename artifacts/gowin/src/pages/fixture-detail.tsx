@@ -259,7 +259,12 @@ export default function FixtureDetail() {
   const [activeTab, setActiveTab] = useState("Popular");
 
   const { data: fixture, isLoading } = useGetFixture(fixtureId, {
-    query: { enabled: !!fixtureId, queryKey: getGetFixtureQueryKey(fixtureId) },
+    query: {
+      enabled: !!fixtureId,
+      queryKey: getGetFixtureQueryKey(fixtureId),
+      // Keeps 1UP/2UP (and other) odds in sync with admin config changes
+      refetchInterval: 20 * 1000,
+    },
   });
 
   if (isLoading) {
