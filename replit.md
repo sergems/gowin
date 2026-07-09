@@ -7,16 +7,17 @@ A sports betting platform with live fixtures, bet placement, wallet management, 
 To get this project running on Replit from a fresh import:
 
 1. **Install dependencies** — `pnpm install` (run once; pnpm workspaces handle all packages)
-2. **Database** — Replit provides PostgreSQL automatically; `DATABASE_URL` is injected at runtime. Push the schema first (`pnpm --filter @workspace/db run push`), then seed from the dump: `psql $DATABASE_URL -f bt.sql`.
-   - **FK-ordering caveat**: `bkt.sql`'s `COPY` statements populate `fixtures`/`leagues`/`markets`/etc. *before* the tables they reference (`sports`/`teams` are copied near the end of the file); the dump relies on adding all FK constraints via `ALTER TABLE ... ADD CONSTRAINT` at the very end. Since `drizzle-kit push` already creates those FKs beforehand, a direct `psql -f bkt.sql` will fail most inserts with FK violations. Work around it once per fresh import:
+2. **Database** — Replit provides PostgreSQL automatically; `DATABASE_URL` is injected at runtime. Push the schema first (`pnpm --filter @workspace/db run push`), then seed from the dump: `psql $DATABASE_URL -f bito.sql`.
+   - **FK-ordering caveat**: `bito.sql`'s `COPY` statements populate `fixtures`/`leagues`/`markets`/etc. *before* the tables they reference (`sports`/`teams` are copied near the end of the file); the dump relies on adding all FK constraints via `ALTER TABLE ... ADD CONSTRAINT` at the very end. Since `drizzle-kit push` already creates those FKs beforehand, a direct `psql -f bito.sql` will fail most inserts with FK violations. Work around it once per fresh import:
      ```sql
      -- drop existing FKs so COPY can insert out of order
      SELECT 'ALTER TABLE '||conrelid::regclass||' DROP CONSTRAINT '||conname||';'
      FROM pg_constraint WHERE contype='f' AND connamespace='public'::regnamespace;
      -- run the generated DROP statements, then:
-     psql $DATABASE_URL -f bkt.sql   -- re-adds the FKs itself at the end of the file
+     psql $DATABASE_URL -f bito.sql   -- re-adds the FKs itself at the end of the file
      ```
-   - Verify after seeding: `SELECT count(*) FROM pg_constraint WHERE contype='f' AND connamespace='public'::regnamespace;` should be ~33, and spot-check row counts on `sports`, `teams`, `leagues`, `fixtures`, `users`, `wallets`.
+   - This re-run will print benign `relation already exists` / `multiple primary keys` errors for `CREATE TABLE` statements at the top of the dump (tables already exist from the `drizzle-kit push` step) — these are expected and don't indicate a seeding failure.
+   - Verify after seeding: `SELECT count(*) FROM pg_constraint WHERE contype='f' AND connamespace='public'::regnamespace;` should be ~29, and spot-check row counts on `sports`, `teams`, `leagues`, `fixtures`, `users`, `wallets`.
 3. **Build the API server** — `pnpm --filter @workspace/api-server run build` (must run before first start; the dev workflow does this automatically)
 4. **Start workflows** — start both `artifacts/api-server: API Server` (port 8080) and `artifacts/gowin: web` (port 5000) via the Replit workflow panel
 5. **Secrets** — `SESSION_SECRET` is set. SMTP vars (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_FROM`, `SMTP_SECURE`) are set as env vars. `SMTP_PASS` must be added as a Replit Secret. `JWT_SECRET` is loaded from the database settings table on first boot; set it as a Replit Secret as a safe fallback.
