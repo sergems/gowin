@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect, useRef } from "react";
 import gowinLogo from "../../assets/logo.png";
 import { format, formatDistanceToNow } from "date-fns";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBetSlip } from "@/contexts/BetSlipContext";
@@ -215,6 +215,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const { formatCurrency, currency, t } = useSiteSettings();
   const { data: wallet } = useGetMyWallet({ query: { enabled: !!user, queryKey: getGetMyWalletQueryKey() } });
   const [location, navigate] = useLocation();
+  const currentSearchStr = useSearch();
   const { selections, stake, lastPlacedBet, clearLastPlacedBet } = useBetSlip();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [betSlipOpen, setBetSlipOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1280);
@@ -281,7 +282,8 @@ export function Shell({ children }: { children: ReactNode }) {
   };
 
   const selectLeague = (id: number, name: string) => {
-    navigate(`/sports?leagueId=${id}&leagueName=${encodeURIComponent(name)}`);
+    const fromUrl = location + (currentSearchStr ? `?${currentSearchStr}` : "");
+    navigate(`/sports?leagueId=${id}&leagueName=${encodeURIComponent(name)}&from=${encodeURIComponent(fromUrl)}`);
     setMobileSidebarOpen(false);
   };
 

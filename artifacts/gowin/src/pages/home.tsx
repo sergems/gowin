@@ -153,7 +153,7 @@ export default function Home() {
   });
 
   const goToLeague = (id: number, name: string) =>
-    navigate(`/sports?leagueId=${id}&leagueName=${encodeURIComponent(name)}`);
+    navigate(`/sports?leagueId=${id}&leagueName=${encodeURIComponent(name)}&from=${encodeURIComponent("/")}`);
 
   const toggleCountry = (name: string) =>
     setOpenCountries((prev) => {

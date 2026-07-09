@@ -526,6 +526,8 @@ export default function SportsPage() {
   const selectedLeagueName = params.get("leagueName") ? decodeURIComponent(params.get("leagueName")!) : null;
   const selectedSportId = params.get("sportId") ? Number(params.get("sportId")) : null;
   const selectedSportName = params.get("sportName") ? decodeURIComponent(params.get("sportName")!) : null;
+  // URLSearchParams.get() already decodes the value — do not decode again.
+  const fromParam = params.get("from");
 
   // Fetch sports list so we can find football's ID for the default (no-param) view
   const { data: sportsData } = useListSports();
@@ -598,7 +600,8 @@ export default function SportsPage() {
   );
 
   const handleSelectLeague = (id: number, name: string) => {
-    navigate(`/sports?sportId=${selectedSportId}&sportName=${encodeURIComponent(selectedSportName ?? "")}&leagueId=${id}&leagueName=${encodeURIComponent(name)}`);
+    const fromUrl = `/sports${search ? `?${search}` : ""}`;
+    navigate(`/sports?sportId=${selectedSportId}&sportName=${encodeURIComponent(selectedSportName ?? "")}&leagueId=${id}&leagueName=${encodeURIComponent(name)}&from=${encodeURIComponent(fromUrl)}`);
   };
 
   return (
@@ -612,8 +615,8 @@ export default function SportsPage() {
                 // League fixture view → back to sport's league browser
                 navigate(`/sports?sportId=${selectedSportId}&sportName=${encodeURIComponent(selectedSportName ?? "")}`);
               } else if (selectedLeagueName && !selectedSportId) {
-                // Football league view (from home sidebar) → back to football all-fixtures
-                navigate("/sports");
+                // Football league view → back to wherever the user selected the league from
+                navigate(fromParam ?? "/sports");
               } else {
                 // Sport league browser → back to home
                 navigate("/");
