@@ -3,10 +3,10 @@ import { useSearch, useLocation } from "wouter";
 import { useListFixtures, useListLeagues, useListSports } from "@workspace/api-client-react";
 import type { ListFixturesParams, League } from "@workspace/api-client-react";
 import { Link } from "wouter";
-import { ChevronDown, ChevronLeft, ChevronRight, CalendarDays, Shield, Trophy, Globe } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, CalendarDays, Shield, Trophy, Globe, Flame } from "lucide-react";
 import { fmtUTCTime, utcDateKey, utcDateLabel } from "@/lib/formatUTC";
 import { useBetSlip } from "@/contexts/BetSlipContext";
-import { sortOdds } from "@/lib/sortOdds";
+import { sortOdds, isHotFavorite, shortSelectionLabel } from "@/lib/sortOdds";
 
 // ── Country flag helpers ──────────────────────────────────────────────────────
 
@@ -119,7 +119,7 @@ function getSportMeta(sportName: string | null | undefined) {
 // ── Odds button ───────────────────────────────────────────────────────────────
 
 function OddsButton({
-  oddsId, fixtureId, market, selection, oddsValue, fixtureName, competitionName, startTime,
+  oddsId, fixtureId, market, selection, oddsValue, fixtureName, competitionName, startTime, hot,
 }: {
   oddsId: number;
   fixtureId: number;
@@ -129,6 +129,7 @@ function OddsButton({
   fixtureName: string;
   competitionName?: string;
   startTime?: string;
+  hot?: boolean;
 }) {
   const { selections, addSelection, removeSelection } = useBetSlip();
   const selected = selections.some((s) => s.oddsId === oddsId);
@@ -151,9 +152,12 @@ function OddsButton({
       }`}
     >
       <span className="text-[10px] font-normal text-muted-foreground leading-none mb-0.5 truncate w-full text-center">
-        {selection}
+        {shortSelectionLabel(selection, market)}
       </span>
-      <span>{oddsValue.toFixed(2)}</span>
+      <span className="flex items-center gap-1">
+        {hot && <Flame className={`w-3 h-3 ${selected ? "text-primary-foreground" : "text-orange-500"}`} />}
+        {oddsValue.toFixed(2)}
+      </span>
     </button>
   );
 }
@@ -302,6 +306,7 @@ function FixtureCard({ fixture }: { fixture: any }) {
                     fixtureName={fixtureName}
                     competitionName={fixture.league?.name}
                     startTime={fixture.displayTime ?? fixture.startTime}
+                    hot={isHotFavorite(odd, activeMarket.odds, activeMarket.marketType)}
                   />
                 ))}
               </div>

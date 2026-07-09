@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { useRoute } from "wouter";
 import { useGetFixture, getGetFixtureQueryKey } from "@workspace/api-client-react";
 import { useBetSlip } from "@/contexts/BetSlipContext";
-import { sortOdds } from "@/lib/sortOdds";
-import { Trophy, CalendarDays, Activity, ChevronLeft, Globe, Shield } from "lucide-react";
+import { sortOdds, isHotFavorite, shortSelectionLabel } from "@/lib/sortOdds";
+import { Trophy, CalendarDays, Activity, ChevronLeft, Globe, Shield, Flame } from "lucide-react";
 import { fmtUTCDateTimeLong } from "@/lib/formatUTC";
 
 // ── Country flag helpers (mirrors sports.tsx) ─────────────────────────────────
@@ -167,7 +167,7 @@ const CATEGORIES: { label: string; types?: string[]; prefix?: string }[] = [
 // ── Odds button ────────────────────────────────────────────────────────────────
 
 function OddsButton({
-  oddsId, fixtureId, market, selection, oddsValue, fixtureName, competitionName, startTime, disabled,
+  oddsId, fixtureId, market, selection, oddsValue, fixtureName, competitionName, startTime, disabled, hot,
 }: {
   oddsId: number;
   fixtureId: number;
@@ -178,6 +178,7 @@ function OddsButton({
   competitionName?: string;
   startTime?: string;
   disabled?: boolean;
+  hot?: boolean;
 }) {
   const { selections, addSelection, removeSelection } = useBetSlip();
   const selected = selections.some((s) => s.oddsId === oddsId);
@@ -189,15 +190,16 @@ function OddsButton({
         else addSelection({ oddsId, fixtureId, market, selection, odds: oddsValue, fixtureName, marketName: market, competitionName, startTime });
       }}
       disabled={disabled}
-      className={`flex items-center justify-between px-4 py-3 rounded-lg border text-sm font-medium transition-all w-full
+      className={`flex items-center justify-between gap-1.5 px-2.5 py-3 rounded-lg border text-sm font-medium transition-all w-full min-w-0
         ${disabled ? "opacity-40 cursor-not-allowed border-border text-muted-foreground"
           : selected
             ? "bg-primary text-primary-foreground border-primary shadow-sm"
             : "bg-background border-border hover:border-primary hover:text-primary text-foreground"
         }`}
     >
-      <span className="text-left">{selection}</span>
-      <span className={`font-bold ml-3 shrink-0 ${selected ? "text-primary-foreground" : "text-primary"}`}>
+      <span className="text-left truncate min-w-0">{shortSelectionLabel(selection, market)}</span>
+      <span className={`font-bold shrink-0 flex items-center gap-0.5 ${selected ? "text-primary-foreground" : "text-primary"}`}>
+        {hot && <Flame className={`w-3 h-3 shrink-0 ${selected ? "text-primary-foreground" : "text-orange-500"}`} />}
         {oddsValue.toFixed(2)}
       </span>
     </button>
@@ -232,20 +234,28 @@ function MarketCard({ market, fixtureId, fixtureName, competitionName, startTime
         </p>
       </div>
       <div className={`p-3 ${gridClass}`}>
-        {odds.map((odd: any) => (
-          <OddsButton
-            key={odd.id}
-            oddsId={odd.id}
-            fixtureId={fixtureId}
-            market={market.marketType}
-            selection={odd.selection}
-            oddsValue={parseFloat(odd.oddsValue ?? odd.odds_value ?? odd.oddsvalue ?? "0")}
-            fixtureName={fixtureName}
-            competitionName={competitionName}
-            startTime={startTime}
-            disabled={disabled}
-          />
-        ))}
+        {odds.map((odd: any) => {
+          const oddsValue = parseFloat(odd.oddsValue ?? odd.odds_value ?? odd.oddsvalue ?? "0");
+          const normalizedOdds = odds.map((o: any) => ({
+            ...o,
+            oddsValue: parseFloat(o.oddsValue ?? o.odds_value ?? o.oddsvalue ?? "0"),
+          }));
+          return (
+            <OddsButton
+              key={odd.id}
+              oddsId={odd.id}
+              fixtureId={fixtureId}
+              market={market.marketType}
+              selection={odd.selection}
+              oddsValue={oddsValue}
+              fixtureName={fixtureName}
+              competitionName={competitionName}
+              startTime={startTime}
+              disabled={disabled}
+              hot={isHotFavorite({ ...odd, oddsValue }, normalizedOdds, market.marketType)}
+            />
+          );
+        })}
       </div>
     </div>
   );
