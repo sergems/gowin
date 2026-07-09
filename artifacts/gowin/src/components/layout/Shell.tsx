@@ -269,6 +269,9 @@ export function Shell({ children }: { children: ReactNode }) {
     ? new URLSearchParams(window.location.search).get("sportId")
     : null;
 
+  const isTodayNav = location === "/sports" && typeof window !== "undefined"
+    && new URLSearchParams(window.location.search).get("src") === "today";
+
   const toggleCountry = (name: string) => {
     setOpenCountries((prev) => {
       const next = new Set(prev);
@@ -376,10 +379,10 @@ export function Shell({ children }: { children: ReactNode }) {
             )}
 
 
-            <Link href="/sports" title={!open ? t("nav.today") : undefined} onClick={onNav}
+            <Link href="/sports?src=today" title={!open ? t("nav.today") : undefined} onClick={onNav}
               className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
                 ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
-                ${location === "/sports" ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
+                ${isTodayNav ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
               <CalendarDays className="w-4 h-4 shrink-0" />
               {open && <span className="flex-1">{t("nav.today")}</span>}
             </Link>
@@ -393,7 +396,7 @@ export function Shell({ children }: { children: ReactNode }) {
                   }}
                   className={`w-full flex items-center gap-3 rounded-md text-sm font-medium transition-colors
                     ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
-                    ${location.startsWith("/sports") && !activeSportId ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
+                    ${location.startsWith("/sports") && !activeSportId && !isTodayNav ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
                   <span className="w-4 h-4 shrink-0 text-base leading-none flex items-center justify-center">⚽</span>
                   {open && <span className="flex-1 text-left">{t("nav.football")}</span>}
                   {open && (sportsOpen ? <ChevronDown className="w-3.5 h-3.5 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 shrink-0" />)}
