@@ -78,6 +78,7 @@ router.post("/admin/slides", requireAdmin, async (req, res): Promise<void> => {
 
 router.patch("/admin/slides/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(req.params.id as string, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid slide id" }); return; }
   const { active, sortOrder } = req.body as { active?: boolean; sortOrder?: number };
 
   const update: Partial<typeof slidesTable.$inferInsert> = {};
@@ -90,6 +91,7 @@ router.patch("/admin/slides/:id", requireAdmin, async (req, res): Promise<void> 
 
 router.delete("/admin/slides/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(req.params.id as string, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid slide id" }); return; }
 
   const [slide] = await db
     .select()

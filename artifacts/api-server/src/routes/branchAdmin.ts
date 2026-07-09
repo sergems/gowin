@@ -164,6 +164,7 @@ router.patch("/branch/agents/:id/suspend", requireBranchAdmin, async (req: AuthR
   if (!branchId) { res.status(403).json({ error: "No branch assigned" }); return; }
 
   const agentId = parseInt(req.params.id as string);
+  if (isNaN(agentId)) { res.status(400).json({ error: "Invalid agent id" }); return; }
   const { disabled } = req.body as { disabled: boolean };
 
   const [agent] = await db.select().from(usersTable)
@@ -350,6 +351,7 @@ router.patch("/branch/bets/:id/void", requireBranchAdmin, async (req: AuthReques
   if (!branchId) { res.status(403).json({ error: "No branch assigned" }); return; }
 
   const betId = parseInt(req.params.id as string);
+  if (isNaN(betId)) { res.status(400).json({ error: "Invalid bet id" }); return; }
 
   const [bet] = await db.select().from(betsTable)
     .where(and(eq(betsTable.id, betId), eq(betsTable.branchId, branchId)))

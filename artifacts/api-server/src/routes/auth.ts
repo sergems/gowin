@@ -190,7 +190,10 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     }
   }
 
-  const token = signToken(user.id, user.role, null);
+  let token: string;
+  try { token = signToken(user.id, user.role, null); } catch {
+    res.status(503).json({ error: "Authentication service not configured — contact administrator" }); return;
+  }
   res.status(201).json({ token, user: formatUser(user) });
 });
 
@@ -272,14 +275,20 @@ router.post("/auth/login", async (req, res): Promise<void> => {
       .set({ tempPasswordHash: null, tempPasswordExpiry: null, mustChangePassword: true, loginAttempts: 0, ...(user.disabled && user.disabledReason === "system" ? { disabled: false, disabledReason: null } : {}) })
       .where(eq(usersTable.id, user.id));
 
-    const token = signToken(user.id, user.role, user.branchId);
+    let token: string;
+    try { token = signToken(user.id, user.role, user.branchId); } catch {
+      res.status(503).json({ error: "Authentication service not configured — contact administrator" }); return;
+    }
     res.json({ token, user: { ...formatUser(user), mustChangePassword: true, disabled: false }, mustChangePassword: true });
     return;
   }
 
   await db.update(usersTable).set({ loginAttempts: 0 }).where(eq(usersTable.id, user.id));
 
-  const token = signToken(user.id, user.role, user.branchId);
+  let token: string;
+  try { token = signToken(user.id, user.role, user.branchId); } catch {
+    res.status(503).json({ error: "Authentication service not configured — contact administrator" }); return;
+  }
   res.json({ token, user: formatUser(user), mustChangePassword: user.mustChangePassword ?? false });
 });
 
@@ -413,7 +422,10 @@ router.post("/auth/change-password", requireAuth, async (req: AuthRequest, res):
     .where(eq(usersTable.id, req.userId!))
     .returning();
 
-  const token = signToken(updated.id, updated.role, updated.branchId);
+  let token: string;
+  try { token = signToken(updated.id, updated.role, updated.branchId); } catch {
+    res.status(503).json({ error: "Authentication service not configured — contact administrator" }); return;
+  }
   res.json({ message: "Password changed successfully.", token, user: formatUser(updated) });
 });
 

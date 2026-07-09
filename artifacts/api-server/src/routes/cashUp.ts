@@ -140,6 +140,7 @@ router.get("/branch/floats/:id/preview", requireBranchAdmin, async (req: AuthReq
   if (!branchId) { res.status(403).json({ error: "No branch assigned" }); return; }
 
   const id = parseInt(req.params.id as string);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid allocation id" }); return; }
   const [alloc] = await db.select().from(branchFloatAllocationsTable)
     .where(and(eq(branchFloatAllocationsTable.id, id), eq(branchFloatAllocationsTable.branchId, branchId)))
     .limit(1);
@@ -169,6 +170,7 @@ router.post("/branch/floats/:id/cashup", requireBranchAdmin, async (req: AuthReq
   if (!branchId) { res.status(403).json({ error: "No branch assigned" }); return; }
 
   const id = parseInt(req.params.id as string);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid allocation id" }); return; }
   const { cashReturned, notes } = req.body as { cashReturned: number; notes?: string };
 
   if (typeof cashReturned !== "number" || cashReturned < 0) {

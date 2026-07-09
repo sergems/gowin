@@ -99,6 +99,7 @@ router.get("/agent/vouchers", requireAgent, async (req: AuthRequest, res): Promi
 router.post("/agent/vouchers/:id/sell", requireAgent, async (req: AuthRequest, res): Promise<void> => {
   const agentId = req.userId!;
   const voucherId = parseInt(req.params.id as string);
+  if (isNaN(voucherId)) { res.status(400).json({ error: "Invalid voucher id" }); return; }
 
   const [voucher] = await db.select().from(vouchersTable)
     .where(and(eq(vouchersTable.id, voucherId), eq(vouchersTable.agentId, agentId)))
@@ -120,6 +121,7 @@ router.post("/agent/vouchers/:id/sell", requireAgent, async (req: AuthRequest, r
 router.post("/agent/vouchers/:id/print", requireAgent, async (req: AuthRequest, res): Promise<void> => {
   const agentId = req.userId!;
   const voucherId = parseInt(req.params.id as string);
+  if (isNaN(voucherId)) { res.status(400).json({ error: "Invalid voucher id" }); return; }
 
   const [voucher] = await db.select().from(vouchersTable)
     .where(and(eq(vouchersTable.id, voucherId), eq(vouchersTable.agentId, agentId)))
