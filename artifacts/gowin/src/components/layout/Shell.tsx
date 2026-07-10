@@ -1080,10 +1080,10 @@ export function Shell({ children }: { children: ReactNode }) {
             <div className="grid grid-cols-2 gap-3">
               <Button
                 variant="outline"
-                className="h-11 gap-2"
+                className="h-11 gap-1.5 text-xs whitespace-nowrap px-3"
                 onClick={() => { printBetSlip(lastPlacedBet, currency, exchangeRate); }}
               >
-                <Printer className="w-4 h-4" />
+                <Printer className="w-3.5 h-3.5 shrink-0" />
                 {t("betslip.print")}
               </Button>
               <Button className="h-11" onClick={clearLastPlacedBet}>
