@@ -1,8 +1,8 @@
 import { db, fixturesTable, betsTable, betSelectionsTable, walletsTable, transactionsTable } from "@workspace/db";
-import { eq, and, inArray, isNotNull } from "drizzle-orm";
+import { eq, and, inArray, isNotNull, sql } from "drizzle-orm";
 import { logger } from "./logger";
 import { notifyBetWon, notifyBetLost } from "./notifications";
-import { UP_SELECTIONS } from "./upMarkets";
+import { UP_SELECTIONS, evaluateUpCondition } from "./upMarkets";
 
 export function getSelectionOutcome(
   selection: string,
@@ -101,14 +101,27 @@ export async function autoSettleFinishedFixtures(): Promise<{
 
       // ── 1UP / 2UP selections ──────────────────────────────────────────────
       // These are settled in real-time by the live worker (up_won = true).
-      // At final settlement: if up_won is true → won; if fixture finished but
-      // up_won is false → lost (condition was never met during the match).
+      // At final settlement we re-evaluate from the final score as a safety
+      // net in case the live worker missed a goal (e.g. sync was down).
       if (UP_SELECTIONS.has(sel.selection)) {
         if (sel.upWon) {
           continue; // Live worker already settled this leg as won
         }
         if (!fixture) {
           hasPending = true; // Fixture not finished yet — wait
+          continue;
+        }
+        // Fixture finished: re-evaluate from final score.
+        // The live worker may have missed a goal if sync was briefly down.
+        if (
+          fixture.scoreHome !== null &&
+          fixture.scoreAway !== null &&
+          evaluateUpCondition(sel.selection, fixture.scoreHome!, fixture.scoreAway!)
+        ) {
+          // Condition was met at final whistle — backfill up_won and treat as won
+          await db.execute(
+            sql`UPDATE bet_selections SET up_won = TRUE WHERE id = ${sel.id}`
+          );
           continue;
         }
         // Fixture finished and condition was never met → lost
