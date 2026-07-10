@@ -868,19 +868,19 @@ export function Shell({ children }: { children: ReactNode }) {
       {/* ── Main Content ─────────────────────────────────────────────────────── */}
       <main className="flex-1 flex flex-col overflow-hidden relative min-w-0">
         {/* Floating overlay header — zero height, sits on top of content */}
-        <header className="absolute top-0 left-0 right-0 h-14 flex items-center justify-between px-4 md:px-6 z-20 pointer-events-none">
-          {/* Mobile: hamburger */}
-          <button className="md:hidden pointer-events-auto text-white/90 hover:text-white p-1.5 rounded-md hover:bg-white/10 mr-2 drop-shadow"
+        <header className="absolute top-0 left-0 right-0 h-14 grid grid-cols-3 md:flex md:items-center md:justify-between items-center px-4 md:px-6 z-20 pointer-events-none">
+          {/* Mobile: hamburger (left column) */}
+          <button className="md:hidden pointer-events-auto text-white/90 hover:text-white p-1.5 rounded-md hover:bg-white/10 drop-shadow justify-self-start"
             onClick={() => setMobileSidebarOpen(true)}>
             <Menu className="w-5 h-5" />
           </button>
 
-          {/* Mobile: centered logo */}
-          <div className="md:hidden pointer-events-auto flex items-center absolute left-1/2 -translate-x-1/2">
+          {/* Mobile: centered logo (center column) */}
+          <div className="md:hidden pointer-events-auto flex items-center justify-center">
             <img src={gowinLogo} alt="GoWin" className="h-7 w-auto object-contain drop-shadow" />
           </div>
 
-          <div className="flex items-center gap-3 flex-1 justify-end pointer-events-auto">
+          <div className="flex items-center gap-3 md:flex-1 justify-end pointer-events-auto">
             {user && wallet && (
               <Link href="/wallet">
                 <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm px-2.5 py-1 md:px-3 md:py-1.5 rounded-full border border-white/20 hover:bg-black/60 transition-colors cursor-pointer">
