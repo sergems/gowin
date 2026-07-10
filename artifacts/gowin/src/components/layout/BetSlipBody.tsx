@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import {
   PanelRightClose, Trophy, X, AlertTriangle, Upload,
-  BookMarked, Copy, Check, Sparkles, ChevronRight,
+  BookMarked, Copy, Check, Sparkles, ChevronRight, ChevronDown, ChevronUp,
 } from "lucide-react";
 
 interface BetSlipBodyProps {
@@ -43,6 +43,7 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
   const [loadCodeError, setLoadCodeError] = useState("");
   const [isLoadingCode, setIsLoadingCode] = useState(false);
   const [liveData, setLiveData] = useState<Map<number, FixtureLiveData>>(new Map());
+  const [winBonusMinimized, setWinBonusMinimized] = useState(false);
 
   const prevLen = useRef(selections.length);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -319,46 +320,56 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
           {/* Win Bonus progress bar — only for accumulators when promotion is on */}
           {config?.enabled && isAccumulator && (
             <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
-              <div className="flex items-center justify-between">
+              <button
+                onClick={() => setWinBonusMinimized((v) => !v)}
+                className="flex items-center justify-between w-full"
+              >
                 <div className="flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-primary" />
                   <span className="text-xs font-semibold text-primary">{t("betslip.win_bonus")}</span>
                 </div>
-                <span className="text-xs font-bold text-primary">
-                  {bonusPercentage > 0 ? `${bonusPercentage}%` : t("betslip.locked")}
-                </span>
-              </div>
-
-              {/* Progress bar */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                  <span>{t("betslip.qualifying")} {qualifyingSelections} / {maxSel}</span>
-                  <span>{selectionCount} {t("betslip.selections_total")}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-primary">
+                    {bonusPercentage > 0 ? `${bonusPercentage}%` : t("betslip.locked")}
+                  </span>
+                  {winBonusMinimized
+                    ? <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                    : <ChevronUp className="w-3.5 h-3.5 text-primary" />}
                 </div>
-                <div className="h-1.5 rounded-full bg-border overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-primary transition-all duration-300"
-                    style={{ width: `${progressPct}%` }}
-                  />
-                </div>
-              </div>
+              </button>
 
-              {/* Status text */}
-              {bonusPercentage === 0 ? (
-                <p className="text-[10px] text-muted-foreground leading-snug">
-                  {qualifyingSelections < minQual
-                    ? `Add ${minQual - qualifyingSelections} more qualifying selection${minQual - qualifyingSelections === 1 ? "" : "s"} (odds > ${config.minQualifyingOdds}) to unlock the Win Bonus.`
-                    : "Add more qualifying selections to unlock the Win Bonus."}
-                </p>
-              ) : nextBonusTier ? (
-                <p className="text-[10px] text-muted-foreground leading-snug flex items-center gap-1">
-                  <ChevronRight className="w-3 h-3 text-primary shrink-0" />
-                  Add {nextBonusTier.selections - qualifyingSelections} more qualifying selection{nextBonusTier.selections - qualifyingSelections === 1 ? "" : "s"} to reach{" "}
-                  <span className="font-bold text-primary ml-0.5">{nextBonusTier.bonusPercent}% bonus</span>
-                </p>
-              ) : (
-                <p className="text-[10px] text-primary font-semibold">{t("betslip.max_bonus")}</p>
-              )}
+              {!winBonusMinimized && (<>
+                {/* Progress bar */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                    <span>{t("betslip.qualifying")} {qualifyingSelections} / {maxSel}</span>
+                    <span>{selectionCount} {t("betslip.selections_total")}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-border overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all duration-300"
+                      style={{ width: `${progressPct}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Status text */}
+                {bonusPercentage === 0 ? (
+                  <p className="text-[10px] text-muted-foreground leading-snug">
+                    {qualifyingSelections < minQual
+                      ? `Add ${minQual - qualifyingSelections} more qualifying selection${minQual - qualifyingSelections === 1 ? "" : "s"} (odds > ${config.minQualifyingOdds}) to unlock the Win Bonus.`
+                      : "Add more qualifying selections to unlock the Win Bonus."}
+                  </p>
+                ) : nextBonusTier ? (
+                  <p className="text-[10px] text-muted-foreground leading-snug flex items-center gap-1">
+                    <ChevronRight className="w-3 h-3 text-primary shrink-0" />
+                    Add {nextBonusTier.selections - qualifyingSelections} more qualifying selection{nextBonusTier.selections - qualifyingSelections === 1 ? "" : "s"} to reach{" "}
+                    <span className="font-bold text-primary ml-0.5">{nextBonusTier.bonusPercent}% bonus</span>
+                  </p>
+                ) : (
+                  <p className="text-[10px] text-primary font-semibold">{t("betslip.max_bonus")}</p>
+                )}
+              </>)}
             </div>
           )}
 

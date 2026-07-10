@@ -99,7 +99,10 @@ router.post("/bets", requireAuth, async (req: AuthRequest, res): Promise<void> =
       res.status(400).json({ error: "One or more selected markets are currently suspended." });
       return;
     }
-    if (row.fixtureId !== s.fixtureId || row.marketType !== s.market || row.selection !== s.selection) {
+    // Virtual 1UP/2UP markets on the frontend map to the parent 1X2 market in the DB
+    const UP_PARENT: Record<string, string> = { "1UP": "1X2", "2UP": "1X2" };
+    const effectiveClientMarket = UP_PARENT[s.market] ?? s.market;
+    if (row.fixtureId !== s.fixtureId || row.marketType !== effectiveClientMarket || row.selection !== s.selection) {
       res.status(400).json({ error: "Bet selection data is invalid. Please refresh the page and try again." });
       return;
     }

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, pgEnum, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, pgEnum, boolean, uniqueIndex } from "drizzle-orm/pg-core";
 export const settingsTable = pgTable("settings", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),
@@ -63,7 +63,7 @@ export const oddsTable = pgTable("odds", {
   marketId: integer("market_id").notNull().references(() => marketsTable.id, { onDelete: "cascade" }),
   selection: text("selection").notNull(),
   oddsValue: text("odds_value").notNull(),
-});
+}, (t) => [uniqueIndex("odds_market_selection_unique").on(t.marketId, t.selection)]);
 
 export const insertSportSchema = createInsertSchema(sportsTable).omit({ id: true });
 export type InsertSport = z.infer<typeof insertSportSchema>;

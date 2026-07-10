@@ -112,11 +112,6 @@ async function refreshFootballFixture(
 ): Promise<boolean> {
   const bk = await fetchApiOdds(apiKey, externalId, "football");
 
-  await db.execute(sql`
-    DELETE FROM odds
-    WHERE market_id IN (SELECT id FROM markets WHERE fixture_id = ${fixtureId})
-  `);
-
   if (!bk) return false;
 
   const markets = await db.select().from(marketsTable).where(eq(marketsTable.fixtureId, fixtureId));
@@ -201,7 +196,8 @@ async function refreshFootballFixture(
     }
   }
 
-  if (rows.length > 0) await db.insert(oddsTable).values(rows);
+  if (rows.length > 0) await db.insert(oddsTable).values(rows)
+    .onConflictDoUpdate({ target: [oddsTable.marketId, oddsTable.selection], set: { oddsValue: sql`EXCLUDED.odds_value` } });
   return rows.length > 0;
 }
 
@@ -214,9 +210,6 @@ async function refreshBasketballFixture(
 ): Promise<boolean> {
   const nested = await fetchNestedOdds(apiKey, externalId, "basketball");
 
-  await db.execute(sql`
-    DELETE FROM odds WHERE market_id IN (SELECT id FROM markets WHERE fixture_id = ${fixtureId})
-  `);
   if (!nested) return false;
 
   const markets = await db.select().from(marketsTable).where(eq(marketsTable.fixtureId, fixtureId));
@@ -276,7 +269,8 @@ async function refreshBasketballFixture(
     }
   }
 
-  if (rows.length > 0) await db.insert(oddsTable).values(rows);
+  if (rows.length > 0) await db.insert(oddsTable).values(rows)
+    .onConflictDoUpdate({ target: [oddsTable.marketId, oddsTable.selection], set: { oddsValue: sql`EXCLUDED.odds_value` } });
   return rows.length > 0;
 }
 
@@ -289,9 +283,6 @@ async function refreshTennisFixture(
 ): Promise<boolean> {
   const nested = await fetchNestedOdds(apiKey, externalId, "tennis");
 
-  await db.execute(sql`
-    DELETE FROM odds WHERE market_id IN (SELECT id FROM markets WHERE fixture_id = ${fixtureId})
-  `);
   if (!nested) return false;
 
   const markets = await db.select().from(marketsTable).where(eq(marketsTable.fixtureId, fixtureId));
@@ -349,7 +340,8 @@ async function refreshTennisFixture(
     }
   }
 
-  if (rows.length > 0) await db.insert(oddsTable).values(rows);
+  if (rows.length > 0) await db.insert(oddsTable).values(rows)
+    .onConflictDoUpdate({ target: [oddsTable.marketId, oddsTable.selection], set: { oddsValue: sql`EXCLUDED.odds_value` } });
   return rows.length > 0;
 }
 
@@ -362,9 +354,6 @@ async function refreshCricketFixture(
 ): Promise<boolean> {
   const nested = await fetchNestedOdds(apiKey, externalId, "cricket");
 
-  await db.execute(sql`
-    DELETE FROM odds WHERE market_id IN (SELECT id FROM markets WHERE fixture_id = ${fixtureId})
-  `);
   if (!nested) return false;
 
   const markets = await db.select().from(marketsTable).where(eq(marketsTable.fixtureId, fixtureId));
@@ -411,7 +400,8 @@ async function refreshCricketFixture(
     }
   }
 
-  if (rows.length > 0) await db.insert(oddsTable).values(rows);
+  if (rows.length > 0) await db.insert(oddsTable).values(rows)
+    .onConflictDoUpdate({ target: [oddsTable.marketId, oddsTable.selection], set: { oddsValue: sql`EXCLUDED.odds_value` } });
   return rows.length > 0;
 }
 

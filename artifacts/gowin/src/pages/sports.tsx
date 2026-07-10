@@ -137,8 +137,8 @@ function buildVirtualMarkets(rawMarkets: any[]): any[] {
       const oneUp = (m.odds ?? []).filter((o: any) => o.selection === "Home 1UP" || o.selection === "Away 1UP");
       const twoUp = (m.odds ?? []).filter((o: any) => o.selection === "Home 2UP" || o.selection === "Away 2UP");
       if (core.length > 0) result.push({ ...m, odds: core });
-      if (oneUp.length > 0) result.push({ ...m, id: String(m.id) + "_1up", marketType: "1UP", odds: oneUp });
-      if (twoUp.length > 0) result.push({ ...m, id: String(m.id) + "_2up", marketType: "2UP", odds: twoUp });
+      if (oneUp.length > 0) result.push({ ...m, id: String(m.id) + "_1up", marketType: "1UP", dbMarketType: "1X2", odds: oneUp });
+      if (twoUp.length > 0) result.push({ ...m, id: String(m.id) + "_2up", marketType: "2UP", dbMarketType: "1X2", odds: twoUp });
     } else {
       result.push(m);
     }
@@ -267,7 +267,7 @@ function FixtureCard({ fixture }: { fixture: any }) {
                     key={odd.id}
                     oddsId={odd.id}
                     fixtureId={fixture.id}
-                    market={activeMarket.marketType}
+                    market={activeMarket.dbMarketType ?? activeMarket.marketType}
                     selection={odd.selection}
                     oddsValue={odd.oddsValue}
                     fixtureName={fixtureName}
