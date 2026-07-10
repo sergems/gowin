@@ -90,7 +90,7 @@ interface LiveFixtureData {
 
 export default function History() {
   const { formatCurrency, formatCurrencyAt, currency, exchangeRate, t } = useSiteSettings();
-  const [activeTab, setActiveTab] = useState<"pending" | "won" | "lost" | "void" | "cashed_out">("pending");
+  const [activeTab, setActiveTab] = useState<"pending" | "won" | "lost" | "cashed_out">("pending");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [liveFixtures, setLiveFixtures] = useState<Map<number, LiveFixtureData>>(new Map());
 
@@ -158,11 +158,10 @@ export default function History() {
       </div>
 
       <Tabs value={activeTab} onValueChange={(v: any) => { setActiveTab(v); setExpanded(new Set()); }} className="w-full">
-        <TabsList className="grid grid-cols-5 mb-8">
+        <TabsList className="grid grid-cols-4 mb-6">
           <TabsTrigger value="pending">{t("bets.pending")}</TabsTrigger>
           <TabsTrigger value="won">{t("bets.won")}</TabsTrigger>
           <TabsTrigger value="lost">{t("bets.lost")}</TabsTrigger>
-          <TabsTrigger value="void">{t("bets.void")}</TabsTrigger>
           <TabsTrigger value="cashed_out">{t("bets.cashed_out")}</TabsTrigger>
         </TabsList>
 
@@ -196,62 +195,64 @@ export default function History() {
                 >
                   <button
                     onClick={() => toggle(bet.id)}
-                    className="w-full flex items-center justify-between p-4 hover:bg-accent/20 transition-colors text-left"
+                    className="w-full p-3.5 hover:bg-accent/20 transition-colors text-left"
                   >
-                    <div className="flex items-center gap-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${STATUS_STYLES[bet.status]}`}>
-                        {bet.status.toUpperCase()}
+                    {/* Row 1: bet title + amount */}
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <span className="font-semibold text-sm leading-snug">
+                        Bet #{bet.id}
+                        <span className="text-muted-foreground font-normal"> · {label}</span>
                       </span>
-
-                      <div>
-                        <div className="font-semibold text-sm leading-none flex items-center gap-2 flex-wrap">
-                          <span>Bet #{bet.id} &nbsp;·&nbsp; <span className="text-muted-foreground font-normal">{label}</span></span>
-                          {bet.code && (
-                            <span className="font-mono text-xs font-bold tracking-widest bg-primary/10 text-primary border border-primary/20 rounded px-2 py-0.5">
-                              {bet.code}
-                            </span>
-                          )}
-                          {hasLiveSelection && (
-                            <span className="flex items-center gap-1 text-[10px] font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded-full">
-                              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                              LIVE
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                          <Clock className="w-3 h-3" />
-                          {format(new Date(bet.createdAt), "PPP 'at' p")}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-6">
-                      <div className="text-right hidden sm:block">
-                        <div className="text-xs text-muted-foreground">{t("betslip.stake")}</div>
-                        <div className="font-bold text-sm">{formatCurrencyAt(Number(bet.stake), bet.exchangeRate)}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-xs text-muted-foreground">
+                      <div className="text-right shrink-0">
+                        <div className="text-[10px] text-muted-foreground leading-none mb-0.5">
                           {bet.status === "won"
                             ? t("bets.won")
                             : bet.status === "cashed_out"
                             ? t("bets.cashed_out")
                             : t("bets.to_win")}
                         </div>
-                        <div className={`font-black text-sm ${bet.status === "won" || bet.status === "cashed_out" ? "text-primary" : ""}`}>
+                        <div className={`font-black text-sm leading-none ${bet.status === "won" || bet.status === "cashed_out" ? "text-primary" : ""}`}>
                           {bet.status === "cashed_out" && bet.cashOutAmount != null
                             ? formatCurrencyAt(Number(bet.cashOutAmount), bet.cashOutExchangeRate ?? bet.exchangeRate)
                             : formatCurrencyAt(Number(bet.potentialWin), bet.exchangeRate)}
                         </div>
                       </div>
-                      {activeTab === "pending" && (
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <CashOutButton betId={bet.id} stake={Number(bet.stake)} potentialWin={Number(bet.potentialWin)} />
-                        </div>
-                      )}
-                      <div className="text-muted-foreground ml-1">
-                        {isOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                    </div>
+
+                    {/* Row 2: badges + action buttons */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${STATUS_STYLES[bet.status]}`}>
+                          {bet.status.toUpperCase()}
+                        </span>
+                        {bet.code && (
+                          <span className="font-mono text-[10px] font-bold tracking-widest bg-primary/10 text-primary border border-primary/20 rounded px-1.5 py-0.5">
+                            {bet.code}
+                          </span>
+                        )}
+                        {hasLiveSelection && (
+                          <span className="flex items-center gap-0.5 text-[10px] font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded-full">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                            LIVE
+                          </span>
+                        )}
                       </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {activeTab === "pending" && (
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <CashOutButton betId={bet.id} stake={Number(bet.stake)} potentialWin={Number(bet.potentialWin)} />
+                          </div>
+                        )}
+                        <div className="text-muted-foreground">
+                          {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Row 3: date */}
+                    <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-1.5">
+                      <Clock className="w-3 h-3 shrink-0" />
+                      {format(new Date(bet.createdAt), "PPP 'at' p")}
                     </div>
                   </button>
 
