@@ -178,7 +178,16 @@ export function CashOutButton({
       ? "ring-2 ring-red-400 shadow-[0_0_8px_0px_rgba(239,68,68,0.6)]"
       : "";
 
-  const amountColour =
+  // Colour for the amount inside the button (amber background → needs dark text)
+  const buttonAmountColour =
+    flash === "up"
+      ? "text-emerald-900"
+      : flash === "down"
+      ? "text-red-900"
+      : "text-black";
+
+  // Colour for the amount inside the dialog (dark background → keep vivid colours)
+  const dialogAmountColour =
     flash === "up"
       ? "text-emerald-400"
       : flash === "down"
@@ -206,7 +215,7 @@ export function CashOutButton({
           <Wallet className="w-3.5 h-3.5 mr-1.5" />
         )}
         {t("bets.cash_out")} ·{" "}
-        <span className={`transition-colors duration-300 ${amountColour}`}>
+        <span className={`transition-colors duration-300 ${buttonAmountColour}`}>
           {formatCurrency(offer.offerAmount)}
         </span>
       </Button>
@@ -238,7 +247,7 @@ export function CashOutButton({
             <div className="flex justify-between items-baseline pt-2 border-t border-border">
               <span className="font-bold">{t("bets.cash_out_amount")}</span>
               <span
-                className={`font-black text-2xl transition-colors duration-300 ${amountColour}`}
+                className={`font-black text-2xl transition-colors duration-300 ${dialogAmountColour}`}
               >
                 {formatCurrency(offer.offerAmount)}
               </span>
