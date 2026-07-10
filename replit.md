@@ -23,8 +23,8 @@ To get this project running on Replit from a fresh import:
 4. **Start workflows** — start both `artifacts/api-server: API Server` (port 8080) and `artifacts/gowin: web` (port 5000) via the Replit workflow panel
 5. **Secrets** — `SESSION_SECRET` is set. SMTP vars (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_FROM`, `SMTP_SECURE`) are set as env vars. `SMTP_PASS` must be added as a Replit Secret if password reset/OTP/admin emails are needed (without it, email sending is skipped with a warning — non-fatal). `JWT_SECRET` is loaded from the database `settings` table (`jwt_secret` key), confirmed present after reseeding from `btk.sql`.
 
-## Setup status (2026-07-10)
-Both workflows verified running: API Server (port 8080) and web (port 5000, Vite). DB reseeded fresh from `btk.sql` via the drop-schema-then-restore path (31 FK constraints, 13916 fixtures/4 sports/22 users all populated). App loads correctly in preview with live odds/fixtures data. Remaining optional gap: `SMTP_PASS` secret not set (email sending degrades gracefully).
+## Setup status (2026-07-10, re-verified after re-import)
+Both workflows verified running: API Server (port 8080) and web (port 5000, Vite). Ran `pnpm install` (node_modules were missing on this import) then reseeded DB fresh from `btk.sql` via the drop-schema-then-restore path (31 FK constraints, 13921 fixtures/4 sports/22 users/10607 teams populated). App loads correctly in preview with live odds/fixtures data. Remaining optional gap: `SMTP_PASS` secret not set (email sending degrades gracefully).
 
 ## Run & Operate
 
@@ -83,7 +83,7 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Canonical Ports
 
-- Frontend (gowin): **20254** — set by `artifacts/gowin/.replit-artifact/artifact.toml` via `PORT=20254`. Do NOT override in workflow commands; the artifact config is the source of truth.
+- Frontend (gowin): **5000** — this is what the `artifacts/gowin: web` workflow actually waits on and what Vite binds to by default (`PORT` env var, falls back to 5000 in `vite.config.ts`). Note: `artifacts/gowin/.replit-artifact/artifact.toml` declares `localPort = 20254` / `PORT=20254`, but that value is not wired into the active workflow — 5000 is the port actually serving the app today. If you need to reconcile this, update the workflow/artifact config together rather than one at a time.
 - API server: **8080** — set by `artifacts/api-server/.replit-artifact/artifact.toml`. Frontend Vite proxy forwards `/api`, `/slides-images`, and `/ws` to `localhost:8080`.
 
 ## Pointers
