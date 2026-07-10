@@ -32,9 +32,9 @@ function LiveCard({ fixture }: { fixture: any }) {
             <span className="text-xs text-muted-foreground truncate">{fixture.league?.name}</span>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <span className="flex items-center gap-1 text-xs font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full">
+            <span className="flex items-center gap-1.5 text-xs font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full">
               <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-              LIVE
+              {fixture.matchMinute ?? "LIVE"}
             </span>
           </div>
         </div>

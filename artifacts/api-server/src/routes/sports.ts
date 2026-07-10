@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, sportsTable, leaguesTable, teamsTable, fixturesTable, marketsTable, oddsTable } from "@workspace/db";
 import { eq, and, desc, count, sql, inArray, gte, lte, asc } from "drizzle-orm";
 import { requireAdmin, requireAdminOrManager, type AuthRequest } from "../middlewares/auth";
+import { liveCache } from "../lib/liveCache";
 import {
   ListLeaguesQueryParams,
   ListFixturesQueryParams,
@@ -353,7 +354,12 @@ router.get("/fixtures", async (req, res): Promise<void> => {
 
   const toDisplayTime = (t: Date) => new Date(t.getTime() + 2 * 60 * 60 * 1000);
 
-  const fixtures = rows.map((row: any) => ({
+  const fixtures = rows.map((row: any) => {
+    // For live fixtures, prefer the in-memory live cache's score/minute — it's
+    // refreshed every 15s from the live-score feed, while the DB row is only
+    // as fresh as the last 5-min fixture sync.
+    const live = row.status === "live" ? liveCache.getFixture(row.id) : undefined;
+    return {
     id: row.id,
     leagueId: row.leagueId,
     homeTeamId: row.homeTeamId,
@@ -361,8 +367,9 @@ router.get("/fixtures", async (req, res): Promise<void> => {
     startTime: row.startTime,
     displayTime: toDisplayTime(row.startTime),
     status: row.status,
-    scoreHome: row.scoreHome,
-    scoreAway: row.scoreAway,
+    scoreHome: live?.scoreHome ?? row.scoreHome,
+    scoreAway: live?.scoreAway ?? row.scoreAway,
+    matchMinute: live?.matchMinute ?? null,
     league: {
       id: row.leagueId,
       sportId: row.leagueSportId,
@@ -374,7 +381,8 @@ router.get("/fixtures", async (req, res): Promise<void> => {
     },
     homeTeam: teamMap[row.homeTeamId] || { id: row.homeTeamId, name: "Unknown", logo: null },
     awayTeam: teamMap[row.awayTeamId] || { id: row.awayTeamId, name: "Unknown", logo: null },
-  }));
+    };
+  });
 
   if (!withMarkets) {
     res.json({ fixtures, total: totalResult.count, page, limit });
@@ -462,8 +470,13 @@ router.get("/fixtures/:id", async (req, res): Promise<void> => {
     })
   );
 
+  const live = fixture.status === "live" ? liveCache.getFixture(fixture.id) : undefined;
+
   res.json({
     ...fixture,
+    scoreHome: live?.scoreHome ?? fixture.scoreHome,
+    scoreAway: live?.scoreAway ?? fixture.scoreAway,
+    matchMinute: live?.matchMinute ?? null,
     displayTime: new Date(fixture.startTime.getTime() + 2 * 60 * 60 * 1000),
     league: { ...league, sport },
     homeTeam,

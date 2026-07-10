@@ -21,6 +21,16 @@ type SelectionOutcome = "won" | "lost" | "pending" | "unknown";
 
 function getSelectionOutcome(sel: any): SelectionOutcome {
   const fixture = sel.fixture;
+  const selectionName: string = sel.selection ?? "";
+  const isUpSelection =
+    selectionName === "Home 1UP" || selectionName === "Home 2UP" ||
+    selectionName === "Away 1UP" || selectionName === "Away 2UP";
+
+  // 1UP/2UP: once locked in live (upWon), it is permanently a win regardless
+  // of the final score, and regardless of whether the fixture has finished yet —
+  // mirrors backend settlement in upMarkets.ts.
+  if (isUpSelection && sel.upWon) return "won";
+
   if (!fixture) return "unknown";
   if (fixture.status === "cancelled") return "unknown";
   if (
@@ -38,6 +48,16 @@ function getSelectionOutcome(sel: any): SelectionOutcome {
   const total = scoreHome + scoreAway;
   const market: string = sel.market ?? "";
   const selection: string = sel.selection ?? "";
+
+  if (isUpSelection) {
+    const diff = scoreHome - scoreAway;
+    const met =
+      selection === "Home 1UP" ? diff >= 1 :
+      selection === "Home 2UP" ? diff >= 2 :
+      selection === "Away 1UP" ? diff <= -1 :
+      diff <= -2;
+    return met ? "won" : "lost";
+  }
 
   if (market === "1X2" || market === "Match Result") {
     const result =

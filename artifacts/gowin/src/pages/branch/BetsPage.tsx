@@ -14,10 +14,20 @@ import { Search, CheckCircle2, XCircle, Clock, HelpCircle, Hash } from "lucide-r
 // ── Outcome helper ─────────────────────────────────────────────────────────────
 function selectionOutcome(sel: any): "won" | "lost" | "pending" | "unknown" {
   const f = sel.fixture;
+  const s0: string = sel.selection ?? "";
+  const isUp = s0 === "Home 1UP" || s0 === "Home 2UP" || s0 === "Away 1UP" || s0 === "Away 2UP";
+  // 1UP/2UP: once locked in live (upWon), it is permanently a win regardless
+  // of the final score, and regardless of whether the fixture has finished yet.
+  if (isUp && sel.upWon) return "won";
   if (!f || f.status === "cancelled") return "unknown";
   if (f.status !== "finished" || f.scoreHome == null || f.scoreAway == null) return "pending";
   const h = f.scoreHome, a = f.scoreAway, total = h + a;
   const m: string = sel.market ?? "", s: string = sel.selection ?? "";
+  if (isUp) {
+    const diff = h - a;
+    const met = s === "Home 1UP" ? diff >= 1 : s === "Home 2UP" ? diff >= 2 : s === "Away 1UP" ? diff <= -1 : diff <= -2;
+    return met ? "won" : "lost";
+  }
   if (m === "1X2" || m === "Match Result") {
     const r = h > a ? "Home" : a > h ? "Away" : "Draw";
     return s === r ? "won" : "lost";

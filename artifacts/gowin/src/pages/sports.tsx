@@ -186,8 +186,9 @@ function FixtureCard({ fixture }: { fixture: any }) {
             </div>
             <div className="shrink-0">
               {isLive ? (
-                <span className="flex items-center gap-1 text-xs font-semibold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />LIVE
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                  {fixture.matchMinute ? fixture.matchMinute : "LIVE"}
                 </span>
               ) : isFinished ? (
                 <span className="text-xs text-muted-foreground">FT</span>
