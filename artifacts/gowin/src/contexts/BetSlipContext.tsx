@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { usePlaceBet } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
@@ -89,15 +89,71 @@ interface BetSlipContextType {
 const BetSlipContext = createContext<BetSlipContextType | undefined>(undefined);
 
 const DEFAULT_MAX_SELECTIONS = 50;
+const STORAGE_PREFIX = "gowin.betslip.v1";
+
+interface PersistedBetSlip {
+  selections: BetSlipItem[];
+  stake: number;
+}
+
+function isValidBetSlipItem(s: any): s is BetSlipItem {
+  return (
+    s && typeof s === "object" &&
+    Number.isFinite(s.oddsId) &&
+    Number.isFinite(s.fixtureId) &&
+    typeof s.market === "string" &&
+    typeof s.selection === "string" &&
+    Number.isFinite(s.odds) && s.odds > 0 &&
+    typeof s.fixtureName === "string"
+  );
+}
+
+function loadPersistedSlip(storageKey: string): PersistedBetSlip {
+  if (typeof window === "undefined") return { selections: [], stake: 0 };
+  try {
+    const raw = window.localStorage.getItem(storageKey);
+    if (!raw) return { selections: [], stake: 0 };
+    const parsed = JSON.parse(raw);
+    return {
+      selections: Array.isArray(parsed.selections) ? parsed.selections.filter(isValidBetSlipItem) : [],
+      stake: Number.isFinite(parsed.stake) && parsed.stake >= 0 ? parsed.stake : 0,
+    };
+  } catch {
+    return { selections: [], stake: 0 };
+  }
+}
 
 export function BetSlipProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  // Scope persistence per-user (falls back to a shared "guest" slip) so switching
+  // accounts on the same device never leaks another user's selections/stake.
+  const storageKey = `${STORAGE_PREFIX}.${(user as any)?.id ?? "guest"}`;
   const [selections, setSelections] = useState<BetSlipItem[]>([]);
   const [stake, setStake] = useState<number>(0);
   const [isBooking, setIsBooking] = useState(false);
   const [lastPlacedBet, setLastPlacedBet] = useState<PlacedBetDetails | null>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
   const { formatCurrency, maxWin: siteMaxWin } = useSiteSettings();
+
+  // Load the persisted slip for this user once we know who they are (or that they're a guest).
+  const loadedKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (loadedKeyRef.current === storageKey) return;
+    loadedKeyRef.current = storageKey;
+    const initial = loadPersistedSlip(storageKey);
+    setSelections(initial.selections);
+    setStake(initial.stake);
+  }, [storageKey]);
+
+  // Persist selections & stake so they survive navigation and page refreshes.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify({ selections, stake }));
+    } catch {
+      // localStorage unavailable (private mode / quota) — betslip just won't persist
+    }
+  }, [storageKey, selections, stake]);
 
   const placeBetMutation = usePlaceBet();
 
