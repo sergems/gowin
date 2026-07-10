@@ -21,6 +21,8 @@ export const HealthCheckResponse = zod.object({
  */
 export const registerBodyUsernameMin = 3;
 
+
+
 export const registerBodyPasswordMin = 6;
 
 
@@ -30,7 +32,7 @@ export const RegisterBody = zod.object({
   "firstName": zod.string().min(1),
   "lastName": zod.string().min(1),
   "email": zod.string().email(),
-  "phoneNumber": zod.string(),
+  "phoneNumber": zod.string().describe('DRC mobile number in any common format (0812345678, +243812345678, 243812345678)'),
   "password": zod.string().min(registerBodyPasswordMin),
   "referralCode": zod.string().optional()
 })
@@ -40,7 +42,7 @@ export const RegisterBody = zod.object({
  * @summary Login and get JWT token
  */
 export const LoginBody = zod.object({
-  "identifier": zod.string(),
+  "identifier": zod.string().describe('Phone number or email address'),
   "password": zod.string()
 })
 
@@ -677,7 +679,10 @@ export const ListAllBetsResponse = zod.object({
   "bonusPercentage": zod.number().optional(),
   "baseWin": zod.number().optional(),
   "bonusAmount": zod.number().optional(),
-  "maxWinApplied": zod.boolean().optional()
+  "maxWinApplied": zod.boolean().optional(),
+  "exchangeRate": zod.number().nullish().describe('USD→CDF rate in effect when the bet was placed; null for legacy bets predating this field.'),
+  "cashOutAmount": zod.number().nullish(),
+  "cashOutExchangeRate": zod.number().nullish().describe('USD→CDF rate in effect when the cash-out was accepted; distinct from the placement-time exchangeRate.')
 })),
   "total": zod.number(),
   "page": zod.number(),
@@ -719,7 +724,10 @@ export const GetMyBetsResponse = zod.object({
   "bonusPercentage": zod.number().optional(),
   "baseWin": zod.number().optional(),
   "bonusAmount": zod.number().optional(),
-  "maxWinApplied": zod.boolean().optional()
+  "maxWinApplied": zod.boolean().optional(),
+  "exchangeRate": zod.number().nullish().describe('USD→CDF rate in effect when the bet was placed; null for legacy bets predating this field.'),
+  "cashOutAmount": zod.number().nullish(),
+  "cashOutExchangeRate": zod.number().nullish().describe('USD→CDF rate in effect when the cash-out was accepted; distinct from the placement-time exchangeRate.')
 })),
   "total": zod.number(),
   "page": zod.number(),
@@ -756,6 +764,8 @@ export const GetBetResponse = zod.object({
   "baseWin": zod.number().optional(),
   "bonusAmount": zod.number().optional(),
   "maxWinApplied": zod.boolean().optional(),
+  "exchangeRate": zod.number().nullish().describe('USD→CDF rate in effect when the bet was placed; null for legacy bets predating this field.'),
+  "cashOutExchangeRate": zod.number().nullish().describe('USD→CDF rate in effect when the cash-out was accepted; distinct from the placement-time exchangeRate.'),
   "selections": zod.array(zod.object({
   "id": zod.number(),
   "betId": zod.number(),
@@ -830,7 +840,10 @@ export const VoidBetResponse = zod.object({
   "bonusPercentage": zod.number().optional(),
   "baseWin": zod.number().optional(),
   "bonusAmount": zod.number().optional(),
-  "maxWinApplied": zod.boolean().optional()
+  "maxWinApplied": zod.boolean().optional(),
+  "exchangeRate": zod.number().nullish().describe('USD→CDF rate in effect when the bet was placed; null for legacy bets predating this field.'),
+  "cashOutAmount": zod.number().nullish(),
+  "cashOutExchangeRate": zod.number().nullish().describe('USD→CDF rate in effect when the cash-out was accepted; distinct from the placement-time exchangeRate.')
 })
 
 
@@ -875,7 +888,10 @@ export const GetRecentBetsResponseItem = zod.object({
   "bonusPercentage": zod.number().optional(),
   "baseWin": zod.number().optional(),
   "bonusAmount": zod.number().optional(),
-  "maxWinApplied": zod.boolean().optional()
+  "maxWinApplied": zod.boolean().optional(),
+  "exchangeRate": zod.number().nullish().describe('USD→CDF rate in effect when the bet was placed; null for legacy bets predating this field.'),
+  "cashOutAmount": zod.number().nullish(),
+  "cashOutExchangeRate": zod.number().nullish().describe('USD→CDF rate in effect when the cash-out was accepted; distinct from the placement-time exchangeRate.')
 })
 export const GetRecentBetsResponse = zod.array(GetRecentBetsResponseItem)
 

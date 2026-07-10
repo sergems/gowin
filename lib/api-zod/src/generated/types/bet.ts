@@ -22,4 +22,9 @@ export interface Bet {
   baseWin?: number;
   bonusAmount?: number;
   maxWinApplied?: boolean;
+  /** USD→CDF rate in effect when the bet was placed; null for legacy bets predating this field. */
+  exchangeRate?: number | null;
+  cashOutAmount?: number | null;
+  /** USD→CDF rate in effect when the cash-out was accepted; distinct from the placement-time exchangeRate. */
+  cashOutExchangeRate?: number | null;
 }

@@ -134,6 +134,11 @@ router.post("/bets", requireAuth, async (req: AuthRequest, res): Promise<void> =
   const bonus = calculateWinBonus(oddsValues, stake, winBonusConfig);
   const potentialWin = bonus.potentialWin;
 
+  // Snapshot the USD→CDF rate in effect right now — this bet's CDF value must never
+  // change later even if an admin updates the site-wide exchange rate afterwards.
+  const rateAtPlacementStr = await getSetting("usd_to_cdf_rate");
+  const rateAtPlacement = parseFloat(rateAtPlacementStr ?? "2800");
+
   const code = await uniqueBetCode();
   const isAgent = userRecord.role === "agent";
 
@@ -159,6 +164,7 @@ router.post("/bets", requireAuth, async (req: AuthRequest, res): Promise<void> =
       baseWin: bonus.baseWin.toFixed(2),
       bonusAmount: bonus.bonusAmount.toFixed(2),
       maxWinApplied: bonus.maxWinApplied,
+      exchangeRate: (Number.isFinite(rateAtPlacement) && rateAtPlacement > 0 ? rateAtPlacement : 2800).toFixed(4),
       ...(isAgent && {
         agentId: req.userId!,
         branchId: userRecord.branchId ?? undefined,
@@ -204,6 +210,8 @@ function formatBet(bet: any, user?: any) {
     potentialWin: parseFloat(bet.potentialWin),
     status: bet.status,
     createdAt: bet.createdAt,
+    // Snapshot rate at placement; null for legacy bets predating this column
+    exchangeRate: bet.exchangeRate !== undefined && bet.exchangeRate !== null ? parseFloat(bet.exchangeRate) : null,
     user: user || undefined,
     // Win bonus fields
     qualifyingSelections: bet.qualifyingSelections ?? 0,
@@ -215,6 +223,8 @@ function formatBet(bet: any, user?: any) {
     cashOutAmount: bet.cashOutAmount !== undefined && bet.cashOutAmount !== null ? parseFloat(bet.cashOutAmount) : null,
     cashOutAt: bet.cashOutAt ?? null,
     cashOutMarginUsed: bet.cashOutMarginUsed !== undefined && bet.cashOutMarginUsed !== null ? parseFloat(bet.cashOutMarginUsed) : null,
+    // Rate snapshot from the cash-out event itself (distinct from placement's exchangeRate)
+    cashOutExchangeRate: bet.cashOutExchangeRate !== undefined && bet.cashOutExchangeRate !== null ? parseFloat(bet.cashOutExchangeRate) : null,
   };
 }
 

@@ -54,7 +54,7 @@ const STATUS_VARIANT: Record<string, any> = {
 // ── Bet Verifier ──────────────────────────────────────────────────────────────
 function BetVerifier() {
   const { token } = useAuth();
-  const { formatCurrency, t } = useSiteSettings();
+  const { formatCurrency, formatCurrencyAt, t } = useSiteSettings();
   const [code, setCode] = useState("");
   const [submitted, setSubmitted] = useState("");
 
@@ -124,12 +124,12 @@ function BetVerifier() {
                   </div>
                   <div>
                     <div className="text-xs text-muted-foreground">{t("admin.bets.col_stake")}</div>
-                    <div className="font-bold">{formatCurrency(Number(result.stake))}</div>
+                    <div className="font-bold">{formatCurrencyAt(Number(result.stake), result.exchangeRate)}</div>
                   </div>
                   <div>
                     <div className="text-xs text-muted-foreground">{result.status === "won" ? t("admin.bets.won") : t("admin.bets.to_win")}</div>
                     <div className={`font-black ${result.status === "won" ? "text-primary" : ""}`}>
-                      {formatCurrency(Number(result.potentialWin))}
+                      {formatCurrencyAt(Number(result.potentialWin), result.exchangeRate)}
                     </div>
                   </div>
                   <div>
@@ -182,7 +182,7 @@ function BetVerifier() {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function AdminBets() {
-  const { formatCurrency, t } = useSiteSettings();
+  const { formatCurrency, formatCurrencyAt, t } = useSiteSettings();
   const { data, isLoading } = useListAllBets(undefined, { query: { queryKey: ["allBets"] } });
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -248,9 +248,9 @@ export default function AdminBets() {
                     <TableCell className="text-muted-foreground text-sm">
                       {format(new Date(bet.createdAt), "MMM d, HH:mm")}
                     </TableCell>
-                    <TableCell className="text-right font-medium">{formatCurrency(bet.stake)}</TableCell>
+                    <TableCell className="text-right font-medium">{formatCurrencyAt(bet.stake, bet.exchangeRate)}</TableCell>
                     <TableCell className="text-right text-muted-foreground">{bet.totalOdds.toFixed(2)}</TableCell>
-                    <TableCell className="text-right font-bold text-primary">{formatCurrency(bet.potentialWin)}</TableCell>
+                    <TableCell className="text-right font-bold text-primary">{formatCurrencyAt(bet.potentialWin, bet.exchangeRate)}</TableCell>
                     <TableCell>
                       <Badge
                         variant={STATUS_VARIANT[bet.status] ?? "outline"}

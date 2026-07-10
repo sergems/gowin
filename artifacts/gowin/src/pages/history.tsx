@@ -89,7 +89,7 @@ interface LiveFixtureData {
 }
 
 export default function History() {
-  const { formatCurrency, currency, exchangeRate, t } = useSiteSettings();
+  const { formatCurrency, formatCurrencyAt, currency, exchangeRate, t } = useSiteSettings();
   const [activeTab, setActiveTab] = useState<"pending" | "won" | "lost" | "void" | "cashed_out">("pending");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [liveFixtures, setLiveFixtures] = useState<Map<number, LiveFixtureData>>(new Map());
@@ -228,7 +228,7 @@ export default function History() {
                     <div className="flex items-center gap-6">
                       <div className="text-right hidden sm:block">
                         <div className="text-xs text-muted-foreground">{t("betslip.stake")}</div>
-                        <div className="font-bold text-sm">{formatCurrency(Number(bet.stake))}</div>
+                        <div className="font-bold text-sm">{formatCurrencyAt(Number(bet.stake), bet.exchangeRate)}</div>
                       </div>
                       <div className="text-right">
                         <div className="text-xs text-muted-foreground">
@@ -240,8 +240,8 @@ export default function History() {
                         </div>
                         <div className={`font-black text-sm ${bet.status === "won" || bet.status === "cashed_out" ? "text-primary" : ""}`}>
                           {bet.status === "cashed_out" && bet.cashOutAmount != null
-                            ? formatCurrency(Number(bet.cashOutAmount))
-                            : formatCurrency(Number(bet.potentialWin))}
+                            ? formatCurrencyAt(Number(bet.cashOutAmount), bet.cashOutExchangeRate ?? bet.exchangeRate)
+                            : formatCurrencyAt(Number(bet.potentialWin), bet.exchangeRate)}
                         </div>
                       </div>
                       {activeTab === "pending" && (
@@ -370,7 +370,7 @@ export default function History() {
                             <div className="flex gap-6">
                               <div>
                                 <div className="text-xs text-muted-foreground mb-0.5">{t("betslip.stake")}</div>
-                                <div className="font-bold">{formatCurrency(Number(bet.stake))}</div>
+                                <div className="font-bold">{formatCurrencyAt(Number(bet.stake), bet.exchangeRate)}</div>
                               </div>
                               <div>
                                 <div className="text-xs text-muted-foreground mb-0.5">{t("betslip.total_odds")}</div>
@@ -382,7 +382,7 @@ export default function History() {
                                 <div className="text-right">
                                   <div className="text-xs text-muted-foreground mb-0.5">{t("bets.cash_out_sacrificed")}</div>
                                   <div className="font-bold text-destructive">
-                                    {formatCurrency(Math.max(0, Number(bet.potentialWin) - Number(bet.cashOutAmount ?? 0)))}
+                                    {formatCurrencyAt(Math.max(0, Number(bet.potentialWin) - Number(bet.cashOutAmount ?? 0)), bet.cashOutExchangeRate ?? bet.exchangeRate)}
                                   </div>
                                 </div>
                               )}
@@ -396,8 +396,8 @@ export default function History() {
                                 </div>
                                 <div className={`font-black text-lg ${bet.status === "won" || bet.status === "cashed_out" ? "text-primary" : ""}`}>
                                   {bet.status === "cashed_out" && bet.cashOutAmount != null
-                                    ? formatCurrency(Number(bet.cashOutAmount))
-                                    : formatCurrency(Number(bet.potentialWin))}
+                                    ? formatCurrencyAt(Number(bet.cashOutAmount), bet.cashOutExchangeRate ?? bet.exchangeRate)
+                                    : formatCurrencyAt(Number(bet.potentialWin), bet.exchangeRate)}
                                 </div>
                               </div>
                               <button

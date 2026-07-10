@@ -16,6 +16,11 @@ interface SiteSettingsContextValue {
   maxWin: number;
   t: (key: TranslationKey) => string;
   formatCurrency: (amount: number | string) => string;
+  // Use for amounts tied to a historical record (a placed bet, a past transaction) that
+  // stored its own exchangeRate snapshot — pass that snapshot so the displayed CDF value
+  // never drifts if the site-wide rate changes later. Falls back to the live rate when
+  // `rateOverride` is null/undefined (e.g. legacy records with no stored snapshot).
+  formatCurrencyAt: (amount: number | string, rateOverride?: number | string | null) => string;
   parseAmount: (amount: number | string) => number;
 }
 
@@ -26,6 +31,7 @@ const SiteSettingsContext = createContext<SiteSettingsContextValue>({
   maxWin: 1_000_000,
   t: (key) => key,
   formatCurrency: (amount) => `${Number(amount).toFixed(2)}`,
+  formatCurrencyAt: (amount) => `${Number(amount).toFixed(2)}`,
   parseAmount: (amount) => Number(amount),
 });
 
@@ -51,13 +57,19 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
   const t = (key: TranslationKey) => translate(key, language);
   const formatCurrency = (amount: number | string) =>
     formatCurrencyValue(Number(amount), currency, language, exchangeRate);
+  const formatCurrencyAt = (amount: number | string, rateOverride?: number | string | null) => {
+    const rate = rateOverride !== undefined && rateOverride !== null && Number(rateOverride) > 0
+      ? Number(rateOverride)
+      : exchangeRate;
+    return formatCurrencyValue(Number(amount), currency, language, rate);
+  };
   // Converts a value the user typed while viewing the site in the active currency
   // back into the USD figure the backend expects (wallet balances/bet stakes are USD-only).
   const parseAmount = (amount: number | string) =>
     parseCurrencyInput(Number(amount), currency, exchangeRate);
 
   return (
-    <SiteSettingsContext.Provider value={{ currency, language, exchangeRate, maxWin, t, formatCurrency, parseAmount }}>
+    <SiteSettingsContext.Provider value={{ currency, language, exchangeRate, maxWin, t, formatCurrency, formatCurrencyAt, parseAmount }}>
       {children}
     </SiteSettingsContext.Provider>
   );

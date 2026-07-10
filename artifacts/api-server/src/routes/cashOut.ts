@@ -2,7 +2,7 @@ import { Router } from "express";
 import {
   db, betsTable, betSelectionsTable, fixturesTable, leaguesTable,
   marketsTable, oddsTable, walletsTable, transactionsTable, usersTable,
-  cashOutAuditLogTable,
+  cashOutAuditLogTable, settingsTable,
 } from "@workspace/db";
 import { eq, and, inArray, desc, gte, sql } from "drizzle-orm";
 import { requireAuth, requireAdmin, requireAdminOrManager, type AuthRequest } from "../middlewares/auth";
@@ -17,6 +17,11 @@ import { broadcast } from "../lib/wsServer";
 import { logger } from "../lib/logger";
 
 const router = Router();
+
+async function getSetting(key: string): Promise<string | null> {
+  const [row] = await db.select().from(settingsTable).where(eq(settingsTable.key, key)).limit(1);
+  return row?.value ?? null;
+}
 
 // ── Shared: build the eligibility/offer context for a bet ──────────────────────
 
@@ -274,6 +279,13 @@ router.post("/bets/:id/cash-out", requireAuth, async (req: AuthRequest, res): Pr
         description: `Cash Out — Bet ${bet.code ?? "#" + bet.id}`,
       });
 
+      // Cash-out is a distinct financial event from placement — snapshot the rate
+      // in effect right now so its CDF display never drifts either, independent of
+      // the bet's placement-time rate.
+      const cashOutRateStr = await getSetting("usd_to_cdf_rate");
+      const cashOutRateNum = parseFloat(cashOutRateStr ?? "2800");
+      const cashOutRate = Number.isFinite(cashOutRateNum) && cashOutRateNum > 0 ? cashOutRateNum : 2800;
+
       const [updatedBet] = await tx.update(betsTable).set({
         status: "cashed_out",
         cashOutAmount: offer.offerAmount.toFixed(2),
@@ -284,6 +296,7 @@ router.post("/bets/:id/cash-out", requireAuth, async (req: AuthRequest, res): Pr
         cashOutOddsSnapshot: offer.liveOddsUsed,
         cashOutIp: ip,
         cashOutDevice: userAgent,
+        cashOutExchangeRate: cashOutRate.toFixed(4),
       }).where(eq(betsTable.id, id)).returning();
 
       const [user] = await tx.select({ username: usersTable.username }).from(usersTable).where(eq(usersTable.id, bet.userId)).limit(1);

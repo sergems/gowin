@@ -15,6 +15,9 @@ export const betsTable = pgTable("bets", {
   potentialWin: numeric("potential_win", { precision: 15, scale: 2 }).notNull(),
   status: betStatusEnum("status").notNull().default("pending"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // USD→CDF rate in effect when the bet was placed — snapshot so CDF display never
+  // drifts if the site-wide rate is changed later. Null on legacy rows pre-dating this column.
+  exchangeRate: numeric("exchange_rate", { precision: 10, scale: 4 }),
   agentId: integer("agent_id").references(() => usersTable.id, { onDelete: "set null" }),
   branchId: integer("branch_id"),
   // Win Bonus fields — stored at placement, never recomputed after acceptance
@@ -32,6 +35,9 @@ export const betsTable = pgTable("bets", {
   cashOutOddsSnapshot: jsonb("cash_out_odds_snapshot"),
   cashOutIp: text("cash_out_ip"),
   cashOutDevice: text("cash_out_device"),
+  // USD→CDF rate in effect when the cash-out was accepted — the cash-out payout is a
+  // distinct financial event from bet placement, so it gets its own rate snapshot.
+  cashOutExchangeRate: numeric("cash_out_exchange_rate", { precision: 10, scale: 4 }),
 });
 
 export const betSelectionsTable = pgTable("bet_selections", {

@@ -1590,6 +1590,20 @@ components:
           format: double
         maxWinApplied:
           type: boolean
+        exchangeRate:
+          type: number
+          format: double
+          nullable: true
+          description: USD→CDF rate in effect when the bet was placed; null for legacy bets predating this field.
+        cashOutAmount:
+          type: number
+          format: double
+          nullable: true
+        cashOutExchangeRate:
+          type: number
+          format: double
+          nullable: true
+          description: USD→CDF rate in effect when the cash-out was accepted; distinct from the placement-time exchangeRate.
 
     BetDetail:
       type: object
@@ -1629,6 +1643,16 @@ components:
           format: double
         maxWinApplied:
           type: boolean
+        exchangeRate:
+          type: number
+          format: double
+          nullable: true
+          description: USD→CDF rate in effect when the bet was placed; null for legacy bets predating this field.
+        cashOutExchangeRate:
+          type: number
+          format: double
+          nullable: true
+          description: USD→CDF rate in effect when the cash-out was accepted; distinct from the placement-time exchangeRate.
         selections:
           type: array
           items:

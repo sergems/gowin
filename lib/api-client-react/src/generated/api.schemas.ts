@@ -16,7 +16,9 @@ export interface ErrorResponse {
 export interface RegisterInput {
   /** @minLength 3 */
   username: string;
+  /** @minLength 1 */
   firstName: string;
+  /** @minLength 1 */
   lastName: string;
   email: string;
   /** DRC mobile number in any common format (0812345678, +243812345678, 243812345678) */
@@ -404,6 +406,11 @@ export interface Bet {
   baseWin?: number;
   bonusAmount?: number;
   maxWinApplied?: boolean;
+  /** USD→CDF rate in effect when the bet was placed; null for legacy bets predating this field. */
+  exchangeRate?: number | null;
+  cashOutAmount?: number | null;
+  /** USD→CDF rate in effect when the cash-out was accepted; distinct from the placement-time exchangeRate. */
+  cashOutExchangeRate?: number | null;
 }
 
 export type BetDetailStatus = typeof BetDetailStatus[keyof typeof BetDetailStatus];
@@ -430,6 +437,10 @@ export interface BetDetail {
   baseWin?: number;
   bonusAmount?: number;
   maxWinApplied?: boolean;
+  /** USD→CDF rate in effect when the bet was placed; null for legacy bets predating this field. */
+  exchangeRate?: number | null;
+  /** USD→CDF rate in effect when the cash-out was accepted; distinct from the placement-time exchangeRate. */
+  cashOutExchangeRate?: number | null;
   selections: BetSelection[];
 }
 

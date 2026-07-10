@@ -15,6 +15,9 @@ export interface PrintBetData {
   stake: number | string;
   potentialWin: number | string;
   status?: string;
+  // USD→CDF rate snapshot from when the bet was placed; takes priority over the
+  // live `exchangeRate` passed to printBetSlip so the receipt never drifts.
+  exchangeRate?: number | string | null;
 }
 
 export function printBetSlip(bet: PrintBetData, currency = "USD", exchangeRate = 1) {
@@ -24,8 +27,12 @@ export function printBetSlip(bet: PrintBetData, currency = "USD", exchangeRate =
   const fmtOdds = (v: number | string) => Number(v).toFixed(2);
   // All amounts on `bet` (stake/potentialWin) are stored in USD; when the active
   // display currency is CDF, convert using the exchange rate before formatting —
-  // otherwise the raw USD figure gets mislabeled as CDF.
-  const validRate = Number.isFinite(exchangeRate) && exchangeRate > 0 ? exchangeRate : 1;
+  // otherwise the raw USD figure gets mislabeled as CDF. Prefer the rate snapshot
+  // stored on the bet itself (locked at placement) over the live site-wide rate.
+  const rateToUse = bet.exchangeRate !== undefined && bet.exchangeRate !== null && Number(bet.exchangeRate) > 0
+    ? Number(bet.exchangeRate)
+    : exchangeRate;
+  const validRate = Number.isFinite(rateToUse) && rateToUse > 0 ? rateToUse : 1;
   const fmtMoney = (v: number | string) => {
     const displayAmount = currency === "CDF" ? Number(v) * validRate : Number(v);
     if (currency === "CDF") {
@@ -150,6 +157,7 @@ export function historyBetToPrintData(bet: any): PrintBetData {
     totalOdds: bet.totalOdds,
     stake: bet.stake,
     potentialWin: bet.potentialWin,
+    exchangeRate: bet.exchangeRate ?? null,
     selections: (bet.selections || []).map((sel: any) => ({
       fixtureName: sel.fixture
         ? `${sel.fixture.homeTeam?.name ?? "?"} vs ${sel.fixture.awayTeam?.name ?? "?"}`
