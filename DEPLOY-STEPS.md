@@ -4,6 +4,11 @@
 > **This is the authoritative deploy guide.** It covers a complete fresh deploy:
 > all production tables are dropped, the database is rebuilt from **`btk.sql`**,
 > and the latest app code is deployed. Nothing is left behind.
+>
+> **Most updates do not need this.** If you only changed app code (no new tables/columns),
+> use the **code-only deploy** in "You're done" below — it's faster and doesn't touch data.
+> Use this full guide for the *first* deploy, or whenever you want to wipe production
+> data back to a known snapshot.
 
 ---
 
@@ -20,6 +25,29 @@ Replit (dev)  →  GitHub (sergems/gowin)  →  Linode 172.105.149.205  →  gow
 ```
 
 ⚠️ **Warning:** Step 5 permanently deletes all production data and replaces it with the data in `btk.sql`. There is no undo. Take a backup first (Step 3).
+
+---
+
+## Latest schema update — Full Cash Out (2026-07-10)
+
+The Full Cash Out feature was added this cycle: customers can cash out a pending bet early at a
+live, server-computed offer. This shipped with:
+
+- New `bets` columns: `cash_out_amount`, `cash_out_at`, `cash_out_margin_used`, `cash_out_fair_value`,
+  `cash_out_probability`, `cash_out_odds_snapshot`, `cash_out_ip`, `cash_out_device`
+- New `cashed_out` value on the `bet_status` enum, and `cash_out` on `transaction_type`
+- New `cash_out_audit_log` table (every offer/accept is recorded for admin reporting)
+- New Admin → Cash Out page (Settings / Reports / Audit Log tabs)
+- `scripts/schema.sql` (the idempotent migration the app runs on every container start) and
+  `btk.sql` (the full fresh-install dump) have both been **regenerated to include this and all
+  other previously-undocumented schema drift** (`notifications`, `referral_rewards`, Win Bonus
+  columns on `bets`, 1UP/2UP's `up_won` on `bet_selections`, PawaPay columns on `withdrawals`,
+  bonus-wallet columns on `wallets`, referral columns on `users`) — a **code-only deploy now
+  correctly picks up this schema change automatically**, no full reset required.
+
+> If your production database was deployed before this update, a plain code-only deploy
+> (see "You're done" below) is sufficient — `scripts/schema.sql` runs automatically on
+> container start and will add the missing pieces without touching existing data.
 
 ---
 
@@ -248,6 +276,8 @@ Open **https://gowinrdc.com** and check every item in this list:
 | Admin → Users | Wallet balances shown; can reset passwords, credit/debit wallets |
 | Live odds | Odds update in real time without page reload (WebSocket) |
 | Notifications | Bell icon in header; bet settlement alerts appear |
+| Cash Out (customer) | Place a pending bet on a live/upcoming fixture → History tab shows an amber "Cash Out" button with a live offer; accepting credits the wallet and moves the bet to the "Cashed Out" tab |
+| Admin → Cash Out | Settings tab saves and version-increments; Reports tab shows totals; Audit Log lists offer/accept events |
 
 ---
 
