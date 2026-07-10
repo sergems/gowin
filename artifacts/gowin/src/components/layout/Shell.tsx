@@ -532,13 +532,13 @@ export function Shell({ children }: { children: ReactNode }) {
             {!isStaffRole && (
               <div
                 title={!open ? t("nav.live") : undefined}
-                className={`flex items-center gap-3 rounded-md text-sm font-medium cursor-not-allowed opacity-40
+                className={`pointer-events-none select-none flex items-center gap-3 rounded-md text-sm font-medium opacity-35
                   ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}`}>
                 <Zap className="w-4 h-4 shrink-0" />
                 {open && (
                   <span className="flex-1 flex items-center gap-2">
                     {t("nav.live")}
-                    <span className="text-[10px] font-normal text-muted-foreground/60">Soon</span>
+                    <span className="text-[10px] font-normal">Coming Soon</span>
                   </span>
                 )}
               </div>
@@ -945,12 +945,6 @@ export function Shell({ children }: { children: ReactNode }) {
           <span className="text-[10px] font-medium">Home</span>
         </Link>
 
-        {!isStaffRole && (
-          <div className="flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-md opacity-40 cursor-not-allowed">
-            <Zap className="w-5 h-5 text-muted-foreground" />
-            <span className="text-[10px] font-medium text-muted-foreground">In-Play</span>
-          </div>
-        )}
 
         {user ? (
           <>
