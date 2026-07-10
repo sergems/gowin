@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useBetSlip } from "@/contexts/BetSlipContext";
-import { useLiveSocket, type LiveFixture, type LiveMarket, type LiveOdd, type OddsDirection } from "@/hooks/useLiveSocket";
+import { useLiveSocketContext, type LiveFixture, type LiveMarket, type OddsDirection } from "@/contexts/LiveSocketContext";
+import type { LiveOdd } from "@/hooks/useLiveSocket";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronDown, Radio, Wifi, WifiOff, AlertTriangle, Shield, TrendingUp, TrendingDown, Lock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import type { LiveMarket as ApiLiveMarket } from "@/hooks/useLiveSocket";
+import type { LiveMarket as ApiLiveMarket } from "@/contexts/LiveSocketContext";
 import { sortOdds } from "@/lib/sortOdds";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { resolveLeagueLogoUrl } from "@/lib/leagueLogoOverrides";
@@ -404,7 +405,7 @@ function buildSortedLeagueGroups(fixtures: LiveFixture[]): LeagueGroup[] {
 }
 
 export default function LiveBetting() {
-  const { fixtures: wsFixtures, connected, allSuspended, getOddsDirection } = useLiveSocket();
+  const { fixtures: wsFixtures, connected, allSuspended, getOddsDirection } = useLiveSocketContext();
   const { t } = useSiteSettings();
   const [dataWarning, setDataWarning] = useState<string | null>(null);
 

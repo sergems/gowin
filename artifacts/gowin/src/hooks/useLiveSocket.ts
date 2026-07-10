@@ -51,6 +51,11 @@ export interface LiveFixture {
 
 export type OddsDirection = "up" | "down";
 
+export interface LiveOddsUpdatePayload {
+  updates: Array<{ fixtureId: number; markets: LiveMarket[] }>;
+  seq: number;
+}
+
 interface LiveState {
   fixtures: Map<number, LiveFixture>;
   prevOdds: Map<string, number>;
@@ -58,6 +63,8 @@ interface LiveState {
   connected: boolean;
   /** True while disconnected — all odds must be shown as suspended */
   allSuspended: boolean;
+  /** Latest LIVE_ODDS_UPDATE payload — seq increments each update so consumers can useEffect on it */
+  latestOddsUpdate: LiveOddsUpdatePayload | null;
 }
 
 type LiveAction =
@@ -113,7 +120,11 @@ function reducer(state: LiveState, action: LiveAction): LiveState {
         fixtures.set(fixtureId, { ...existing, markets });
       }
 
-      return { ...state, fixtures, prevOdds, oddsDirections };
+      const latestOddsUpdate: LiveOddsUpdatePayload = {
+        updates: action.updates,
+        seq: (state.latestOddsUpdate?.seq ?? 0) + 1,
+      };
+      return { ...state, fixtures, prevOdds, oddsDirections, latestOddsUpdate };
     }
 
     case "STATS_UPDATE": {
@@ -144,6 +155,7 @@ export function useLiveSocket() {
     oddsDirections: new Map(),
     connected: false,
     allSuspended: false,
+    latestOddsUpdate: null,
   });
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -203,5 +215,6 @@ export function useLiveSocket() {
     connected: state.connected,
     allSuspended: state.allSuspended,
     getOddsDirection,
+    latestOddsUpdate: state.latestOddsUpdate,
   };
 }

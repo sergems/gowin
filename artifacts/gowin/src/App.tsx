@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { BetSlipProvider } from "@/contexts/BetSlipContext";
+import { LiveSocketProvider } from "@/contexts/LiveSocketContext";
 import { SiteSettingsProvider } from "@/contexts/SiteSettingsContext";
 import { Shell } from "@/components/layout/Shell";
 import NotFound from "@/pages/not-found";
@@ -239,6 +240,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <SiteSettingsProvider>
         <AuthProvider>
+          <LiveSocketProvider>
           <BetSlipProvider>
             <TooltipProvider>
               <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
@@ -247,6 +249,7 @@ function App() {
               <Toaster />
             </TooltipProvider>
           </BetSlipProvider>
+          </LiveSocketProvider>
         </AuthProvider>
       </SiteSettingsProvider>
     </QueryClientProvider>

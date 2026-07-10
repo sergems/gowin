@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { BetSelectionInput } from "@workspace/api-client-react";
 import { useAuth } from "./AuthContext";
 import { useSiteSettings } from "./SiteSettingsContext";
+import { useLiveSocketContext } from "./LiveSocketContext";
 
 // ── Win Bonus types ────────────────────────────────────────────────────────────
 
@@ -134,6 +135,64 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
   const [lastPlacedBet, setLastPlacedBet] = useState<PlacedBetDetails | null>(null);
   const { toast } = useToast();
   const { formatCurrency, maxWin: siteMaxWin } = useSiteSettings();
+
+  // ── Live bet slip synchronization ─────────────────────────────────────────────
+  // Keep a ref so we can read current selections inside the effect without
+  // making it a dependency (which would cause infinite re-runs).
+  const selectionsRef = useRef<BetSlipItem[]>([]);
+  useEffect(() => { selectionsRef.current = selections; }, [selections]);
+
+  const { latestOddsUpdate } = useLiveSocketContext();
+
+  useEffect(() => {
+    if (!latestOddsUpdate || selectionsRef.current.length === 0) return;
+
+    // Build a flat oddsId → { value, suspended } map from this update
+    const updatedOdds = new Map<number, { value: number; suspended: boolean }>();
+    for (const { markets } of latestOddsUpdate.updates) {
+      for (const market of markets) {
+        for (const odd of market.odds) {
+          updatedOdds.set(odd.id, { value: odd.oddsValue, suspended: market.suspended });
+        }
+      }
+    }
+
+    const messages: string[] = [];
+    const suspendedLabels: string[] = [];
+
+    const next = selectionsRef.current.map((sel) => {
+      const updated = updatedOdds.get(sel.oddsId);
+      if (!updated) return sel;
+      if (updated.suspended) {
+        suspendedLabels.push(sel.selection);
+        return sel; // keep in slip but bet placement will be blocked server-side
+      }
+      if (Math.abs(updated.value - sel.odds) > 0.001) {
+        const dir = updated.value > sel.odds ? "▲" : "▼";
+        messages.push(`${sel.selection}: ${sel.odds.toFixed(2)} ${dir} ${updated.value.toFixed(2)}`);
+        return { ...sel, odds: updated.value };
+      }
+      return sel;
+    });
+
+    const hasOddsChanges = messages.length > 0;
+    const hasSuspensions = suspendedLabels.length > 0;
+
+    if (hasOddsChanges) {
+      setSelections(next);
+      toast({
+        title: "Bet slip odds updated",
+        description: messages.slice(0, 3).join(" · "),
+      });
+    }
+    if (hasSuspensions) {
+      toast({
+        title: "Market temporarily suspended",
+        description: `${suspendedLabels.slice(0, 3).join(", ")} — betting paused`,
+        variant: "destructive",
+      });
+    }
+  }, [latestOddsUpdate?.seq]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load the persisted slip for this user once we know who they are (or that they're a guest).
   const loadedKeyRef = useRef<string | null>(null);

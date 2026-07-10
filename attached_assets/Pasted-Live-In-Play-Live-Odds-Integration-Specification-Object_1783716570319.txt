@@ -1,0 +1,152 @@
+Live In-Play Live Odds Integration Specification
+Objective
+
+Upgrade the Live In-Play section to use live odds exclusively from the live odds API. This section is dedicated to live betting and must no longer rely on pre-match odds.
+
+The system should continuously retrieve the latest live odds from the API and update the displayed markets automatically as the match progresses. Every significant event in the game (such as goals, red cards, penalties, or changes in match time) may affect the odds, so the platform must always present the most recent prices available from the provider.
+
+Live In-Play Section
+
+This update applies only to the Live In-Play section of the sportsbook.
+
+The pre-match sportsbook remains unchanged and will continue to display pre-match odds for upcoming fixtures. The Live In-Play section must operate independently and display only fixtures and markets that have live odds available.
+
+Live Odds Source
+
+The system must retrieve all odds directly from the live odds API.
+
+It must never estimate, calculate, or reuse pre-match odds for the Live In-Play section.
+
+Every displayed market and selection must come directly from the latest API response.
+
+Automatic Odds Refresh
+
+The Live In-Play section must automatically request updated live odds from the API every 15 seconds.
+
+Each refresh should retrieve:
+
+Updated live odds
+Newly available markets
+Suspended markets
+Reopened markets
+Market removals
+Match status
+Current score
+Match minute
+Injury time
+Red cards
+Other available live match information
+
+All updates must happen in the background without requiring the user to refresh the page.
+
+Live Event Selection
+
+Display only fixtures that meet all of the following conditions:
+
+Match is currently LIVE
+Live odds are available from the API
+At least one active live betting market exists
+
+If a live fixture does not yet have live odds available, it should not appear in the Live In-Play section. The system should continue checking the API every refresh cycle and automatically display the fixture as soon as live odds become available.
+
+Market Display
+
+For each live fixture, display only the live betting markets returned by the API.
+
+Examples include:
+
+Match Winner
+Double Chance
+Draw No Bet
+Both Teams To Score
+Over/Under Goals
+Asian Handicap
+Next Goal
+Correct Score
+Total Corners
+Total Cards
+Team Goals
+Half-Time Markets
+Player Markets (when available)
+
+Do not create or infer markets that are not supplied by the live odds provider.
+
+Live Odds Updates
+
+Since live odds change throughout a match, the system must compare newly received odds with the currently displayed values.
+
+When an odd changes:
+
+Update the displayed value immediately.
+Highlight increases (e.g., flash green briefly).
+Highlight decreases (e.g., flash red briefly).
+Recalculate any affected bet slip selections and potential returns using the latest odds.
+
+Only changed odds should be updated to ensure smooth performance.
+
+Suspended Markets
+
+If the API marks a market as suspended:
+
+Disable betting on that market immediately.
+Display the market as suspended or temporarily hide it.
+Automatically restore it once the API marks it as active again.
+
+Typical suspension scenarios include:
+
+Goal scored
+Penalty awarded
+VAR review
+Red card
+Dangerous attacking situations
+Provider-initiated market suspension
+Bet Slip Validation
+
+Before adding a live selection to the bet slip, the system must verify that:
+
+The market is still active.
+The selection is still available.
+The latest odds match the current API response.
+
+If the odds have changed, the bet slip should update to the new price and notify the user before the bet is placed.
+
+If the market is suspended, the selection must not be added and the user should receive a message indicating that the market is temporarily unavailable.
+
+Live Bet Slip Synchronization
+
+For selections already in the bet slip, the system should synchronize with the live odds feed every 15 seconds by:
+
+Updating current odds.
+Recalculating total combined odds.
+Updating potential winnings.
+Highlighting any odds changes.
+Preventing bets from being placed using outdated prices.
+Performance Requirements
+
+To maintain excellent performance:
+
+Poll the live odds API every 15 seconds (or use WebSockets if the provider supports real-time streaming).
+Request updates only for fixtures currently displayed in the Live In-Play section.
+Update only markets or selections whose data has changed.
+Cache static match information (team names, competition, venue) to reduce unnecessary API requests and rendering.
+Error Handling
+
+If the live odds API is temporarily unavailable:
+
+Retain the last successfully received odds for a short grace period.
+Clearly indicate that live odds are temporarily unavailable.
+Disable betting on affected markets until fresh odds are received.
+Automatically resume updates when the API connection is restored.
+Expected User Experience
+
+The Live In-Play section should provide a true live betting experience where:
+
+Only live fixtures with active live odds are displayed.
+Every market and odd comes directly from the live odds API.
+Odds refresh automatically every 10 seconds (or instantly via WebSocket if supported).
+Price movements are reflected immediately as the match evolves.
+New live markets appear automatically when the API makes them available.
+Suspended markets are handled automatically.
+Bets are always validated against the latest available odds before acceptance.
+
+The result should be a responsive, reliable Live In-Play experience comparable to major sportsbooks, with all pricing driven by the official live odds feed rather than static or pre-match odds.
