@@ -39,7 +39,7 @@ export default function ChangePassword() {
         localStorage.setItem("gowin_token", data.token);
       }
       await refreshUser();
-      toast({ title: "Password updated", description: "Your new password has been saved." });
+      toast({ title: "Password updated", description: "Your new password has been saved.", variant: "success" });
       setLocation("/");
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });

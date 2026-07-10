@@ -257,7 +257,7 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
         ? `Potential win: ${formatCurrency(potentialWin)} (incl. ${bonusPercentage}% bonus!)`
         : `Potential win: ${formatCurrency(potentialWin)}`;
 
-      toast({ title: "Bet Placed Successfully", description: winMsg });
+      toast({ title: "Bet Placed Successfully", description: winMsg, variant: "success" });
       clearSlip();
     } catch (err: any) {
       toast({ title: "Failed to place bet", description: err.message || "An error occurred.", variant: "destructive" });

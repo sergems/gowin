@@ -105,7 +105,7 @@ export default function CashUpPage() {
       const msg = res.accumulated
         ? `Added ${formatCurrency(parseFloat(allocForm.amount))} to existing float`
         : `${formatCurrency(parseFloat(allocForm.amount))} float allocated`;
-      toast({ title: "Float allocated", description: msg });
+      toast({ title: "Float allocated", description: msg, variant: "success" });
       qc.invalidateQueries({ queryKey: ["branch-floats"] });
       qc.invalidateQueries({ queryKey: ["branch-info-cashup"] });
       setAllocForm({ agentId: "", amount: "", shiftLabel: "Day", notes: "" });

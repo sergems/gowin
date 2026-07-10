@@ -70,7 +70,7 @@ export default function AdminReferralSettings() {
     onSuccess: (data) => {
       setForm(data);
       queryClient.invalidateQueries({ queryKey: ["admin-referral-settings"] });
-      toast({ title: t("admin.referral.saved"), description: t("admin.referral.saved_desc") });
+      toast({ title: t("admin.referral.saved"), description: t("admin.referral.saved_desc"), variant: "success" });
     },
     onError: (err: any) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });

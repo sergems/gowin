@@ -202,7 +202,7 @@ export default function ClerkWithdrawalsPage() {
       return d;
     },
     onSuccess: () => {
-      toast({ title: t("clerk.payout_initiated"), description: t("clerk.payout_sent_desc") });
+      toast({ title: t("clerk.payout_initiated"), description: t("clerk.payout_sent_desc"), variant: "success" });
       setAuthoriseModal(null);
       queryClient.invalidateQueries({ queryKey: ["/api/clerk/withdrawals"] });
       setActiveTab("processing");
@@ -222,7 +222,7 @@ export default function ClerkWithdrawalsPage() {
       return d;
     },
     onSuccess: () => {
-      toast({ title: t("clerk.withdrawal_rejected"), description: t("clerk.balance_restored") });
+      toast({ title: t("clerk.withdrawal_rejected"), description: t("clerk.balance_restored"), variant: "success" });
       setRejectModal(null);
       setRejectReason("");
       queryClient.invalidateQueries({ queryKey: ["/api/clerk/withdrawals"] });

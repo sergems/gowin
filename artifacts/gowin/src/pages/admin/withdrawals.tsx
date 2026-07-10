@@ -244,7 +244,7 @@ export default function AdminWithdrawals() {
     },
     onSuccess: () => {
       setPayingId(null);
-      toast({ title: t("admin.withdrawals.payout_sent"), description: t("admin.withdrawals.payout_sent_desc") });
+      toast({ title: t("admin.withdrawals.payout_sent"), description: t("admin.withdrawals.payout_sent_desc"), variant: "success" });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/withdrawals"] });
       setActiveTab("processing");
     },
@@ -263,7 +263,7 @@ export default function AdminWithdrawals() {
         rejected: t("admin.withdrawals.rejected_msg"),
         paid: t("admin.withdrawals.paid_msg"),
       };
-      toast({ title: labels[status] ?? "Updated" });
+      toast({ title: labels[status] ?? "Updated", variant: "success" });
     } catch (e: any) {
       toast({ title: t("admin.withdrawals.action_failed"), description: e.message, variant: "destructive" });
     }

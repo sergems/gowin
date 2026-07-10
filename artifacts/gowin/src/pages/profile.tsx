@@ -148,7 +148,7 @@ export default function Profile() {
       setPhoneNumber(updated.phoneNumber ?? "");
       setMobileOperator(updated.mobileOperator ?? "");
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-      toast({ title: t("profile.updated"), description: t("profile.saved") });
+      toast({ title: t("profile.updated"), description: t("profile.saved"), variant: "success" });
     } catch (e: any) {
       toast({ title: t("profile.update_failed"), description: e.message, variant: "destructive" });
     } finally {
@@ -176,7 +176,7 @@ export default function Profile() {
       setSecondaryPhone(updated.secondaryPhoneNumber ?? "");
       setSecondaryOperator(updated.secondaryMobileOperator ?? "");
       setEditingSecondary(false);
-      toast({ title: "Secondary account updated" });
+      toast({ title: "Secondary account updated", variant: "success" });
     } catch (e: any) {
       toast({ title: "Update failed", description: e.message, variant: "destructive" });
     } finally {
@@ -456,7 +456,7 @@ export default function Profile() {
                         setSecondaryPhone("");
                         setSecondaryOperator("");
                         setEditingSecondary(false);
-                        toast({ title: "Secondary account removed" });
+                        toast({ title: "Secondary account removed", variant: "success" });
                       } catch (e: any) {
                         toast({ title: "Failed", description: e.message, variant: "destructive" });
                       } finally {

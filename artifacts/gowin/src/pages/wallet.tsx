@@ -292,7 +292,7 @@ export default function Wallet() {
       return data;
     },
     onSuccess: () => {
-      toast({ title: "Withdrawal requested", description: "Your request has been submitted for review." });
+      toast({ title: "Withdrawal requested", description: "Your request has been submitted for review.", variant: "success" });
       setWithdrawAmount("");
       queryClient.invalidateQueries({ queryKey: ["/api/wallet"] });
       queryClient.invalidateQueries({ queryKey: ["/api/wallet/withdrawals"] });

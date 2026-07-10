@@ -176,7 +176,7 @@ export default function AdminCashOutPage() {
     onSuccess: (saved) => {
       setLocal(saved);
       queryClient.invalidateQueries({ queryKey: ["admin-cash-out-config"] });
-      toast({ title: "Cash Out settings saved" });
+      toast({ title: "Cash Out settings saved", variant: "success" });
     },
     onError: (err: any) => toast({ title: "Save failed", description: err.message, variant: "destructive" }),
   });

@@ -54,7 +54,7 @@ export default function AdminFixtures() {
           startTime: new Date(startTime).toISOString()
         }
       });
-      toast({ title: "Fixture Created" });
+      toast({ title: "Fixture Created", variant: "success" });
       queryClient.invalidateQueries({ queryKey: getListFixturesQueryKey() });
       setIsCreateOpen(false);
     } catch (err: any) {
@@ -74,7 +74,7 @@ export default function AdminFixtures() {
             scoreAway: parseInt(scoreAway)
           }
         });
-        toast({ title: "Fixture Settled", description: "Bets have been processed." });
+        toast({ title: "Fixture Settled", description: "Bets have been processed.", variant: "success" });
         queryClient.invalidateQueries({ queryKey: getGetAdminStatsQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetTopFixturesQueryKey() });
         queryClient.invalidateQueries({ queryKey: getListAllBetsQueryKey() });
@@ -87,7 +87,7 @@ export default function AdminFixtures() {
             scoreAway: scoreAway ? parseInt(scoreAway) : undefined
           }
         });
-        toast({ title: "Fixture Updated" });
+        toast({ title: "Fixture Updated", variant: "success" });
       }
       queryClient.invalidateQueries({ queryKey: getListFixturesQueryKey() });
       setIsUpdateOpen(false);

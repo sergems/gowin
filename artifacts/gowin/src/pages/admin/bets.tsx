@@ -193,7 +193,7 @@ export default function AdminBets() {
     if (!confirm(t("admin.bets.void_confirm"))) return;
     try {
       await voidMutation.mutateAsync({ id: betId });
-      toast({ title: t("admin.bets.void_success"), description: t("admin.bets.stake_refunded") });
+      toast({ title: t("admin.bets.void_success"), description: t("admin.bets.stake_refunded"), variant: "success" });
       queryClient.invalidateQueries({ queryKey: getListAllBetsQueryKey() });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });

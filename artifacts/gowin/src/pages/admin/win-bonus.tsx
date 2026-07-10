@@ -116,7 +116,7 @@ export default function WinBonusPage() {
       setLocal(saved);
       queryClient.invalidateQueries({ queryKey: ["admin-win-bonus-config"] });
       queryClient.invalidateQueries({ queryKey: ["win-bonus-config"] });
-      toast({ title: t("admin.win_bonus.saved"), description: t("admin.win_bonus.saved_desc") });
+      toast({ title: t("admin.win_bonus.saved"), description: t("admin.win_bonus.saved_desc"), variant: "success" });
     },
     onError: (err: any) => {
       toast({ title: t("admin.win_bonus.save_failed"), description: err.message, variant: "destructive" });

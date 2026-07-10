@@ -56,14 +56,14 @@ export default function ReferralPage() {
     if (!stats?.referralCode) return;
     await navigator.clipboard.writeText(stats.referralCode);
     setCopied(true);
-    toast({ title: t("referral.copied"), description: t("referral.copied_desc") });
+    toast({ title: t("referral.copied"), description: t("referral.copied_desc"), variant: "success" });
     setTimeout(() => setCopied(false), 2000);
   };
 
   const copyLink = async () => {
     if (!referralLink) return;
     await navigator.clipboard.writeText(referralLink);
-    toast({ title: t("referral.link_copied"), description: t("referral.link_copied_desc") });
+    toast({ title: t("referral.link_copied"), description: t("referral.link_copied_desc"), variant: "success" });
   };
 
   const shareLink = async () => {

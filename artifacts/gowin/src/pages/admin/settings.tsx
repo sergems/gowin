@@ -111,7 +111,7 @@ export default function AdminSettings() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      toast({ title: "Backup downloaded", description: filename });
+      toast({ title: "Backup downloaded", description: filename, variant: "success" });
     } catch (e: any) {
       toast({ title: "Export failed", description: e.message, variant: "destructive" });
     } finally {
@@ -198,7 +198,7 @@ export default function AdminSettings() {
       return data;
     },
     onSuccess: () => {
-      toast({ title: "Secret JWT enregistré", description: "Le secret a été mis à jour en mémoire et en base de données." });
+      toast({ title: "Secret JWT enregistré", description: "Le secret a été mis à jour en mémoire et en base de données.", variant: "success" });
       setJwtSecretInput("");
       queryClient.invalidateQueries({ queryKey: ["/api/admin/jwt-secret"] });
     },
@@ -217,7 +217,7 @@ export default function AdminSettings() {
       return data;
     },
     onSuccess: () => {
-      toast({ title: "API key saved" });
+      toast({ title: "API key saved", variant: "success" });
       setNewKey("");
       queryClient.invalidateQueries({ queryKey: ["/api/admin/settings"] });
     },
@@ -239,7 +239,7 @@ export default function AdminSettings() {
       return data;
     },
     onSuccess: () => {
-      toast({ title: "Email settings saved" });
+      toast({ title: "Email settings saved", variant: "success" });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/email-settings"] });
     },
     onError: (e: any) => toast({ title: "Save failed", description: e.message, variant: "destructive" }),
@@ -296,7 +296,7 @@ export default function AdminSettings() {
     },
     onSuccess: (data) => {
       setTestResult(data);
-      if (data.ok) toast({ title: "Connection successful" });
+      if (data.ok) toast({ title: "Connection successful", variant: "success" });
       else toast({ title: "Connection failed", description: data.error, variant: "destructive" });
     },
     onError: (e: any) => {
@@ -317,7 +317,7 @@ export default function AdminSettings() {
       return data;
     },
     onSuccess: () => {
-      toast({ title: "Database connected", description: "Application is now using the new database." });
+      toast({ title: "Database connected", description: "Application is now using the new database.", variant: "success" });
       setDbUrl(""); setDbUser(""); setDbPass(""); setDbLabel(""); setTestResult(null);
       queryClient.invalidateQueries({ queryKey: ["/api/admin/database"] });
     },
@@ -335,7 +335,7 @@ export default function AdminSettings() {
       return data;
     },
     onSuccess: () => {
-      toast({ title: "Disconnected", description: "Switched back to the default database." });
+      toast({ title: "Disconnected", description: "Switched back to the default database.", variant: "success" });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/database"] });
     },
     onError: (e: any) => toast({ title: "Disconnect failed", description: e.message, variant: "destructive" }),
@@ -359,7 +359,7 @@ export default function AdminSettings() {
       return data;
     },
     onSuccess: () => {
-      toast({ title: "Import complete", description: "SQL file was executed successfully." });
+      toast({ title: "Import complete", description: "SQL file was executed successfully.", variant: "success" });
       setImportSql(""); setImportFileName(""); setImportUrl(""); setImportUser(""); setImportPass("");
       if (fileInputRef.current) fileInputRef.current.value = "";
     },
@@ -379,7 +379,7 @@ export default function AdminSettings() {
       return data;
     },
     onSuccess: () => {
-      toast({ title: "Site settings saved", description: "Currency and language updated site-wide." });
+      toast({ title: "Site settings saved", description: "Currency and language updated site-wide.", variant: "success" });
       queryClient.invalidateQueries({ queryKey: ["/api/site-settings"] });
     },
     onError: (e: any) => toast({ title: "Save failed", description: e.message, variant: "destructive" }),
@@ -1237,7 +1237,7 @@ function PawapaySettingsCard({ token }: { token: string | null }) {
       return d;
     },
     onSuccess: () => {
-      toast({ title: "PawaPay settings saved" });
+      toast({ title: "PawaPay settings saved", variant: "success" });
       setPpToken("");
       setLoaded(false);
       queryClient.invalidateQueries({ queryKey: ["/api/admin/pawapay/settings"] });

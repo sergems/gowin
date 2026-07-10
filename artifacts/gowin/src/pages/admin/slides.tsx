@@ -46,7 +46,7 @@ export default function AdminSlides() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/admin/slides"] });
       qc.invalidateQueries({ queryKey: ["slides"] });
-      toast({ title: t("admin.slides.deleted") });
+      toast({ title: t("admin.slides.deleted"), variant: "success" });
     },
     onError: (e: any) =>
       toast({ title: "Error", description: e.message, variant: "destructive" }),

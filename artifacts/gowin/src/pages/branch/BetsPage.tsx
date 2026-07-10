@@ -200,7 +200,7 @@ export default function BranchBetsPage() {
         const d = await res.json();
         throw new Error(d.error || "Void failed");
       }
-      toast({ title: t("admin.bets.void_success"), description: t("admin.bets.stake_refunded") });
+      toast({ title: t("admin.bets.void_success"), description: t("admin.bets.stake_refunded"), variant: "success" });
       queryClient.invalidateQueries({ queryKey: ["branch-bets"] });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
