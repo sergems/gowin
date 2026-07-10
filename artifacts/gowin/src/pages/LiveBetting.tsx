@@ -270,29 +270,15 @@ function FixtureCard({ fixture, getOddsDirection, allSuspended }: FixtureCardPro
   const [expanded, setExpanded] = useState(false);
   const { t } = useSiteSettings();
 
-  const { data: fullMarkets, isLoading: loadingMarkets } = useQuery<{ markets: ApiLiveMarket[] }>({
-    queryKey: ["live-markets", fixture.id],
-    queryFn: () => fetch(`/api/live/fixtures/${fixture.id}/markets`).then((r) => r.json()),
-    enabled: expanded,
-    staleTime: 10_000,
-  });
-
-  const { coreMarkets, virtualUpMarkets } = splitLive1X2(fixture.markets ?? []);
+  const { coreMarkets } = splitLive1X2(fixture.markets ?? []);
   const allCoreMarkets = coreMarkets.filter((m) => hasValue(m));
-  const primaryMarket = allCoreMarkets.find((m) => m.marketType === "1X2") ?? allCoreMarkets[0] ?? null;
-  const liveUpMarkets = virtualUpMarkets.filter((m) => hasValue(m));
-
-  const extraMarkets = (fullMarkets?.markets ?? [])
-    .filter((m) => !MAIN_MARKETS.includes(m.marketType) && hasValue(m as LiveMarket));
-
-  // All secondary markets shown in expanded panel (everything except the primary)
-  const secondaryMarkets = allCoreMarkets.filter((m) => m !== primaryMarket);
-
-  const totalMarketCount =
-    allCoreMarkets.length + liveUpMarkets.length + extraMarkets.length;
+  const primaryMarket = allCoreMarkets.find((m) => m.marketType === "1X2") ?? null;
+  // Only Double Chance shown in the expanded drawer
+  const doubleChanceMarket = allCoreMarkets.find((m) => m.marketType === "Double Chance") ?? null;
 
   const stats = fixture.stats;
   const sortedPrimary = primaryMarket ? sortOdds(primaryMarket.odds, primaryMarket.marketType) : [];
+  const hasExpanded = !!doubleChanceMarket || !!stats;
 
   return (
     <div
@@ -354,70 +340,30 @@ function FixtureCard({ fixture, getOddsDirection, allSuspended }: FixtureCardPro
           )}
         </div>
 
-        {/* Expand indicator */}
-        <div
-          className="shrink-0 flex flex-col items-center justify-center cursor-pointer ml-1"
-          onClick={() => setExpanded((v) => !v)}
-        >
-          <ChevronDown
-            className={`w-3.5 h-3.5 text-muted-foreground/50 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
-          />
-          {!expanded && totalMarketCount > 1 && (
-            <span className="text-[9px] text-muted-foreground/40 tabular-nums leading-none">
-              +{totalMarketCount - 1}
-            </span>
-          )}
-        </div>
+        {/* Expand chevron — only show if there's something to expand */}
+        {hasExpanded && (
+          <div className="shrink-0 flex items-center justify-center ml-1 w-5">
+            <ChevronDown
+              className={`w-3.5 h-3.5 text-muted-foreground/50 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+            />
+          </div>
+        )}
       </div>
 
-      {/* ── Expanded panel ───────────────────────────────────────────── */}
-      {expanded && (
+      {/* ── Expanded panel: Double Chance + stats only ───────────────── */}
+      {expanded && hasExpanded && (
         <div className="border-t border-border/30 px-3 pb-3 pt-2 space-y-3">
-          {/* Secondary core markets (Double Chance, O/U 2.5 …) */}
-          {secondaryMarkets.map((m) => (
+          {doubleChanceMarket && (
             <MarketSection
-              key={m.id}
               fixture={fixture}
-              market={m}
+              market={doubleChanceMarket}
               getOddsDirection={getOddsDirection}
               suspended={allSuspended}
             />
-          ))}
-
-          {/* 1UP / 2UP */}
-          {liveUpMarkets.map((m) => (
-            <MarketSection
-              key={m.marketType}
-              fixture={fixture}
-              market={m}
-              getOddsDirection={getOddsDirection}
-              suspended={allSuspended}
-            />
-          ))}
-
-          {loadingMarkets && (
-            <div className="space-y-2">
-              <Skeleton className="h-9 w-full" />
-              <Skeleton className="h-9 w-full" />
-            </div>
-          )}
-
-          {!loadingMarkets && extraMarkets.map((m) => (
-            <MarketSection
-              key={m.id}
-              fixture={fixture}
-              market={m as LiveMarket}
-              getOddsDirection={getOddsDirection}
-              suspended={allSuspended}
-            />
-          ))}
-
-          {!loadingMarkets && secondaryMarkets.length === 0 && liveUpMarkets.length === 0 && extraMarkets.length === 0 && (
-            <p className="text-xs text-muted-foreground/50 italic text-center">{t("live.no_extra_markets")}</p>
           )}
 
           {stats && (
-            <div className="pt-2 border-t border-border/20">
+            <div className={doubleChanceMarket ? "pt-2 border-t border-border/20" : ""}>
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground/50 font-semibold mb-2">{t("live.match_stats")}</p>
               <div className="space-y-1.5">
                 {stats.possessionHome != null && <StatRow label={t("live.stat_possession")} home={stats.possessionHome} away={stats.possessionAway} />}
