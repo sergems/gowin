@@ -4,7 +4,7 @@ import { useLiveSocketContext, type LiveFixture, type LiveMarket, type OddsDirec
 import type { LiveOdd } from "@/hooks/useLiveSocket";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronDown, Radio, Wifi, WifiOff, AlertTriangle, Shield, TrendingUp, TrendingDown, Lock } from "lucide-react";
+import { ChevronDown, Zap, Wifi, WifiOff, AlertTriangle, Shield, TrendingUp, TrendingDown, Lock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import type { LiveMarket as ApiLiveMarket } from "@/contexts/LiveSocketContext";
 import { sortOdds } from "@/lib/sortOdds";
@@ -458,7 +458,7 @@ export default function LiveBetting() {
         <div>
           <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
             <div className="relative">
-              <Radio className="w-6 h-6 text-red-500" />
+              <Zap className="w-6 h-6 text-red-500" />
               <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 animate-ping" />
             </div>
             {t("nav.live")}
@@ -508,7 +508,7 @@ export default function LiveBetting() {
       {!isLoading && fixtures.length === 0 && (
         <div className="flex flex-col items-center justify-center py-24 text-muted-foreground space-y-3">
           <div className="w-16 h-16 rounded-full bg-accent/30 flex items-center justify-center">
-            <Radio className="w-8 h-8 text-muted-foreground/40" />
+            <Zap className="w-8 h-8 text-muted-foreground/40" />
           </div>
           <p className="text-lg font-semibold">{t("live.no_live_matches")}</p>
           <p className="text-sm text-center">{t("live.no_matches_live_desc")}</p>

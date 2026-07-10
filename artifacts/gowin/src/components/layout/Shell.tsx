@@ -19,7 +19,7 @@ import {
   Activity, LayoutDashboard, History, Wallet, Trophy, LogOut, Users, Settings, X,
   ArrowLeftRight, Ticket, UserCircle, AlertTriangle, Banknote, SlidersHorizontal,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, ChevronDown, ChevronRight, Globe, Shield, CheckCircle2,
-  Home, Menu, Images, Printer, Clock, Building2, Target, BarChart3, FileText, DollarSign, Radio, Bell, Sparkles, Share2, TrendingUp, CalendarDays,
+  Home, Menu, Images, Printer, Clock, Building2, Target, BarChart3, FileText, DollarSign, Zap, Bell, Sparkles, Share2, TrendingUp, CalendarDays,
 } from "lucide-react";
 import type { PlacedBetDetails } from "@/contexts/BetSlipContext";
 import { printBetSlip } from "@/lib/printBetSlip";
@@ -534,7 +534,7 @@ export function Shell({ children }: { children: ReactNode }) {
                 className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
                   ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
                   ${location.startsWith("/live") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
-                <Radio className="w-4 h-4 shrink-0" />
+                <Zap className="w-4 h-4 shrink-0" />
                 {open && (
                   <span className="flex-1 flex items-center gap-2">
                     {t("nav.live")}
@@ -950,10 +950,10 @@ export function Shell({ children }: { children: ReactNode }) {
             className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-md transition-colors relative
               ${location.startsWith("/live") ? "text-primary" : "text-muted-foreground"}`}>
             <div className="relative">
-              <Radio className="w-5 h-5" />
+              <Zap className="w-5 h-5" />
               <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
             </div>
-            <span className="text-[10px] font-medium">Live</span>
+            <span className="text-[10px] font-medium">In-Play</span>
           </Link>
         )}
 
