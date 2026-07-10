@@ -106,6 +106,7 @@ interface LiveFixtureData {
   status: string;
   scoreHome: number | null;
   scoreAway: number | null;
+  matchMinute: string | null;
 }
 
 export default function History() {
@@ -148,7 +149,7 @@ export default function History() {
         const map = new Map<number, LiveFixtureData>();
         for (const f of results) {
           if (f?.id != null) {
-            map.set(f.id, { status: f.status, scoreHome: f.scoreHome ?? null, scoreAway: f.scoreAway ?? null });
+            map.set(f.id, { status: f.status, scoreHome: f.scoreHome ?? null, scoreAway: f.scoreAway ?? null, matchMinute: f.matchMinute ?? null });
           }
         }
         setLiveFixtures(map);
@@ -156,7 +157,7 @@ export default function History() {
     }
 
     poll();
-    intervalRef.current = setInterval(poll, 30_000);
+    intervalRef.current = setInterval(poll, 15_000);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
@@ -325,9 +326,9 @@ export default function History() {
                                         <div className="flex items-center gap-1.5 flex-wrap">
                                           <span className="font-semibold text-sm">{sel.selection}</span>
                                           {isLive && (
-                                            <span className="flex items-center gap-0.5 text-[9px] font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded leading-none">
+                                            <span className="flex items-center gap-1 text-[9px] font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded leading-none">
                                               <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
-                                              LIVE
+                                              {live?.matchMinute ? live.matchMinute : "LIVE"}
                                             </span>
                                           )}
                                           {isFinishedLive && (

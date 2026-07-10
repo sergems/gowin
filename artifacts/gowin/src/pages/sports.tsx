@@ -533,7 +533,7 @@ export default function SportsPage() {
         queryKey: ["fixtures", "sports", selectedLeagueId, selectedSportId, effectiveSportId],
         enabled: !showLeagueBrowser && readyToFetch,
         // Keeps 1UP/2UP (and other) odds in sync with admin config changes
-        refetchInterval: 20 * 1000,
+        refetchInterval: 15 * 1000,
       },
     },
   );

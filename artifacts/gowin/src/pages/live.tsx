@@ -83,7 +83,7 @@ export default function LivePage() {
 
   const { data, isLoading, dataUpdatedAt } = useListFixtures(
     { status: "live", limit: 200 } as any,
-    { query: { queryKey: ["fixtures", "live"], refetchInterval: 30 * 1000 } },
+    { query: { queryKey: ["fixtures", "live"], refetchInterval: 15 * 1000 } },
   );
 
   useEffect(() => {

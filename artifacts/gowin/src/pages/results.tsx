@@ -115,7 +115,8 @@ function LiveCard({ fixture }: { fixture: any }) {
       </div>
       <div className="shrink-0 pl-1 border-l border-border/50 ml-1">
         <span className="flex items-center gap-1 text-[9px] font-bold text-red-500 bg-red-500/10 px-1.5 py-px rounded-full">
-          <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />LIVE
+          <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
+          {fixture.matchMinute ? fixture.matchMinute : "LIVE"}
         </span>
       </div>
     </div>
@@ -402,7 +403,7 @@ function LiveSection() {
 
   const { data, isLoading, dataUpdatedAt } = useListFixtures(
     { status: "live", limit: 200 } as any,
-    { query: { queryKey: ["fixtures", "live"], refetchInterval: 30 * 1000, placeholderData: (prev: any) => prev } },
+    { query: { queryKey: ["fixtures", "live"], refetchInterval: 15 * 1000, placeholderData: (prev: any) => prev } },
   );
 
   useEffect(() => {
