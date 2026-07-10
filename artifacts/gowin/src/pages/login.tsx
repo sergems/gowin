@@ -53,7 +53,7 @@ export default function Login() {
     : "/forgot-password";
 
   return (
-    <div className="flex justify-center bg-background p-4 pt-6">
+    <div className="flex items-center justify-center min-h-[calc(100svh-9rem)] p-4">
       <Card className="w-full max-w-md border-border bg-card">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center">
