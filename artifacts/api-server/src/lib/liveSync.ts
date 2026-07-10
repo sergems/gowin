@@ -236,6 +236,10 @@ async function fetchAndUpdateLiveOdds(apiKey: string, fixtureId: number, externa
           if (validOdd(bk.odd_12)) m.set("12", Number(bk.odd_12).toFixed(2));
           if (validOdd(bk.odd_x2)) m.set("X2", Number(bk.odd_x2).toFixed(2));
           break;
+        case "Both Teams To Score":
+          if (validOdd(bk.bts_yes)) m.set("Yes", Number(bk.bts_yes).toFixed(2));
+          if (validOdd(bk.bts_no))  m.set("No",  Number(bk.bts_no).toFixed(2));
+          break;
         default:
           if (market.marketType.startsWith("Over/Under ")) {
             const line = market.marketType.replace("Over/Under ", "");
