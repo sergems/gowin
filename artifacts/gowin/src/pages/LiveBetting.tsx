@@ -205,6 +205,60 @@ function MarketSection({ fixture, market, getOddsDirection, suspended }: MarketS
   );
 }
 
+/** Compact inline odds chip — used in the collapsed card row */
+function CompactOddsChip({
+  fixtureId, market, odd, direction, fixture, suspended,
+}: OddsButtonProps) {
+  const { addSelection, removeSelection, selections } = useBetSlip();
+  const isSelected = selections.some((s) => s.oddsId === odd.id);
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // don't toggle card expand
+    if (suspended) return;
+    if (isSelected) removeSelection(odd.id);
+    else addSelection({
+      oddsId: odd.id, fixtureId, market: market.marketType, selection: odd.selection,
+      odds: odd.oddsValue, fixtureName: `${fixture.homeTeam.name} vs ${fixture.awayTeam.name}`,
+      marketName: market.marketType, competitionName: fixture.leagueName,
+      startTime: fixture.startTime, fixtureStatus: fixture.status,
+      scoreHome: fixture.scoreHome, scoreAway: fixture.scoreAway,
+    });
+  };
+
+  if (suspended) {
+    return (
+      <div className="flex flex-col items-center justify-center w-14 h-9 rounded-md border border-border/20 bg-muted/10 cursor-not-allowed">
+        <span className="text-[9px] text-muted-foreground/40 leading-none mb-0.5">{odd.selection}</span>
+        <Lock className="w-2.5 h-2.5 text-muted-foreground/30" />
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      data-live-odds=""
+      {...(!isSelected && { "data-dir": direction ?? undefined })}
+      className={[
+        "relative flex flex-col items-center justify-center w-14 h-9 rounded-md border text-xs font-bold transition-all duration-200",
+        isSelected
+          ? "bg-primary text-primary-foreground border-primary"
+          : "border-border/40 hover:border-primary/50 hover:bg-primary/5 text-foreground",
+      ].join(" ")}
+    >
+      {!isSelected && direction && (
+        <span className="absolute top-0.5 right-0.5">
+          {direction === "up"
+            ? <TrendingUp className="w-2 h-2 text-green-400" />
+            : <TrendingDown className="w-2 h-2 text-red-400" />}
+        </span>
+      )}
+      <span className="text-[9px] font-normal text-muted-foreground/60 leading-none mb-0.5">{odd.selection}</span>
+      <span data-live-value="" className="tabular-nums text-[11px]">{odd.oddsValue.toFixed(2)}</span>
+    </button>
+  );
+}
+
 interface FixtureCardProps {
   fixture: LiveFixture;
   getOddsDirection: (fId: number, oId: number) => OddsDirection | null;
@@ -216,7 +270,6 @@ function FixtureCard({ fixture, getOddsDirection, allSuspended }: FixtureCardPro
   const [expanded, setExpanded] = useState(false);
   const { t } = useSiteSettings();
 
-  // All hooks must come before any computation that can throw
   const { data: fullMarkets, isLoading: loadingMarkets } = useQuery<{ markets: ApiLiveMarket[] }>({
     queryKey: ["live-markets", fixture.id],
     queryFn: () => fetch(`/api/live/fixtures/${fixture.id}/markets`).then((r) => r.json()),
@@ -225,62 +278,103 @@ function FixtureCard({ fixture, getOddsDirection, allSuspended }: FixtureCardPro
   });
 
   const { coreMarkets, virtualUpMarkets } = splitLive1X2(fixture.markets ?? []);
-
-  const mainMarkets = coreMarkets
-    .filter((m) => MAIN_MARKETS.includes(m.marketType) && hasValue(m));
-
+  const allCoreMarkets = coreMarkets.filter((m) => hasValue(m));
+  const primaryMarket = allCoreMarkets.find((m) => m.marketType === "1X2") ?? allCoreMarkets[0] ?? null;
   const liveUpMarkets = virtualUpMarkets.filter((m) => hasValue(m));
 
   const extraMarkets = (fullMarkets?.markets ?? [])
     .filter((m) => !MAIN_MARKETS.includes(m.marketType) && hasValue(m as LiveMarket));
 
+  // All secondary markets shown in expanded panel (everything except the primary)
+  const secondaryMarkets = allCoreMarkets.filter((m) => m !== primaryMarket);
+
+  const totalMarketCount =
+    allCoreMarkets.length + liveUpMarkets.length + extraMarkets.length;
+
   const stats = fixture.stats;
+  const sortedPrimary = primaryMarket ? sortOdds(primaryMarket.odds, primaryMarket.marketType) : [];
 
   return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden hover:border-red-500/30 transition-all">
-      {/* League + status bar */}
-      <div className="px-4 pt-3 pb-2 flex items-center justify-between">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <Logo src={fixture.leagueLogo} alt={fixture.leagueName} size={14} />
-          <span className="text-xs text-muted-foreground truncate">{fixture.leagueName}</span>
-          {fixture.countryName && (
-            <span className="text-xs text-muted-foreground/50 truncate">· {fixture.countryName}</span>
-          )}
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {fixture.matchMinute && (
-            <span className="text-xs font-bold text-green-400 tabular-nums">{fixture.matchMinute}</span>
-          )}
-          <span className="flex items-center gap-1 text-xs font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full">
-            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-            {t("payout.live_badge")}
+    <div
+      className={`bg-card border rounded-lg overflow-hidden transition-all cursor-pointer
+        ${expanded ? "border-primary/30" : "border-border hover:border-border/80"}`}
+    >
+      {/* ── Compact row (always visible) ────────────────────────────── */}
+      <div
+        className="flex items-center gap-2 px-3 py-2 select-none"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        {/* Live pulse + minute */}
+        <div className="shrink-0 flex flex-col items-center w-9">
+          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse mb-0.5" />
+          <span className="text-[10px] font-bold text-green-400 tabular-nums leading-none">
+            {fixture.matchMinute ?? "LIVE"}
           </span>
         </div>
+
+        {/* Home team */}
+        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+          <Logo src={fixture.homeTeam.logo} alt={fixture.homeTeam.name} size={18} />
+          <span className="text-xs font-semibold truncate">{fixture.homeTeam.name}</span>
+        </div>
+
+        {/* Score */}
+        <div className="shrink-0 px-2 text-sm font-black tabular-nums text-center w-12">
+          {fixture.scoreHome ?? 0} : {fixture.scoreAway ?? 0}
+        </div>
+
+        {/* Away team */}
+        <div className="flex items-center justify-end gap-1.5 flex-1 min-w-0">
+          <span className="text-xs font-semibold truncate text-right">{fixture.awayTeam.name}</span>
+          <Logo src={fixture.awayTeam.logo} alt={fixture.awayTeam.name} size={18} />
+        </div>
+
+        {/* 1X2 odds chips (or lock icons if suspended) */}
+        <div className="shrink-0 flex items-center gap-1 ml-1" onClick={(e) => e.stopPropagation()}>
+          {primaryMarket && sortedPrimary.length > 0 ? (
+            sortedPrimary.map((odd) => (
+              <CompactOddsChip
+                key={odd.id}
+                fixtureId={fixture.id}
+                market={primaryMarket}
+                odd={odd}
+                direction={allSuspended ? null : getOddsDirection(fixture.id, odd.id)}
+                fixture={fixture}
+                suspended={allSuspended}
+              />
+            ))
+          ) : (
+            /* No primary market — show 3 locked placeholders */
+            ["H", "D", "A"].map((lbl) => (
+              <div key={lbl} className="flex flex-col items-center justify-center w-14 h-9 rounded-md border border-border/20 bg-muted/10">
+                <span className="text-[9px] text-muted-foreground/30">{lbl}</span>
+                <Lock className="w-2.5 h-2.5 text-muted-foreground/20" />
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Expand indicator */}
+        <div
+          className="shrink-0 flex flex-col items-center justify-center cursor-pointer ml-1"
+          onClick={() => setExpanded((v) => !v)}
+        >
+          <ChevronDown
+            className={`w-3.5 h-3.5 text-muted-foreground/50 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+          />
+          {!expanded && totalMarketCount > 1 && (
+            <span className="text-[9px] text-muted-foreground/40 tabular-nums leading-none">
+              +{totalMarketCount - 1}
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Teams + score */}
-      <div className="px-4 pb-3 flex items-center gap-3">
-        <div className="flex-1 flex items-center gap-2 min-w-0">
-          <Logo src={fixture.homeTeam.logo} alt={fixture.homeTeam.name} size={28} />
-          <span className="font-semibold text-sm truncate">{fixture.homeTeam.name}</span>
-        </div>
-        <div className="shrink-0">
-          <div className="flex items-center gap-2 text-lg font-black">
-            <span>{fixture.scoreHome ?? 0}</span>
-            <span className="text-muted-foreground text-xs font-normal">:</span>
-            <span>{fixture.scoreAway ?? 0}</span>
-          </div>
-        </div>
-        <div className="flex-1 flex items-center justify-end gap-2 min-w-0">
-          <span className="font-semibold text-sm truncate text-right">{fixture.awayTeam.name}</span>
-          <Logo src={fixture.awayTeam.logo} alt={fixture.awayTeam.name} size={28} />
-        </div>
-      </div>
-
-      {/* Main markets */}
-      {mainMarkets.length > 0 && (
-        <div className="border-t border-border/50 px-3 pt-3 pb-1 space-y-3">
-          {mainMarkets.map((m) => (
+      {/* ── Expanded panel ───────────────────────────────────────────── */}
+      {expanded && (
+        <div className="border-t border-border/30 px-3 pb-3 pt-2 space-y-3">
+          {/* Secondary core markets (Double Chance, O/U 2.5 …) */}
+          {secondaryMarkets.map((m) => (
             <MarketSection
               key={m.id}
               fixture={fixture}
@@ -289,91 +383,49 @@ function FixtureCard({ fixture, getOddsDirection, allSuspended }: FixtureCardPro
               suspended={allSuspended}
             />
           ))}
-        </div>
-      )}
 
-      {/* Expand / collapse */}
-      <button
-        onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center justify-between px-3 py-2 text-xs text-muted-foreground hover:text-primary transition-colors border-t border-border/30"
-      >
-        {expanded ? (
-          <span className="font-medium text-primary">{t("live.hide_markets")}</span>
-        ) : (
-          <>
-            <span className="font-medium">{t("live.more_markets")}</span>
-            <ChevronDown className="w-3.5 h-3.5" />
-          </>
-        )}
-      </button>
-
-      {/* Expanded extra markets + stats */}
-      {expanded && (
-        <div className="border-t border-border/30 px-3 pb-3 space-y-3">
-          {/* 1UP / 2UP virtual markets — available immediately from live WebSocket data */}
-          {liveUpMarkets.length > 0 && (
-            <div className="space-y-3 pt-2">
-              {liveUpMarkets.map((m) => (
-                <MarketSection
-                  key={m.marketType}
-                  fixture={fixture}
-                  market={m}
-                  getOddsDirection={getOddsDirection}
-                  suspended={allSuspended}
-                />
-              ))}
-            </div>
-          )}
+          {/* 1UP / 2UP */}
+          {liveUpMarkets.map((m) => (
+            <MarketSection
+              key={m.marketType}
+              fixture={fixture}
+              market={m}
+              getOddsDirection={getOddsDirection}
+              suspended={allSuspended}
+            />
+          ))}
 
           {loadingMarkets && (
-            <div className="space-y-2 pt-2">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
+            <div className="space-y-2">
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
             </div>
           )}
 
-          {!loadingMarkets && extraMarkets.length > 0 && (
-            <div className="space-y-3 pt-2">
-              {extraMarkets.map((m) => (
-                <MarketSection
-                  key={m.id}
-                  fixture={fixture}
-                  market={m as LiveMarket}
-                  getOddsDirection={getOddsDirection}
-                  suspended={allSuspended}
-                />
-              ))}
-            </div>
-          )}
+          {!loadingMarkets && extraMarkets.map((m) => (
+            <MarketSection
+              key={m.id}
+              fixture={fixture}
+              market={m as LiveMarket}
+              getOddsDirection={getOddsDirection}
+              suspended={allSuspended}
+            />
+          ))}
 
-          {!loadingMarkets && extraMarkets.length === 0 && liveUpMarkets.length === 0 && (
-            <p className="text-xs text-muted-foreground/50 italic text-center pt-2">{t("live.no_extra_markets")}</p>
+          {!loadingMarkets && secondaryMarkets.length === 0 && liveUpMarkets.length === 0 && extraMarkets.length === 0 && (
+            <p className="text-xs text-muted-foreground/50 italic text-center">{t("live.no_extra_markets")}</p>
           )}
 
           {stats && (
-            <div className="mt-2 pt-3 border-t border-border/30">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold mb-2">
-                {t("live.match_stats")}
-              </p>
+            <div className="pt-2 border-t border-border/20">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground/50 font-semibold mb-2">{t("live.match_stats")}</p>
               <div className="space-y-1.5">
-                {stats.possessionHome != null && (
-                  <StatRow label={t("live.stat_possession")} home={stats.possessionHome} away={stats.possessionAway} />
-                )}
-                {stats.shotsHome != null && (
-                  <StatRow label={t("live.stat_shots")} home={String(stats.shotsHome)} away={String(stats.shotsAway ?? 0)} />
-                )}
-                {stats.shotsOnTargetHome != null && (
-                  <StatRow label={t("live.stat_on_target")} home={String(stats.shotsOnTargetHome)} away={String(stats.shotsOnTargetAway ?? 0)} />
-                )}
-                {stats.cornersHome != null && (
-                  <StatRow label={t("live.stat_corners")} home={String(stats.cornersHome)} away={String(stats.cornersAway ?? 0)} />
-                )}
-                {stats.yellowCardsHome != null && (
-                  <StatRow label={t("live.stat_yellow_cards")} home={String(stats.yellowCardsHome)} away={String(stats.yellowCardsAway ?? 0)} />
-                )}
-                {stats.redCardsHome != null && (
-                  <StatRow label={t("live.stat_red_cards")} home={String(stats.redCardsHome)} away={String(stats.redCardsAway ?? 0)} />
-                )}
+                {stats.possessionHome != null && <StatRow label={t("live.stat_possession")} home={stats.possessionHome} away={stats.possessionAway} />}
+                {stats.shotsHome != null && <StatRow label={t("live.stat_shots")} home={String(stats.shotsHome)} away={String(stats.shotsAway ?? 0)} />}
+                {stats.shotsOnTargetHome != null && <StatRow label={t("live.stat_on_target")} home={String(stats.shotsOnTargetHome)} away={String(stats.shotsOnTargetAway ?? 0)} />}
+                {stats.cornersHome != null && <StatRow label={t("live.stat_corners")} home={String(stats.cornersHome)} away={String(stats.cornersAway ?? 0)} />}
+                {stats.yellowCardsHome != null && <StatRow label={t("live.stat_yellow_cards")} home={String(stats.yellowCardsHome)} away={String(stats.yellowCardsAway ?? 0)} />}
+                {stats.redCardsHome != null && <StatRow label={t("live.stat_red_cards")} home={String(stats.redCardsHome)} away={String(stats.redCardsAway ?? 0)} />}
               </div>
             </div>
           )}
@@ -535,7 +587,7 @@ export default function LiveBetting() {
             </div>
             <div className="flex-1 h-px bg-border/40" />
           </div>
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
             {group.fixtures.map((f) => (
               <FixtureCard
                 key={f.id}
