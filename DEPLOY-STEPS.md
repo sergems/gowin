@@ -1,63 +1,32 @@
-# GoWin — Complete Deployment Guide
-### Full database reset + code deploy · gowinrdc.com · 172.105.149.205
-
-> **This is the authoritative deploy guide.** It covers a complete fresh deploy:
-> all production tables are dropped, the database is rebuilt from **`btk.sql`**,
-> and the latest app code is deployed. Nothing is left behind.
->
-> **Most updates do not need this.** If you only changed app code (no new tables/columns),
-> use the **code-only deploy** in "You're done" below — it's faster and doesn't touch data.
-> Use this full guide for the *first* deploy, or whenever you want to wipe production
-> data back to a known snapshot.
-
----
-
-## What this deploy does
-
-- Drops every table on the production Postgres instance and rebuilds from `btk.sql`
-- Pushes all latest code to GitHub and pulls it onto the server
-- Ensures the `slides` Docker volume is configured (banner images survive rebuilds)
-- Rebuilds and restarts the app container
+# GoWin — Deployment Guide
+### gowinrdc.com · 172.105.149.205
 
 **Pipeline:**
 ```
 Replit (dev)  →  GitHub (sergems/gowin)  →  Linode 172.105.149.205  →  gowinrdc.com
 ```
 
-⚠️ **Warning:** Step 5 permanently deletes all production data and replaces it with the data in `btk.sql`. There is no undo. Take a backup first (Step 3).
+---
+
+## Which deploy path do you need?
+
+| Situation | Path |
+|---|---|
+| Code change, new feature, schema tweak | **[Standard deploy](#standard-deploy)** — migrations run automatically |
+| First-ever install on a fresh server | **[First install](#first-install-fresh-server)** |
+| Want to wipe all production data and reload from `btk.sql` | **[Full reset](#full-database-reset)** — destructive, use with care |
 
 ---
 
-## Latest schema update — Full Cash Out (2026-07-10)
+## Standard deploy
 
-The Full Cash Out feature was added this cycle: customers can cash out a pending bet early at a
-live, server-computed offer. This shipped with:
+Use this for all normal updates. Migrations are applied automatically when the container starts — no database drop needed.
 
-- New `bets` columns: `cash_out_amount`, `cash_out_at`, `cash_out_margin_used`, `cash_out_fair_value`,
-  `cash_out_probability`, `cash_out_odds_snapshot`, `cash_out_ip`, `cash_out_device`
-- New `cashed_out` value on the `bet_status` enum, and `cash_out` on `transaction_type`
-- New `cash_out_audit_log` table (every offer/accept is recorded for admin reporting)
-- New Admin → Cash Out page (Settings / Reports / Audit Log tabs)
-- `scripts/schema.sql` (the idempotent migration the app runs on every container start) and
-  `btk.sql` (the full fresh-install dump) have both been **regenerated to include this and all
-  other previously-undocumented schema drift** (`notifications`, `referral_rewards`, Win Bonus
-  columns on `bets`, 1UP/2UP's `up_won` on `bet_selections`, PawaPay columns on `withdrawals`,
-  bonus-wallet columns on `wallets`, referral columns on `users`) — a **code-only deploy now
-  correctly picks up this schema change automatically**, no full reset required.
-
-> If your production database was deployed before this update, a plain code-only deploy
-> (see "You're done" below) is sufficient — `scripts/schema.sql` runs automatically on
-> container start and will add the missing pieces without touching existing data.
-
----
-
-## Step 1 — Push the latest code to GitHub
-
-Open the **Shell** tab in Replit and run:
+### Step 1 — Push the latest code to GitHub
 
 ```bash
 git add .
-git commit -m "feat: full deploy — latest code + btk.sql database reset"
+git commit -m "your message here"
 git push origin main
 ```
 
@@ -65,7 +34,7 @@ Confirm the commit appears at **https://github.com/sergems/gowin** before contin
 
 ---
 
-## Step 2 — SSH into the server
+### Step 2 — SSH into the server
 
 ```bash
 ssh root@172.105.149.205
@@ -75,75 +44,150 @@ Enter the root password when prompted. All remaining steps run on the server.
 
 ---
 
-## Step 3 — Back up the current database (safety net)
-
-Before wiping anything, save a copy of what is currently on production:
-
-```bash
-cd /var/www/gowin
-docker compose exec db pg_dump -U gowin gowindb > backup_$(date +%Y%m%d_%H%M%S).sql
-ls -lh backup_*.sql
-```
-
-Confirm the file is non-zero in size. Keep it — if anything goes wrong you can restore from it.
-
----
-
-## Step 4 — Pull the latest code (includes btk.sql)
+### Step 3 — Pull the latest code
 
 ```bash
 cd /var/www/gowin
 git pull
 ```
 
-This brings down the latest code **and** the `btk.sql` file from GitHub.
+---
 
-Confirm `btk.sql` is present:
+### Step 4 — Rebuild and restart the app
 
 ```bash
-ls -lh btk.sql
+docker compose up --build -d
+```
+
+When the container starts, `scripts/schema.sql` runs automatically (via `docker-entrypoint.sh`).
+It is fully idempotent — every `CREATE TABLE`, `ALTER TABLE ADD COLUMN`, and enum `ADD VALUE`
+uses `IF NOT EXISTS`, so it safely adds new columns and tables without touching existing data.
+
+First rebuild takes 5–10 minutes; subsequent rebuilds are faster.
+
+---
+
+### Step 5 — Copy slider images into the volume
+
+The slider images are stored in a named Docker volume (`slides`). After a rebuild they need to
+be synced from the git checkout into the running container:
+
+```bash
+docker compose cp artifacts/api-server/uploads/slides/. app:/app/uploads/slides/
+```
+
+This is safe to run even if the volume already has images — it only adds/overwrites files that
+changed; it does not delete images that exist in the volume but not in git.
+
+Confirm the images are present:
+
+```bash
+docker compose exec app ls /app/uploads/slides/
 ```
 
 ---
 
-## Step 5 — Drop all tables and restore from btk.sql
-
-This is the full database reset. It connects directly to the running Postgres container,
-drops every object in the `public` schema, then restores everything from `btk.sql`.
+### Step 6 — Watch the startup logs
 
 ```bash
-# Step 5a — Drop everything in the public schema
-docker compose exec db psql -U gowin -d gowindb -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
-
-# Step 5b — Restore all tables and data from btk.sql
-docker compose exec -T db psql -U gowin -d gowindb < btk.sql
+docker compose logs -f app
 ```
 
-Verify the tables came back:
+You are looking for this exact sequence:
 
-```bash
-docker compose exec db psql -U gowin -d gowindb -c "\dt"
+```
+[entrypoint] Waiting for PostgreSQL to be ready...
+[entrypoint] PostgreSQL is ready.
+[entrypoint] Applying database schema...
+[entrypoint] Schema applied.
+[entrypoint] Starting API server...
+{"msg":"WebSocket server attached on /ws"}
+{"msg":"Server listening","port":8080}
+{"msg":"Live sync workers started"}
 ```
 
-You should see all 23 tables listed. Also spot-check data:
-
-```bash
-docker compose exec db psql -U gowin -d gowindb -c "SELECT COUNT(*) FROM users;"
-docker compose exec db psql -U gowin -d gowindb -c "SELECT COUNT(*) FROM fixtures;"
-docker compose exec db psql -U gowin -d gowindb -c "SELECT COUNT(*) FROM odds;"
-```
+Press **Ctrl+C** once the server is up.
 
 ---
 
-## Step 6 — Update docker-compose.yml
+### Step 7 — Verify the live site
 
-This ensures the `slides` named volume is configured so banner images persist across rebuilds.
+Open **https://gowinrdc.com** and check:
+
+| What to check | Expected result |
+|---|---|
+| Home page | Loads without errors; banner slider shows images |
+| Sports / Fixtures | Fixtures with odds are listed |
+| Sidebar (logged out) | "Download the Go Win RDC Official App" label + Google Play badge |
+| Footer | Copyright · Privacy · Terms |
+| Login / Register | Auth works |
+| Forgot password | OTP email sent; reset-password page works |
+| Wallet | Deposit and withdrawal flows work |
+| Admin → Settings | PawaPay config present; USD/CDF rate controls visible |
+| Admin → Slides | Can upload, reorder, and delete banner slides |
+| Admin → Branches | Branch list shows; can create/edit branches |
+| Admin → Users | Wallet balances shown; can reset passwords, credit/debit wallets |
+| Live odds | Odds update in real time without page reload (WebSocket) |
+| Notifications | Bell icon in header; bet settlement alerts appear |
+| Cash Out | Pending bet → History shows "Cash Out" button; accepting credits wallet |
+| Admin → Cash Out | Settings / Reports / Audit Log tabs all work |
+
+---
+
+## First install (fresh server)
+
+Use this only when setting up the server for the very first time.
+
+### 1 — Push code and SSH in
 
 ```bash
-nano /var/www/gowin/docker-compose.yml
+# On Replit
+git add . && git commit -m "initial deploy" && git push origin main
+
+# On the server
+ssh root@172.105.149.205
+cd /var/www/gowin
+git clone https://github.com/sergems/gowin .
 ```
 
-**Delete the entire contents** and paste the following exactly:
+### 2 — Create the .env file
+
+```bash
+nano /var/www/gowin/.env
+```
+
+Paste and fill in:
+
+```env
+NODE_ENV=production
+PORT=8080
+
+POSTGRES_USER=gowin
+POSTGRES_PASSWORD=YOUR_STRONG_PASSWORD
+POSTGRES_DB=gowindb
+DATABASE_URL=postgresql://gowin:YOUR_STRONG_PASSWORD@db:5432/gowindb
+
+# Email (password resets / OTP)
+SMTP_HOST=mail.gowinrdc.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=no-reply@gowinrdc.com
+SMTP_PASS=YOUR_SMTP_PASSWORD
+SMTP_FROM=GoWin <no-reply@gowinrdc.com>
+APP_URL=https://gowinrdc.com
+```
+
+> **Note:** PawaPay credentials and the JWT secret live in the database `settings` table — they come in via the seed data in `schema.sql` and do not go in `.env`.
+
+Save and exit: **Ctrl+X → Y → Enter**
+
+### 3 — Check docker-compose.yml
+
+```bash
+cat /var/www/gowin/docker-compose.yml
+```
+
+It should contain a `slides` volume entry. If not, paste this:
 
 ```yaml
 services:
@@ -181,156 +225,107 @@ volumes:
   slides:
 ```
 
-Save and exit: **Ctrl+X → Y → Enter**
-
----
-
-## Step 7 — Check the .env file
+### 4 — Build, start, copy slides
 
 ```bash
-nano /var/www/gowin/.env
+docker compose up --build -d
+
+# Wait ~30 seconds for the DB to initialise and schema.sql to run, then copy slides
+docker compose cp artifacts/api-server/uploads/slides/. app:/app/uploads/slides/
 ```
 
-Make sure all of these variables are present:
+### 5 — Watch logs and verify
 
-```env
-# ── Required ──────────────────────────────────────────────────────────────────
-NODE_ENV=production
-PORT=8080
-
-# Postgres — must be identical in both lines
-POSTGRES_USER=gowin
-POSTGRES_PASSWORD=YOUR_STRONG_PASSWORD
-POSTGRES_DB=gowindb
-DATABASE_URL=postgresql://gowin:YOUR_STRONG_PASSWORD@db:5432/gowindb
-
-# ── Optional: email (password resets / OTP) ───────────────────────────────────
-SMTP_HOST=mail.gowinrdc.com
-SMTP_PORT=465
-SMTP_SECURE=true
-SMTP_USER=no-reply@gowinrdc.com
-SMTP_PASS=YOUR_SMTP_PASSWORD
-SMTP_FROM=GoWin <no-reply@gowinrdc.com>
-APP_URL=https://gowinrdc.com
-```
-
-> **Note:** PawaPay credentials and the JWT secret are stored in the database `settings` table — they came in via `btk.sql` and do not go in `.env`.
-
-Save and exit: **Ctrl+X → Y → Enter**
+Follow [Step 6](#step-6--watch-the-startup-logs) and [Step 7](#step-7--verify-the-live-site) from the standard deploy above.
 
 ---
 
-## Step 8 — Rebuild and restart the app
+## Full database reset
+
+> ⚠️ **Destructive.** This permanently deletes all production data and replaces it with the snapshot in `btk.sql`. Take a backup first.
+
+Use only if you want to wipe production data back to a known snapshot (e.g. after major testing, or to sync prod with the dev seed).
+
+### 1 — Back up the current database
 
 ```bash
 cd /var/www/gowin
-docker compose up --build -d
+docker compose exec db pg_dump -U gowin gowindb > backup_$(date +%Y%m%d_%H%M%S).sql
+ls -lh backup_*.sql
 ```
 
-This rebuilds the app container with the latest code and restarts everything.
-First rebuild takes 5–10 minutes; subsequent rebuilds are faster due to Docker's layer cache.
+Confirm the file is non-zero in size before continuing.
 
----
-
-## Step 9 — Watch the startup logs
+### 2 — Pull the latest code (includes btk.sql)
 
 ```bash
-docker compose logs -f app
+git pull
+ls -lh btk.sql
 ```
 
-You are looking for this exact sequence:
-
-```
-[entrypoint] Waiting for PostgreSQL to be ready...
-[entrypoint] PostgreSQL is ready.
-[entrypoint] Applying database schema...
-[entrypoint] Schema applied.
-[entrypoint] Starting API server...
-{"msg":"WebSocket server attached on /ws"}
-{"msg":"Server listening","port":8080}
-{"msg":"Live sync workers started"}
-```
-
-Press **Ctrl+C** once you see the server is up.
-
----
-
-## Step 10 — Verify the live site
-
-Open **https://gowinrdc.com** and check every item in this list:
-
-| What to check | Expected result |
-|---|---|
-| Home page | Loads without errors; banner slider shows |
-| Sports / Fixtures | Fixtures with odds are listed |
-| Sidebar (logged out) | "Download the Go Win RDC Official App" label above Google Play badge |
-| Sidebar (logged in) | Same label + Google Play badge |
-| Footer | Copyright · Privacy · Terms |
-| Fixtures PDF link | Downloads a PDF coupon of upcoming matches |
-| Login / Register | Auth works |
-| Forgot password | OTP email sent; reset-password page works |
-| Wallet | Deposit and withdrawal flows work |
-| Admin → Settings | PawaPay config section present; USD/CDF rate controls visible |
-| Admin → Slides | Can upload, reorder, and delete banner slides |
-| Admin → Branches | Branch list shows; can create/edit branches |
-| Admin → Users | Wallet balances shown; can reset passwords, credit/debit wallets |
-| Live odds | Odds update in real time without page reload (WebSocket) |
-| Notifications | Bell icon in header; bet settlement alerts appear |
-| Cash Out (customer) | Place a pending bet on a live/upcoming fixture → History tab shows an amber "Cash Out" button with a live offer; accepting credits the wallet and moves the bet to the "Cashed Out" tab |
-| Admin → Cash Out | Settings tab saves and version-increments; Reports tab shows totals; Audit Log lists offer/accept events |
-
----
-
-## You're done ✓
-
-Future code-only deploys (no database reset) use the short path:
+### 3 — Stop the app and drop all tables
 
 ```bash
-# On Replit — push new code
-git add . && git commit -m "your message" && git push origin main
-
-# On the server — pull and rebuild
-cd /var/www/gowin && git pull && docker compose up --build -d
-```
-
-For a future **database-only refresh** (new btk.sql, no code changes):
-```bash
-git pull   # get the new btk.sql
+docker compose stop app
 docker compose exec db psql -U gowin -d gowindb -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
-docker compose exec -T db psql -U gowin -d gowindb < btk.sql
-docker compose restart app
 ```
+
+### 4 — Restore from btk.sql
+
+```bash
+docker compose exec -T db psql -U gowin -d gowindb < btk.sql
+```
+
+Verify:
+
+```bash
+docker compose exec db psql -U gowin -d gowindb -c "\dt"
+docker compose exec db psql -U gowin -d gowindb -c "SELECT COUNT(*) FROM users;"
+docker compose exec db psql -U gowin -d gowindb -c "SELECT COUNT(*) FROM fixtures;"
+```
+
+### 5 — Rebuild, start, copy slides
+
+```bash
+docker compose up --build -d
+docker compose cp artifacts/api-server/uploads/slides/. app:/app/uploads/slides/
+```
+
+Then follow [Step 6](#step-6--watch-the-startup-logs) and [Step 7](#step-7--verify-the-live-site).
 
 ---
 
 ## Troubleshooting
 
+**Schema migration not running / missing columns**
+→ Check: `docker compose logs app | grep entrypoint`
+→ The line `[entrypoint] Schema applied.` confirms it ran. If absent, the container exited before that point — check for earlier errors.
+
+**Slide images missing after rebuild**
+→ The `slides` Docker volume persists across rebuilds, but new images from git must be copied in manually.
+→ Run: `docker compose cp artifacts/api-server/uploads/slides/. app:/app/uploads/slides/`
+
 **`DROP SCHEMA` fails with "other users are connected"**
-→ The app container is connected to the DB. Stop it first, then drop:
+→ Stop the app container first:
 ```bash
 docker compose stop app
 docker compose exec db psql -U gowin -d gowindb -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
-docker compose exec -T db psql -U gowin -d gowindb < btk.sql
-docker compose up -d
 ```
 
 **`btk.sql` restore prints errors about roles or extensions**
-→ Ignore warnings about `postgres` role ownership — they are harmless on a single-user Postgres setup.
-→ If you see `ERROR: relation already exists`, the drop did not complete cleanly. Re-run Step 5a.
+→ Warnings about `postgres` role ownership are harmless on a single-user Postgres setup.
+→ `ERROR: relation already exists` means the drop didn't complete — re-run Step 3 of the full reset.
 
 **No fixtures showing after deploy**
-→ The odds filter hides fixtures with no odds. The live sync refreshes odds every 10 minutes — wait and reload.
+→ The odds filter hides fixtures with no odds. Live sync refreshes every 10 minutes — wait and reload.
 → Check: `docker compose exec db psql -U gowin -d gowindb -c "SELECT COUNT(*) FROM odds;"`
-
-**Slide images missing after rebuild**
-→ The `slides` volume must be in `docker-compose.yml`. Re-upload images via Admin → Slides — they will now persist.
 
 **502 Bad Gateway**
 → The app container is still starting. Wait 30 seconds and refresh.
 → Check: `docker compose ps` and `docker compose logs app`
 
 **`payment_clerk` role error on startup**
-→ The schema migration handles this automatically. Check: `docker compose logs app | grep entrypoint`
+→ Handled automatically by `schema.sql`. Check: `docker compose logs app | grep entrypoint`
 
 **SSL certificate expired**
 → Run: `certbot renew && certbot certificates`
@@ -347,6 +342,8 @@ docker compose up -d
 
 | Task | Command |
 |---|---|
+| Standard deploy (code + migration) | `git pull && docker compose up --build -d` |
+| Copy slider images after rebuild | `docker compose cp artifacts/api-server/uploads/slides/. app:/app/uploads/slides/` |
 | Follow live app logs | `docker compose logs -f app` |
 | Follow database logs | `docker compose logs -f db` |
 | Restart app only (no rebuild) | `docker compose restart app` |
@@ -354,12 +351,31 @@ docker compose up -d
 | Start after a server reboot | `cd /var/www/gowin && docker compose up -d` |
 | Open a database shell | `docker compose exec db psql -U gowin -d gowindb` |
 | Back up the database | `docker compose exec db pg_dump -U gowin gowindb > backup_$(date +%Y%m%d).sql` |
-| Full DB reset from btk.sql | See Step 5 above |
+| Full DB reset from btk.sql | See [Full database reset](#full-database-reset) above |
 | Rollback to a previous version | `git log --oneline -5` → `git checkout <hash>` → `docker compose up --build -d` |
 | Renew SSL manually | `certbot renew` |
 | Check disk usage | `df -h` |
 | Check memory | `free -h` |
 | Clean old Docker images | `docker system prune -af` |
+
+---
+
+## How migrations work
+
+Every time the app container starts, `scripts/docker-entrypoint.sh` runs:
+
+```sh
+psql "$DATABASE_URL" -f /app/scripts/schema.sql
+```
+
+`scripts/schema.sql` is fully idempotent:
+- Tables use `CREATE TABLE IF NOT EXISTS`
+- New columns use `ALTER TABLE … ADD COLUMN IF NOT EXISTS`
+- New enum values use `ALTER TYPE … ADD VALUE IF NOT EXISTS` inside a `DO $$ BEGIN … EXCEPTION WHEN others THEN NULL; END $$` block
+
+This means a `docker compose up --build -d` after a `git pull` is all that is needed to apply any schema change — no manual SQL, no database drop.
+
+When you add a new column or table during development, update `scripts/schema.sql` with the appropriate idempotent statement so it is picked up automatically on the next server deploy.
 
 ---
 
