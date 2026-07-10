@@ -21,7 +21,10 @@ To get this project running on Replit from a fresh import:
    - **Alternative recovery path** (works well on a fresh/empty Replit Postgres instance, avoids the `drizzle-kit push` non-TTY failure entirely): `psql $DATABASE_URL -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"` then `psql $DATABASE_URL -f btk.sql` directly — the dump creates its own tables/enums and adds FKs at the end, so it doesn't need the push step first. Don't use `scripts/schema.sql` as a substitute for this — it's a minimal/outdated schema and is missing tables and columns the current code relies on (e.g. `notifications`, `referral_rewards`, newer wallet/bet fields).
 3. **Build the API server** — `pnpm --filter @workspace/api-server run build` (must run before first start; the dev workflow does this automatically)
 4. **Start workflows** — start both `artifacts/api-server: API Server` (port 8080) and `artifacts/gowin: web` (port 5000) via the Replit workflow panel
-5. **Secrets** — `SESSION_SECRET` is set. SMTP vars (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_FROM`, `SMTP_SECURE`) are set as env vars. `SMTP_PASS` must be added as a Replit Secret. `JWT_SECRET` is loaded from the database settings table on first boot; set it as a Replit Secret as a safe fallback.
+5. **Secrets** — `SESSION_SECRET` is set. SMTP vars (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_FROM`, `SMTP_SECURE`) are set as env vars. `SMTP_PASS` must be added as a Replit Secret if password reset/OTP/admin emails are needed (without it, email sending is skipped with a warning — non-fatal). `JWT_SECRET` is loaded from the database `settings` table (`jwt_secret` key), confirmed present after reseeding from `btk.sql`.
+
+## Setup status (2026-07-10)
+Both workflows verified running: API Server (port 8080) and web (port 5000, Vite). DB reseeded fresh from `btk.sql` via the drop-schema-then-restore path (29+ FK constraints, fixtures/teams/users all populated). App loads correctly in preview with live odds/fixtures data. Remaining optional gap: `SMTP_PASS` secret not set (email sending degrades gracefully).
 
 ## Run & Operate
 
