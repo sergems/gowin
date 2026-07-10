@@ -15,6 +15,7 @@ import { UP_SELECTIONS } from "../lib/upMarkets";
 import { createNotification } from "../lib/notifications";
 import { broadcast } from "../lib/wsServer";
 import { logger } from "../lib/logger";
+import { liveCache } from "../lib/liveCache";
 
 const router = Router();
 
@@ -104,6 +105,12 @@ async function buildBetContext(bet: any, executor: typeof db = db): Promise<BetC
     const marketOdds = market ? oddsByMarket.get(market.id) ?? [] : [];
     const oddsRow = marketOdds.find((o) => o.selection.trim().toLowerCase() === sel.selection.trim().toLowerCase());
 
+    // Pull live match-state from the in-memory cache (populated by liveSync workers)
+    const liveFixture = liveCache.getFixture(sel.fixtureId);
+    const liveStats = liveFixture?.stats ?? null;
+    const totalRedCards = (liveStats?.redCardsHome ?? 0) + (liveStats?.redCardsAway ?? 0);
+    const matchMin = liveFixture?.matchMinute ?? null;
+
     remaining.push({
       selectionId: sel.id,
       fixtureId: sel.fixtureId,
@@ -116,7 +123,15 @@ async function buildBetContext(bet: any, executor: typeof db = db): Promise<BetC
       liveOdds: oddsRow ? parseFloat(oddsRow.oddsValue) : null,
       suspended: market?.suspended ?? true,
       fixtureStatus: fixture.status,
-      matchMinute: null, // match-minute/red-card/VAR live-state is not persisted server-side yet
+      matchMinute: matchMin,
+      isRedCardMatch: totalRedCards > 0,
+      isPenaltyMatch: false,  // no penalty-event signal from current data feed
+      isVarMatch: false,      // no VAR signal from current data feed
+      isInjuryTime: matchMin?.includes("+") ?? false,
+      isExtraTime: false,     // no extra-time signal from current data feed
+      isPenaltyShootout: false,
+      currentScoreHome: liveFixture?.scoreHome ?? fixture.scoreHome,
+      currentScoreAway: liveFixture?.scoreAway ?? fixture.scoreAway,
       startTime: fixture.startTime.toISOString(),
     });
   }

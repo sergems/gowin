@@ -62,6 +62,7 @@ interface CashOutConfig {
   enabledLeagueIds: number[];
   enabledCountries: string[];
   enabledMarkets: string[];
+  suspendWhenLosingAfterMinute: number;
   version: number;
 }
 
@@ -285,9 +286,10 @@ export default function AdminCashOutPage() {
               <ToggleRow title="Allow Before Match Starts" checked={config.allowBeforeMatchStarts} onChange={(v) => set("allowBeforeMatchStarts", v)} />
               <ToggleRow title="Allow During Match" checked={config.allowDuringMatch} onChange={(v) => set("allowDuringMatch", v)} />
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-3">
               <Field label="Disable X Minutes Before Kickoff" hint="0 = no limit"><Input type="number" value={config.disableMinutesBeforeKickoff} onChange={(e) => set("disableMinutesBeforeKickoff", parseFloat(e.target.value) || 0)} /></Field>
-              <Field label="Disable After Minute" hint="0 = no limit"><Input type="number" value={config.disableAfterMinute} onChange={(e) => set("disableAfterMinute", parseFloat(e.target.value) || 0)} /></Field>
+              <Field label="Disable After Minute" hint="0 = no limit, suspends all cash-out past this minute"><Input type="number" value={config.disableAfterMinute} onChange={(e) => set("disableAfterMinute", parseFloat(e.target.value) || 0)} /></Field>
+              <Field label="Suspend When Losing After Minute" hint="0 = disabled. Suspends cash-out if the prediction is currently losing at or after this minute (default 85')"><Input type="number" value={config.suspendWhenLosingAfterMinute ?? 85} onChange={(e) => set("suspendWhenLosingAfterMinute", parseFloat(e.target.value) || 0)} /></Field>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               <ToggleRow title="Disable on Suspended Odds" checked={config.disableWhenOddsSuspended} onChange={(v) => set("disableWhenOddsSuspended", v)} />

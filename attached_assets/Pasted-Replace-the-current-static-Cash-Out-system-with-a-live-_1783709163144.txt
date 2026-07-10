@@ -1,0 +1,425 @@
+Replace the current static Cash Out system with a live dynamic Cash Out engine that recalculates the Cash Out offer every time there is any change in any event contained in the user's bet slip.
+
+The Cash Out value must never remain fixed. It should continuously increase or decrease according to the probability of the ticket winning.
+
+Every fixture update received from the live data provider must trigger a complete recalculation.
+
+General Principle
+
+Cash Out represents the amount the bookmaker is willing to pay the customer before the bet settles.
+
+The calculation should be based on:
+
+Current match score
+Match minute
+Live statistics
+Remaining events on the ticket
+Original odds
+Current probability of winning
+House profit margin
+Admin-defined risk percentage
+
+The user should always receive an offer that protects the sportsbook while remaining attractive enough to encourage early settlement.
+
+Recalculation Triggers
+
+The Cash Out engine must recalculate whenever one of the following changes:
+
+Goal scored
+Red card
+Penalty awarded
+Penalty missed
+Own goal
+Match minute
+Half time
+Second half begins
+Extra time begins
+Match suspended
+Match abandoned
+Match finished
+VAR overturns a goal
+Live odds change
+Match status changes
+Event status changes
+Any selection changes from Winning to Losing
+Any selection changes from Losing to Winning
+Any selection becomes Void
+
+No manual refresh should be required.
+
+Event Evaluation
+
+Each selection should always have one of these statuses:
+
+Winning
+Losing
+Neutral
+Suspended
+Settled Won
+Settled Lost
+Void
+
+The engine should evaluate every selection independently before calculating the overall ticket probability.
+
+Probability Weighting
+
+Each event contributes to the overall ticket probability.
+
+Example
+
+Original ticket
+
+Manchester United Win
+Odds 2.00
+
+Real Madrid Win
+Odds 1.80
+
+Barcelona Win
+Odds 1.70
+
+Initial probability
+
+50%
+55%
+58%
+
+Combined probability
+
+50% × 55% × 58%
+
+As matches progress, these probabilities change continuously.
+
+Factors That Increase Cash Out
+
+The Cash Out offer should increase when:
+
+User's team scores
+
+Example
+
+Bet:
+
+Liverpool to Win
+
+Score
+
+Liverpool 1-0 Arsenal
+
+Minute
+
+20
+
+Probability increases.
+
+Cash Out increases.
+
+Opponent receives a red card
+
+Probability increases significantly.
+
+Cash Out increases immediately.
+
+Opponent misses a penalty
+
+Probability increases.
+
+Cash Out increases.
+
+User's team dominates
+
+Examples
+
+High possession
+
+More shots
+
+More shots on target
+
+Higher expected goals (xG)
+
+More dangerous attacks
+
+Cash Out increases gradually.
+
+More selections become winners
+
+Every settled winning event increases the ticket value.
+
+Remaining selections have low risk
+
+As fewer matches remain unfinished, uncertainty decreases.
+
+Cash Out increases.
+
+Live odds shorten
+
+If live odds move in favour of the user's prediction, the offer increases.
+
+Factors That Decrease Cash Out
+
+Cash Out should reduce whenever the probability falls.
+
+Examples include:
+
+Opponent scores
+
+Example
+
+Liverpool to Win
+
+Current
+
+1-0
+
+Opponent equalises
+
+1-1
+
+Probability decreases.
+
+Cash Out decreases.
+
+User's team receives a red card
+
+Probability drops.
+
+Cash Out drops sharply.
+
+User's team misses a penalty
+
+Cash Out decreases.
+
+Opponent dominates
+
+High pressure
+
+High possession
+
+Many shots
+
+High xG
+
+Cash Out decreases.
+
+Time running out
+
+If the prediction has not happened and time continues, probability falls.
+
+Example
+
+Bet
+
+Chelsea to Win
+
+80 minutes
+
+0-0
+
+Offer should now be much lower than at 60 minutes.
+
+At 84 minutes
+
+Offer becomes even lower.
+
+Late Match Rule
+
+If match reaches 85 minutes and the prediction is still going against the user:
+
+Cash Out must automatically become Suspended.
+
+Example
+
+Bet
+
+Barcelona Win
+
+Minute
+
+86
+
+Score
+
+0-2
+
+No Cash Out offered.
+
+Reason
+
+Probability is too low.
+
+Cash Out Suspension Rules
+
+Suspend Cash Out immediately when:
+
+Match minute ≥ 85 AND prediction is currently losing
+
+VAR decision pending
+
+Penalty in progress
+
+Red card under review
+
+Match suspended
+
+Match abandoned
+
+Data feed interrupted
+
+Odds unavailable
+
+Market suspended
+
+Admin manually suspends Cash Out
+
+Multi-Bet Calculation
+
+Each event should contribute independently.
+
+Example
+
+5-leg accumulator
+
+Event 1
+
+Won
+
+100%
+
+Event 2
+
+Winning
+
+90%
+
+Event 3
+
+Winning
+
+82%
+
+Event 4
+
+Neutral
+
+58%
+
+Event 5
+
+Losing
+
+24%
+
+Overall ticket probability should be recalculated by multiplying all current probabilities together, not by averaging them. This naturally reflects how accumulators become less likely as more uncertain selections remain.
+
+The Cash Out amount is then based on the updated overall probability, not the original odds alone.
+
+Suggested Cash Out Formula
+
+A practical model is:
+
+Potential Return = Stake × Total Odds
+
+Current Ticket Probability = Product of all live selection probabilities
+
+Expected Value = Potential Return × Current Ticket Probability
+
+Cash Out Offer = Expected Value × House Factor
+
+Where:
+
+House Factor
+
+Default
+
+90–95%
+
+Admin configurable.
+
+Example
+
+Potential Return
+
+$500
+
+Current probability
+
+72%
+
+Expected Value
+
+500 × 0.72
+
+=
+
+$360
+
+House Factor
+
+92%
+
+Cash Out
+
+360 × 0.92
+
+=
+
+$331.20
+
+Minimum Offer
+
+Never offer less than the configured minimum.
+
+Admin setting
+
+Minimum Cash Out
+
+Example
+
+$1
+
+or
+
+10% of stake
+
+Maximum Offer
+
+Never exceed:
+
+Potential Return
+
+The user should never receive more than the maximum possible payout.
+
+Admin Controls
+
+Administrator should be able to configure:
+
+Cash Out enabled/disabled
+House margin percentage
+Minimum Cash Out amount
+Maximum Cash Out percentage
+Recalculation interval (e.g., on every live event or every few seconds)
+Suspension minute (default 85')
+Cash Out availability by sport
+Cash Out availability by market
+Maximum exposure per ticket
+Minimum probability required to display an offer
+Rules for suspending on specific match events (VAR, penalties, etc.)
+User Interface Behaviour
+
+The Cash Out value should update automatically without requiring a page refresh.
+
+When the value changes:
+
+Animate the amount smoothly.
+Flash green if the offer increases.
+Flash red if the offer decreases.
+Show "Cash Out Suspended" when unavailable, with a brief reason if applicable.
+Disable the Cash Out button while a recalculation is in progress to avoid accepting stale offers.
+Performance Requirements
+Recalculate only tickets affected by the latest live event, rather than every open ticket.
+Use event-driven updates from the live data feed instead of fixed polling where possible.
+Cache live match state to reduce repeated calculations.
+Ensure cash-out acceptance is atomic: when the user clicks Cash Out, lock the offer, recalculate one final time using the latest data, and either honor the confirmed amount or present an updated offer if the value changed before acceptance.
+
+This approach produces a dynamic, risk-aware Cash Out system where offers rise as a ticket becomes more likely to win, fall as outcomes become less favorable, and are suspended when the remaining probability is too low or the market is temporarily unstable. It closely mirrors the behavior users expect from leading sportsbooks while allowing the sportsbook to control exposure through configurable risk parameters.

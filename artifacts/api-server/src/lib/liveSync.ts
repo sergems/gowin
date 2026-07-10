@@ -4,6 +4,7 @@ import { logger } from "./logger";
 import { liveCache, type LiveFixture, type LiveMarket, type LiveStats } from "./liveCache";
 import { broadcast } from "./wsServer";
 import { settleUpMarketBets, getUpMarketsConfig, injectUpMarkets } from "./upMarkets";
+import { triggerCashOutRecalcForFixtures } from "./cashOutEngine";
 
 async function getApiKey(): Promise<string | null> {
   try {
@@ -339,6 +340,11 @@ export async function syncLiveFixtures(): Promise<void> {
     liveCache.setFixtures(fixtures);
     broadcast("LIVE_FIXTURE_UPDATE", { fixtures });
 
+    // Push cash-out recalculation for all live fixtures — fire-and-forget
+    if (fixtures.length > 0) {
+      triggerCashOutRecalcForFixtures(fixtures.map((f) => f.id)).catch(() => {});
+    }
+
     // Fire-and-forget immediate odds + stats refresh on significant events
     if (significantEvent) {
       syncLiveOdds().catch(() => {});
@@ -419,7 +425,11 @@ export async function syncLiveOdds(): Promise<void> {
     }
 
     liveCache.setLastOddsSync(new Date().toISOString());
-    if (updates.length > 0) broadcast("LIVE_ODDS_UPDATE", { updates });
+    if (updates.length > 0) {
+      broadcast("LIVE_ODDS_UPDATE", { updates });
+      // Odds changed — immediately push cash-out recalc for affected fixtures
+      triggerCashOutRecalcForFixtures(updates.map((u) => u.fixtureId)).catch(() => {});
+    }
   } catch (err: any) {
     const msg = err?.message ?? "Unknown error";
     logger.error({ err }, "LiveSync: odds sync failed");
@@ -472,7 +482,11 @@ export async function syncLiveStats(): Promise<void> {
     }
 
     liveCache.setLastStatsSync(new Date().toISOString());
-    if (statsUpdates.length > 0) broadcast("LIVE_STATS_UPDATE", { updates: statsUpdates });
+    if (statsUpdates.length > 0) {
+      broadcast("LIVE_STATS_UPDATE", { updates: statsUpdates });
+      // Stats changed (may include red cards) — push cash-out recalc
+      triggerCashOutRecalcForFixtures(statsUpdates.map((u) => u.fixtureId)).catch(() => {});
+    }
 
     // Immediate odds refresh on red card
     if (redCardEvent) {

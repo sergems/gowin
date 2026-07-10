@@ -1,5 +1,6 @@
 import { db, settingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { getSelectionOutcome } from "./autoSettle";
 
 // ── Config types ─────────────────────────────────────────────────────────────
 // Full Cash Out only (no Partial, no Auto). Every rule below is admin-configurable.
@@ -75,6 +76,10 @@ export interface CashOutConfig {
   maxCashOutPerTicket: number;
   maxCashOutPerCustomerPerDay: number;
 
+  // Suspend cash-out when a selection is currently LOSING at or after this minute (0 = disabled)
+  // Per spec: "If match reaches 85 minutes and the prediction is still going against the user: Cash Out must automatically become Suspended"
+  suspendWhenLosingAfterMinute: number;
+
   // Bumped whenever config is saved — stored in audit rows as "admin settings version"
   version: number;
 }
@@ -133,6 +138,8 @@ export const DEFAULT_CASH_OUT_CONFIG: CashOutConfig = {
   highOddsThreshold: 50,
   accumulatorSelectionsThreshold: 10,
   lateMatchMinuteThreshold: 75,
+
+  suspendWhenLosingAfterMinute: 85,
 
   maxCashOutExposure: 0, // 0 = unlimited
   maxDailyCashOutLiability: 0,
@@ -200,6 +207,9 @@ export interface RemainingSelectionInput {
   isExtraTime?: boolean;
   isPenaltyShootout?: boolean;
   startTime: string; // ISO
+  // Current live score — used for late-match-losing suspension
+  currentScoreHome?: number | null;
+  currentScoreAway?: number | null;
 }
 
 export interface CashOutEligibilityContext {
@@ -282,6 +292,28 @@ export function checkCashOutEligibility(ctx: CashOutEligibilityContext, config: 
       if (config.disableDuringInjuryTime && sel.isInjuryTime) return { eligible: false, reason: "Cash Out disabled during injury time" };
       if (config.disableDuringExtraTime && sel.isExtraTime) return { eligible: false, reason: "Cash Out disabled during extra time" };
       if (config.disableDuringPenaltyShootout && sel.isPenaltyShootout) return { eligible: false, reason: "Cash Out disabled during penalty shootout" };
+
+      // Late-match losing rule: if the prediction is currently failing at the configured minute threshold, suspend.
+      // Spec: "If match reaches 85 minutes and the prediction is still going against the user: Cash Out must automatically become Suspended."
+      if (
+        config.suspendWhenLosingAfterMinute > 0 &&
+        minute !== null &&
+        minute >= config.suspendWhenLosingAfterMinute &&
+        sel.currentScoreHome != null &&
+        sel.currentScoreAway != null
+      ) {
+        const outcome = getSelectionOutcome(sel.selection, sel.market, sel.currentScoreHome, sel.currentScoreAway);
+        if (outcome === false) {
+          // Confirmed losing — suspend
+          return {
+            eligible: false,
+            reason: `Cash Out suspended — match is in the final stage and this prediction is not currently winning`,
+          };
+        }
+        // outcome === null means the market type is not evaluable (unsupported).
+        // Do NOT suspend on unknown — only suspend when we *know* it's losing.
+        // This is intentionally conservative: failing open protects the customer.
+      }
     }
   }
 

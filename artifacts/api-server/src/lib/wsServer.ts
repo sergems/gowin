@@ -10,7 +10,8 @@ export type WsMessageType =
   | "LIVE_ODDS_UPDATE"
   | "LIVE_STATS_UPDATE"
   | "CONNECTED"
-  | "CASH_OUT_ACCEPTED";
+  | "CASH_OUT_ACCEPTED"
+  | "CASH_OUT_UPDATE";
 
 export interface WsMessage {
   type: WsMessageType;

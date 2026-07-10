@@ -10,6 +10,6 @@
 - [i18n translation pattern](i18n-pattern.md) — all UI strings belong in i18n.ts EN+FR sections; use t(key) via useSiteSettings(); avoid as-any casts; import TranslationKey for typed const arrays
 - [Wouter render-prop hooks violation](wouter-render-prop-hooks.md) — hooks inside wouter Route children() run in Route's fiber; when path stops matching, hook count drops → error #310; always use component= prop instead
 - [1UP/2UP Markets](up-markets.md) — Football 1X2 sub-markets fully implemented; up_won column on bet_selections drives live settlement; config in settings table as up_markets_config JSON
-- [Full Cash Out feature](full-cash-out.md) — Full Cash Out fully implemented (eligibility, offer calc, admin settings/reports/audit, WS); live-state match fields (red card/VAR/minute) not persisted, so those admin toggles are UI-only
+- [Full Cash Out feature](full-cash-out.md) — Dynamic live engine: event-driven recalc via liveSync → cashOutEngine → CASH_OUT_UPDATE WS (privacy-safe, no betIds); CashOutButton animates green/red on change; late-match-losing suspension at 85'
 - [Financial accept race safety](financial-accept-race-safety.md) — pattern for accept-a-live-offer + wallet-credit endpoints: re-quote inside the lock, atomic SQL increment, advisory-lock cap checks — test with concurrent curl requests, not sequential
 - [api-server dist bundle](api-server-dist-bundle.md) — dev script runs dist/index.mjs not src; also covers lib/db's own stale tsbuildinfo/dist affecting api-server via project references

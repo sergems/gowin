@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
@@ -12,7 +12,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Wallet, Loader2, TrendingDown, AlertTriangle } from "lucide-react";
+import { Wallet, Loader2, TrendingDown, AlertTriangle, TrendingUp, Ban } from "lucide-react";
+import { subscribeCashOutUpdates, onCashOutUpdate } from "@/lib/cashOutUpdates";
 
 export interface CashOutOffer {
   eligible: boolean;
@@ -51,21 +52,68 @@ async function acceptOffer(betId: number, expectedAmount: number, token: string 
   return data;
 }
 
-export function CashOutButton({ betId, stake, potentialWin }: { betId: number; stake: number; potentialWin: number }) {
+type FlashDir = "up" | "down" | null;
+
+export function CashOutButton({
+  betId,
+  stake,
+  potentialWin,
+}: {
+  betId: number;
+  stake: number;
+  potentialWin: number;
+}) {
   const { token } = useAuth();
   const { formatCurrency, t } = useSiteSettings();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [flash, setFlash] = useState<FlashDir>(null);
+  const prevAmountRef = useRef<number | null>(null);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { data: offer, isLoading, refetch } = useQuery<CashOutOffer>({
+  // ── Fetch offer — stale time is effectively infinity; we trigger refetches
+  //    ourselves on every server-pushed CASH_OUT_UPDATE event ─────────────────
+  const {
+    data: offer,
+    isLoading,
+    isFetching,
+    refetch,
+  } = useQuery<CashOutOffer>({
     queryKey: ["cash-out-offer", betId],
     queryFn: () => fetchOffer(betId, token),
     enabled: !!token,
-    refetchInterval: 10_000,
+    staleTime: 30_000,        // don't auto-refetch on mount if fresh
+    refetchInterval: 30_000,  // fallback poll every 30 s in case WS is down
     retry: false,
   });
+
+  // ── Detect amount change and flash ───────────────────────────────────────────
+  useEffect(() => {
+    if (!offer?.eligible || offer.offerAmount == null) return;
+    const prev = prevAmountRef.current;
+    if (prev !== null && prev !== offer.offerAmount) {
+      const dir: FlashDir = offer.offerAmount > prev ? "up" : "down";
+      setFlash(dir);
+      if (flashTimer.current) clearTimeout(flashTimer.current);
+      flashTimer.current = setTimeout(() => setFlash(null), 1200);
+    }
+    prevAmountRef.current = offer.offerAmount;
+  }, [offer?.offerAmount, offer?.eligible]);
+
+  // ── Subscribe to server-pushed cash-out updates ──────────────────────────────
+  const stableRefetch = useCallback(() => { refetch(); }, [refetch]);
+
+  useEffect(() => {
+    const unsub = subscribeCashOutUpdates();
+    const unlisten = onCashOutUpdate(stableRefetch);
+    return () => {
+      unlisten();
+      unsub();
+      if (flashTimer.current) clearTimeout(flashTimer.current);
+    };
+  }, [stableRefetch]);
 
   async function handleConfirm() {
     if (!offer?.eligible) return;
@@ -82,10 +130,19 @@ export function CashOutButton({ betId, stake, potentialWin }: { betId: number; s
       queryClient.invalidateQueries({ queryKey: ["wallet"] });
     } catch (err: any) {
       if (err.offer) {
-        toast({ title: t("bets.cash_out_offer_changed"), description: err.message, variant: "destructive" });
-        refetch();
+        // Server returned a fresher offer — update local cache and show new amount
+        queryClient.setQueryData<CashOutOffer>(["cash-out-offer", betId], err.offer);
+        toast({
+          title: t("bets.cash_out_offer_changed"),
+          description: err.message,
+          variant: "destructive",
+        });
       } else {
-        toast({ title: t("bets.cash_out_error"), description: err.message, variant: "destructive" });
+        toast({
+          title: t("bets.cash_out_error"),
+          description: err.message,
+          variant: "destructive",
+        });
       }
     } finally {
       setSubmitting(false);
@@ -100,17 +157,58 @@ export function CashOutButton({ betId, stake, potentialWin }: { betId: number; s
     );
   }
 
-  if (!offer?.eligible) return null;
+  // ── Suspended state ─────────────────────────────────────────────────────────
+  if (!offer?.eligible) {
+    return (
+      <span
+        className="flex items-center gap-1.5 text-xs text-muted-foreground/60 select-none"
+        title={offer?.reason ?? "Cash Out unavailable"}
+      >
+        <Ban className="w-3.5 h-3.5" />
+        <span>Cash Out Suspended</span>
+      </span>
+    );
+  }
+
+  // ── Flash colour for the button/amount ──────────────────────────────────────
+  const flashClass =
+    flash === "up"
+      ? "ring-2 ring-emerald-400 shadow-[0_0_8px_0px_rgba(52,211,153,0.6)]"
+      : flash === "down"
+      ? "ring-2 ring-red-400 shadow-[0_0_8px_0px_rgba(239,68,68,0.6)]"
+      : "";
+
+  const amountColour =
+    flash === "up"
+      ? "text-emerald-400"
+      : flash === "down"
+      ? "text-red-400"
+      : "text-amber-500";
 
   return (
     <>
       <Button
         size="sm"
-        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
-        className="bg-amber-500 hover:bg-amber-600 text-black font-bold shrink-0"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen(true);
+        }}
+        disabled={isFetching && !offer}
+        className={`bg-amber-500 hover:bg-amber-600 text-black font-bold shrink-0 transition-all duration-300 ${flashClass}`}
       >
-        <Wallet className="w-3.5 h-3.5 mr-1.5" />
-        {t("bets.cash_out")} · {formatCurrency(offer.offerAmount)}
+        {isFetching ? (
+          <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+        ) : flash === "up" ? (
+          <TrendingUp className="w-3.5 h-3.5 mr-1.5" />
+        ) : flash === "down" ? (
+          <TrendingDown className="w-3.5 h-3.5 mr-1.5" />
+        ) : (
+          <Wallet className="w-3.5 h-3.5 mr-1.5" />
+        )}
+        {t("bets.cash_out")} ·{" "}
+        <span className={`transition-colors duration-300 ${amountColour}`}>
+          {formatCurrency(offer.offerAmount)}
+        </span>
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -130,13 +228,27 @@ export function CashOutButton({ betId, stake, potentialWin }: { betId: number; s
               <span className="font-semibold">{formatCurrency(potentialWin)}</span>
             </div>
             <div className="flex justify-between text-sm items-center">
-              <span className="text-muted-foreground flex items-center gap-1"><TrendingDown className="w-3.5 h-3.5" /> {t("bets.cash_out_sacrificed")}</span>
-              <span className="font-semibold text-destructive">{formatCurrency(Math.max(0, potentialWin - offer.offerAmount))}</span>
+              <span className="text-muted-foreground flex items-center gap-1">
+                <TrendingDown className="w-3.5 h-3.5" /> {t("bets.cash_out_sacrificed")}
+              </span>
+              <span className="font-semibold text-destructive">
+                {formatCurrency(Math.max(0, potentialWin - offer.offerAmount))}
+              </span>
             </div>
             <div className="flex justify-between items-baseline pt-2 border-t border-border">
               <span className="font-bold">{t("bets.cash_out_amount")}</span>
-              <span className="font-black text-2xl text-amber-500">{formatCurrency(offer.offerAmount)}</span>
+              <span
+                className={`font-black text-2xl transition-colors duration-300 ${amountColour}`}
+              >
+                {formatCurrency(offer.offerAmount)}
+              </span>
             </div>
+            {isFetching && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                <span>Recalculating offer…</span>
+              </div>
+            )}
             <div className="flex items-start gap-2 text-xs text-muted-foreground bg-accent/40 rounded-md p-2 mt-2">
               <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
               <span>{t("bets.cash_out_confirm_desc")}</span>
@@ -147,7 +259,11 @@ export function CashOutButton({ betId, stake, potentialWin }: { betId: number; s
             <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>
               {t("bets.cash_out_cancel")}
             </Button>
-            <Button onClick={handleConfirm} disabled={submitting} className="bg-amber-500 hover:bg-amber-600 text-black font-bold">
+            <Button
+              onClick={handleConfirm}
+              disabled={submitting || isFetching}
+              className="bg-amber-500 hover:bg-amber-600 text-black font-bold"
+            >
               {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
               {t("bets.cash_out_confirm_button")}
             </Button>
