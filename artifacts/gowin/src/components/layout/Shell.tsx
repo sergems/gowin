@@ -1031,7 +1031,7 @@ export function Shell({ children }: { children: ReactNode }) {
       {mobileBetSlipOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileBetSlipOpen(false)} />
-          <div className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl flex flex-col overflow-hidden shadow-2xl" style={{ maxHeight: '85dvh', height: '85dvh' }}>
+          <div className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl flex flex-col overflow-hidden shadow-2xl" style={{ maxHeight: '93dvh', height: '93dvh' }}>
             <BetSlipBody onClose={() => setMobileBetSlipOpen(false)} />
           </div>
         </div>
