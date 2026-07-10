@@ -206,12 +206,23 @@ export default function History() {
                 const live = liveFixtures.get(s.fixture?.id);
                 return live?.status === "live";
               });
+              // Fixture(s) have finished but the bet itself hasn't been settled yet —
+              // distinct grey "awaiting settlement" state, not the active red live state.
+              const hasFinishedAwaitingSettlement = !hasLiveSelection && activeTab === "pending" &&
+                (bet.selections ?? []).some((s: any) => {
+                  const live = liveFixtures.get(s.fixture?.id);
+                  return live?.status === "finished" || s.fixture?.status === "finished";
+                });
 
               return (
                 <div
                   key={bet.id}
                   className={`rounded-xl border bg-card overflow-hidden transition-colors ${
-                    hasLiveSelection ? "border-red-500/30" : "border-border"
+                    hasLiveSelection
+                      ? "border-red-500/30"
+                      : hasFinishedAwaitingSettlement
+                      ? "border-muted-foreground/30"
+                      : "border-border"
                   }`}
                 >
                   <button
@@ -251,10 +262,14 @@ export default function History() {
                             {bet.code}
                           </span>
                         )}
-                        {hasLiveSelection && (
+                        {hasLiveSelection ? (
                           <span className="flex items-center gap-0.5 text-[10px] font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded-full">
                             <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
                             LIVE
+                          </span>
+                        ) : hasFinishedAwaitingSettlement && (
+                          <span className="flex items-center gap-0.5 text-[10px] font-bold text-muted-foreground bg-accent px-1.5 py-0.5 rounded-full">
+                            FT · AWAITING SETTLEMENT
                           </span>
                         )}
                       </div>
