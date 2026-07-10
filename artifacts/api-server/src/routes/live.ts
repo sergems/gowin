@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, fixturesTable, marketsTable, oddsTable, leaguesTable, sportsTable, teamsTable } from "@workspace/db";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, and, ilike } from "drizzle-orm";
 import { liveCache } from "../lib/liveCache";
 
 const router = Router();
@@ -19,10 +19,12 @@ router.get("/live/fixtures", async (_req, res): Promise<void> => {
 
   if (!liveCache.isEmpty()) {
     liveCache.recordHit();
-    const fixtures = liveCache.getFixtures().map((f) => ({
-      ...f,
-      markets: filterMainMarkets(f.markets),
-    }));
+    const fixtures = liveCache.getFixtures()
+      .filter((f) => (f.sportName ?? "Football").toLowerCase() === "football")
+      .map((f) => ({
+        ...f,
+        markets: filterMainMarkets(f.markets),
+      }));
     res.json({ fixtures, dataWarning });
     return;
   }
@@ -50,7 +52,7 @@ router.get("/live/fixtures", async (_req, res): Promise<void> => {
       .from(fixturesTable)
       .leftJoin(leaguesTable, eq(leaguesTable.id, fixturesTable.leagueId))
       .leftJoin(sportsTable, eq(sportsTable.id, leaguesTable.sportId))
-      .where(eq(fixturesTable.status, "live"));
+      .where(and(eq(fixturesTable.status, "live"), ilike(sportsTable.name, "Football")));
 
     if (dbFixtures.length === 0) {
       res.json({ fixtures: [], dataWarning });

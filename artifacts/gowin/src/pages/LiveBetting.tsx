@@ -13,6 +13,22 @@ import { resolveLeagueLogoUrl } from "@/lib/leagueLogoOverrides";
 
 const MAIN_MARKETS = ["1X2", "Double Chance", "Over/Under 2.5"];
 
+/** Parse "85'", "85+2'" etc → numeric minute. Returns null for HT, FT, etc. */
+function parseMinute(matchMinute: string | null | undefined): number | null {
+  if (!matchMinute) return null;
+  const m = matchMinute.match(/^(\d+)/);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+/** Suspend all betting when: match is ≥ 85', or already finished/FT/AET */
+function isLateStage(matchMinute: string | null | undefined): boolean {
+  if (!matchMinute) return false;
+  const upper = matchMinute.toUpperCase().replace(/'/g, "").trim();
+  if (["FT", "FINISHED", "AET", "PEN", "AFTER ET"].includes(upper)) return true;
+  const min = parseMinute(matchMinute);
+  return min !== null && min >= 85;
+}
+
 const UP_LIVE_SELS = new Set(["Home 1UP", "Home 2UP", "Away 1UP", "Away 2UP"]);
 
 function splitLive1X2(markets: LiveMarket[]): {
@@ -192,6 +208,7 @@ function MarketSection({ fixture, market, getOddsDirection, suspended }: MarketS
 interface FixtureCardProps {
   fixture: LiveFixture;
   getOddsDirection: (fId: number, oId: number) => OddsDirection | null;
+  /** True when WS is disconnected (global) OR this fixture is past 85' */
   allSuspended: boolean;
 }
 
@@ -420,7 +437,20 @@ export default function LiveBetting() {
     if (initialData?.dataWarning) setDataWarning(initialData.dataWarning);
   }, [initialData?.dataWarning]);
 
-  const fixtures = wsFixtures.length > 0 ? wsFixtures : (initialData?.fixtures ?? []);
+  const allFixtures = wsFixtures.length > 0 ? wsFixtures : (initialData?.fixtures ?? []);
+
+  // Live In-Play is football (soccer) only — filter out any other sport that
+  // slipped through, and only show fixtures that actually have live odds available.
+  const fixtures = allFixtures.filter((f) => {
+    const sport = (f.sportName ?? "Football").toLowerCase();
+    if (sport !== "football") return false;
+    // Must have at least one market with a real live odds value
+    const hasLiveOdds = (f.markets ?? []).some(
+      (m) => !m.suspended && m.odds.some((o) => o.oddsValue > 1),
+    );
+    return hasLiveOdds;
+  });
+
   const leagueGroups = buildSortedLeagueGroups(fixtures);
 
   return (
@@ -511,7 +541,7 @@ export default function LiveBetting() {
                 key={f.id}
                 fixture={f}
                 getOddsDirection={getOddsDirection}
-                allSuspended={allSuspended}
+                allSuspended={allSuspended || isLateStage(f.matchMinute)}
               />
             ))}
           </div>

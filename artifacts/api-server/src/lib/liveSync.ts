@@ -1,5 +1,5 @@
 import { db, settingsTable, fixturesTable, marketsTable, oddsTable, leaguesTable, sportsTable, teamsTable } from "@workspace/db";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, and, ilike } from "drizzle-orm";
 import { logger } from "./logger";
 import { liveCache, type LiveFixture, type LiveMarket, type LiveStats } from "./liveCache";
 import { broadcast } from "./wsServer";
@@ -51,7 +51,7 @@ async function buildLiveFixturesFromDb(): Promise<LiveFixture[]> {
     .from(fixturesTable)
     .leftJoin(leaguesTable, eq(leaguesTable.id, fixturesTable.leagueId))
     .leftJoin(sportsTable, eq(sportsTable.id, leaguesTable.sportId))
-    .where(eq(fixturesTable.status, "live"));
+    .where(and(eq(fixturesTable.status, "live"), ilike(sportsTable.name, "Football")));
 
   if (dbFixtures.length === 0) return [];
 

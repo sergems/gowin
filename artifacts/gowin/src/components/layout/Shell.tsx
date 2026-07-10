@@ -529,6 +529,21 @@ export function Shell({ children }: { children: ReactNode }) {
               </>
             ) : null}
 
+            {!isStaffRole && (
+              <Link href="/live" title={!open ? t("nav.live") : undefined} onClick={onNav}
+                className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                  ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
+                  ${location.startsWith("/live") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
+                <Radio className="w-4 h-4 shrink-0" />
+                {open && (
+                  <span className="flex-1 flex items-center gap-2">
+                    {t("nav.live")}
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  </span>
+                )}
+              </Link>
+            )}
+
             {!isStaffRole && sportsData?.filter((s) => s.name !== "Football").map((sport) => (
               <Link
                 key={sport.id}
@@ -553,21 +568,6 @@ export function Shell({ children }: { children: ReactNode }) {
               <CheckCircle2 className="w-4 h-4 shrink-0" />
               {open && <span className="flex-1">{t("nav.results")}</span>}
             </Link>
-
-            {!isStaffRole && (
-              <Link href="/live" title={!open ? t("nav.live") : undefined} onClick={onNav}
-                className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
-                  ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
-                  ${location.startsWith("/live") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
-                <Radio className="w-4 h-4 shrink-0" />
-                {open && (
-                  <span className="flex-1 flex items-center gap-2">
-                    {t("nav.live")}
-                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                  </span>
-                )}
-              </Link>
-            )}
 
             {!isStaffRole && (
               <a
@@ -944,6 +944,18 @@ export function Shell({ children }: { children: ReactNode }) {
           <Home className="w-5 h-5" />
           <span className="text-[10px] font-medium">Home</span>
         </Link>
+
+        {!isStaffRole && (
+          <Link href="/live"
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-md transition-colors relative
+              ${location.startsWith("/live") ? "text-primary" : "text-muted-foreground"}`}>
+            <div className="relative">
+              <Radio className="w-5 h-5" />
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            </div>
+            <span className="text-[10px] font-medium">Live</span>
+          </Link>
+        )}
 
         {user ? (
           <>
