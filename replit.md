@@ -24,7 +24,7 @@ To get this project running on Replit from a fresh import:
 5. **Secrets** — `SESSION_SECRET` is set. SMTP vars (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_FROM`, `SMTP_SECURE`) are set as env vars. `SMTP_PASS` must be added as a Replit Secret if password reset/OTP/admin emails are needed (without it, email sending is skipped with a warning — non-fatal). `JWT_SECRET` is loaded from the database `settings` table (`jwt_secret` key), confirmed present after reseeding from `btk.sql`.
 
 ## Setup status (2026-07-10)
-Both workflows verified running: API Server (port 8080) and web (port 5000, Vite). DB reseeded fresh from `btk.sql` via the drop-schema-then-restore path (29+ FK constraints, fixtures/teams/users all populated). App loads correctly in preview with live odds/fixtures data. Remaining optional gap: `SMTP_PASS` secret not set (email sending degrades gracefully).
+Both workflows verified running: API Server (port 8080) and web (port 5000, Vite). DB reseeded fresh from `btk.sql` via the drop-schema-then-restore path (31 FK constraints, 13916 fixtures/4 sports/22 users all populated). App loads correctly in preview with live odds/fixtures data. Remaining optional gap: `SMTP_PASS` secret not set (email sending degrades gracefully).
 
 ## Run & Operate
 
