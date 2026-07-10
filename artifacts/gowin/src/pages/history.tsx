@@ -225,9 +225,17 @@ export default function History() {
                       : "border-border"
                   }`}
                 >
-                  <button
+                  <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => toggle(bet.id)}
-                    className="w-full p-3.5 hover:bg-accent/20 transition-colors text-left"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        toggle(bet.id);
+                      }
+                    }}
+                    className="w-full p-3.5 hover:bg-accent/20 transition-colors text-left cursor-pointer"
                   >
                     {/* Row 1: bet title + amount */}
                     <div className="flex items-start justify-between gap-3 mb-2">
@@ -290,7 +298,7 @@ export default function History() {
                       <Clock className="w-3 h-3 shrink-0" />
                       {format(new Date(bet.createdAt), "PPP 'at' p")}
                     </div>
-                  </button>
+                  </div>
 
                   <AnimatePresence initial={false}>
                     {isOpen && (
