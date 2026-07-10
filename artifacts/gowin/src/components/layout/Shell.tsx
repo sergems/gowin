@@ -212,7 +212,7 @@ function NotificationBell() {
 
 export function Shell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
-  const { formatCurrency, currency, t } = useSiteSettings();
+  const { formatCurrency, currency, exchangeRate, t } = useSiteSettings();
   const { data: wallet } = useGetMyWallet({ query: { enabled: !!user, queryKey: getGetMyWalletQueryKey() } });
   const [location, navigate] = useLocation();
   const currentSearchStr = useSearch();
@@ -1081,7 +1081,7 @@ export function Shell({ children }: { children: ReactNode }) {
               <Button
                 variant="outline"
                 className="h-11 gap-2"
-                onClick={() => { printBetSlip(lastPlacedBet, currency); }}
+                onClick={() => { printBetSlip(lastPlacedBet, currency, exchangeRate); }}
               >
                 <Printer className="w-4 h-4" />
                 {t("betslip.print")}

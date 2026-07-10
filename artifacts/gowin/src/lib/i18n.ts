@@ -2052,7 +2052,7 @@ export function translate(key: TranslationKey, lang: Language): string {
 // When a user types an amount while viewing the site in CDF, that typed number is a CDF
 // figure and must be converted back to USD before it is sent to the backend.
 export function parseCurrencyInput(amount: number, currency: string, exchangeRate = 1): number {
-  if (currency === "CDF" && exchangeRate > 0) {
+  if (currency === "CDF" && Number.isFinite(exchangeRate) && exchangeRate > 0) {
     return amount / exchangeRate;
   }
   return amount;
@@ -2060,8 +2060,11 @@ export function parseCurrencyInput(amount: number, currency: string, exchangeRat
 
 export function formatCurrencyValue(amount: number, currency: string, language: Language, exchangeRate = 1): string {
   const locale = language === "fr" ? "fr-FR" : "en-US";
-  // All DB amounts are stored in USD; convert to CDF using the exchange rate
-  const displayAmount = currency === "CDF" ? amount * exchangeRate : amount;
+  // All DB amounts are stored in USD; convert to CDF using the exchange rate.
+  // Guard against a missing/invalid rate (0, NaN, negative) so a misconfigured
+  // rate never silently displays amounts as zero — fall back to 1 (i.e. show USD figure).
+  const validRate = Number.isFinite(exchangeRate) && exchangeRate > 0 ? exchangeRate : 1;
+  const displayAmount = currency === "CDF" ? amount * validRate : amount;
   const decimals = currency === "CDF" ? 0 : 2;
   const formatted = new Intl.NumberFormat(locale, {
     minimumFractionDigits: decimals,

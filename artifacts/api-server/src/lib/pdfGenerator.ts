@@ -2,8 +2,8 @@ import { createRequire } from "module";
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import { db, fixturesTable, leaguesTable, teamsTable, marketsTable, oddsTable } from "@workspace/db";
-import { eq, and, gte, lte, asc, inArray } from "drizzle-orm";
+import { db, fixturesTable, leaguesTable, teamsTable, marketsTable, oddsTable, sportsTable } from "@workspace/db";
+import { eq, and, gte, lte, asc, inArray, ilike } from "drizzle-orm";
 import { logger } from "./logger";
 
 const _require = createRequire(import.meta.url);
@@ -117,6 +117,15 @@ async function fetchFixtureData(): Promise<LeagueGroup[]> {
   end7days.setDate(end7days.getDate() + 7);
   end7days.setHours(23, 59, 59, 999);
 
+  // The coupon only covers football fixtures — resolve the Football sport id
+  // and scope the query to it so other sports (basketball, tennis, cricket...) never appear.
+  const [footballSport] = await db.select({ id: sportsTable.id }).from(sportsTable)
+    .where(ilike(sportsTable.name, "football")).limit(1);
+  if (!footballSport) {
+    logger.warn("Fixtures PDF: no 'Football' sport row found, generating empty coupon");
+    return [];
+  }
+
   const allRows: any[] = await db
     .select({
       id: fixturesTable.id,
@@ -128,7 +137,12 @@ async function fetchFixtureData(): Promise<LeagueGroup[]> {
     })
     .from(fixturesTable)
     .leftJoin(leaguesTable, eq(leaguesTable.id, fixturesTable.leagueId))
-    .where(and(eq(fixturesTable.status, "upcoming"), gte(fixturesTable.startTime, todayStart), lte(fixturesTable.startTime, end7days)))
+    .where(and(
+      eq(fixturesTable.status, "upcoming"),
+      eq(leaguesTable.sportId, footballSport.id),
+      gte(fixturesTable.startTime, todayStart),
+      lte(fixturesTable.startTime, end7days),
+    ))
     .orderBy(asc(fixturesTable.startTime));
 
   if (allRows.length === 0) return [];

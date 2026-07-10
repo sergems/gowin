@@ -17,19 +17,30 @@ export interface PrintBetData {
   status?: string;
 }
 
-export function printBetSlip(bet: PrintBetData, currency = "USD") {
+export function printBetSlip(bet: PrintBetData, currency = "USD", exchangeRate = 1) {
   const win = window.open("", "_blank", "width=360,height=680");
   if (!win) return;
 
   const fmtOdds = (v: number | string) => Number(v).toFixed(2);
+  // All amounts on `bet` (stake/potentialWin) are stored in USD; when the active
+  // display currency is CDF, convert using the exchange rate before formatting —
+  // otherwise the raw USD figure gets mislabeled as CDF.
+  const validRate = Number.isFinite(exchangeRate) && exchangeRate > 0 ? exchangeRate : 1;
   const fmtMoney = (v: number | string) => {
+    const displayAmount = currency === "CDF" ? Number(v) * validRate : Number(v);
+    if (currency === "CDF") {
+      const formatted = new Intl.NumberFormat("en-US", {
+        minimumFractionDigits: 0, maximumFractionDigits: 0,
+      }).format(displayAmount);
+      return `CDF ${formatted}`;
+    }
     try {
       return new Intl.NumberFormat("en-US", {
         style: "currency", currency,
         minimumFractionDigits: 2, maximumFractionDigits: 2,
-      }).format(Number(v));
+      }).format(displayAmount);
     } catch {
-      return `${Number(v).toFixed(2)} ${currency}`;
+      return `${displayAmount.toFixed(2)} ${currency}`;
     }
   };
   const fmtDate = (s: string | Date) => {

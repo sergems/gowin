@@ -89,7 +89,7 @@ interface LiveFixtureData {
 }
 
 export default function History() {
-  const { formatCurrency, currency, t } = useSiteSettings();
+  const { formatCurrency, currency, exchangeRate, t } = useSiteSettings();
   const [activeTab, setActiveTab] = useState<"pending" | "won" | "lost" | "void" | "cashed_out">("pending");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [liveFixtures, setLiveFixtures] = useState<Map<number, LiveFixtureData>>(new Map());
@@ -401,7 +401,7 @@ export default function History() {
                                 </div>
                               </div>
                               <button
-                                onClick={() => printBetSlip(historyBetToPrintData(bet), currency)}
+                                onClick={() => printBetSlip(historyBetToPrintData(bet), currency, exchangeRate)}
                                 title={t("bets.print")}
                                 className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border rounded-md px-3 py-2 hover:bg-accent transition-colors shrink-0"
                               >
