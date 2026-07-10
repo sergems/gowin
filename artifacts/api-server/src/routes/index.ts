@@ -27,6 +27,7 @@ import notificationsRouter from "./notifications";
 import winBonusRouter from "./winBonus";
 import referralRouter from "./referral";
 import upMarketsRouter from "./upMarkets";
+import cashOutRouter from "./cashOut";
 
 const router: IRouter = Router();
 
@@ -58,5 +59,6 @@ router.use(notificationsRouter);
 router.use(winBonusRouter);
 router.use(referralRouter);
 router.use(upMarketsRouter);
+router.use(cashOutRouter);
 
 export default router;

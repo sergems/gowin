@@ -4,7 +4,7 @@ import { logger } from "./logger";
 import { notifyBetWon, notifyBetLost } from "./notifications";
 import { UP_SELECTIONS } from "./upMarkets";
 
-function getSelectionOutcome(
+export function getSelectionOutcome(
   selection: string,
   market: string,
   scoreHome: number,

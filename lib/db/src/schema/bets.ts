@@ -4,7 +4,7 @@ import { z } from "zod/v4";
 import { usersTable } from "./users";
 import { fixturesTable } from "./sports";
 
-export const betStatusEnum = pgEnum("bet_status", ["pending", "won", "lost", "void"]);
+export const betStatusEnum = pgEnum("bet_status", ["pending", "won", "lost", "void", "cashed_out"]);
 
 export const betsTable = pgTable("bets", {
   id: serial("id").primaryKey(),
@@ -23,6 +23,15 @@ export const betsTable = pgTable("bets", {
   baseWin: numeric("base_win", { precision: 15, scale: 2 }).notNull().default("0"),
   bonusAmount: numeric("bonus_amount", { precision: 15, scale: 2 }).notNull().default("0"),
   maxWinApplied: boolean("max_win_applied").notNull().default(false),
+  // Cash Out fields — populated only when a bet is cashed out (status = 'cashed_out')
+  cashOutAmount: numeric("cash_out_amount", { precision: 15, scale: 2 }),
+  cashOutAt: timestamp("cash_out_at", { withTimezone: true }),
+  cashOutMarginUsed: numeric("cash_out_margin_used", { precision: 8, scale: 2 }),
+  cashOutFairValue: numeric("cash_out_fair_value", { precision: 15, scale: 2 }),
+  cashOutProbability: numeric("cash_out_probability", { precision: 8, scale: 4 }),
+  cashOutOddsSnapshot: jsonb("cash_out_odds_snapshot"),
+  cashOutIp: text("cash_out_ip"),
+  cashOutDevice: text("cash_out_device"),
 });
 
 export const betSelectionsTable = pgTable("bet_selections", {

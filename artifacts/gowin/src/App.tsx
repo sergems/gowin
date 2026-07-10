@@ -43,6 +43,7 @@ import ApiMonitorPage from "@/pages/admin/ApiMonitorPage";
 import AdminWinBonus from "@/pages/admin/win-bonus";
 import AdminUpMarkets from "@/pages/admin/up-markets";
 import AdminReferral from "@/pages/admin/referral";
+import AdminCashOut from "@/pages/admin/cash-out";
 import ReferralPage from "@/pages/referral";
 
 // Branch Admin Pages
@@ -196,6 +197,7 @@ function Router() {
         <Route path="/admin/win-bonus" component={() => <ProtectedRoute component={AdminWinBonus} adminOnly />} />
         <Route path="/admin/up-markets" component={() => <ProtectedRoute component={AdminUpMarkets} adminOnly />} />
         <Route path="/admin/referral" component={() => <ProtectedRoute component={AdminReferral} adminOnly />} />
+        <Route path="/admin/cash-out" component={() => <ProtectedRoute component={AdminCashOut} adminOnly />} />
         <Route path="/referral" component={() => <ProtectedRoute component={ReferralPage} allowedRoles={["user", "admin"]} />} />
 
         {/* Branch Admin Routes */}

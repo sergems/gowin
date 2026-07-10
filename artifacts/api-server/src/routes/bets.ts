@@ -211,6 +211,10 @@ function formatBet(bet: any, user?: any) {
     baseWin: parseFloat(bet.baseWin ?? "0"),
     bonusAmount: parseFloat(bet.bonusAmount ?? "0"),
     maxWinApplied: bet.maxWinApplied ?? false,
+    // Cash Out fields — only populated once status === 'cashed_out'
+    cashOutAmount: bet.cashOutAmount !== undefined && bet.cashOutAmount !== null ? parseFloat(bet.cashOutAmount) : null,
+    cashOutAt: bet.cashOutAt ?? null,
+    cashOutMarginUsed: bet.cashOutMarginUsed !== undefined && bet.cashOutMarginUsed !== null ? parseFloat(bet.cashOutMarginUsed) : null,
   };
 }
 

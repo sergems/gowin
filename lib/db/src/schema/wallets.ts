@@ -12,6 +12,7 @@ export const transactionTypeEnum = pgEnum("transaction_type", [
   "voucher_redeem",
   "bonus_credit",
   "bonus_debit",
+  "cash_out",
 ]);
 
 export const walletsTable = pgTable("wallets", {

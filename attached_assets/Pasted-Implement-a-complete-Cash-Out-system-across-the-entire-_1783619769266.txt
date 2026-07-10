@@ -1,0 +1,581 @@
+Implement a complete Cash Out system across the entire GoWin RDC sportsbook.
+
+IMPORTANT
+- This is NOT Partial Cash Out.
+- This is NOT Auto Cash Out.
+- Only implement Full Cash Out.
+- The feature must work for both pre-match and live bets whenever applicable.
+- The Cash Out engine must be completely configurable from the Admin Panel.
+- The solution must be production-ready and fully integrated with the existing betting engine.
+
+====================================================
+CASH OUT OVERVIEW
+====================================================
+
+Cash Out allows a customer to sell their ticket back to the sportsbook before the ticket is fully settled.
+
+When a customer accepts Cash Out:
+
+- The ticket immediately becomes CLOSED.
+- The customer receives the offered amount instantly into their wallet.
+- The ticket can never win again.
+- Remaining events no longer affect that ticket.
+
+====================================================
+WHEN CASH OUT IS AVAILABLE
+====================================================
+
+Cash Out should only be available when ALL of the following conditions are true:
+
+✓ Ticket status is Active
+✓ Ticket has not already been Cashed Out
+✓ Ticket has not already Lost
+✓ Ticket has not already Won
+✓ Ticket has at least one unsettled selection
+✓ Cash Out is globally enabled
+✓ Sport is enabled for Cash Out
+✓ Ticket type is eligible
+✓ Live odds are available for all remaining selections
+
+Cash Out should automatically disappear if:
+
+- Any remaining event has suspended odds
+- Event is postponed
+- Event is cancelled
+- Live odds unavailable
+- Admin disables Cash Out
+- Ticket already settled
+
+====================================================
+SUPPORTED BET TYPES
+====================================================
+
+Support Cash Out for:
+
+- Single Bets
+- Multi Bets (Accumulators)
+- System bets (only if already supported by the platform)
+
+====================================================
+CASH OUT CALCULATION
+====================================================
+
+The calculation must NEVER use the original ticket odds.
+
+It must use CURRENT LIVE ODDS.
+
+Process:
+
+Step 1
+
+Determine all remaining unsettled selections.
+
+Step 2
+
+Convert current live odds into implied probability.
+
+Example:
+
+Decimal Odds = 1.50
+
+Probability
+
+1 / 1.50
+
+=66.67%
+
+Do this for every remaining selection.
+
+Step 3
+
+Multiply all remaining probabilities.
+
+Example
+
+Selection A
+
+80%
+
+Selection B
+
+65%
+
+Combined Probability
+
+0.80 × 0.65
+
+=52%
+
+Step 4
+
+Fair Value
+
+Potential Payout × Combined Probability
+
+Example
+
+Potential payout
+
+$500
+
+Combined probability
+
+52%
+
+Fair value
+
+$260
+
+Step 5
+
+Apply the House Margin
+
+Offer
+
+Fair Value × (1 - House Margin)
+
+Example
+
+Fair value
+
+$260
+
+House Margin
+
+10%
+
+Offer
+
+$234
+
+Display
+
+Cash Out Available
+
+$234
+
+====================================================
+ADMIN CONFIGURATION
+====================================================
+
+Create a complete Cash Out settings page.
+
+Admin must control:
+
+Enable / Disable Cash Out
+
+Global On/Off
+
+House Margin %
+
+(default 10%)
+
+Minimum Margin
+
+Maximum Margin
+
+Minimum Cash Out Amount
+
+Maximum Cash Out Amount
+
+Minimum Ticket Stake
+
+Maximum Ticket Stake
+
+Minimum Offer Amount
+
+Maximum Offer Amount
+
+Enable Singles
+
+Enable Multiples
+
+Enable Live Bets
+
+Enable Pre-match Bets
+
+Enable Per Sport
+
+Enable Per League
+
+Enable Per Country
+
+Enable Per Market
+
+Allow Cash Out Before Match Starts
+
+Allow Cash Out During Match
+
+Disable Cash Out X minutes before kickoff
+
+Disable Cash Out after X minute
+
+Disable Cash Out when odds suspended
+
+Disable Cash Out after Red Card
+
+Disable Cash Out after Penalty
+
+Disable Cash Out after VAR
+
+Disable Cash Out during Injury Time
+
+Disable Cash Out during Extra Time
+
+Disable Cash Out during Penalty Shootout
+
+Refresh Interval (seconds)
+
+Maximum Odds Drift Allowed
+
+Round Offers
+
+Round Up
+
+Round Down
+
+Round to nearest
+
+0.01
+
+0.05
+
+0.10
+
+0.50
+
+1.00
+
+====================================================
+ADVANCED PROFIT PROTECTION
+====================================================
+
+Allow admin to define additional deductions.
+
+Example
+
+Large Win Protection %
+
+High Odds Protection %
+
+Accumulator Protection %
+
+Late Match Protection %
+
+Risk Adjustment %
+
+Maximum Cash Out Exposure
+
+Maximum Daily Cash Out Liability
+
+Maximum Cash Out per Ticket
+
+Maximum Cash Out per Customer
+
+====================================================
+CUSTOMER EXPERIENCE
+====================================================
+
+Inside My Bets
+
+Every eligible ticket should display
+
+Cash Out
+
+Button
+
+Show
+
+Current Offer
+
+Example
+
+Cash Out
+
+CDF 128,500
+
+When clicked
+
+Open confirmation dialog.
+
+Show
+
+Current Offer
+
+Original Stake
+
+Potential Win
+
+Ticket Number
+
+Warning
+
+Once accepted this action cannot be reversed.
+
+Buttons
+
+Confirm Cash Out
+
+Cancel
+
+====================================================
+WHEN CUSTOMER CONFIRMS
+====================================================
+
+Lock the ticket.
+
+Recalculate Cash Out.
+
+If value changed
+
+Update amount.
+
+Ask confirmation again.
+
+If accepted
+
+Immediately
+
+Credit wallet
+
+Mark ticket
+
+CAShed Out
+
+Store
+
+Cash Out Amount
+
+Cash Out Time
+
+Calculation Details
+
+Margin Used
+
+Live Odds Used
+
+Remaining Probability
+
+Customer IP
+
+Device
+
+Audit Log
+
+====================================================
+TICKET STATUS
+====================================================
+
+Add new ticket status
+
+CAShed Out
+
+Display
+
+Green badge
+
+Cash Out Amount
+
+Cash Out Date
+
+Original Stake
+
+Potential Win
+
+====================================================
+BET HISTORY
+====================================================
+
+Customer history should show
+
+Placed
+
+Settled
+
+Won
+
+Lost
+
+Void
+
+Refunded
+
+Cashed Out
+
+Include
+
+Cash Out Amount
+
+Original Potential Win
+
+Amount Sacrificed
+
+====================================================
+ADMIN REPORTING
+====================================================
+
+Create Cash Out Reports.
+
+Statistics
+
+Total Cash Outs
+
+Total Paid
+
+Total Saved
+
+Average Margin
+
+Average Offer
+
+Most Cashed Out Sport
+
+Most Cashed Out League
+
+Most Cashed Out Market
+
+Largest Cash Out
+
+Highest Exposure
+
+Lowest Offer
+
+Daily
+
+Weekly
+
+Monthly
+
+Custom Date Range
+
+====================================================
+AUDIT LOG
+====================================================
+
+Every Cash Out must log
+
+Ticket ID
+
+User ID
+
+Username
+
+Stake
+
+Potential Win
+
+Cash Out Offer
+
+Accepted Amount
+
+Calculation Time
+
+Margin Used
+
+Remaining Selections
+
+Live Odds
+
+Admin Settings Version
+
+IP Address
+
+Browser
+
+Device
+
+Timestamp
+
+====================================================
+WALLET
+====================================================
+
+After successful Cash Out
+
+Immediately credit wallet.
+
+Transaction Type
+
+Cash Out
+
+Reference
+
+Ticket Number
+
+Description
+
+Cash Out Payment
+
+====================================================
+NOTIFICATIONS
+====================================================
+
+After Cash Out
+
+Show success message.
+
+Wallet updated instantly.
+
+Send in-app notification.
+
+Store notification history.
+
+====================================================
+SECURITY
+====================================================
+
+Prevent
+
+Double Cash Out
+
+Duplicate requests
+
+Race conditions
+
+Wallet duplication
+
+Offer manipulation
+
+Browser tampering
+
+Expired offers
+
+Recalculate server-side before approval.
+
+Never trust frontend calculations.
+
+====================================================
+API
+====================================================
+
+Create secure endpoints
+
+Get Cash Out Offer
+
+Calculate Offer
+
+Accept Cash Out
+
+Admin Settings
+
+Cash Out Reports
+
+All calculations must occur on the backend.
+
+====================================================
+REAL-TIME UPDATES
+====================================================
+
+Cash Out offers should refresh automatically using the existing WebSocket/live update system whenever odds change.
+
+The frontend should update the displayed offer without requiring a page refresh, and immediately disable the Cash Out button if the offer becomes unavailable.
+
+====================================================
+FINAL REQUIREMENTS
+====================================================
+
+- Integrate seamlessly with the existing GoWin RDC betting engine.
+- Use the existing wallet, ticket, live odds, and settlement systems.
+- Ensure all cash-out calculations are performed server-side.
+- Make every rule and threshold configurable from the Admin Panel.
+- Build the feature in a modular, maintainable way so future enhancements (such as Partial Cash Out) can be added without major refactoring, but do NOT implement Partial Cash Out or Auto Cash Out in this version.

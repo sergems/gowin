@@ -7,12 +7,14 @@ import { ChevronDown, ChevronUp, Trophy, Clock, CheckCircle2, XCircle, HelpCircl
 import { motion, AnimatePresence } from "framer-motion";
 import { printBetSlip, historyBetToPrintData } from "@/lib/printBetSlip";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
+import { CashOutButton } from "@/components/CashOutButton";
 
 const STATUS_STYLES: Record<string, string> = {
-  pending: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-  won:     "bg-primary/20 text-primary border-primary/30",
-  lost:    "bg-destructive/20 text-destructive border-destructive/30",
-  void:    "bg-muted/40 text-muted-foreground border-border",
+  pending:    "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+  won:        "bg-primary/20 text-primary border-primary/30",
+  lost:       "bg-destructive/20 text-destructive border-destructive/30",
+  void:       "bg-muted/40 text-muted-foreground border-border",
+  cashed_out: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
 };
 
 type SelectionOutcome = "won" | "lost" | "pending" | "unknown";
@@ -88,7 +90,7 @@ interface LiveFixtureData {
 
 export default function History() {
   const { formatCurrency, currency, t } = useSiteSettings();
-  const [activeTab, setActiveTab] = useState<"pending" | "won" | "lost" | "void">("pending");
+  const [activeTab, setActiveTab] = useState<"pending" | "won" | "lost" | "void" | "cashed_out">("pending");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [liveFixtures, setLiveFixtures] = useState<Map<number, LiveFixtureData>>(new Map());
 
@@ -156,11 +158,12 @@ export default function History() {
       </div>
 
       <Tabs value={activeTab} onValueChange={(v: any) => { setActiveTab(v); setExpanded(new Set()); }} className="w-full">
-        <TabsList className="grid grid-cols-4 mb-8">
+        <TabsList className="grid grid-cols-5 mb-8">
           <TabsTrigger value="pending">{t("bets.pending")}</TabsTrigger>
           <TabsTrigger value="won">{t("bets.won")}</TabsTrigger>
           <TabsTrigger value="lost">{t("bets.lost")}</TabsTrigger>
           <TabsTrigger value="void">{t("bets.void")}</TabsTrigger>
+          <TabsTrigger value="cashed_out">{t("bets.cashed_out")}</TabsTrigger>
         </TabsList>
 
         <div className="space-y-3">
@@ -229,12 +232,23 @@ export default function History() {
                       </div>
                       <div className="text-right">
                         <div className="text-xs text-muted-foreground">
-                          {bet.status === "won" ? t("bets.won") : t("bets.to_win")}
+                          {bet.status === "won"
+                            ? t("bets.won")
+                            : bet.status === "cashed_out"
+                            ? t("bets.cashed_out")
+                            : t("bets.to_win")}
                         </div>
-                        <div className={`font-black text-sm ${bet.status === "won" ? "text-primary" : ""}`}>
-                          {formatCurrency(Number(bet.potentialWin))}
+                        <div className={`font-black text-sm ${bet.status === "won" || bet.status === "cashed_out" ? "text-primary" : ""}`}>
+                          {bet.status === "cashed_out" && bet.cashOutAmount != null
+                            ? formatCurrency(Number(bet.cashOutAmount))
+                            : formatCurrency(Number(bet.potentialWin))}
                         </div>
                       </div>
+                      {activeTab === "pending" && (
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <CashOutButton betId={bet.id} stake={Number(bet.stake)} potentialWin={Number(bet.potentialWin)} />
+                        </div>
+                      )}
                       <div className="text-muted-foreground ml-1">
                         {isOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                       </div>
@@ -364,12 +378,26 @@ export default function History() {
                               </div>
                             </div>
                             <div className="flex items-center gap-4">
+                              {bet.status === "cashed_out" && (
+                                <div className="text-right">
+                                  <div className="text-xs text-muted-foreground mb-0.5">{t("bets.cash_out_sacrificed")}</div>
+                                  <div className="font-bold text-destructive">
+                                    {formatCurrency(Math.max(0, Number(bet.potentialWin) - Number(bet.cashOutAmount ?? 0)))}
+                                  </div>
+                                </div>
+                              )}
                               <div className="text-right">
                                 <div className="text-xs text-muted-foreground mb-0.5">
-                                  {bet.status === "won" ? t("bets.won") : t("betslip.potential_win")}
+                                  {bet.status === "won"
+                                    ? t("bets.won")
+                                    : bet.status === "cashed_out"
+                                    ? t("bets.cashed_out")
+                                    : t("betslip.potential_win")}
                                 </div>
-                                <div className={`font-black text-lg ${bet.status === "won" ? "text-primary" : ""}`}>
-                                  {formatCurrency(Number(bet.potentialWin))}
+                                <div className={`font-black text-lg ${bet.status === "won" || bet.status === "cashed_out" ? "text-primary" : ""}`}>
+                                  {bet.status === "cashed_out" && bet.cashOutAmount != null
+                                    ? formatCurrency(Number(bet.cashOutAmount))
+                                    : formatCurrency(Number(bet.potentialWin))}
                                 </div>
                               </div>
                               <button
