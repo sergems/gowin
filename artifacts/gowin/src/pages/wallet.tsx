@@ -348,16 +348,16 @@ export default function Wallet() {
         <div className="h-32 bg-accent/50 rounded-xl animate-pulse" />
       ) : (
         <Card className="border-primary/20 bg-primary/5">
-          <CardContent className="p-8">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
-                <WalletIcon className="w-8 h-8 text-primary" />
+          <CardContent className="p-5 md:p-8">
+            <div className="flex items-center gap-3 md:gap-4">
+              <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                <WalletIcon className="w-6 h-6 md:w-8 md:h-8 text-primary" />
               </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-1">
+              <div className="min-w-0">
+                <p className="text-xs md:text-sm font-medium text-muted-foreground uppercase tracking-wider mb-1">
                   {isRestrictedRole ? t("wallet.balance_allocated") : t("wallet.balance")}
                 </p>
-                <h2 className="text-5xl font-black tracking-tight">{formatCurrency(wallet?.balance ?? 0)}</h2>
+                <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight break-all">{formatCurrency(wallet?.balance ?? 0)}</h2>
                 {(wallet?.bonusBalance ?? 0) > 0 && (
                   <div className="mt-2 flex items-center gap-2 text-sm">
                     <span className="text-muted-foreground">Bonus Wallet:</span>
