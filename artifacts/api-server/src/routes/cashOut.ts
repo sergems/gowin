@@ -67,6 +67,7 @@ async function buildBetContext(bet: any, executor: typeof db = db): Promise<BetC
 
   const remaining: RemainingSelectionInput[] = [];
   let settledLegsWinFactor = 1;
+  let lockedInStakeMultiplier = 1;
   let hasKnownLoss = false;
 
   for (const sel of selections) {
@@ -76,7 +77,7 @@ async function buildBetContext(bet: any, executor: typeof db = db): Promise<BetC
 
     // 1UP/2UP legs already settled live by the sync worker
     if (UP_SELECTIONS.has(sel.selection)) {
-      if (sel.upWon) { settledLegsWinFactor *= 1; continue; }
+      if (sel.upWon) { settledLegsWinFactor *= 1; lockedInStakeMultiplier *= parseFloat(sel.odds); continue; }
       if (fixture.status === "finished") { hasKnownLoss = true; }
       // else: still pending live resolution — cannot cash out until it resolves
       else {
@@ -94,7 +95,7 @@ async function buildBetContext(bet: any, executor: typeof db = db): Promise<BetC
     if (fixture.status === "finished" && fixture.scoreHome !== null && fixture.scoreAway !== null) {
       const outcome = getSelectionOutcome(sel.selection, sel.market, fixture.scoreHome, fixture.scoreAway);
       if (outcome === false) { hasKnownLoss = true; continue; }
-      if (outcome === true) { settledLegsWinFactor *= 1; continue; }
+      if (outcome === true) { settledLegsWinFactor *= 1; lockedInStakeMultiplier *= parseFloat(sel.odds); continue; }
       // outcome === null (void/unrecognised market) — treat as locked-in at factor 1 (refund-equivalent)
       settledLegsWinFactor *= 1;
       continue;
@@ -148,6 +149,7 @@ async function buildBetContext(bet: any, executor: typeof db = db): Promise<BetC
     isSystemBet: false, // system bets are not currently supported by this platform
     stake: parseFloat(bet.stake),
     remaining,
+    lockedInStakeMultiplier,
   };
 
   return { bet, ctx, settledLegsWinFactor };

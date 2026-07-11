@@ -257,6 +257,12 @@ export interface CashOutEligibilityContext {
   isSystemBet: boolean;
   stake: number;
   remaining: RemainingSelectionInput[];
+  // Product of originalOdds for legs that are already settled-won (e.g. earlier legs of a
+  // multi already resolved as won, or 1UP/2UP locked in). Represents how much the stake has
+  // effectively "grown" already — used as the stake basis for the adversity override below
+  // instead of the raw ticket stake, so a bettor who already banked a win isn't offered a
+  // flat % of their original stake when the remaining legs turn against them.
+  lockedInStakeMultiplier: number;
 }
 
 export interface EligibilityResult {
@@ -378,7 +384,7 @@ export interface CashOutOfferResult {
   // Momentum multiplier applied per remaining selection (1 = neutral, <1 = shrunk because losing, >1 = boosted because winning)
   momentumMultipliers?: number[];
   // Set when the flat adversity-% override (see AdversityOverrideResult) replaced the normal fair-value calc
-  adversityOverride?: { legsAgainst: number; maxDeficit: number; percentOfStake: number };
+  adversityOverride?: { legsAgainst: number; maxDeficit: number; percentOfStake: number; stakeBasis: number };
 }
 
 /**
@@ -549,12 +555,16 @@ export function computeCashOutOffer(
       liveOddsUsed: liveOddsUsedForAdversity,
       potentialWin,
       stake: ctx.stake,
-      adversityOverride: { legsAgainst: adversity.legsAgainst, maxDeficit: adversity.maxDeficit, percentOfStake: 0 },
+      adversityOverride: { legsAgainst: adversity.legsAgainst, maxDeficit: adversity.maxDeficit, percentOfStake: 0, stakeBasis: ctx.stake },
     };
   }
 
   if (adversity.applies && adversity.percent !== null) {
-    const rawOffer = ctx.stake * (adversity.percent / 100);
+    // If an earlier leg has already won (locked in), the stake has effectively grown —
+    // the % below is applied to that grown amount, not the raw original stake, so a
+    // bettor who already banked a win isn't shortchanged when the remaining legs turn.
+    const effectiveStake = ctx.stake * Math.max(1, ctx.lockedInStakeMultiplier);
+    const rawOffer = effectiveStake * (adversity.percent / 100);
     let offerAmount = applyRounding(Math.max(0, rawOffer), config);
     if (config.maxOfferAmount > 0) offerAmount = Math.min(offerAmount, config.maxOfferAmount);
     if (config.maxCashOutAmount > 0) offerAmount = Math.min(offerAmount, config.maxCashOutAmount);
@@ -571,7 +581,7 @@ export function computeCashOutOffer(
       liveOddsUsed: liveOddsUsedForAdversity,
       potentialWin,
       stake: ctx.stake,
-      adversityOverride: { legsAgainst: adversity.legsAgainst, maxDeficit: adversity.maxDeficit, percentOfStake: adversity.percent },
+      adversityOverride: { legsAgainst: adversity.legsAgainst, maxDeficit: adversity.maxDeficit, percentOfStake: adversity.percent, stakeBasis: effectiveStake },
     };
   }
 
