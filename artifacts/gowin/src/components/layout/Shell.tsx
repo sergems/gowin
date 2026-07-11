@@ -841,7 +841,7 @@ export function Shell({ children }: { children: ReactNode }) {
             {sidebarOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
           </button>
         </div>
-        <SidebarNav open={sidebarOpen} />
+        {SidebarNav({ open: sidebarOpen })}
       </aside>
 
       {/* ── Mobile Sidebar Overlay ───────────────────────────────────────────── */}
@@ -856,7 +856,7 @@ export function Shell({ children }: { children: ReactNode }) {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <SidebarNav open={true} onNav={() => setMobileSidebarOpen(false)} />
+            {SidebarNav({ open: true, onNav: () => setMobileSidebarOpen(false) })}
           </aside>
         </div>
       )}

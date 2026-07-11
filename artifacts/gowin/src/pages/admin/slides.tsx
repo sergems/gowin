@@ -5,6 +5,11 @@ import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Trash2, Upload, Eye, EyeOff, ImageIcon } from "lucide-react";
 
 interface Slide {
@@ -23,6 +28,7 @@ export default function AdminSlides() {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
 
   const { data: slides = [], isLoading } = useQuery<Slide[]>({
     queryKey: ["/api/admin/slides"],
@@ -47,9 +53,12 @@ export default function AdminSlides() {
       qc.invalidateQueries({ queryKey: ["/api/admin/slides"] });
       qc.invalidateQueries({ queryKey: ["slides"] });
       toast({ title: t("admin.slides.deleted"), variant: "success" });
+      setPendingDeleteId(null);
     },
-    onError: (e: any) =>
-      toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: any) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+      setPendingDeleteId(null);
+    },
   });
 
   const toggleMutation = useMutation({
@@ -202,9 +211,7 @@ export default function AdminSlides() {
                     )}
                   </button>
                   <button
-                    onClick={() => {
-                      if (confirm(t("admin.slides.delete_confirm"))) deleteMutation.mutate(slide.id);
-                    }}
+                    onClick={() => setPendingDeleteId(slide.id)}
                     className="p-1.5 rounded-md bg-white/10 hover:bg-red-500/70 text-white transition-colors"
                     title="Delete slide"
                   >
@@ -216,6 +223,27 @@ export default function AdminSlides() {
           ))}
         </div>
       )}
+
+      <AlertDialog open={pendingDeleteId !== null} onOpenChange={(open) => !open && setPendingDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("admin.slides.delete_confirm_title")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("admin.slides.delete_confirm")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingDeleteId(null)}>
+              {t("admin.slides.delete_cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => pendingDeleteId !== null && deleteMutation.mutate(pendingDeleteId)}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? t("admin.slides.deleting") : t("admin.slides.delete_confirm_action")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
