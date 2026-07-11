@@ -23,11 +23,11 @@ To get this project running on Replit from a fresh import:
 4. **Start workflows** — start both `artifacts/api-server: API Server` (port 8080) and `artifacts/gowin: web` (port 5000) via the Replit workflow panel
 5. **Secrets** — `SESSION_SECRET` is set. SMTP vars (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_FROM`, `SMTP_SECURE`) are set as env vars. `SMTP_PASS` must be added as a Replit Secret if password reset/OTP/admin emails are needed (without it, email sending is skipped with a warning — non-fatal). `JWT_SECRET` is loaded from the database `settings` table (`jwt_secret` key), confirmed present after reseeding from `btk.sql`.
 
-## Setup status (2026-07-10)
+## Setup status (2026-07-11)
 Both workflows running: API Server (port 8080) and GoWin web (port 5000). Fresh import setup:
-1. `pnpm install` — installs all workspace deps (automated via `scripts/post-merge.sh`)
-2. DB seeded from `btk.sql` via drop-schema-then-restore path (31 FK constraints, 4 sports, 22 users, 14013 fixtures, 10629 teams)
-3. API server built (`pnpm --filter @workspace/api-server run build`) — automated via post-merge script
+1. `pnpm install` — installs all workspace deps
+2. DB seeded from `btk.sql` via drop-schema-then-restore path (31 FK constraints, 4 sports, 22 users, 14755 fixtures, 10789 teams, 629 leagues)
+3. API server built (`pnpm --filter @workspace/api-server run build`)
 4. App verified loading in preview with live odds/fixtures data
 
 Remaining optional gap: `SMTP_PASS` secret not set (email sending degrades gracefully — non-fatal).
