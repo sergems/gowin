@@ -24,7 +24,7 @@ To get this project running on Replit from a fresh import:
 5. **Secrets** — `SESSION_SECRET` is set. SMTP vars (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_FROM`, `SMTP_SECURE`) are set as env vars. `SMTP_PASS` must be added as a Replit Secret if password reset/OTP/admin emails are needed (without it, email sending is skipped with a warning — non-fatal). `JWT_SECRET` is loaded from the database `settings` table (`jwt_secret` key), confirmed present after reseeding from `btk.sql`.
 
 ## Setup status (2026-07-11)
-Both workflows running: API Server (port 8080) and GoWin web (port 5000). Fresh import setup:
+Both workflows running: API Server (port 8080) and GoWin web (port 5000). Re-verified after a fresh container reset:
 1. `pnpm install` — installs all workspace deps
 2. DB seeded from `btk.sql` via drop-schema-then-restore path (31 FK constraints, 4 sports, 22 users, 14755 fixtures, 10789 teams, 629 leagues)
 3. API server built (`pnpm --filter @workspace/api-server run build`)
