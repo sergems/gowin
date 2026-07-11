@@ -1,29 +1,18 @@
 ---
 name: Full Cash Out feature
-description: Dynamic live Cash-Out engine — event-driven recalc via WS, probability formula, suspension rules, animation.
+description: Cash Out engine architecture, pricing formula, and the live-momentum adjustment layered on top
 ---
 
-# Full Cash Out feature
+Dynamic live engine: event-driven recalc via liveSync → cashOutEngine → CASH_OUT_UPDATE WS (privacy-safe, no betIds); CashOutButton animates green/red on change; late-match-losing suspension at 85'.
 
-## Rule
-Cash-Out is fully implemented as a live dynamic engine. The offer recalculates on every live fixture/odds/stats update, not on a fixed poll.
+## Pricing formula (`artifacts/api-server/src/lib/cashOut.ts`)
+`Offer = PotentialWin * CombinedProbability * (1 - TotalMargin/100)`, where `CombinedProbability` is the product of `1/liveOdds` across remaining legs. Margin stacks house margin + protection add-ons, clamped to min/max.
 
-**Why:** The original implementation polled the REST endpoint every 10 seconds. The replacement is event-driven: liveSync workers call `triggerCashOutRecalcForFixtures` after every sync, which broadcasts a privacy-safe `CASH_OUT_UPDATE { seq, ts }` WS signal (no bet IDs or amounts). Frontend `CashOutButton` components listen via a singleton WS in `lib/cashOutUpdates.ts` and immediately refetch their own offer.
+## Live momentum adjustment
+Base `1/liveOdds` probability is pure bookmaker-feed-driven, which can lag real match events (odds poll every 10s; only "significant events" like goals force an out-of-band refresh). To make the offer react to the scoreline itself — not just wait for the odds feed — `computeMomentumMultiplier()` nudges each selection's probability using `getSelectionOutcome()` (from `autoSettle.ts`) plus match minute:
+- Currently losing: probability shrinks toward 0 as minute→90, shaped by `momentumDecayPower` (default 1.6, so decay accelerates late) — tapers smoothly into the existing 85'-losing hard suspension instead of a flat value until a cliff.
+- Currently winning: probability gets a modest boost that grows toward full time.
+- Outcome undeterminable (market type `getSelectionOutcome` can't evaluate) → neutral (1x), fails open.
 
-## How to apply
-- Core calculation: `lib/cashOut.ts` → `computeCashOutOffer` (probability = 1/liveOdds product × settledLegsWinFactor; fair value × house margin)
-- Recalc trigger: `lib/cashOutEngine.ts` → `triggerCashOutRecalcForFixtures` (coalesces concurrent calls, guards with `getWsClientCount()`)
-- Live state: `routes/cashOut.ts` → `buildBetContext` populates `matchMinute`, `isRedCardMatch`, `isInjuryTime`, `currentScoreHome/Away` from `liveCache.getFixture()`
-- Late-match suspension: `checkCashOutEligibility` in `cashOut.ts` — if minute ≥ `suspendWhenLosingAfterMinute` (default 85) AND `getSelectionOutcome` returns `false` → suspend. Returns `null` = do NOT suspend (fail open)
-- Config: stored in `settings` table as `cash_out_config` JSON; `suspendWhenLosingAfterMinute` added alongside existing fields
-- Frontend singleton: `gowin/src/lib/cashOutUpdates.ts` — ref-counted WS, `window.dispatchEvent(CustomEvent('co_update'))` on each update
-- Frontend button: `gowin/src/components/CashOutButton.tsx` — subscribes via `onCashOutUpdate(refetch)`, animates amount with green/red ring flash on change, shows "Cash Out Suspended" with Ban icon when ineligible
-- Admin settings: `gowin/src/pages/admin/cash-out.tsx` — includes `suspendWhenLosingAfterMinute` field in Timing Rules section
-
-## Privacy note
-`CASH_OUT_UPDATE` payload contains only `{ seq, ts }` — no bet IDs, no amounts. Each client fetches its own offer via the authenticated REST endpoint. This prevents cross-user activity leakage over the public WS channel.
-
-## Known limitations
-- `isPenaltyMatch`, `isVarMatch`, `isExtraTime`, `isPenaltyShootout` are hardcoded `false` — AllSports feed doesn't currently provide these signals
-- Late-match losing check only fires for markets `getSelectionOutcome` supports (1X2, Double Chance, BTTS, Over/Under); unsupported markets fail open (no suspension)
-- `cashOutUpdates.ts` creates a second WS connection on pages that also use `useLiveSocket` (e.g. if Live Betting and History are open simultaneously)
+**Why:** user reported the offer wasn't reacting drastically enough when a match turned against a bet — traced to the offer being entirely bookmaker-odds-driven with no independent scoreline reaction.
+**How to apply:** admin-configurable via `matchStateAdjustmentEnabled`, `losingMomentumDecayPercent`, `winningMomentumBoostPercent`, `momentumDecayPower` in `CashOutConfig` (settings key `cash_out_config`), editable at `artifacts/gowin/src/pages/admin/cash-out.tsx` "Live Momentum Adjustment" section. If tuning further, prefer adjusting these knobs over changing the core odds-implied-probability math.

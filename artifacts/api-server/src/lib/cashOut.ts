@@ -80,6 +80,14 @@ export interface CashOutConfig {
   // Per spec: "If match reaches 85 minutes and the prediction is still going against the user: Cash Out must automatically become Suspended"
   suspendWhenLosingAfterMinute: number;
 
+  // Live match-state momentum adjustment — reacts immediately to the scoreline instead of
+  // waiting on the bookmaker live-odds feed to catch up. Applied per remaining selection,
+  // scaled by how far through the match we are (minute / 90, shaped by momentumDecayPower).
+  matchStateAdjustmentEnabled: boolean;
+  losingMomentumDecayPercent: number;  // max % probability shrink by full-time when a selection is currently LOSING
+  winningMomentumBoostPercent: number; // max % probability boost by full-time when a selection is currently WINNING
+  momentumDecayPower: number;          // >1 = decay accelerates late in the match (drastic near full-time); 1 = linear
+
   // Bumped whenever config is saved — stored in audit rows as "admin settings version"
   version: number;
 }
@@ -140,6 +148,11 @@ export const DEFAULT_CASH_OUT_CONFIG: CashOutConfig = {
   lateMatchMinuteThreshold: 75,
 
   suspendWhenLosingAfterMinute: 85,
+
+  matchStateAdjustmentEnabled: true,
+  losingMomentumDecayPercent: 70,
+  winningMomentumBoostPercent: 15,
+  momentumDecayPower: 1.6,
 
   maxCashOutExposure: 0, // 0 = unlimited
   maxDailyCashOutLiability: 0,
@@ -338,6 +351,37 @@ export interface CashOutOfferResult {
   liveOddsUsed: Array<{ selectionId: number; oddsValue: number }>;
   potentialWin: number;
   stake: number;
+  // Momentum multiplier applied per remaining selection (1 = neutral, <1 = shrunk because losing, >1 = boosted because winning)
+  momentumMultipliers?: number[];
+}
+
+/**
+ * How much a remaining selection's implied probability should be nudged based on the
+ * *current* scoreline, independent of the bookmaker live-odds feed (which can lag behind
+ * fast-moving match events). Returns a multiplier applied to `1 / liveOdds`:
+ *   - Currently LOSING: shrinks toward 0 as the match approaches full time (drastic reduction,
+ *     eventually offering next to nothing if the course of the game keeps going against the bet).
+ *   - Currently WINNING: grows modestly toward full time (a held lead is worth more late on).
+ *   - Undeterminable (market outcome can't be evaluated from the score, e.g. pre-match) → neutral.
+ */
+function computeMomentumMultiplier(sel: RemainingSelectionInput, config: CashOutConfig): number {
+  if (!config.matchStateAdjustmentEnabled) return 1;
+  if (sel.fixtureStatus !== "live") return 1;
+  if (sel.currentScoreHome == null || sel.currentScoreAway == null) return 1;
+
+  const outcome = getSelectionOutcome(sel.selection, sel.market, sel.currentScoreHome, sel.currentScoreAway);
+  if (outcome === null) return 1;
+
+  const minute = parseMinuteNumber(sel.matchMinute) ?? 0;
+  const progress = Math.min(1, Math.max(0, minute / 90));
+  const shaped = Math.pow(progress, config.momentumDecayPower);
+
+  if (outcome === false) {
+    const shrink = (config.losingMomentumDecayPercent / 100) * shaped;
+    return Math.max(0, 1 - shrink);
+  }
+  const boost = (config.winningMomentumBoostPercent / 100) * shaped;
+  return 1 + boost;
 }
 
 export function computeCashOutOffer(
@@ -363,9 +407,11 @@ export function computeCashOutOffer(
     };
   }
 
-  // Step 1 + 2: implied probability of each remaining live-odds selection
+  // Step 1 + 2: implied probability of each remaining live-odds selection, nudged by the
+  // live match-state momentum adjustment (reacts instantly to the scoreline, not just the feed)
   const liveOddsUsed = ctx.remaining.map((sel) => ({ selectionId: sel.selectionId, oddsValue: sel.liveOdds! }));
-  const probabilities = ctx.remaining.map((sel) => 1 / sel.liveOdds!);
+  const momentumMultipliers = ctx.remaining.map((sel) => computeMomentumMultiplier(sel, config));
+  const probabilities = ctx.remaining.map((sel, i) => Math.min(1, (1 / sel.liveOdds!) * momentumMultipliers[i]!));
 
   // Step 3: combined probability across remaining legs, multiplied by the
   // fixed contribution of any already-settled-won legs (e.g. locked 1UP/2UP)
@@ -453,5 +499,6 @@ export function computeCashOutOffer(
     liveOddsUsed,
     potentialWin,
     stake: ctx.stake,
+    momentumMultipliers,
   };
 }

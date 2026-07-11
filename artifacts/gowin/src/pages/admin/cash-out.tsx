@@ -63,6 +63,10 @@ interface CashOutConfig {
   enabledCountries: string[];
   enabledMarkets: string[];
   suspendWhenLosingAfterMinute: number;
+  matchStateAdjustmentEnabled: boolean;
+  losingMomentumDecayPercent: number;
+  winningMomentumBoostPercent: number;
+  momentumDecayPower: number;
   version: number;
 }
 
@@ -354,6 +358,33 @@ export default function AdminCashOutPage() {
               <Field label="Late Match Protection %"><Input type="number" value={config.lateMatchProtectionPercent} onChange={(e) => set("lateMatchProtectionPercent", parseFloat(e.target.value) || 0)} /></Field>
               <Field label="Late Match Minute Threshold"><Input type="number" value={config.lateMatchMinuteThreshold} onChange={(e) => set("lateMatchMinuteThreshold", parseFloat(e.target.value) || 0)} /></Field>
               <Field label="Risk Adjustment %"><Input type="number" value={config.riskAdjustmentPercent} onChange={(e) => set("riskAdjustmentPercent", parseFloat(e.target.value) || 0)} /></Field>
+            </div>
+          </div>
+
+          <Separator />
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-semibold">Live Momentum Adjustment</h2>
+                <p className="text-xs text-muted-foreground max-w-xl">
+                  Reacts to the live scoreline immediately, instead of waiting for the bookmaker odds feed to
+                  catch up. If a selection is currently losing, the offer shrinks — more aggressively the closer
+                  the match gets to full time. If it swings back in the bettor's favor, the offer recalculates
+                  upward right away.
+                </p>
+              </div>
+              <Switch checked={config.matchStateAdjustmentEnabled} onCheckedChange={(v) => set("matchStateAdjustmentEnabled", v)} />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field label="Losing Momentum Decay % (max shrink by full-time)">
+                <Input type="number" value={config.losingMomentumDecayPercent} onChange={(e) => set("losingMomentumDecayPercent", parseFloat(e.target.value) || 0)} />
+              </Field>
+              <Field label="Winning Momentum Boost % (max boost by full-time)">
+                <Input type="number" value={config.winningMomentumBoostPercent} onChange={(e) => set("winningMomentumBoostPercent", parseFloat(e.target.value) || 0)} />
+              </Field>
+              <Field label="Decay Power (>1 = drastic late, 1 = linear)">
+                <Input type="number" step="0.1" value={config.momentumDecayPower} onChange={(e) => set("momentumDecayPower", parseFloat(e.target.value) || 1)} />
+              </Field>
             </div>
           </div>
 
