@@ -157,15 +157,16 @@ export function CashOutButton({
     );
   }
 
-  // ── Suspended state ─────────────────────────────────────────────────────────
+  // ── Suspended / not-available state ──────────────────────────────────────────
   if (!offer?.eligible) {
+    const label = offer?.reason === "Cash Out not available" ? "Cash Out not available" : "Cash Out Suspended";
     return (
       <span
         className="flex items-center gap-1.5 text-xs text-muted-foreground/60 select-none"
         title={offer?.reason ?? "Cash Out unavailable"}
       >
         <Ban className="w-3.5 h-3.5" />
-        <span>Cash Out Suspended</span>
+        <span>{label}</span>
       </span>
     );
   }

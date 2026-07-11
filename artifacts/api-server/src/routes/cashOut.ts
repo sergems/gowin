@@ -402,6 +402,8 @@ router.put("/admin/cash-out/settings", requireAdmin, async (req: AuthRequest, re
     "largeWinThreshold", "highOddsThreshold", "accumulatorSelectionsThreshold", "lateMatchMinuteThreshold",
     "maxCashOutExposure", "maxDailyCashOutLiability", "maxCashOutPerTicket", "maxCashOutPerCustomerPerDay",
     "losingMomentumDecayPercent", "winningMomentumBoostPercent", "momentumDecayPower",
+    "adversityOneLegOneGoalPercent", "adversityOneLegTwoGoalPercent",
+    "adversityTwoLegsPercent", "adversityThreeLegsPercent", "adversityMaxLegsAgainst",
   ];
   for (const f of numericFields) {
     if (body[f] !== undefined && (typeof body[f] !== "number" || Number.isNaN(body[f] as number) || (body[f] as number) < 0)) {

@@ -88,6 +88,23 @@ export interface CashOutConfig {
   winningMomentumBoostPercent: number; // max % probability boost by full-time when a selection is currently WINNING
   momentumDecayPower: number;          // >1 = decay accelerates late in the match (drastic near full-time); 1 = linear
 
+  // ── Adversity Cash Out override ─────────────────────────────────────────────
+  // Overrides the normal fair-value calculation with a flat % of stake whenever
+  // one or more remaining live legs are currently going against the bet. Spec:
+  //   1 leg down by 1 goal    -> 50% of stake
+  //   1 leg down by 2+ goals  -> 15% of stake
+  //   2 legs down (1 goal ea.) -> 50% of stake
+  //   3 legs down             -> 15% of stake
+  //   4+ legs down            -> Cash Out not available
+  // As soon as legs recover (fewer than 1 leg is against the bet), this override
+  // stops applying and the normal fair-value/momentum engine takes back over.
+  adversityCashOutEnabled: boolean;
+  adversityOneLegOneGoalPercent: number;
+  adversityOneLegTwoGoalPercent: number;
+  adversityTwoLegsPercent: number;
+  adversityThreeLegsPercent: number;
+  adversityMaxLegsAgainst: number; // more legs against than this -> Cash Out not available
+
   // Bumped whenever config is saved — stored in audit rows as "admin settings version"
   version: number;
 }
@@ -153,6 +170,13 @@ export const DEFAULT_CASH_OUT_CONFIG: CashOutConfig = {
   losingMomentumDecayPercent: 70,
   winningMomentumBoostPercent: 15,
   momentumDecayPower: 1.6,
+
+  adversityCashOutEnabled: true,
+  adversityOneLegOneGoalPercent: 50,
+  adversityOneLegTwoGoalPercent: 15,
+  adversityTwoLegsPercent: 50,
+  adversityThreeLegsPercent: 15,
+  adversityMaxLegsAgainst: 3,
 
   maxCashOutExposure: 0, // 0 = unlimited
   maxDailyCashOutLiability: 0,
@@ -353,6 +377,8 @@ export interface CashOutOfferResult {
   stake: number;
   // Momentum multiplier applied per remaining selection (1 = neutral, <1 = shrunk because losing, >1 = boosted because winning)
   momentumMultipliers?: number[];
+  // Set when the flat adversity-% override (see AdversityOverrideResult) replaced the normal fair-value calc
+  adversityOverride?: { legsAgainst: number; maxDeficit: number; percentOfStake: number };
 }
 
 /**
@@ -384,6 +410,101 @@ function computeMomentumMultiplier(sel: RemainingSelectionInput, config: CashOut
   return 1 + boost;
 }
 
+/**
+ * How many goals a currently-losing selection is behind by, i.e. how many goals
+ * would need to swing back for the selection to flip to winning. Best-effort:
+ * markets that aren't naturally goal-margin based (BTTS, etc.) fall back to a
+ * conservative deficit of 1 (the least severe bucket) rather than guessing.
+ * Only meaningful when `getSelectionOutcome(...)` has already returned `false`
+ * for this selection/score combination.
+ */
+function computeGoalDeficit(selection: string, market: string, scoreHome: number, scoreAway: number): number {
+  const m = market.trim().toLowerCase();
+  const s = selection.trim().toLowerCase();
+
+  if (m === "1x2" || m === "match result") {
+    if (s === "home" || s === "home win" || s === "1") return Math.max(1, scoreAway - scoreHome);
+    if (s === "away" || s === "away win" || s === "2") return Math.max(1, scoreHome - scoreAway);
+    if (s === "draw" || s === "x") return Math.max(1, Math.abs(scoreHome - scoreAway));
+    return 1;
+  }
+
+  if (m === "double chance") {
+    if (s === "1x") return Math.max(1, scoreAway - scoreHome); // currently away is winning outright
+    if (s === "x2") return Math.max(1, scoreHome - scoreAway); // currently home is winning outright
+    if (s === "12") return 1; // currently a draw — needs either side to break the tie
+    return 1;
+  }
+
+  const ouMatch = market.match(/^Over\/Under\s+(\d+(?:\.\d+)?)$/i);
+  if (ouMatch) {
+    const line = parseFloat(ouMatch[1]!);
+    const total = scoreHome + scoreAway;
+    if (s.startsWith("over")) return Math.max(1, Math.ceil(line - total));
+    // "under" already exceeded the line — treat as maximally against (can never recover)
+    return Math.max(1, Math.ceil(total - line));
+  }
+
+  return 1;
+}
+
+export interface AdversityOverrideResult {
+  applies: boolean; // true if the flat-% override should replace the normal fair-value offer
+  unavailable: boolean; // true if Cash Out should be blocked entirely (more than adversityMaxLegsAgainst legs down)
+  percent: number | null; // % of stake to offer, when applies === true
+  legsAgainst: number;
+  maxDeficit: number;
+}
+
+/**
+ * Counts how many remaining LIVE legs are currently going against the bet (and by how
+ * many goals), and maps that to the flat stake-percentage Cash Out override described
+ * in `CashOutConfig`'s adversity* fields. Legs that are winning, drawing-in-favor,
+ * not yet live, or on an unevaluable market do not count against the bet.
+ */
+export function computeAdversityOverride(remaining: RemainingSelectionInput[], config: CashOutConfig): AdversityOverrideResult {
+  if (!config.adversityCashOutEnabled) {
+    return { applies: false, unavailable: false, percent: null, legsAgainst: 0, maxDeficit: 0 };
+  }
+
+  let legsAgainst = 0;
+  let maxDeficit = 0;
+
+  for (const sel of remaining) {
+    if (sel.fixtureStatus !== "live") continue;
+    if (sel.currentScoreHome == null || sel.currentScoreAway == null) continue;
+
+    const outcome = getSelectionOutcome(sel.selection, sel.market, sel.currentScoreHome, sel.currentScoreAway);
+    if (outcome !== false) continue; // winning, drawing-in-favor, or unevaluable — not against the bet
+
+    legsAgainst++;
+    const deficit = computeGoalDeficit(sel.selection, sel.market, sel.currentScoreHome, sel.currentScoreAway);
+    if (deficit > maxDeficit) maxDeficit = deficit;
+  }
+
+  if (legsAgainst === 0) {
+    return { applies: false, unavailable: false, percent: null, legsAgainst: 0, maxDeficit: 0 };
+  }
+
+  if (legsAgainst > config.adversityMaxLegsAgainst) {
+    return { applies: false, unavailable: true, percent: null, legsAgainst, maxDeficit };
+  }
+
+  if (legsAgainst === 1) {
+    const percent = maxDeficit >= 2 ? config.adversityOneLegTwoGoalPercent : config.adversityOneLegOneGoalPercent;
+    return { applies: true, unavailable: false, percent, legsAgainst, maxDeficit };
+  }
+
+  if (legsAgainst === 2) {
+    // Two legs down by 1 goal each -> 50%; if either is down by 2+, treat as worse-case.
+    const percent = maxDeficit >= 2 ? config.adversityThreeLegsPercent : config.adversityTwoLegsPercent;
+    return { applies: true, unavailable: false, percent, legsAgainst, maxDeficit };
+  }
+
+  // legsAgainst === 3 (config.adversityMaxLegsAgainst default)
+  return { applies: true, unavailable: false, percent: config.adversityThreeLegsPercent, legsAgainst, maxDeficit };
+}
+
 export function computeCashOutOffer(
   ctx: CashOutEligibilityContext,
   potentialWin: number,
@@ -404,6 +525,53 @@ export function computeCashOutOffer(
       liveOddsUsed: [],
       potentialWin,
       stake: ctx.stake,
+    };
+  }
+
+  // Adversity override: if one or more remaining live legs are currently going against
+  // the bet, replace the normal fair-value calc with a flat % of stake (or block entirely
+  // once too many legs are down). Takes priority over the momentum/margin math below.
+  // As soon as legs recover (no legs against, or back under the block threshold), this
+  // stops applying and the normal engine below takes back over on the very next recalculation.
+  const adversity = computeAdversityOverride(ctx.remaining, config);
+  const liveOddsUsedForAdversity = ctx.remaining.map((sel) => ({ selectionId: sel.selectionId, oddsValue: sel.liveOdds! }));
+
+  if (adversity.unavailable) {
+    return {
+      eligible: false,
+      reason: "Cash Out not available",
+      offerAmount: 0,
+      fairValue: 0,
+      combinedProbability: 0,
+      marginUsed: 0,
+      baseMarginPercent: config.houseMarginPercent,
+      protectionsApplied: {},
+      liveOddsUsed: liveOddsUsedForAdversity,
+      potentialWin,
+      stake: ctx.stake,
+      adversityOverride: { legsAgainst: adversity.legsAgainst, maxDeficit: adversity.maxDeficit, percentOfStake: 0 },
+    };
+  }
+
+  if (adversity.applies && adversity.percent !== null) {
+    const rawOffer = ctx.stake * (adversity.percent / 100);
+    let offerAmount = applyRounding(Math.max(0, rawOffer), config);
+    if (config.maxOfferAmount > 0) offerAmount = Math.min(offerAmount, config.maxOfferAmount);
+    if (config.maxCashOutAmount > 0) offerAmount = Math.min(offerAmount, config.maxCashOutAmount);
+    if (config.maxCashOutPerTicket > 0) offerAmount = Math.min(offerAmount, config.maxCashOutPerTicket);
+
+    return {
+      eligible: true,
+      offerAmount,
+      fairValue: offerAmount,
+      combinedProbability: 0,
+      marginUsed: 0,
+      baseMarginPercent: config.houseMarginPercent,
+      protectionsApplied: {},
+      liveOddsUsed: liveOddsUsedForAdversity,
+      potentialWin,
+      stake: ctx.stake,
+      adversityOverride: { legsAgainst: adversity.legsAgainst, maxDeficit: adversity.maxDeficit, percentOfStake: adversity.percent },
     };
   }
 

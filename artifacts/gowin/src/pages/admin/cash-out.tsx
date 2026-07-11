@@ -67,6 +67,12 @@ interface CashOutConfig {
   losingMomentumDecayPercent: number;
   winningMomentumBoostPercent: number;
   momentumDecayPower: number;
+  adversityCashOutEnabled: boolean;
+  adversityOneLegOneGoalPercent: number;
+  adversityOneLegTwoGoalPercent: number;
+  adversityTwoLegsPercent: number;
+  adversityThreeLegsPercent: number;
+  adversityMaxLegsAgainst: number;
   version: number;
 }
 
@@ -384,6 +390,38 @@ export default function AdminCashOutPage() {
               </Field>
               <Field label="Decay Power (>1 = drastic late, 1 = linear)">
                 <Input type="number" step="0.1" value={config.momentumDecayPower} onChange={(e) => set("momentumDecayPower", parseFloat(e.target.value) || 1)} />
+              </Field>
+            </div>
+          </div>
+
+          <Separator />
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-semibold">Adversity Cash Out Override</h2>
+                <p className="text-xs text-muted-foreground max-w-xl">
+                  When one or more remaining live legs are currently going against the bet, offer a flat
+                  % of stake instead of the normal fair-value calc. Once too many legs are down, Cash Out is
+                  blocked entirely. As soon as legs recover, the normal engine takes back over.
+                </p>
+              </div>
+              <Switch checked={config.adversityCashOutEnabled} onCheckedChange={(v) => set("adversityCashOutEnabled", v)} />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field label="1 leg down by 1 goal — % of stake">
+                <Input type="number" value={config.adversityOneLegOneGoalPercent} onChange={(e) => set("adversityOneLegOneGoalPercent", parseFloat(e.target.value) || 0)} />
+              </Field>
+              <Field label="1 leg down by 2+ goals — % of stake">
+                <Input type="number" value={config.adversityOneLegTwoGoalPercent} onChange={(e) => set("adversityOneLegTwoGoalPercent", parseFloat(e.target.value) || 0)} />
+              </Field>
+              <Field label="2 legs down (1 goal each) — % of stake">
+                <Input type="number" value={config.adversityTwoLegsPercent} onChange={(e) => set("adversityTwoLegsPercent", parseFloat(e.target.value) || 0)} />
+              </Field>
+              <Field label="3 legs down — % of stake">
+                <Input type="number" value={config.adversityThreeLegsPercent} onChange={(e) => set("adversityThreeLegsPercent", parseFloat(e.target.value) || 0)} />
+              </Field>
+              <Field label="Max legs against before Cash Out is blocked">
+                <Input type="number" value={config.adversityMaxLegsAgainst} onChange={(e) => set("adversityMaxLegsAgainst", parseFloat(e.target.value) || 0)} />
               </Field>
             </div>
           </div>
