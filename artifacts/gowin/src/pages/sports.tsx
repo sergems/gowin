@@ -108,7 +108,7 @@ function OddsButton({
           addSelection({ oddsId, fixtureId, market, selection, odds: oddsValue, fixtureName, marketName: market, competitionName, startTime });
         }
       }}
-      className={`flex flex-col items-center justify-center px-3 py-2 rounded-lg text-xs font-semibold border transition-colors flex-1 min-w-0 ${
+      className={`flex flex-col items-center justify-center px-2 py-1.5 md:px-3 md:py-2 rounded-lg text-xs font-semibold border transition-colors flex-1 min-w-0 ${
         selected
           ? "bg-primary text-primary-foreground border-primary"
           : "bg-background border-border hover:border-primary hover:text-primary text-foreground"
@@ -177,58 +177,58 @@ function FixtureCard({ fixture }: { fixture: any }) {
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/30 transition-all">
       <Link href={`/fixtures/${fixture.id}?from=${encodeURIComponent(fromUrl)}`}>
-        <div className="p-4 cursor-pointer hover:bg-accent/20 transition-colors">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <CountryFlag name={fixture.league?.countryName} size={16} />
-              <Logo src={resolveLeagueLogoUrl(fixture.league?.name, fixture.league?.logo)} alt={fixture.league?.name ?? ""} size={14} fallback={null} />
-              <span className="text-xs text-muted-foreground truncate">{fixture.league?.name}</span>
+        <div className="p-2.5 md:p-4 cursor-pointer hover:bg-accent/20 transition-colors">
+          <div className="flex items-center justify-between mb-1.5 md:mb-3">
+            <div className="flex items-center gap-1 min-w-0">
+              <CountryFlag name={fixture.league?.countryName} size={12} />
+              <Logo src={resolveLeagueLogoUrl(fixture.league?.name, fixture.league?.logo)} alt={fixture.league?.name ?? ""} size={12} fallback={null} />
+              <span className="text-[10px] md:text-xs text-muted-foreground truncate">{fixture.league?.name}</span>
             </div>
             <div className="shrink-0">
               {isLive ? (
-                <span className="flex items-center gap-1.5 text-xs font-semibold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full">
+                <span className="flex items-center gap-1 text-[10px] md:text-xs font-semibold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded-full">
                   <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
                   {fixture.matchMinute ? fixture.matchMinute : "LIVE"}
                 </span>
               ) : isFinished ? (
-                <span className="text-xs text-muted-foreground">FT</span>
+                <span className="text-[10px] md:text-xs text-muted-foreground">FT</span>
               ) : (
-                <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <CalendarDays className="w-3 h-3" />
+                <span className="flex items-center gap-0.5 text-[10px] md:text-xs text-muted-foreground">
+                  <CalendarDays className="w-2.5 h-2.5 md:w-3 md:h-3" />
                   {fmtUTCTime(fixture.displayTime ?? fixture.startTime)}
                 </span>
               )}
             </div>
           </div>
 
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-            <div className="flex items-center gap-1.5 min-w-0">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 md:gap-2">
+            <div className="flex items-center gap-1 md:gap-1.5 min-w-0">
               <Logo
                 src={fixture.homeTeam?.logo}
                 alt={fixture.homeTeam?.name ?? ""}
-                size={22}
-                fallback={<CountryFlag name={fixture.league?.countryName} size={22} />}
+                size={18}
+                fallback={<CountryFlag name={fixture.league?.countryName} size={18} />}
               />
               <span className="font-bold text-xs leading-tight line-clamp-2">{fixture.homeTeam?.name}</span>
             </div>
             <div className="shrink-0">
               {showScore ? (
-                <div className="flex items-center gap-1.5 text-base font-black">
+                <div className="flex items-center gap-1 md:gap-1.5 text-sm md:text-base font-black">
                   <span>{fixture.scoreHome ?? 0}</span>
                   <span className="text-muted-foreground text-xs font-normal">:</span>
                   <span>{fixture.scoreAway ?? 0}</span>
                 </div>
               ) : (
-                <div className="px-2 py-1 rounded-lg bg-accent/50 text-xs font-bold text-muted-foreground">VS</div>
+                <div className="px-1.5 md:px-2 py-0.5 md:py-1 rounded-md bg-accent/50 text-[10px] md:text-xs font-bold text-muted-foreground">VS</div>
               )}
             </div>
-            <div className="flex items-center justify-end gap-1.5 min-w-0">
+            <div className="flex items-center justify-end gap-1 md:gap-1.5 min-w-0">
               <span className="font-bold text-xs leading-tight line-clamp-2 text-right">{fixture.awayTeam?.name}</span>
               <Logo
                 src={fixture.awayTeam?.logo}
                 alt={fixture.awayTeam?.name ?? ""}
-                size={22}
-                fallback={<CountryFlag name={fixture.league?.countryName} size={22} />}
+                size={18}
+                fallback={<CountryFlag name={fixture.league?.countryName} size={18} />}
               />
             </div>
           </div>
@@ -243,7 +243,7 @@ function FixtureCard({ fixture }: { fixture: any }) {
                 <button
                   key={m.id}
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveMarketIdx(i); }}
-                  className={`shrink-0 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap transition-colors border-b-2 -mb-px ${
+                  className={`shrink-0 px-2.5 md:px-3 py-1.5 md:py-2 text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap transition-colors border-b-2 -mb-px ${
                     i === activeMarketIdx
                       ? "border-primary text-primary"
                       : "border-transparent text-muted-foreground hover:text-foreground"
@@ -256,13 +256,13 @@ function FixtureCard({ fixture }: { fixture: any }) {
           )}
 
           {activeMarket && (
-            <div className="px-3 pt-3 pb-1" onClick={(e) => e.preventDefault()}>
+            <div className="px-2.5 md:px-3 pt-2 md:pt-3 pb-1" onClick={(e) => e.preventDefault()}>
               {!expanded && (
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                   {defaultMarket?.marketType ?? activeMarket.marketType}
                 </p>
               )}
-              <div className="flex gap-2">
+              <div className="flex gap-1.5 md:gap-2">
                 {sortOdds(activeMarket.odds, activeMarket.marketType).map((odd: any) => (
                   <OddsButton
                     key={odd.id}
@@ -283,7 +283,7 @@ function FixtureCard({ fixture }: { fixture: any }) {
 
           <button
             onClick={handleToggle}
-            className="w-full flex items-center justify-between px-3 py-2 text-xs text-muted-foreground hover:text-primary transition-colors"
+            className="w-full flex items-center justify-between px-2.5 md:px-3 py-1.5 md:py-2 text-xs text-muted-foreground hover:text-primary transition-colors"
           >
             {expanded ? (
               <span className="font-medium text-primary">Hide markets ↑</span>
@@ -641,20 +641,20 @@ export default function SportsPage() {
           groups.get(key)!.push(f);
         }
         return (
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6">
             {[...groups.entries()].map(([dateKey, dayFixtures]) => (
               <div key={dateKey}>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex items-center gap-2">
-                    <CalendarDays className="w-4 h-4 text-primary" />
-                    <span className="font-bold text-sm">{utcDateLabel(dateKey)}</span>
+                <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
+                  <div className="flex items-center gap-1.5 md:gap-2">
+                    <CalendarDays className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary" />
+                    <span className="font-bold text-xs md:text-sm">{utcDateLabel(dateKey)}</span>
                   </div>
                   <div className="flex-1 h-px bg-border/60" />
-                  <span className="text-xs text-muted-foreground shrink-0">
+                  <span className="text-[10px] md:text-xs text-muted-foreground shrink-0">
                     {dayFixtures.length} match{dayFixtures.length !== 1 ? "es" : ""}
                   </span>
                 </div>
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-2 md:gap-4">
                   {dayFixtures.map((fixture) => (
                     <FixtureCard key={fixture.id} fixture={fixture} />
                   ))}

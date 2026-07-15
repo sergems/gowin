@@ -57,33 +57,33 @@ function ResultCard({ fixture }: { fixture: any }) {
   const homeWin = hasScore && fixture.scoreHome > fixture.scoreAway;
   const awayWin = hasScore && fixture.scoreAway > fixture.scoreHome;
   return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card">
-      <div className="flex items-center gap-1.5 flex-1 min-w-0">
-        <Logo src={fixture.homeTeam?.logo} alt={fixture.homeTeam?.name ?? ""} size={18} />
-        <span className={`text-xs font-semibold leading-tight line-clamp-2 ${homeWin ? "text-foreground" : "text-muted-foreground"}`}>
+    <div className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-3 md:py-2 rounded-lg border border-border bg-card">
+      <div className="flex items-center gap-1 md:gap-1.5 flex-1 min-w-0">
+        <Logo src={fixture.homeTeam?.logo} alt={fixture.homeTeam?.name ?? ""} size={16} />
+        <span className={`text-[11px] md:text-xs font-semibold leading-tight line-clamp-2 ${homeWin ? "text-foreground" : "text-muted-foreground"}`}>
           {fixture.homeTeam?.name}
         </span>
       </div>
-      <div className="shrink-0 flex items-center gap-1 px-1.5">
+      <div className="shrink-0 flex items-center gap-0.5 md:gap-1 px-1 md:px-1.5">
         {hasScore ? (
           <>
-            <span className={`text-sm font-black tabular-nums w-4 text-center ${homeWin ? "text-foreground" : "text-muted-foreground"}`}>{fixture.scoreHome}</span>
-            <span className="text-muted-foreground/50 text-xs">–</span>
-            <span className={`text-sm font-black tabular-nums w-4 text-center ${awayWin ? "text-foreground" : "text-muted-foreground"}`}>{fixture.scoreAway}</span>
+            <span className={`text-xs md:text-sm font-black tabular-nums w-3.5 md:w-4 text-center ${homeWin ? "text-foreground" : "text-muted-foreground"}`}>{fixture.scoreHome}</span>
+            <span className="text-muted-foreground/50 text-[10px]">–</span>
+            <span className={`text-xs md:text-sm font-black tabular-nums w-3.5 md:w-4 text-center ${awayWin ? "text-foreground" : "text-muted-foreground"}`}>{fixture.scoreAway}</span>
           </>
         ) : (
-          <span className="text-[10px] font-bold text-muted-foreground px-1">vs</span>
+          <span className="text-[10px] font-bold text-muted-foreground px-0.5">vs</span>
         )}
       </div>
-      <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
-        <span className={`text-xs font-semibold leading-tight line-clamp-2 text-right ${awayWin ? "text-foreground" : "text-muted-foreground"}`}>
+      <div className="flex items-center gap-1 md:gap-1.5 flex-1 min-w-0 justify-end">
+        <span className={`text-[11px] md:text-xs font-semibold leading-tight line-clamp-2 text-right ${awayWin ? "text-foreground" : "text-muted-foreground"}`}>
           {fixture.awayTeam?.name}
         </span>
-        <Logo src={fixture.awayTeam?.logo} alt={fixture.awayTeam?.name ?? ""} size={18} />
+        <Logo src={fixture.awayTeam?.logo} alt={fixture.awayTeam?.name ?? ""} size={16} />
       </div>
-      <div className="shrink-0 flex items-center gap-1 pl-1 border-l border-border/50 ml-1">
-        <span className="text-[10px] text-muted-foreground/60 tabular-nums">{fmtUTCTime(fixture.displayTime ?? fixture.startTime)}</span>
-        <span className="text-[9px] font-bold text-muted-foreground bg-accent/60 px-1 py-px rounded">FT</span>
+      <div className="shrink-0 flex items-center gap-0.5 md:gap-1 pl-1 border-l border-border/50 ml-0.5 md:ml-1">
+        <span className="text-[9px] md:text-[10px] text-muted-foreground/60 tabular-nums">{fmtUTCTime(fixture.displayTime ?? fixture.startTime)}</span>
+        <span className="text-[8px] md:text-[9px] font-bold text-muted-foreground bg-accent/60 px-0.5 md:px-1 py-px rounded">FT</span>
       </div>
     </div>
   );
@@ -95,26 +95,26 @@ function LiveCard({ fixture }: { fixture: any }) {
   const homeLeading = homeScore > awayScore;
   const awayLeading = awayScore > homeScore;
   return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-red-500/30 bg-card">
-      <div className="flex items-center gap-1.5 flex-1 min-w-0">
-        <Logo src={fixture.homeTeam?.logo} alt={fixture.homeTeam?.name ?? ""} size={18} />
-        <span className={`text-xs font-semibold leading-tight line-clamp-2 ${homeLeading ? "text-foreground" : "text-muted-foreground"}`}>
+    <div className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-3 md:py-2 rounded-lg border border-red-500/30 bg-card">
+      <div className="flex items-center gap-1 md:gap-1.5 flex-1 min-w-0">
+        <Logo src={fixture.homeTeam?.logo} alt={fixture.homeTeam?.name ?? ""} size={16} />
+        <span className={`text-[11px] md:text-xs font-semibold leading-tight line-clamp-2 ${homeLeading ? "text-foreground" : "text-muted-foreground"}`}>
           {fixture.homeTeam?.name}
         </span>
       </div>
-      <div className="shrink-0 flex items-center gap-1 px-1.5">
-        <span className={`text-sm font-black tabular-nums w-4 text-center ${homeLeading ? "text-foreground" : "text-muted-foreground"}`}>{homeScore}</span>
-        <span className="text-muted-foreground/50 text-xs">:</span>
-        <span className={`text-sm font-black tabular-nums w-4 text-center ${awayLeading ? "text-foreground" : "text-muted-foreground"}`}>{awayScore}</span>
+      <div className="shrink-0 flex items-center gap-0.5 md:gap-1 px-1 md:px-1.5">
+        <span className={`text-xs md:text-sm font-black tabular-nums w-3.5 md:w-4 text-center ${homeLeading ? "text-foreground" : "text-muted-foreground"}`}>{homeScore}</span>
+        <span className="text-muted-foreground/50 text-[10px]">:</span>
+        <span className={`text-xs md:text-sm font-black tabular-nums w-3.5 md:w-4 text-center ${awayLeading ? "text-foreground" : "text-muted-foreground"}`}>{awayScore}</span>
       </div>
-      <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
-        <span className={`text-xs font-semibold leading-tight line-clamp-2 text-right ${awayLeading ? "text-foreground" : "text-muted-foreground"}`}>
+      <div className="flex items-center gap-1 md:gap-1.5 flex-1 min-w-0 justify-end">
+        <span className={`text-[11px] md:text-xs font-semibold leading-tight line-clamp-2 text-right ${awayLeading ? "text-foreground" : "text-muted-foreground"}`}>
           {fixture.awayTeam?.name}
         </span>
-        <Logo src={fixture.awayTeam?.logo} alt={fixture.awayTeam?.name ?? ""} size={18} />
+        <Logo src={fixture.awayTeam?.logo} alt={fixture.awayTeam?.name ?? ""} size={16} />
       </div>
-      <div className="shrink-0 pl-1 border-l border-border/50 ml-1">
-        <span className="flex items-center gap-1 text-[9px] font-bold text-red-500 bg-red-500/10 px-1.5 py-px rounded-full">
+      <div className="shrink-0 pl-1 border-l border-border/50 ml-0.5 md:ml-1">
+        <span className="flex items-center gap-0.5 md:gap-1 text-[9px] font-bold text-red-500 bg-red-500/10 px-1 md:px-1.5 py-px rounded-full">
           <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
           {fixture.matchMinute ? fixture.matchMinute : "LIVE"}
         </span>
@@ -268,7 +268,7 @@ function LeagueBlock({
         <span className="text-xs font-semibold uppercase tracking-wide text-foreground">{league.leagueName}</span>
         <span className="text-xs text-muted-foreground/60 tabular-nums">{league.fixtures.length}</span>
       </div>
-      <div className={`grid ${gridCols} gap-3`}>
+      <div className={`grid ${gridCols} gap-1.5 md:gap-3`}>
         {visible.map((f) => renderCard(f))}
       </div>
       {league.fixtures.length > INITIAL_SHOW && (
