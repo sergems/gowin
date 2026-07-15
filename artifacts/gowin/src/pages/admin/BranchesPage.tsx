@@ -274,40 +274,18 @@ export default function BranchesPage() {
           {branches.map((b) => (
             <div key={b.id} className="bg-zinc-800/80 border border-zinc-700/60 rounded-xl overflow-hidden hover:border-zinc-600/80 transition-colors">
 
-              {/* ── Top row: identity + edit/delete ── */}
-              <div className="px-4 pt-3 pb-2 flex items-start gap-3">
-                <div className="w-9 h-9 rounded-lg bg-zinc-700/60 flex items-center justify-center shrink-0 mt-0.5">
+              {/* ── Top row: icon + name/code/status + edit/delete ── */}
+              <div className="px-4 pt-3 pb-1 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-zinc-700/60 flex items-center justify-center shrink-0">
                   <Building2 className="w-4 h-4 text-emerald-400" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-bold text-white text-sm">{b.name}</h3>
-                    <span className="font-mono text-[10px] bg-zinc-700 text-zinc-400 px-1.5 py-0.5 rounded">{b.code}</span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${b.status === "active" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"}`}>
-                      {b.status}
-                    </span>
-                  </div>
-                  {/* Contact details — each item strictly one line */}
-                  <div className="flex flex-col gap-0.5 mt-1.5 text-xs text-zinc-500">
-                    <div className="flex items-center gap-1 whitespace-nowrap">
-                      <span className="shrink-0">📍</span>
-                      <span>{b.city}, {b.country}{b.address ? ` — ${b.address}` : ""}</span>
-                    </div>
-                    {b.phone && (
-                      <div className="flex items-center gap-1 whitespace-nowrap">
-                        <span className="shrink-0">📞</span>
-                        <span>{b.phone}</span>
-                      </div>
-                    )}
-                    {b.email && (
-                      <div className="flex items-center gap-1 whitespace-nowrap">
-                        <span className="shrink-0">✉️</span>
-                        <span>{b.email}</span>
-                      </div>
-                    )}
-                  </div>
+                <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
+                  <h3 className="font-bold text-white text-sm">{b.name}</h3>
+                  <span className="font-mono text-[10px] bg-zinc-700 text-zinc-400 px-1.5 py-0.5 rounded">{b.code}</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${b.status === "active" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"}`}>
+                    {b.status}
+                  </span>
                 </div>
-                {/* Edit + delete always visible, top-right */}
                 <div className="flex items-center gap-1 shrink-0">
                   <button onClick={() => openEdit(b)}
                     className="p-1.5 rounded-lg hover:bg-zinc-700 text-zinc-500 hover:text-zinc-200 transition-colors" title="Edit">
@@ -318,6 +296,26 @@ export default function BranchesPage() {
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
+              </div>
+
+              {/* ── Contact details — full width, each item one line ── */}
+              <div className="px-4 pb-2 flex flex-col gap-0.5 text-xs text-zinc-500">
+                <div className="flex items-center gap-1 whitespace-nowrap">
+                  <span className="shrink-0">📍</span>
+                  <span>{b.city}, {b.country}{b.address ? ` — ${b.address}` : ""}</span>
+                </div>
+                {b.phone && (
+                  <div className="flex items-center gap-1 whitespace-nowrap">
+                    <span className="shrink-0">📞</span>
+                    <span>{b.phone}</span>
+                  </div>
+                )}
+                {b.email && (
+                  <div className="flex items-center gap-1 whitespace-nowrap">
+                    <span className="shrink-0">✉️</span>
+                    <span>{b.email}</span>
+                  </div>
+                )}
               </div>
 
               {/* ── Stats row: balance + members ── */}
