@@ -183,7 +183,7 @@ export default function History() {
           <TabsTrigger value="pending">{t("bets.pending")}</TabsTrigger>
           <TabsTrigger value="won">{t("bets.won")}</TabsTrigger>
           <TabsTrigger value="lost">{t("bets.lost")}</TabsTrigger>
-          <TabsTrigger value="cashed_out">{t("bets.cashed_out")}</TabsTrigger>
+          <TabsTrigger value="cashed_out"><span className="sm:hidden">C/O</span><span className="hidden sm:inline">{t("bets.cashed_out")}</span></TabsTrigger>
         </TabsList>
 
         <div className="space-y-3">
@@ -248,7 +248,7 @@ export default function History() {
                           {bet.status === "won"
                             ? t("bets.won")
                             : bet.status === "cashed_out"
-                            ? t("bets.cashed_out")
+                            ? <><span className="sm:hidden">C/O</span><span className="hidden sm:inline">{t("bets.cashed_out")}</span></>
                             : t("bets.to_win")}
                         </div>
                         <div className={`font-black text-sm leading-none ${bet.status === "won" || bet.status === "cashed_out" ? "text-primary" : ""}`}>
@@ -436,7 +436,7 @@ export default function History() {
                                   {bet.status === "won"
                                     ? t("bets.won")
                                     : bet.status === "cashed_out"
-                                    ? t("bets.cashed_out")
+                                    ? <><span className="sm:hidden">C/O</span><span className="hidden sm:inline">{t("bets.cashed_out")}</span></>
                                     : t("betslip.potential_win")}
                                 </div>
                                 <div className={`font-black text-lg ${bet.status === "won" || bet.status === "cashed_out" ? "text-primary" : ""}`}>
