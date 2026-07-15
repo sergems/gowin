@@ -270,85 +270,87 @@ export default function BranchesPage() {
           <p>{t("branches.none")}</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {branches.map((b) => (
             <div key={b.id} className="bg-zinc-800/80 border border-zinc-700/60 rounded-xl overflow-hidden hover:border-zinc-600/80 transition-colors">
-              <div className="px-4 py-3 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-zinc-700/60 flex items-center justify-center shrink-0">
+
+              {/* ── Top row: identity + edit/delete ── */}
+              <div className="px-4 pt-3 pb-2 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-lg bg-zinc-700/60 flex items-center justify-center shrink-0 mt-0.5">
                   <Building2 className="w-4 h-4 text-emerald-400" />
                 </div>
-
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <h3 className="font-semibold text-white text-sm truncate">{b.name}</h3>
-                  <span className="font-mono text-[10px] bg-zinc-700 text-zinc-400 px-1.5 py-0.5 rounded shrink-0">{b.code}</span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${b.status === "active" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"}`}>
-                    {b.status}
-                  </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-bold text-white text-sm">{b.name}</h3>
+                    <span className="font-mono text-[10px] bg-zinc-700 text-zinc-400 px-1.5 py-0.5 rounded">{b.code}</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${b.status === "active" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"}`}>
+                      {b.status}
+                    </span>
+                  </div>
+                  {/* Location + phone on one line */}
+                  <div className="flex items-center gap-3 mt-1 text-xs text-zinc-500 flex-wrap">
+                    <span className="flex items-center gap-1">📍 {b.city}, {b.country}</span>
+                    {b.phone && <span className="flex items-center gap-1">📞 {b.phone}</span>}
+                    {b.email && <span className="truncate max-w-[160px]">✉️ {b.email}</span>}
+                  </div>
                 </div>
-
-                <div className="hidden md:flex items-center gap-4 shrink-0 text-xs text-zinc-400 mr-2">
-                  <span className="flex items-center gap-1">
-                    <span className="text-emerald-400 font-bold text-sm">{formatCurrency(parseFloat(String(b.balance ?? "0")))}</span>
-                  </span>
-                  <span className="text-zinc-600">|</span>
-                  <span className="flex items-center gap-1">
-                    <Users className="w-3 h-3" />
-                    {b.agentCount !== 1
-                      ? t("branches.member_count_plural").replace("{n}", String(b.agentCount))
-                      : t("branches.member_count").replace("{n}", String(b.agentCount))}
-                  </span>
-                  <span className="text-zinc-600">|</span>
-                  <span className="text-zinc-500 truncate max-w-[140px]">{b.city}, {b.country}</span>
-                </div>
-
+                {/* Edit + delete always visible, top-right */}
                 <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    onClick={() => { setCreditBranch(b); setCreditAmount(""); setCreditNotes(""); setError(""); }}
-                    className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-medium transition-colors border border-emerald-500/20"
-                    title={t("branches.credit")}
-                  >
-                    <DollarSign className="w-3 h-3" />
-                    <span className="hidden sm:inline">{t("branches.credit")}</span>
-                  </button>
-                  <button
-                    onClick={() => { setDebitBranch(b); setDebitAmount(""); setDebitNotes(""); setError(""); }}
-                    className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium transition-colors border border-red-500/20"
-                    title="Debit"
-                  >
-                    <DollarSign className="w-3 h-3" />
-                    <span className="hidden sm:inline">Debit</span>
-                  </button>
-                  <button
-                    onClick={() => toggleExpand(b.id)}
-                    className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors border ${expandedId === b.id ? "bg-zinc-600/60 border-zinc-500/40 text-zinc-200" : "bg-zinc-700/40 border-zinc-600/40 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"}`}
-                    title={t("branches.members")}
-                  >
-                    <Users className="w-3 h-3" />
-                    <span className="hidden sm:inline">{t("branches.members")}</span>
-                    {expandedId === b.id ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                  </button>
-                  <div className="w-px h-5 bg-zinc-700 mx-0.5" />
-                  <button
-                    onClick={() => setShowAddAdmin(b.id)}
-                    className="p-1.5 rounded-lg hover:bg-zinc-700 text-zinc-500 hover:text-emerald-400 transition-colors" title={t("branches.create_admin")}>
-                    <UserPlus className="w-3.5 h-3.5" />
-                  </button>
                   <button onClick={() => openEdit(b)}
-                    className="p-1.5 rounded-lg hover:bg-zinc-700 text-zinc-500 hover:text-zinc-200 transition-colors">
+                    className="p-1.5 rounded-lg hover:bg-zinc-700 text-zinc-500 hover:text-zinc-200 transition-colors" title="Edit">
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
                   <button onClick={() => { if (confirm(`Delete branch "${b.name}"?`)) deleteMut.mutate(b.id); }}
-                    className="p-1.5 rounded-lg hover:bg-zinc-700 text-zinc-500 hover:text-red-400 transition-colors">
+                    className="p-1.5 rounded-lg hover:bg-zinc-700 text-zinc-500 hover:text-red-400 transition-colors" title="Delete">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
 
-              <div className="px-4 pb-2.5 flex items-center gap-4 text-xs text-zinc-500 border-t border-zinc-700/40 pt-2">
-                <span>📍 {b.city}, {b.country}</span>
-                {b.phone && <span>📞 {b.phone}</span>}
-                {b.email && <span className="truncate">✉️ {b.email}</span>}
-                {b.address && <span className="text-zinc-600 truncate">{b.address}</span>}
+              {/* ── Stats row: balance + members ── */}
+              <div className="px-4 pb-2 flex items-center gap-3 text-xs">
+                <span className="flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2.5 py-1 text-emerald-400 font-bold">
+                  <DollarSign className="w-3 h-3" />
+                  {formatCurrency(parseFloat(String(b.balance ?? "0")))}
+                </span>
+                <span className="flex items-center gap-1 text-zinc-500">
+                  <Users className="w-3 h-3" />
+                  {b.agentCount !== 1
+                    ? t("branches.member_count_plural").replace("{n}", String(b.agentCount))
+                    : t("branches.member_count").replace("{n}", String(b.agentCount))}
+                </span>
+              </div>
+
+              {/* ── Action row: Credit / Debit / Members / Add Admin ── */}
+              <div className="px-3 pb-3 grid grid-cols-4 gap-1.5 border-t border-zinc-700/40 pt-2.5">
+                <button
+                  onClick={() => { setCreditBranch(b); setCreditAmount(""); setCreditNotes(""); setError(""); }}
+                  className="flex flex-col items-center gap-1 py-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-[10px] font-medium transition-colors border border-emerald-500/20"
+                >
+                  <DollarSign className="w-3.5 h-3.5" />
+                  <span>{t("branches.credit")}</span>
+                </button>
+                <button
+                  onClick={() => { setDebitBranch(b); setDebitAmount(""); setDebitNotes(""); setError(""); }}
+                  className="flex flex-col items-center gap-1 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[10px] font-medium transition-colors border border-red-500/20"
+                >
+                  <DollarSign className="w-3.5 h-3.5" />
+                  <span>Debit</span>
+                </button>
+                <button
+                  onClick={() => setShowAddAdmin(b.id)}
+                  className="flex flex-col items-center gap-1 py-2 rounded-lg bg-zinc-700/40 hover:bg-zinc-700 text-zinc-400 hover:text-emerald-400 text-[10px] font-medium transition-colors border border-zinc-600/40"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>Add Admin</span>
+                </button>
+                <button
+                  onClick={() => toggleExpand(b.id)}
+                  className={`flex flex-col items-center gap-1 py-2 rounded-lg text-[10px] font-medium transition-colors border ${expandedId === b.id ? "bg-zinc-600/60 border-zinc-500/40 text-zinc-200" : "bg-zinc-700/40 border-zinc-600/40 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"}`}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>{expandedId === b.id ? "Hide" : t("branches.members")}</span>
+                </button>
               </div>
 
               {expandedId === b.id && <MembersList branchId={b.id} token={token} />}
