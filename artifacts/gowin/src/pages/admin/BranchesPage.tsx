@@ -287,22 +287,22 @@ export default function BranchesPage() {
                       {b.status}
                     </span>
                   </div>
-                  {/* Contact details — icon pinned, text flows to full width */}
-                  <div className="flex flex-col gap-0.5 mt-1.5 text-xs text-zinc-500 text-left">
-                    <div className="flex items-start gap-1">
+                  {/* Contact details — each item strictly one line */}
+                  <div className="flex flex-col gap-0.5 mt-1.5 text-xs text-zinc-500">
+                    <div className="flex items-center gap-1 whitespace-nowrap">
                       <span className="shrink-0">📍</span>
-                      <span className="break-all">{b.city}, {b.country}{b.address ? ` — ${b.address}` : ""}</span>
+                      <span>{b.city}, {b.country}{b.address ? ` — ${b.address}` : ""}</span>
                     </div>
                     {b.phone && (
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 whitespace-nowrap">
                         <span className="shrink-0">📞</span>
                         <span>{b.phone}</span>
                       </div>
                     )}
                     {b.email && (
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 whitespace-nowrap">
                         <span className="shrink-0">✉️</span>
-                        <span className="break-all">{b.email}</span>
+                        <span>{b.email}</span>
                       </div>
                     )}
                   </div>
