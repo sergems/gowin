@@ -108,7 +108,7 @@ function OddsButton({
           addSelection({ oddsId, fixtureId, market, selection, odds: oddsValue, fixtureName, marketName: market, competitionName, startTime });
         }
       }}
-      className={`flex flex-col items-center justify-center px-2 py-1.5 md:px-3 md:py-2 rounded-lg text-xs font-semibold border transition-colors flex-1 min-w-0 ${
+      className={`flex flex-col items-center justify-center px-2 py-1 md:px-3 md:py-2 rounded-lg text-xs font-semibold border transition-colors flex-1 min-w-0 ${
         selected
           ? "bg-primary text-primary-foreground border-primary"
           : "bg-background border-border hover:border-primary hover:text-primary text-foreground"
@@ -177,8 +177,8 @@ function FixtureCard({ fixture }: { fixture: any }) {
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/30 transition-all">
       <Link href={`/fixtures/${fixture.id}?from=${encodeURIComponent(fromUrl)}`}>
-        <div className="p-2.5 md:p-4 cursor-pointer hover:bg-accent/20 transition-colors">
-          <div className="flex items-center justify-between mb-1.5 md:mb-3">
+        <div className="p-2 md:p-4 cursor-pointer hover:bg-accent/20 transition-colors">
+          <div className="flex items-center justify-between mb-1 md:mb-3">
             <div className="flex items-center gap-1 min-w-0">
               <CountryFlag name={fixture.league?.countryName} size={12} />
               <Logo src={resolveLeagueLogoUrl(fixture.league?.name, fixture.league?.logo)} alt={fixture.league?.name ?? ""} size={12} fallback={null} />
@@ -256,13 +256,13 @@ function FixtureCard({ fixture }: { fixture: any }) {
           )}
 
           {activeMarket && (
-            <div className="px-2.5 md:px-3 pt-2 md:pt-3 pb-1" onClick={(e) => e.preventDefault()}>
+            <div className="px-2 md:px-3 pt-1.5 md:pt-3 pb-1" onClick={(e) => e.preventDefault()}>
               {!expanded && (
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">
                   {defaultMarket?.marketType ?? activeMarket.marketType}
                 </p>
               )}
-              <div className="flex gap-1.5 md:gap-2">
+              <div className="flex gap-1 md:gap-2">
                 {sortOdds(activeMarket.odds, activeMarket.marketType).map((odd: any) => (
                   <OddsButton
                     key={odd.id}
@@ -283,7 +283,7 @@ function FixtureCard({ fixture }: { fixture: any }) {
 
           <button
             onClick={handleToggle}
-            className="w-full flex items-center justify-between px-2.5 md:px-3 py-1.5 md:py-2 text-xs text-muted-foreground hover:text-primary transition-colors"
+            className="w-full flex items-center justify-between px-2 md:px-3 py-1 md:py-2 text-[10px] md:text-xs text-muted-foreground hover:text-primary transition-colors"
           >
             {expanded ? (
               <span className="font-medium text-primary">Hide markets ↑</span>
