@@ -59,12 +59,12 @@ function ResultCard({ fixture }: { fixture: any }) {
   return (
     <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card">
       <div className="flex items-center gap-1.5 flex-1 min-w-0">
-        <Logo src={fixture.homeTeam?.logo} alt={fixture.homeTeam?.name ?? ""} size={20} />
-        <span className={`text-xs font-semibold truncate ${homeWin ? "text-foreground" : "text-muted-foreground"}`}>
+        <Logo src={fixture.homeTeam?.logo} alt={fixture.homeTeam?.name ?? ""} size={18} />
+        <span className={`text-xs font-semibold leading-tight line-clamp-2 ${homeWin ? "text-foreground" : "text-muted-foreground"}`}>
           {fixture.homeTeam?.name}
         </span>
       </div>
-      <div className="shrink-0 flex items-center gap-1 px-2">
+      <div className="shrink-0 flex items-center gap-1 px-1.5">
         {hasScore ? (
           <>
             <span className={`text-sm font-black tabular-nums w-4 text-center ${homeWin ? "text-foreground" : "text-muted-foreground"}`}>{fixture.scoreHome}</span>
@@ -76,10 +76,10 @@ function ResultCard({ fixture }: { fixture: any }) {
         )}
       </div>
       <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
-        <span className={`text-xs font-semibold truncate text-right ${awayWin ? "text-foreground" : "text-muted-foreground"}`}>
+        <span className={`text-xs font-semibold leading-tight line-clamp-2 text-right ${awayWin ? "text-foreground" : "text-muted-foreground"}`}>
           {fixture.awayTeam?.name}
         </span>
-        <Logo src={fixture.awayTeam?.logo} alt={fixture.awayTeam?.name ?? ""} size={20} />
+        <Logo src={fixture.awayTeam?.logo} alt={fixture.awayTeam?.name ?? ""} size={18} />
       </div>
       <div className="shrink-0 flex items-center gap-1 pl-1 border-l border-border/50 ml-1">
         <span className="text-[10px] text-muted-foreground/60 tabular-nums">{fmtUTCTime(fixture.displayTime ?? fixture.startTime)}</span>
@@ -97,21 +97,21 @@ function LiveCard({ fixture }: { fixture: any }) {
   return (
     <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-red-500/30 bg-card">
       <div className="flex items-center gap-1.5 flex-1 min-w-0">
-        <Logo src={fixture.homeTeam?.logo} alt={fixture.homeTeam?.name ?? ""} size={20} />
-        <span className={`text-xs font-semibold truncate ${homeLeading ? "text-foreground" : "text-muted-foreground"}`}>
+        <Logo src={fixture.homeTeam?.logo} alt={fixture.homeTeam?.name ?? ""} size={18} />
+        <span className={`text-xs font-semibold leading-tight line-clamp-2 ${homeLeading ? "text-foreground" : "text-muted-foreground"}`}>
           {fixture.homeTeam?.name}
         </span>
       </div>
-      <div className="shrink-0 flex items-center gap-1 px-2">
+      <div className="shrink-0 flex items-center gap-1 px-1.5">
         <span className={`text-sm font-black tabular-nums w-4 text-center ${homeLeading ? "text-foreground" : "text-muted-foreground"}`}>{homeScore}</span>
         <span className="text-muted-foreground/50 text-xs">:</span>
         <span className={`text-sm font-black tabular-nums w-4 text-center ${awayLeading ? "text-foreground" : "text-muted-foreground"}`}>{awayScore}</span>
       </div>
       <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
-        <span className={`text-xs font-semibold truncate text-right ${awayLeading ? "text-foreground" : "text-muted-foreground"}`}>
+        <span className={`text-xs font-semibold leading-tight line-clamp-2 text-right ${awayLeading ? "text-foreground" : "text-muted-foreground"}`}>
           {fixture.awayTeam?.name}
         </span>
-        <Logo src={fixture.awayTeam?.logo} alt={fixture.awayTeam?.name ?? ""} size={20} />
+        <Logo src={fixture.awayTeam?.logo} alt={fixture.awayTeam?.name ?? ""} size={18} />
       </div>
       <div className="shrink-0 pl-1 border-l border-border/50 ml-1">
         <span className="flex items-center gap-1 text-[9px] font-bold text-red-500 bg-red-500/10 px-1.5 py-px rounded-full">

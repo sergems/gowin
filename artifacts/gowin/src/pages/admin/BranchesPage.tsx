@@ -230,18 +230,20 @@ export default function BranchesPage() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Building2 className="w-7 h-7 text-emerald-400" />
+      <div className="flex justify-between items-start gap-3 mb-6">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+            <Building2 className="w-6 h-6 sm:w-7 sm:h-7 text-emerald-400 shrink-0" />
             {t("branches.title")}
           </h1>
-          <p className="text-zinc-400 mt-1">{t("branches.desc")}</p>
+          <p className="text-zinc-400 mt-1 text-sm">{t("branches.desc")}</p>
         </div>
         <button
           onClick={() => { setShowCreate(true); setForm(emptyForm); setError(""); }}
-          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-          <Plus className="w-4 h-4" /> {t("branches.new")}
+          className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shrink-0">
+          <Plus className="w-4 h-4" />
+          <span className="hidden xs:inline">{t("branches.new")}</span>
+          <span className="xs:hidden">New</span>
         </button>
       </div>
 
@@ -302,24 +304,27 @@ export default function BranchesPage() {
                 <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={() => { setCreditBranch(b); setCreditAmount(""); setCreditNotes(""); setError(""); }}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-medium transition-colors border border-emerald-500/20"
+                    className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-medium transition-colors border border-emerald-500/20"
                     title={t("branches.credit")}
                   >
-                    <DollarSign className="w-3 h-3" /> {t("branches.credit")}
+                    <DollarSign className="w-3 h-3" />
+                    <span className="hidden sm:inline">{t("branches.credit")}</span>
                   </button>
                   <button
                     onClick={() => { setDebitBranch(b); setDebitAmount(""); setDebitNotes(""); setError(""); }}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium transition-colors border border-red-500/20"
+                    className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium transition-colors border border-red-500/20"
                     title="Debit"
                   >
-                    <DollarSign className="w-3 h-3" /> Debit
+                    <DollarSign className="w-3 h-3" />
+                    <span className="hidden sm:inline">Debit</span>
                   </button>
                   <button
                     onClick={() => toggleExpand(b.id)}
-                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors border ${expandedId === b.id ? "bg-zinc-600/60 border-zinc-500/40 text-zinc-200" : "bg-zinc-700/40 border-zinc-600/40 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"}`}
+                    className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors border ${expandedId === b.id ? "bg-zinc-600/60 border-zinc-500/40 text-zinc-200" : "bg-zinc-700/40 border-zinc-600/40 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"}`}
                     title={t("branches.members")}
                   >
-                    <Users className="w-3 h-3" /> {t("branches.members")}
+                    <Users className="w-3 h-3" />
+                    <span className="hidden sm:inline">{t("branches.members")}</span>
                     {expandedId === b.id ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
                   </button>
                   <div className="w-px h-5 bg-zinc-700 mx-0.5" />

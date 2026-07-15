@@ -201,34 +201,34 @@ function FixtureCard({ fixture }: { fixture: any }) {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="flex-1 flex items-center gap-2 min-w-0">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+            <div className="flex items-center gap-1.5 min-w-0">
               <Logo
                 src={fixture.homeTeam?.logo}
                 alt={fixture.homeTeam?.name ?? ""}
-                size={28}
-                fallback={<CountryFlag name={fixture.league?.countryName} size={28} />}
+                size={22}
+                fallback={<CountryFlag name={fixture.league?.countryName} size={22} />}
               />
-              <span className="font-semibold text-sm truncate">{fixture.homeTeam?.name}</span>
+              <span className="font-bold text-xs leading-tight line-clamp-2">{fixture.homeTeam?.name}</span>
             </div>
             <div className="shrink-0">
               {showScore ? (
-                <div className="flex items-center gap-2 text-lg font-black">
+                <div className="flex items-center gap-1.5 text-base font-black">
                   <span>{fixture.scoreHome ?? 0}</span>
                   <span className="text-muted-foreground text-xs font-normal">:</span>
                   <span>{fixture.scoreAway ?? 0}</span>
                 </div>
               ) : (
-                <div className="px-2.5 py-1 rounded-lg bg-accent/50 text-xs font-bold text-muted-foreground">VS</div>
+                <div className="px-2 py-1 rounded-lg bg-accent/50 text-xs font-bold text-muted-foreground">VS</div>
               )}
             </div>
-            <div className="flex-1 flex items-center justify-end gap-2 min-w-0">
-              <span className="font-semibold text-sm truncate text-right">{fixture.awayTeam?.name}</span>
+            <div className="flex items-center justify-end gap-1.5 min-w-0">
+              <span className="font-bold text-xs leading-tight line-clamp-2 text-right">{fixture.awayTeam?.name}</span>
               <Logo
                 src={fixture.awayTeam?.logo}
                 alt={fixture.awayTeam?.name ?? ""}
-                size={28}
-                fallback={<CountryFlag name={fixture.league?.countryName} size={28} />}
+                size={22}
+                fallback={<CountryFlag name={fixture.league?.countryName} size={22} />}
               />
             </div>
           </div>

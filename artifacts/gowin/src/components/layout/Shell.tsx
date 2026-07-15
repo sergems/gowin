@@ -864,7 +864,7 @@ export function Shell({ children }: { children: ReactNode }) {
       {/* ── Main Content ─────────────────────────────────────────────────────── */}
       <main className="flex-1 flex flex-col overflow-hidden relative min-w-0">
         {/* Floating overlay header — zero height, sits on top of content */}
-        <header className="absolute top-0 left-0 right-0 h-14 grid grid-cols-3 md:flex md:items-center md:justify-between items-center px-4 md:px-6 z-20 pointer-events-none">
+        <header className="absolute top-0 left-0 right-0 h-14 grid grid-cols-3 md:flex md:items-center md:justify-between items-center px-4 md:px-6 z-20 pointer-events-none bg-background/90 backdrop-blur-md border-b border-border/30">
           {/* Mobile: hamburger (left column) */}
           <button className="md:hidden pointer-events-auto text-white/90 hover:text-white p-1.5 rounded-md hover:bg-white/10 drop-shadow justify-self-start"
             onClick={() => setMobileSidebarOpen(true)}>
