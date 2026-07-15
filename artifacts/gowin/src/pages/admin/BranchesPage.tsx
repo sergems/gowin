@@ -280,7 +280,7 @@ export default function BranchesPage() {
                   <Building2 className="w-4 h-4 text-emerald-400" />
                 </div>
                 <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
-                  <h3 className="font-bold text-white text-sm">{b.name}</h3>
+                  <h3 className="font-bold text-white text-sm whitespace-nowrap">{b.name}</h3>
                   <span className="font-mono text-[10px] bg-zinc-700 text-zinc-400 px-1.5 py-0.5 rounded">{b.code}</span>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${b.status === "active" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"}`}>
                     {b.status}
