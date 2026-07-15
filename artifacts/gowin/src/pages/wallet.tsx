@@ -335,37 +335,35 @@ export default function Wallet() {
   const withdrawAccountReady = !!(selectedWithdrawAccount.phone && selectedWithdrawAccount.operator);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
-        <h1 className="text-3xl font-black tracking-tight mb-2">{t("wallet.title")}</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-xl font-bold tracking-tight mb-0.5">{t("wallet.title")}</h1>
+        <p className="text-xs text-muted-foreground">
           {isRestrictedRole ? t("wallet.desc_restricted") : t("wallet.desc")}
         </p>
       </div>
 
       {/* Balance card */}
       {isWalletLoading ? (
-        <div className="h-32 bg-accent/50 rounded-xl animate-pulse" />
+        <div className="h-20 bg-accent/50 rounded-xl animate-pulse" />
       ) : (
         <Card className="border-primary/20 bg-primary/5">
-          <CardContent className="p-5 md:p-8">
-            <div className="flex items-center gap-3 md:gap-4">
-              <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                <WalletIcon className="w-6 h-6 md:w-8 md:h-8 text-primary" />
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                <WalletIcon className="w-5 h-5 text-primary" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs md:text-sm font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-0.5">
                   {isRestrictedRole ? t("wallet.balance_allocated") : t("wallet.balance")}
                 </p>
-                <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight break-all">{formatCurrency(wallet?.balance ?? 0)}</h2>
+                <h2 className="text-2xl font-black tracking-tight break-all">{formatCurrency(wallet?.balance ?? 0)}</h2>
                 {(wallet?.bonusBalance ?? 0) > 0 && (
-                  <div className="mt-2 flex items-center gap-2 text-sm">
-                    <span className="text-muted-foreground">Bonus Wallet:</span>
+                  <div className="mt-1 flex items-center gap-2 text-xs">
+                    <span className="text-muted-foreground">Bonus:</span>
                     <span className="font-semibold text-amber-500">{formatCurrency(wallet?.bonusBalance ?? 0)}</span>
                     {(wallet?.bonusRolloverRemaining ?? 0) > 0 && (
-                      <span className="text-xs text-muted-foreground">
-                        (${Number(wallet?.bonusRolloverRemaining ?? 0).toFixed(2)} rollover remaining)
-                      </span>
+                      <span className="text-muted-foreground">(${Number(wallet?.bonusRolloverRemaining ?? 0).toFixed(2)} rollover)</span>
                     )}
                   </div>
                 )}
@@ -378,25 +376,25 @@ export default function Wallet() {
       {/* Action Tabs — hidden for staff */}
       {!isRestrictedRole && (
         <Card>
-          <CardHeader className="pb-3">
-            <div className="flex gap-2 flex-wrap">
+          <CardHeader className="pb-2">
+            <div className="grid grid-cols-3 gap-1.5">
               <button
                 onClick={() => setActiveTab("mobile")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${activeTab === "mobile" ? "bg-primary text-primary-foreground" : "bg-accent/50 text-muted-foreground hover:bg-accent"}`}
+                className={`flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-semibold transition-colors ${activeTab === "mobile" ? "bg-primary text-primary-foreground" : "bg-accent/50 text-muted-foreground hover:bg-accent"}`}
               >
-                <Smartphone className="w-4 h-4" /> {t("wallet.mobile_money")}
+                <Smartphone className="w-3.5 h-3.5 shrink-0" /> Deposit
               </button>
               <button
                 onClick={() => setActiveTab("voucher")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${activeTab === "voucher" ? "bg-amber-500 text-white" : "bg-accent/50 text-muted-foreground hover:bg-accent"}`}
+                className={`flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-semibold transition-colors ${activeTab === "voucher" ? "bg-amber-500 text-white" : "bg-accent/50 text-muted-foreground hover:bg-accent"}`}
               >
-                <Ticket className="w-4 h-4" /> {t("wallet.deposit_voucher")}
+                <Ticket className="w-3.5 h-3.5 shrink-0" /> Voucher
               </button>
               <button
                 onClick={() => setActiveTab("withdraw")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${activeTab === "withdraw" ? "bg-destructive text-destructive-foreground" : "bg-accent/50 text-muted-foreground hover:bg-accent"}`}
+                className={`flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-semibold transition-colors ${activeTab === "withdraw" ? "bg-destructive text-destructive-foreground" : "bg-accent/50 text-muted-foreground hover:bg-accent"}`}
               >
-                <Minus className="w-4 h-4" /> {t("wallet.withdraw")}
+                <Minus className="w-3.5 h-3.5 shrink-0" /> Withdraw
               </button>
             </div>
           </CardHeader>
@@ -606,48 +604,48 @@ export default function Wallet() {
       {/* Withdrawal History */}
       {!isRestrictedRole && (
         <div>
-          <div className="flex items-center gap-2 mb-5">
-            <Banknote className="w-5 h-5 text-primary" />
-            <h2 className="text-2xl font-bold tracking-tight">{t("wallet.my_withdrawals")}</h2>
+          <div className="flex items-center gap-2 mb-3">
+            <Banknote className="w-4 h-4 text-primary" />
+            <h2 className="text-sm font-bold tracking-tight">{t("wallet.my_withdrawals")}</h2>
           </div>
           {isWithdrawalsLoading ? (
-            <div className="space-y-3">{[1, 2].map((i) => <div key={i} className="h-20 bg-accent/50 rounded-lg animate-pulse" />)}</div>
+            <div className="space-y-2">{[1, 2].map((i) => <div key={i} className="h-14 bg-accent/50 rounded-lg animate-pulse" />)}</div>
           ) : withdrawals.length === 0 ? (
-            <div className="py-10 text-center border border-dashed border-border rounded-xl">
-              <p className="text-muted-foreground">{t("wallet.no_withdrawals")}</p>
+            <div className="py-6 text-center border border-dashed border-border rounded-xl">
+              <p className="text-sm text-muted-foreground">{t("wallet.no_withdrawals")}</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {withdrawals.map((w) => (
-                <div key={w.id} className="flex items-center justify-between p-4 rounded-xl border border-border bg-card">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="font-bold text-lg">{formatCurrency(w.amount)}</span>
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-accent text-muted-foreground font-medium">{w.currency ?? "USD"}</span>
+                <div key={w.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-card">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                      <span className="font-bold text-sm">{formatCurrency(w.amount)}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent text-muted-foreground font-medium">{w.currency ?? "USD"}</span>
                       <StatusBadge status={w.status} />
                     </div>
-                    <p className="text-xs text-muted-foreground">{w.phoneNumber ?? w.bankDetails}</p>
-                    <p className="text-xs text-muted-foreground">{format(new Date(w.createdAt), "PPP p")}</p>
+                    <p className="text-[10px] text-muted-foreground">{w.phoneNumber ?? w.bankDetails}</p>
+                    <p className="text-[10px] text-muted-foreground">{format(new Date(w.createdAt), "PP p")}</p>
                     {w.pawapayStatus && (
-                      <p className="text-xs text-muted-foreground">PawaPay: <span className="font-mono font-semibold">{w.pawapayStatus}</span></p>
+                      <p className="text-[10px] text-muted-foreground">PawaPay: <span className="font-mono font-semibold">{w.pawapayStatus}</span></p>
                     )}
                     {w.status === "rejected" && w.adminNote && (
-                      <p className="text-xs text-destructive mt-1">Reason: {w.adminNote}</p>
+                      <p className="text-[10px] text-destructive mt-0.5">Reason: {w.adminNote}</p>
                     )}
-                    {w.status === "rejected" && <p className="text-xs text-primary mt-1 font-medium">{t("wallet.refunded")}</p>}
+                    {w.status === "rejected" && <p className="text-[10px] text-primary font-medium">{t("wallet.refunded")}</p>}
                   </div>
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ml-2 ${
                     w.status === "completed" || w.status === "paid" ? "bg-primary/20 text-primary" :
                     w.status === "approved" ? "bg-blue-500/20 text-blue-500" :
                     w.status === "rejected" || w.status === "failed" ? "bg-destructive/20 text-destructive" :
                     w.status === "processing" ? "bg-violet-500/20 text-violet-500" :
                     "bg-amber-500/20 text-amber-500"
                   }`}>
-                    {(w.status === "completed" || w.status === "paid") ? <Banknote className="w-5 h-5" /> :
-                     w.status === "approved" ? <CheckCircle2 className="w-5 h-5" /> :
-                     (w.status === "rejected" || w.status === "failed") ? <XCircle className="w-5 h-5" /> :
-                     w.status === "processing" ? <Loader2 className="w-5 h-5 animate-spin" /> :
-                     <Clock className="w-5 h-5" />}
+                    {(w.status === "completed" || w.status === "paid") ? <Banknote className="w-4 h-4" /> :
+                     w.status === "approved" ? <CheckCircle2 className="w-4 h-4" /> :
+                     (w.status === "rejected" || w.status === "failed") ? <XCircle className="w-4 h-4" /> :
+                     w.status === "processing" ? <Loader2 className="w-4 h-4 animate-spin" /> :
+                     <Clock className="w-4 h-4" />}
                   </div>
                 </div>
               ))}
@@ -658,36 +656,35 @@ export default function Wallet() {
 
       {/* Transaction History */}
       {!isRestrictedRole && (
-        <div className="mt-4">
-          <div className="flex items-center gap-2 mb-6">
-            <HistoryIcon className="w-5 h-5 text-primary" />
-            <h2 className="text-2xl font-bold tracking-tight">{t("wallet.transaction_history")}</h2>
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <HistoryIcon className="w-4 h-4 text-primary" />
+            <h2 className="text-sm font-bold tracking-tight">{t("wallet.transaction_history")}</h2>
           </div>
           {isTransactionsLoading ? (
-            <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-16 bg-accent/50 rounded-lg animate-pulse" />)}</div>
+            <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="h-12 bg-accent/50 rounded-lg animate-pulse" />)}</div>
           ) : transactions.length === 0 ? (
-            <div className="py-12 text-center border border-dashed border-border rounded-xl">
-              <p className="text-muted-foreground">{t("wallet.no_tx_get_started")}</p>
+            <div className="py-8 text-center border border-dashed border-border rounded-xl">
+              <p className="text-sm text-muted-foreground">{t("wallet.no_tx_get_started")}</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-1.5">
               {transactions.map((tx) => {
                 const isCredit = ["credit", "bet_won", "bet_refund", "voucher_redeem"].includes(tx.type);
                 return (
-                  <div key={tx.id} className="flex items-center justify-between p-4 rounded-lg border border-border bg-card hover:bg-accent/20 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isCredit ? "bg-primary/20 text-primary" : "bg-destructive/20 text-destructive"}`}>
-                        {isCredit ? <ArrowDownRight className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
+                  <div key={tx.id} className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-card hover:bg-accent/20 transition-colors">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${isCredit ? "bg-primary/20 text-primary" : "bg-destructive/20 text-destructive"}`}>
+                        {isCredit ? <ArrowDownRight className="w-3.5 h-3.5" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
                       </div>
-                      <div>
-                        <p className="font-medium">{tx.description}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {format(new Date(tx.createdAt), "PPP p")} •{" "}
-                          <span className="uppercase tracking-wider opacity-70">{tx.type.replace(/_/g, " ")}</span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium truncate">{tx.description}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {format(new Date(tx.createdAt), "PP p")} · <span className="uppercase opacity-70">{tx.type.replace(/_/g, " ")}</span>
                         </p>
                       </div>
                     </div>
-                    <div className={`text-lg font-bold ${isCredit ? "text-primary" : "text-destructive"}`}>
+                    <div className={`text-sm font-bold shrink-0 ml-2 ${isCredit ? "text-primary" : "text-destructive"}`}>
                       {isCredit ? "+" : "−"}{formatCurrency(Math.abs(Number(tx.amount)))}
                     </div>
                   </div>
