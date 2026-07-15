@@ -415,7 +415,7 @@ export default function AdminSettings() {
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-4 sm:space-y-6 max-w-2xl">
       <div>
         <h1 className="text-3xl font-black tracking-tight mb-2">Settings</h1>
         <p className="text-muted-foreground">Manage API integrations, data sync, and database connection</p>
@@ -811,7 +811,7 @@ export default function AdminSettings() {
           </p>
 
           {/* Per-sport buttons */}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 gap-2">
             {SPORTS.map((sport) => {
               const isThisSyncing = isSyncing && syncingSport === sport.key;
               return (
