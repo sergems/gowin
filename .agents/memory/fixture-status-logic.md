@@ -52,6 +52,15 @@ The `fixtureSync.ts` rule "never demote live→upcoming" locked them in.
 3. API "live" is trusted only when stored startTime < now+10min.
 4. If DB status is "live" and API says "live" but stored startTime is future → update startTime to API-computed value (rescheduled game).
 
+## Recurring "future-dated live" bug (fixed with safeguards)
+
+Root cause: The daily `apiSync.ts` sync (14-day window) was marking future fixtures as live because its demote-protection rule (`existing.startTime >= matchCutoff`) is trivially true for any future date — so future-dated "live" records were never corrected. `fixtureExpiry.ts` also had no rule for this case (only covered `live → finished` for old games, not `live → upcoming` for future ones).
+
+Three safeguards added:
+1. **`fixtureExpiry.ts`** — new SQL rule every 5 min: `UPDATE fixtures SET status='upcoming' WHERE status='live' AND start_time > NOW() + INTERVAL '10 minutes'`; logs a WARN when it fires so the sync logic can be re-examined.
+2. **`fixtureSync.ts`** — hard guard after all apiStatus correction branches: `if (apiStatus === "live" && t > tenMinFromNow) apiStatus = "upcoming"`.
+3. **`apiSync.ts`** — demote-protection rule now checks `existing.startTime <= tenMinFromNow` in addition to `>= matchCutoff`, so future-dated live records can be corrected.
+
 ## DB reset command (emergency)
 ```sql
 UPDATE fixtures SET status = 'upcoming'

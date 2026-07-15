@@ -641,8 +641,14 @@ async function syncSportFixtures(
         }
 
         // 2. Never demote live → upcoming unless the game is past its match window.
+        //    Crucially, only protect "live" status if the game's start_time is in the past
+        //    (or within the 10-min kickoff buffer).  If start_time is clearly in the future,
+        //    the game was incorrectly marked live and we MUST allow the demotion to "upcoming".
+        //    Without this guard, `existing.startTime >= matchCutoff` is trivially true for any
+        //    future date, causing future-dated games to stay locked as "live" forever.
         if (existing.status === "live" && mergedStatus === "upcoming") {
-          mergedStatus = existing.startTime >= matchCutoff ? "live" : "upcoming";
+          const withinMatchWindow = existing.startTime >= matchCutoff && existing.startTime <= tenMinFromNow;
+          mergedStatus = withinMatchWindow ? "live" : "upcoming";
         }
 
         // 3. Never promote finished → live/upcoming: once settled it stays settled.

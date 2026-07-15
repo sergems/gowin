@@ -61,8 +61,28 @@ export async function autoExpireFixtures(): Promise<{ toLive: number; toFinished
     toFinished += (skipRes as any).rowCount ?? 0;
   }
 
-  if (toLive > 0 || toFinished > 0) {
-    logger.info({ toLive, toFinished }, "Fixture expiry: statuses updated");
+  // Safeguard: reset any fixture stuck as "live" whose start_time is still clearly
+  // in the future (> 10 min from now).  This can happen when:
+  //   - a DB import or daily sync incorrectly marks a future game as live, OR
+  //   - a game is rescheduled to a later date after already being live-promoted.
+  // We run this for ALL sports in one shot — it is purely time-based and sport-
+  // independent.
+  const futureRes = await db.execute(sql`
+    UPDATE fixtures
+    SET status = 'upcoming'
+    WHERE status = 'live'
+      AND start_time > NOW() + INTERVAL '10 minutes'
+  `);
+  const futureReset = (futureRes as any).rowCount ?? 0;
+
+  if (toLive > 0 || toFinished > 0 || futureReset > 0) {
+    logger.info({ toLive, toFinished, futureReset }, "Fixture expiry: statuses updated");
+    if (futureReset > 0) {
+      logger.warn(
+        { futureReset },
+        "Fixture expiry: reset future-dated fixtures that were incorrectly live — check sync logic",
+      );
+    }
   }
 
   return { toLive, toFinished };

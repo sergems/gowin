@@ -134,6 +134,14 @@ export async function syncFixtureResults(): Promise<{ updated: number; errors: n
           apiStatus = "live";
         }
 
+        // Hard safeguard: regardless of what the API says, a game whose DB start_time is
+        // clearly in the future (> 10 min) can never be live.  This catches cases where
+        // rawStatus was "live" from the start and none of the correction branches above fired
+        // (e.g. API sends stale "live" status for a rescheduled future game).
+        if (apiStatus === "live" && t > tenMinFromNow) {
+          apiStatus = "upcoming";
+        }
+
         // ── Status merge rules ───────────────────────────────────────────────
         // 1. Never let API "upcoming" demote a game we've already marked "live" UNLESS
         //    the stored kick-off is clearly in the future — that would mean the game was
