@@ -287,11 +287,11 @@ export default function BranchesPage() {
                       {b.status}
                     </span>
                   </div>
-                  {/* Location + phone on one line */}
-                  <div className="flex items-center gap-3 mt-1 text-xs text-zinc-500 flex-wrap">
-                    <span className="flex items-center gap-1">📍 {b.city}, {b.country}</span>
-                    {b.phone && <span className="flex items-center gap-1">📞 {b.phone}</span>}
-                    {b.email && <span className="truncate max-w-[160px]">✉️ {b.email}</span>}
+                  {/* Contact details — each on its own line, never cropped */}
+                  <div className="flex flex-col gap-0.5 mt-1 text-xs text-zinc-500">
+                    <span>📍 {b.city}, {b.country}{b.address ? ` — ${b.address}` : ""}</span>
+                    {b.phone && <span>📞 {b.phone}</span>}
+                    {b.email && <span>✉️ {b.email}</span>}
                   </div>
                 </div>
                 {/* Edit + delete always visible, top-right */}
