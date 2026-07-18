@@ -204,7 +204,7 @@ export function CashOutButton({
           setOpen(true);
         }}
         disabled={isFetching && !offer}
-        className={`bg-emerald-500 hover:bg-emerald-600 text-black border border-black font-bold shrink-0 transition-all duration-300 ${flashClass}`}
+        className={`bg-primary hover:bg-primary/90 text-black border border-black font-bold shrink-0 transition-all duration-300 ${flashClass}`}
       >
         {isFetching ? (
           <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
@@ -272,7 +272,7 @@ export function CashOutButton({
             <Button
               onClick={handleConfirm}
               disabled={submitting || isFetching}
-              className="bg-emerald-500 hover:bg-emerald-600 text-black border border-black font-bold"
+              className="bg-primary hover:bg-primary/90 text-black border border-black font-bold"
             >
               {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
               {t("bets.cash_out_confirm_button")}
