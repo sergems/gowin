@@ -168,10 +168,15 @@ export function BetSlipBody({ onClose, onToggle }: BetSlipBodyProps) {
         <div className="mx-3 mt-3 rounded-lg border border-primary/30 bg-primary/10 p-3">
           <div className="flex items-center gap-2 mb-1">
             <Sparkles className="w-4 h-4 text-primary shrink-0" />
-            <p className="text-xs font-bold text-primary">{config.title}</p>
+            <p className="text-xs font-bold text-primary">
+              {t("betslip.win_bonus_promo_title")
+                .replace("{maxBonus}", String(Math.max(...config.bonusTable.map((b) => b.bonusPercent))))}
+            </p>
           </div>
           <p className="text-[11px] text-muted-foreground leading-snug">
-            Build an accumulator with 10+ qualifying selections (odds &gt; {config.minQualifyingOdds}) to unlock up to {Math.max(...config.bonusTable.map((t) => t.bonusPercent))}% extra winnings.
+            {t("betslip.win_bonus_promo_desc")
+              .replace(/{minOdds}/g, String(config.minQualifyingOdds))
+              .replace(/{maxBonus}/g, String(Math.max(...config.bonusTable.map((b) => b.bonusPercent))))}
           </p>
         </div>
       )}

@@ -796,6 +796,8 @@ const translations = {
     "betslip.collapse": "Collapse bet slip",
     "betslip.code_not_found": "Code not found",
     "betslip.max_payout_applied": "Maximum payout of {amount} applied.",
+    "betslip.win_bonus_promo_title": "Up to {maxBonus}% Win Bonus",
+    "betslip.win_bonus_promo_desc": "Build an accumulator with 10+ qualifying selections (odds > {minOdds}) to unlock up to {maxBonus}% extra winnings.",
 
     "print.subtitle": "Sports Betting — Official Receipt",
     "print.code": "Bet Code",
@@ -1819,6 +1821,8 @@ const translations = {
     "betslip.collapse": "Réduire le coupon",
     "betslip.code_not_found": "Code non trouvé",
     "betslip.max_payout_applied": "Paiement maximum de {amount} appliqué.",
+    "betslip.win_bonus_promo_title": "Jusqu'à {maxBonus}% de Bonus Gains",
+    "betslip.win_bonus_promo_desc": "Constituez un combiné avec 10+ sélections qualifiantes (cotes > {minOdds}) pour débloquer jusqu'à {maxBonus}% de gains supplémentaires.",
 
     "print.subtitle": "Paris sportifs — Reçu officiel",
     "print.code": "Code pari",
