@@ -1,97 +1,46 @@
-# GoWin Sportsbook
+# GoWin RDC Sportsbook
 
-A sports betting platform with live fixtures, bet placement, wallet management, and full user/admin management.
-
-## Replit Dev Setup
-
-To get this project running on Replit from a fresh import:
-
-1. **Install dependencies** — `pnpm install` (run once; pnpm workspaces handle all packages)
-2. **Database** — Replit provides PostgreSQL automatically; `DATABASE_URL` is injected at runtime. Push the schema first (`pnpm --filter @workspace/db run push`), then seed from the dump: `psql $DATABASE_URL -f btk.sql` (this project's data dump; the exact dump filename may change between imports — check the repo root for the current `.sql` dump).
-   - **FK-ordering caveat**: the dump's `COPY` statements populate `fixtures`/`leagues`/`markets`/etc. *before* the tables they reference (`sports`/`teams` are copied near the end of the file); the dump relies on adding all FK constraints via `ALTER TABLE ... ADD CONSTRAINT` at the very end. Since `drizzle-kit push` already creates those FKs beforehand, a direct `psql -f <dump>.sql` will fail most inserts with FK violations. Work around it once per fresh import:
-     ```sql
-     -- drop existing FKs so COPY can insert out of order
-     SELECT 'ALTER TABLE '||conrelid::regclass||' DROP CONSTRAINT '||conname||';'
-     FROM pg_constraint WHERE contype='f' AND connamespace='public'::regnamespace;
-     -- run the generated DROP statements, then:
-     psql $DATABASE_URL -f btk.sql   -- re-adds the FKs itself at the end of the file
-     ```
-   - This re-run will print benign `relation already exists` / `multiple primary keys` errors for `CREATE TABLE` statements at the top of the dump (tables already exist from the `drizzle-kit push` step) — these are expected and don't indicate a seeding failure.
-   - Verify after seeding: `SELECT count(*) FROM pg_constraint WHERE contype='f' AND connamespace='public'::regnamespace;` should be ~29, and spot-check row counts on `sports`, `teams`, `leagues`, `fixtures`, `users`, `wallets`.
-   - **Alternative recovery path** (works well on a fresh/empty Replit Postgres instance, avoids the `drizzle-kit push` non-TTY failure entirely): `psql $DATABASE_URL -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"` then `psql $DATABASE_URL -f btk.sql` directly — the dump creates its own tables/enums and adds FKs at the end, so it doesn't need the push step first. Don't use `scripts/schema.sql` as a substitute for this — it's a minimal/outdated schema and is missing tables and columns the current code relies on (e.g. `notifications`, `referral_rewards`, newer wallet/bet fields).
-3. **Build the API server** — `pnpm --filter @workspace/api-server run build` (must run before first start; the dev workflow does this automatically)
-4. **Start workflows** — start both `artifacts/api-server: API Server` (port 8080) and `artifacts/gowin: web` (port 5000) via the Replit workflow panel
-5. **Secrets** — `SESSION_SECRET` is set. SMTP vars (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_FROM`, `SMTP_SECURE`) are set as env vars. `SMTP_PASS` must be added as a Replit Secret if password reset/OTP/admin emails are needed (without it, email sending is skipped with a warning — non-fatal). `JWT_SECRET` is loaded from the database `settings` table (`jwt_secret` key), confirmed present after reseeding from `btk.sql`.
-
-## Setup status (2026-07-11)
-Both workflows running: API Server (port 8080) and GoWin web (port 5000). Re-verified after a fresh container reset:
-1. `pnpm install` — installs all workspace deps
-2. DB seeded from `btk.sql` via drop-schema-then-restore path (31 FK constraints, 4 sports, 22 users, 14755 fixtures, 10789 teams, 629 leagues)
-3. API server built (`pnpm --filter @workspace/api-server run build`)
-4. App verified loading in preview with live odds/fixtures data
-
-Remaining optional gap: `SMTP_PASS` secret not set (email sending degrades gracefully — non-fatal).
-
-## Run & Operate
-
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only, non-interactive — use `psql $DATABASE_URL -c "..."` for raw SQL if drizzle-kit fails in non-TTY)
-- Required env: `DATABASE_URL` — Postgres connection string
-- Optional env: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` — email sending (nodemailer); gracefully skipped if not set
+A full-stack sports betting platform targeting the DRC (Democratic Republic of Congo) market, supporting football, basketball, tennis, and cricket. Features live in-play odds, PawaPay mobile money integration, multi-currency wallets, and a multi-language UI (English/French).
 
 ## Stack
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (api-server routes use plain JS guards; libs use zod schemas from `@workspace/api-zod`)
-- API codegen: Orval (from OpenAPI spec → `lib/api-client-react` + `lib/api-zod`)
-- Build: esbuild (ESM bundle) — do NOT import `zod` directly in `api-server`; zod is not a direct dep there
+- **Frontend**: React + Vite (`artifacts/gowin`) — served on port 5000
+- **API Server**: Node.js/Fastify + Drizzle ORM (`artifacts/api-server`) — served on port 8080
+- **Database**: PostgreSQL (Replit-managed, `DATABASE_URL` env var)
+- **Monorepo**: pnpm workspaces
 
-## Where things live
+## How to run
 
-- `lib/api-spec/openapi.yaml` — source of truth for all API contracts
-- `lib/db/src/schema.ts` — Drizzle ORM schema (source of truth for DB shape)
-- `artifacts/api-server/src/routes/` — Express route handlers
-- `artifacts/api-server/src/lib/email.ts` — nodemailer email service (OTP, temp password, lockout)
-- `artifacts/gowin/src/contexts/AuthContext.tsx` — auth state, login/logout/refreshUser
-- `artifacts/gowin/src/pages/` — all frontend pages
+Both workflows start automatically:
 
-## Architecture decisions
+- `artifacts/gowin: web` — React frontend on port 5000
+- `artifacts/api-server: API Server` — builds from `src/` via esbuild then runs `dist/index.mjs`
 
-- **OpenAPI-first**: all API changes must start in `openapi.yaml`, then `pnpm codegen` to regenerate hooks/schemas
-- **Schema name collision rule**: orval generates Zod schemas named `<OperationId>Response`; component schema names in the spec must NOT match those names or index.ts re-export will conflict
-- **No zod in api-server**: esbuild can't resolve `zod` as it's not a direct dep — use plain JS guards for request validation in route handlers
-- **Password recovery**: 3 failed logins → `disabledReason: 'system'` (self-service reset unlocks); admin block → `disabledReason: 'admin'` (only admin can unblock); temp passwords set `mustChangePassword: true`
-- **DB schema pushes**: `drizzle-kit push` fails in non-TTY; use raw `psql $DATABASE_URL -c "ALTER TABLE..."` instead
+After any API server source change, the workflow must be restarted (it runs the dist bundle, not source directly).
 
-## Product
+## Database
 
-- Browse live & upcoming sports fixtures with real-time odds
-- Place single and accumulator bets; track bet history and results
-- Wallet: deposit, withdraw, view transaction history
-- Admin: manage users (roles, wallet credit/debit, block/unblock, reset passwords), fixtures, bets, withdrawals, vouchers, settings, slides
-- Password recovery: email OTP self-service reset; admin-issued temp password (1hr, shown in UI + optional email); 3-failed-login lockout with forced reset
+Connection is via `DATABASE_URL` environment variable (PostgreSQL).
+
+To reset/reimport the database from scratch:
+```bash
+psql $DATABASE_URL -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+psql $DATABASE_URL -f btk.sql
+```
+
+`btk.sql` (repo root) is the canonical full pg_dump — use it instead of `scripts/schema.sql` (which is stale).
+
+## Key features
+
+- Multi-sport betting: Football, Basketball, Tennis, Cricket (AllSportsAPI sync)
+- Live in-play odds with WebSocket updates
+- Full Cash Out with dynamic live engine
+- PawaPay mobile money (deposits/withdrawals/clerk flow)
+- Multi Bet Win Bonus (up to 1250%)
+- 1UP/2UP football sub-markets
+- Referral rewards system
+- Admin panel with financial reporting
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
-
-## Gotchas
-
-- `drizzle-kit push` is non-interactive and will prompt in a TTY context — always use raw SQL for schema changes in this environment
-- `zod` cannot be imported directly in `artifacts/api-server` — esbuild won't resolve it (not a direct dep)
-- OpenAPI component schema names must not match `<operationId>Response` pattern or orval will generate duplicate exports in `lib/api-zod/src/index.ts`
-- SMTP env vars are optional; `email.ts` logs a warning and returns `false` (not `void`) for email functions when unconfigured
-
-## Canonical Ports
-
-- Frontend (gowin): **5000** — this is what the `artifacts/gowin: web` workflow actually waits on and what Vite binds to by default (`PORT` env var, falls back to 5000 in `vite.config.ts`). Note: `artifacts/gowin/.replit-artifact/artifact.toml` declares `localPort = 20254` / `PORT=20254`, but that value is not wired into the active workflow — 5000 is the port actually serving the app today. If you need to reconcile this, update the workflow/artifact config together rather than one at a time.
-- API server: **8080** — set by `artifacts/api-server/.replit-artifact/artifact.toml`. Frontend Vite proxy forwards `/api`, `/slides-images`, and `/ws` to `localhost:8080`.
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- Keep existing project structure and stack
