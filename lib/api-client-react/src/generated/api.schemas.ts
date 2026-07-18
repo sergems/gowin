@@ -394,6 +394,7 @@ export const BetStatus = {
 
 export interface Bet {
   id: number;
+  code?: string;
   userId: number;
   stake: number;
   totalOdds: number;

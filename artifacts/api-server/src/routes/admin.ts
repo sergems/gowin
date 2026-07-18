@@ -58,6 +58,7 @@ router.get("/admin/recent-bets", requireAdminOrManager, async (_req, res): Promi
 
   res.json(rows.map((r) => ({
     id: r.bet.id,
+    code: r.bet.code,
     userId: r.bet.userId,
     stake: parseFloat(r.bet.stake),
     totalOdds: parseFloat(r.bet.totalOdds),

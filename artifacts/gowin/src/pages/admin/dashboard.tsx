@@ -118,6 +118,7 @@ export default function AdminDashboard() {
                 <tr className="border-b border-zinc-800/60">
                   <th className="text-left px-5 py-2.5 text-[10px] font-semibold text-zinc-500 uppercase tracking-widest">User</th>
                   <th className="text-left px-3 py-2.5 text-[10px] font-semibold text-zinc-500 uppercase tracking-widest hidden md:table-cell">Email</th>
+                  <th className="text-left px-3 py-2.5 text-[10px] font-semibold text-zinc-500 uppercase tracking-widest hidden sm:table-cell">Slip Code</th>
                   <th className="text-left px-3 py-2.5 text-[10px] font-semibold text-zinc-500 uppercase tracking-widest">Status</th>
                   <th className="text-left px-3 py-2.5 text-[10px] font-semibold text-zinc-500 uppercase tracking-widest hidden sm:table-cell">Date</th>
                   <th className="text-right px-5 py-2.5 text-[10px] font-semibold text-zinc-500 uppercase tracking-widest">Stake</th>
@@ -132,6 +133,13 @@ export default function AdminDashboard() {
                     </td>
                     <td className="px-3 py-2.5 hidden md:table-cell">
                       <span className="text-xs text-zinc-500 truncate max-w-[160px] block">{bet.user?.email || "—"}</span>
+                    </td>
+                    <td className="px-3 py-2.5 hidden sm:table-cell">
+                      {bet.code ? (
+                        <span className="font-mono text-[11px] bg-zinc-800 text-primary px-2 py-0.5 rounded tracking-wider">{bet.code}</span>
+                      ) : (
+                        <span className="text-xs text-zinc-600">—</span>
+                      )}
                     </td>
                     <td className="px-3 py-2.5">
                       <span className={`inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full border tracking-wide uppercase ${STATUS_STYLE[bet.status] ?? STATUS_STYLE.cancelled}`}>
