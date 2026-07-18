@@ -104,6 +104,10 @@ export interface CashOutConfig {
   adversityTwoLegsPercent: number;
   adversityThreeLegsPercent: number;
   adversityMaxLegsAgainst: number; // more legs against than this -> Cash Out not available
+  // Suspend Cash Out (no offer at all) when ANY remaining live leg is losing by this many
+  // goals or more. Suspension lifts automatically once the scoreline improves below the
+  // threshold — no admin action needed. 0 = disabled.
+  suspendWhenLosingByGoals: number;
 
   // Bumped whenever config is saved — stored in audit rows as "admin settings version"
   version: number;
@@ -177,6 +181,7 @@ export const DEFAULT_CASH_OUT_CONFIG: CashOutConfig = {
   adversityTwoLegsPercent: 50,
   adversityThreeLegsPercent: 15,
   adversityMaxLegsAgainst: 3,
+  suspendWhenLosingByGoals: 3,
 
   maxCashOutExposure: 0, // 0 = unlimited
   maxDailyCashOutLiability: 0,
@@ -456,7 +461,8 @@ function computeGoalDeficit(selection: string, market: string, scoreHome: number
 
 export interface AdversityOverrideResult {
   applies: boolean; // true if the flat-% override should replace the normal fair-value offer
-  unavailable: boolean; // true if Cash Out should be blocked entirely (more than adversityMaxLegsAgainst legs down)
+  unavailable: boolean; // true if Cash Out should be blocked entirely
+  unavailableReason?: string; // human-readable reason shown to the client when unavailable
   percent: number | null; // % of stake to offer, when applies === true
   legsAgainst: number;
   maxDeficit: number;
@@ -486,6 +492,21 @@ export function computeAdversityOverride(remaining: RemainingSelectionInput[], c
     legsAgainst++;
     const deficit = computeGoalDeficit(sel.selection, sel.market, sel.currentScoreHome, sel.currentScoreAway);
     if (deficit > maxDeficit) maxDeficit = deficit;
+
+    // Hard suspend: if ANY live leg is losing by 3 or more goals, block Cash Out entirely.
+    // The suspension lifts automatically on the next recalc if the scoreline improves
+    // (deficit drops back below the threshold — e.g. a comeback goal).
+    const goalThreshold = config.suspendWhenLosingByGoals ?? 3;
+    if (goalThreshold > 0 && deficit >= goalThreshold) {
+      return {
+        applies: false,
+        unavailable: true,
+        unavailableReason: `Cash Out suspended — your selection is currently losing by ${deficit} goals`,
+        percent: null,
+        legsAgainst,
+        maxDeficit: deficit,
+      };
+    }
   }
 
   if (legsAgainst === 0) {
@@ -493,7 +514,14 @@ export function computeAdversityOverride(remaining: RemainingSelectionInput[], c
   }
 
   if (legsAgainst > config.adversityMaxLegsAgainst) {
-    return { applies: false, unavailable: true, percent: null, legsAgainst, maxDeficit };
+    return {
+      applies: false,
+      unavailable: true,
+      unavailableReason: "Cash Out not available — too many selections are currently going against your bet",
+      percent: null,
+      legsAgainst,
+      maxDeficit,
+    };
   }
 
   if (legsAgainst === 1) {
@@ -545,7 +573,7 @@ export function computeCashOutOffer(
   if (adversity.unavailable) {
     return {
       eligible: false,
-      reason: "Cash Out not available",
+      reason: adversity.unavailableReason ?? "Cash Out not available",
       offerAmount: 0,
       fairValue: 0,
       combinedProbability: 0,
