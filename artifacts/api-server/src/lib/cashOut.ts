@@ -330,6 +330,16 @@ export function checkCashOutEligibility(ctx: CashOutEligibilityContext, config: 
     }
 
     if (isLive) {
+      // If the live score is unavailable (null), the result of this event is unknown —
+      // suspend Cash Out until scoreline data becomes available. It lifts automatically
+      // on the next recalculation once the score is populated.
+      if (sel.currentScoreHome == null || sel.currentScoreAway == null) {
+        return {
+          eligible: false,
+          reason: "Cash Out suspended — live match result is not yet available for one of your events",
+        };
+      }
+
       const minute = parseMinuteNumber(sel.matchMinute);
       if (config.disableAfterMinute > 0 && minute !== null && minute >= config.disableAfterMinute) {
         return { eligible: false, reason: "Cash Out closed for this stage of the match" };
