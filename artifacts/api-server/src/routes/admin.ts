@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, usersTable, betsTable, fixturesTable, walletsTable, betSelectionsTable, branchesTable } from "@workspace/db";
-import { eq, count, sum, desc, sql, and, inArray } from "drizzle-orm";
+import { db, usersTable, betsTable, fixturesTable, walletsTable, betSelectionsTable, branchesTable, vouchersTable } from "@workspace/db";
+import { eq, count, sum, desc, sql, and, inArray, gte, lte, or } from "drizzle-orm";
 import { requireAdmin, requireAdminOrManager, type AuthRequest } from "../middlewares/auth";
 import { liveCache } from "../lib/liveCache";
 import { getWsClientCount } from "../lib/wsServer";
@@ -102,6 +102,95 @@ router.get("/admin/api-monitor", requireAdmin, async (_req, res): Promise<void> 
   const stats = liveCache.getStats();
   const wsConnections = getWsClientCount();
   res.json({ ...stats, wsConnections });
+});
+
+// ── GET /admin/branches/:id/performance ──────────────────────────────────────
+router.get("/admin/branches/:id/performance", requireAdminOrManager, async (req: AuthRequest, res): Promise<void> => {
+  const branchId = parseInt(req.params.id as string);
+  if (isNaN(branchId)) { res.status(400).json({ error: "Invalid branch id" }); return; }
+
+  const [branch] = await db.select().from(branchesTable).where(eq(branchesTable.id, branchId)).limit(1);
+  if (!branch) { res.status(404).json({ error: "Branch not found" }); return; }
+
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  // KPI stats
+  const [totalAgents] = await db.select({ count: count() }).from(usersTable)
+    .where(and(eq(usersTable.branchId, branchId), eq(usersTable.role, "agent")));
+  const [activeAgents] = await db.select({ count: count() }).from(usersTable)
+    .where(and(eq(usersTable.branchId, branchId), eq(usersTable.role, "agent"), eq(usersTable.disabled, false)));
+  const [totalBets] = await db.select({ count: count(), total: sum(betsTable.stake) }).from(betsTable)
+    .where(eq(betsTable.branchId, branchId));
+  const [dailyBets] = await db.select({ count: count(), total: sum(betsTable.stake) }).from(betsTable)
+    .where(and(eq(betsTable.branchId, branchId), gte(betsTable.createdAt, todayStart)));
+  const [monthlyBets] = await db.select({ count: count(), total: sum(betsTable.stake) }).from(betsTable)
+    .where(and(eq(betsTable.branchId, branchId), gte(betsTable.createdAt, monthStart)));
+  const [pendingPayouts] = await db.select({ total: sum(betsTable.potentialWin) }).from(betsTable)
+    .where(and(eq(betsTable.branchId, branchId), eq(betsTable.status, "won")));
+  const [wonBets] = await db.select({ count: count() }).from(betsTable)
+    .where(and(eq(betsTable.branchId, branchId), eq(betsTable.status, "won")));
+  const [voucherStats] = await db.select({ count: count(), total: sum(vouchersTable.value) }).from(vouchersTable)
+    .where(and(eq(vouchersTable.branchId, branchId), eq(vouchersTable.isRedeemed, true)));
+
+  // Daily sales — last 30 days
+  const days = Array.from({ length: 30 }, (_, i) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() - (29 - i));
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+
+  const dailySales = await Promise.all(days.map(async (day) => {
+    const nextDay = new Date(day);
+    nextDay.setDate(nextDay.getDate() + 1);
+    const [bets] = await db.select({ count: count(), total: sum(betsTable.stake) }).from(betsTable)
+      .where(and(eq(betsTable.branchId, branchId), gte(betsTable.createdAt, day), lte(betsTable.createdAt, nextDay)));
+    return { date: day.toISOString().split("T")[0], bets: bets.count, revenue: parseFloat(bets.total ?? "0") };
+  }));
+
+  // Agent performance
+  const agents = await db.select().from(usersTable)
+    .where(and(eq(usersTable.branchId, branchId), eq(usersTable.role, "agent")));
+
+  const agentPerformance = await Promise.all(agents.map(async (agent) => {
+    const [bets] = await db.select({ count: count(), total: sum(betsTable.stake) }).from(betsTable)
+      .where(or(eq(betsTable.agentId, agent.id), eq(betsTable.userId, agent.id)));
+    const [vouchers] = await db.select({ count: count() }).from(vouchersTable)
+      .where(eq(vouchersTable.agentId, agent.id));
+    return {
+      agentId: agent.id,
+      agentName: [agent.firstName, agent.lastName].filter(Boolean).join(" ") || agent.username,
+      username: agent.username,
+      disabled: agent.disabled,
+      betsPlaced: bets.count,
+      totalStake: parseFloat(bets.total ?? "0"),
+      vouchersSold: vouchers.count,
+      commissionRate: parseFloat(agent.commissionRate ?? "0"),
+      commission: parseFloat(bets.total ?? "0") * (parseFloat(agent.commissionRate ?? "0") / 100),
+    };
+  }));
+
+  res.json({
+    branch: { id: branch.id, name: branch.name, code: branch.code, city: branch.city, country: branch.country, status: branch.status, balance: parseFloat(branch.balance as any) },
+    kpis: {
+      totalAgents: totalAgents.count,
+      activeAgents: activeAgents.count,
+      totalBets: totalBets.count,
+      totalStake: parseFloat(totalBets.total ?? "0"),
+      dailyRevenue: parseFloat(dailyBets.total ?? "0"),
+      dailyBets: dailyBets.count,
+      monthlyRevenue: parseFloat(monthlyBets.total ?? "0"),
+      monthlyBets: monthlyBets.count,
+      pendingPayouts: parseFloat(pendingPayouts.total ?? "0"),
+      wonBets: wonBets.count,
+      voucherSales: voucherStats.count,
+      voucherSalesValue: parseFloat(voucherStats.total ?? "0"),
+    },
+    dailySales,
+    agentPerformance,
+  });
 });
 
 export default router;

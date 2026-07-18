@@ -349,6 +349,7 @@ export function Shell({ children }: { children: ReactNode }) {
     { href: "/admin/up-markets",      icon: TrendingUp,        label: t("shell.up_markets"),         match: (l: string) => l === "/admin/up-markets" },
     { href: "/admin/referral",        icon: Share2,            label: t("shell.referral_program"),   match: (l: string) => l === "/admin/referral" },
     { href: "/admin/cash-out",        icon: Wallet,            label: t("shell.cash_out"),      match: (l: string) => l === "/admin/cash-out" },
+    { href: "/admin/branch-performance", icon: BarChart3,         label: t("nav.branch_performance"), match: (l: string) => l === "/admin/branch-performance" },
     { href: "/admin/settings",        icon: SlidersHorizontal, label: t("nav.settings"),       match: (l: string) => l === "/admin/settings" },
   ] : [];
 
