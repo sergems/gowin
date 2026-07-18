@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, betsTable, betSelectionsTable, walletsTable, transactionsTable, fixturesTable, usersTable, teamsTable, leaguesTable, oddsTable, marketsTable, settingsTable } from "@workspace/db";
+import { db, betsTable, betSelectionsTable, walletsTable, transactionsTable, fixturesTable, usersTable, teamsTable, leaguesTable, oddsTable, marketsTable, settingsTable, betBookingsTable } from "@workspace/db";
 import { eq, desc, and, count, inArray, ne } from "drizzle-orm";
 import { requireAuth, requireAdmin, requireAdminOrManager, type AuthRequest } from "../middlewares/auth";
 import {
@@ -420,6 +420,107 @@ router.get("/bets/:id", requireAuth, async (req: AuthRequest, res): Promise<void
       fixture: fixtureMap[s.fixtureId] || null,
     })),
   });
+});
+
+// ── Share / Replay bet ────────────────────────────────────────────────────────
+// Creates a booking code from a placed bet's selections so it can be shared
+// with friends or replayed by the owner. Only selections whose fixture is still
+// upcoming or live are included — finished / cancelled legs are silently dropped.
+// The response also returns the enriched selections array so the frontend can
+// load them directly (replay) without a second round-trip.
+
+const SHARE_CODE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+function generateShareCode(): string {
+  return Array.from({ length: 8 }, () => SHARE_CODE_CHARS[Math.floor(Math.random() * SHARE_CODE_CHARS.length)]).join("");
+}
+async function uniqueShareBookingCode(): Promise<string> {
+  for (let i = 0; i < 20; i++) {
+    const code = generateShareCode();
+    const [ex] = await db.select({ id: betBookingsTable.id }).from(betBookingsTable).where(eq(betBookingsTable.code, code)).limit(1);
+    if (!ex) return code;
+  }
+  throw new Error("Failed to generate unique share code");
+}
+
+router.post("/bets/:id/share", requireAuth, async (req: AuthRequest, res): Promise<void> => {
+  const id = parseInt(req.params.id as string, 10);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid bet ID" }); return; }
+
+  const [bet] = await db.select().from(betsTable).where(eq(betsTable.id, id)).limit(1);
+  if (!bet) { res.status(404).json({ error: "Bet not found" }); return; }
+
+  const isAdminOrManager = req.userRole === "admin" || req.userRole === "manager";
+  if (!isAdminOrManager && bet.userId !== req.userId) {
+    res.status(403).json({ error: "You do not have permission to share this bet" });
+    return;
+  }
+
+  const selections = await db.select().from(betSelectionsTable).where(eq(betSelectionsTable.betId, bet.id));
+  const fixtureIds = [...new Set(selections.map((s) => s.fixtureId))];
+  const fixtures = fixtureIds.length > 0 ? await db.select().from(fixturesTable).where(inArray(fixturesTable.id, fixtureIds)) : [];
+  const teamIds = [...new Set([...fixtures.map((f) => f.homeTeamId), ...fixtures.map((f) => f.awayTeamId)])] as number[];
+  const teams = teamIds.length > 0 ? await db.select().from(teamsTable).where(inArray(teamsTable.id, teamIds)) : [];
+  const leagueIds = [...new Set(fixtures.map((f) => f.leagueId))] as number[];
+  const leagues = leagueIds.length > 0 ? await db.select().from(leaguesTable).where(inArray(leaguesTable.id, leagueIds)) : [];
+  const teamMap = Object.fromEntries(teams.map((t) => [t.id, t]));
+  const leagueMap = Object.fromEntries(leagues.map((l) => [l.id, l]));
+  const fixtureMap = Object.fromEntries(
+    fixtures.map((f) => [f.id, {
+      ...f,
+      homeTeam: teamMap[f.homeTeamId] || null,
+      awayTeam: teamMap[f.awayTeamId] || null,
+      league: leagueMap[f.leagueId] || null,
+    }])
+  );
+
+  // Build booking selections — only upcoming/live fixtures, re-lookup current odds
+  const bookingSelections: any[] = [];
+  for (const sel of selections) {
+    const fixture = fixtureMap[sel.fixtureId];
+    if (!fixture || fixture.status === "finished" || fixture.status === "cancelled") continue;
+
+    // Find the current live odds row for this fixture + market + selection
+    const [currentOdds] = await db
+      .select({ id: oddsTable.id, oddsValue: oddsTable.oddsValue })
+      .from(oddsTable)
+      .innerJoin(marketsTable, eq(marketsTable.id, oddsTable.marketId))
+      .where(
+        and(
+          eq(marketsTable.fixtureId, sel.fixtureId),
+          eq(marketsTable.marketType, sel.market),
+          eq(oddsTable.selection, sel.selection),
+        )
+      )
+      .limit(1);
+
+    if (!currentOdds) continue; // market no longer offered — skip silently
+
+    bookingSelections.push({
+      oddsId: currentOdds.id,
+      fixtureId: sel.fixtureId,
+      market: sel.market,
+      selection: sel.selection,
+      odds: parseFloat(currentOdds.oddsValue),
+      fixtureName: `${fixture.homeTeam?.name ?? "?"} vs ${fixture.awayTeam?.name ?? "?"}`,
+      competitionName: fixture.league?.name ?? null,
+      startTime: fixture.startTime?.toISOString() ?? null,
+      displayTime: fixture.startTime
+        ? new Date(fixture.startTime.getTime() + 2 * 60 * 60 * 1000).toISOString()
+        : null,
+      fixtureStatus: fixture.status,
+    });
+  }
+
+  if (bookingSelections.length === 0) {
+    res.status(409).json({ error: "No shareable events found — all events on this bet have already played or markets are no longer available" });
+    return;
+  }
+
+  const code = await uniqueShareBookingCode();
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  await db.insert(betBookingsTable).values({ code, selections: bookingSelections, expiresAt });
+
+  res.status(201).json({ code, expiresAt, selections: bookingSelections });
 });
 
 // ── Void bet ──────────────────────────────────────────────────────────────────

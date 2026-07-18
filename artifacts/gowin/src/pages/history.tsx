@@ -3,10 +3,12 @@ import { useGetMyBets } from "@workspace/api-client-react";
 import { format } from "date-fns";
 import { fmtUTCDateTimeShort } from "@/lib/formatUTC";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronDown, ChevronUp, Trophy, Clock, CheckCircle2, XCircle, HelpCircle, Printer } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ChevronDown, ChevronUp, Trophy, Clock, CheckCircle2, XCircle, HelpCircle, Printer, Share2, RotateCcw, Copy, Check, BookMarked } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { printBetSlip, historyBetToPrintData } from "@/lib/printBetSlip";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
+import { useBetSlip } from "@/contexts/BetSlipContext";
 import { CashOutButton } from "@/components/CashOutButton";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -111,9 +113,15 @@ interface LiveFixtureData {
 
 export default function History() {
   const { formatCurrency, formatCurrencyAt, currency, exchangeRate, t } = useSiteSettings();
+  const { shareBet, isSharing, replayBet } = useBetSlip();
   const [activeTab, setActiveTab] = useState<"pending" | "won" | "lost" | "cashed_out">("pending");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [liveFixtures, setLiveFixtures] = useState<Map<number, LiveFixtureData>>(new Map());
+  // Share feature state
+  const [sharingBetId, setSharingBetId] = useState<number | null>(null);
+  const [replayingBetId, setReplayingBetId] = useState<number | null>(null);
+  const [sharedCode, setSharedCode] = useState<{ betId: number; code: string } | null>(null);
+  const [copiedShareCode, setCopiedShareCode] = useState(false);
 
   const { data: betsData, isLoading } = useGetMyBets(undefined, {
     query: { queryKey: ["myBets", activeTab] },
@@ -170,6 +178,26 @@ export default function History() {
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+
+  async function handleShare(betId: number) {
+    setSharingBetId(betId);
+    const code = await shareBet(betId);
+    setSharingBetId(null);
+    if (code) setSharedCode({ betId, code });
+  }
+
+  async function handleReplay(betId: number) {
+    setReplayingBetId(betId);
+    await replayBet(betId);
+    setReplayingBetId(null);
+  }
+
+  function copyCode(code: string) {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopiedShareCode(true);
+      setTimeout(() => setCopiedShareCode(false), 2000);
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -453,6 +481,24 @@ export default function History() {
                                 <Printer className="w-3.5 h-3.5" />
                                 <span className="hidden sm:inline">{t("bets.print")}</span>
                               </button>
+                              <button
+                                onClick={() => handleShare(bet.id)}
+                                disabled={sharingBetId === bet.id || isSharing}
+                                title="Share Betslip"
+                                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary border border-border rounded-md px-3 py-2 hover:bg-accent transition-colors shrink-0 disabled:opacity-50"
+                              >
+                                {sharingBetId === bet.id ? <span className="w-3.5 h-3.5 animate-spin border border-current border-t-transparent rounded-full inline-block" /> : <Share2 className="w-3.5 h-3.5" />}
+                                <span className="hidden sm:inline">{t("bets.share")}</span>
+                              </button>
+                              <button
+                                onClick={() => handleReplay(bet.id)}
+                                disabled={replayingBetId === bet.id}
+                                title="Replay — load upcoming events into bet slip"
+                                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary border border-border rounded-md px-3 py-2 hover:bg-accent transition-colors shrink-0 disabled:opacity-50"
+                              >
+                                {replayingBetId === bet.id ? <span className="w-3.5 h-3.5 animate-spin border border-current border-t-transparent rounded-full inline-block" /> : <RotateCcw className="w-3.5 h-3.5" />}
+                                <span className="hidden sm:inline">{t("bets.replay")}</span>
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -465,6 +511,31 @@ export default function History() {
           )}
         </div>
       </Tabs>
+
+      {/* Share code modal */}
+      {sharedCode && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-sm text-center space-y-4 shadow-2xl">
+            <BookMarked className="w-10 h-10 text-primary mx-auto" />
+            <div>
+              <p className="font-bold text-lg">{t("bets.share_betslip")}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("bets.share_betslip_desc")}</p>
+            </div>
+            <div className="bg-accent rounded-lg px-4 py-3 font-mono text-2xl font-bold tracking-widest select-all">
+              {sharedCode.code}
+            </div>
+            <button
+              onClick={() => copyCode(sharedCode.code)}
+              className="flex items-center gap-2 mx-auto text-sm text-primary hover:underline"
+            >
+              {copiedShareCode ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copiedShareCode ? t("betslip.copied") : t("betslip.copy_code")}
+            </button>
+            <p className="text-[11px] text-muted-foreground">{t("bets.share_valid_note")}</p>
+            <Button className="w-full" onClick={() => setSharedCode(null)}>{t("betslip.done")}</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

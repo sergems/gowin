@@ -82,7 +82,11 @@ interface BetSlipContextType {
   isPlacing: boolean;
   bookBet: () => Promise<string | null>;
   isBooking: boolean;
-  loadBooking: (code: string) => Promise<void>;
+  loadBooking: (code: string) => Promise<{ loaded: number; skipped: number }>;
+  // Share / Replay a placed bet from history
+  shareBet: (betId: number) => Promise<string | null>;
+  isSharing: boolean;
+  replayBet: (betId: number) => Promise<{ loaded: number; skipped: number }>;
   lastPlacedBet: PlacedBetDetails | null;
   clearLastPlacedBet: () => void;
 }
@@ -132,6 +136,7 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
   const [selections, setSelections] = useState<BetSlipItem[]>([]);
   const [stake, setStake] = useState<number>(0);
   const [isBooking, setIsBooking] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
   const [lastPlacedBet, setLastPlacedBet] = useState<PlacedBetDetails | null>(null);
   const { toast } = useToast();
   const { formatCurrency, maxWin: siteMaxWin } = useSiteSettings();
@@ -348,14 +353,24 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
   };
 
   // ── Load booking ──────────────────────────────────────────────────────────────
-  const loadBooking = async (code: string): Promise<void> => {
+  // Finished/cancelled fixtures are silently skipped — only upcoming + live are loaded.
+  const loadBooking = async (code: string): Promise<{ loaded: number; skipped: number }> => {
     const res = await fetch(`/api/bet-bookings/${encodeURIComponent(code.trim().toUpperCase())}`);
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.error || "Booking not found");
     }
     const data = await res.json();
-    const loaded: BetSlipItem[] = data.selections.map((s: any) => ({
+    const all: any[] = data.selections ?? [];
+
+    // Filter out played events — only load upcoming / live selections
+    const loadable = all.filter((s: any) => {
+      const status = s.fixture?.status ?? s.fixtureStatus;
+      return status !== "finished" && status !== "cancelled";
+    });
+    const skipped = all.length - loadable.length;
+
+    const items: BetSlipItem[] = loadable.map((s: any) => ({
       oddsId: s.oddsId,
       fixtureId: s.fixtureId,
       market: s.market,
@@ -366,7 +381,90 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
       competitionName: s.competitionName,
       startTime: s.startTime,
     }));
-    setSelections(loaded);
+    setSelections(items);
+
+    if (skipped > 0) {
+      toast({
+        title: skipped === all.length ? "All events have already played" : `${skipped} event${skipped !== 1 ? "s" : ""} skipped`,
+        description: skipped === all.length
+          ? "No selections were loaded — all events on this ticket have already played."
+          : `${skipped} event${skipped !== 1 ? "s" : ""} already played and skipped. ${items.length} selection${items.length !== 1 ? "s" : ""} loaded.`,
+        variant: skipped === all.length ? "destructive" : undefined,
+      });
+    }
+
+    return { loaded: items.length, skipped };
+  };
+
+  // ── Share a placed bet ────────────────────────────────────────────────────────
+  // Creates a booking code from a placed bet's selections (upcoming/live only).
+  const shareBet = async (betId: number): Promise<string | null> => {
+    setIsSharing(true);
+    try {
+      const res = await fetch(`/api/bets/${betId}/share`, { method: "POST" });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to share bet");
+      }
+      const data = await res.json();
+      return data.code as string;
+    } catch (err: any) {
+      toast({ title: "Share failed", description: err.message, variant: "destructive" });
+      return null;
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  // ── Replay a placed bet ───────────────────────────────────────────────────────
+  // Loads only selections whose fixture has NOT yet started (upcoming) into the
+  // current bet slip so the user can place a fresh bet without re-selecting manually.
+  const replayBet = async (betId: number): Promise<{ loaded: number; skipped: number }> => {
+    try {
+      const res = await fetch(`/api/bets/${betId}/share`, { method: "POST" });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to load bet");
+      }
+      const data = await res.json();
+
+      // Replay = upcoming only (not live — you can't place a pre-match bet on a live fixture)
+      const all: any[] = data.selections ?? [];
+      const upcoming = all.filter((s: any) => s.fixtureStatus === "upcoming");
+      const skipped = all.length - upcoming.length;
+
+      if (upcoming.length === 0) {
+        toast({
+          title: "Nothing to replay",
+          description: "All available events are already live or have finished — there are no upcoming fixtures to load.",
+          variant: "destructive",
+        });
+        return { loaded: 0, skipped: all.length };
+      }
+
+      const items: BetSlipItem[] = upcoming.map((s: any) => ({
+        oddsId: s.oddsId,
+        fixtureId: s.fixtureId,
+        market: s.market,
+        selection: s.selection,
+        odds: s.odds,
+        fixtureName: s.fixtureName || "Unknown Fixture",
+        marketName: s.market,
+        competitionName: s.competitionName,
+        startTime: s.startTime,
+      }));
+      setSelections(items);
+
+      const liveLabel = skipped > 0 ? ` · ${skipped} live/played event${skipped !== 1 ? "s" : ""} skipped` : "";
+      toast({
+        title: "Bet slip reloaded",
+        description: `${items.length} selection${items.length !== 1 ? "s" : ""} loaded${liveLabel}`,
+      });
+      return { loaded: items.length, skipped };
+    } catch (err: any) {
+      toast({ title: "Replay failed", description: err.message, variant: "destructive" });
+      return { loaded: 0, skipped: 0 };
+    }
   };
 
   const clearLastPlacedBet = () => setLastPlacedBet(null);
@@ -394,6 +492,9 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
         bookBet,
         isBooking,
         loadBooking,
+        shareBet,
+        isSharing,
+        replayBet,
         lastPlacedBet,
         clearLastPlacedBet,
       }}
