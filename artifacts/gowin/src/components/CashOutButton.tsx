@@ -84,8 +84,8 @@ export function CashOutButton({
     queryKey: ["cash-out-offer", betId],
     queryFn: () => fetchOffer(betId, token),
     enabled: !!token,
-    staleTime: 30_000,        // don't auto-refetch on mount if fresh
-    refetchInterval: 30_000,  // fallback poll every 30 s in case WS is down
+    staleTime: 10_000,        // don't auto-refetch on mount if fresh
+    refetchInterval: 10_000,  // fallback poll every 10 s in case WS is down
     retry: false,
   });
 

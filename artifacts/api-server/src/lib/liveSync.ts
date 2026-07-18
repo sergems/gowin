@@ -540,6 +540,26 @@ export async function syncSettledFixtures(): Promise<void> {
   }
 }
 
+// ── Dedicated cash-out recalc across ALL sports ───────────────────────────
+// The main fixture sync (above) only loads Football into liveCache, so its
+// triggerCashOutRecalcForFixtures call only covers Football fixture IDs.
+// This worker queries the DB for ALL live fixtures (all sports) every 15 s
+// and fires the WS signal so Basketball / Tennis / Cricket bets also get
+// real-time offer updates pushed to connected clients.
+async function syncCashOutAllSports(): Promise<void> {
+  try {
+    const allLive = await db
+      .select({ id: fixturesTable.id })
+      .from(fixturesTable)
+      .where(eq(fixturesTable.status, "live"));
+    if (allLive.length > 0) {
+      triggerCashOutRecalcForFixtures(allLive.map((f) => f.id)).catch(() => {});
+    }
+  } catch {
+    // non-critical — next interval will retry
+  }
+}
+
 // ── Start all live sync intervals ─────────────────────────────────────────
 export function startLiveSyncWorkers(): void {
   // Initial sync
@@ -557,5 +577,9 @@ export function startLiveSyncWorkers(): void {
   // Settled results: remove finished fixtures from cache every 60 s
   setInterval(() => { syncSettledFixtures().catch(() => {}); }, 60_000);
 
-  logger.info("Live sync workers started (fixture:15s, odds:10s API+DB, stats:30s, settled:60s)");
+  // Cash-out recalc for ALL sports (not just Football) every 15 s
+  // Ensures Basketball / Tennis / Cricket live bets receive CASH_OUT_UPDATE signals
+  setInterval(() => { syncCashOutAllSports().catch(() => {}); }, 15_000);
+
+  logger.info("Live sync workers started (fixture:15s, odds:10s API+DB, stats:30s, settled:60s, cashOut-all-sports:15s)");
 }

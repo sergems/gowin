@@ -106,11 +106,21 @@ async function buildBetContext(bet: any, executor: typeof db = db): Promise<BetC
     const marketOdds = market ? oddsByMarket.get(market.id) ?? [] : [];
     const oddsRow = marketOdds.find((o) => o.selection.trim().toLowerCase() === sel.selection.trim().toLowerCase());
 
-    // Pull live match-state from the in-memory cache (populated by liveSync workers)
+    // Pull live match-state from the in-memory cache (populated by liveSync workers).
+    // The cache only covers Football fixtures; for other sports (Basketball, Tennis,
+    // Cricket) it returns undefined, so we fall back gracefully.
     const liveFixture = liveCache.getFixture(sel.fixtureId);
     const liveStats = liveFixture?.stats ?? null;
     const totalRedCards = (liveStats?.redCardsHome ?? 0) + (liveStats?.redCardsAway ?? 0);
-    const matchMin = liveFixture?.matchMinute ?? null;
+
+    // Prefer the real API-provided match minute (from liveCache); when it isn't
+    // available (non-Football sports, API miss, cold-start) estimate elapsed time
+    // from kickoff so the momentum multiplier stays dynamic even without feed data.
+    let matchMin: string | null = liveFixture?.matchMinute ?? null;
+    if (matchMin === null && fixture.status === "live") {
+      const elapsed = Math.floor((Date.now() - fixture.startTime.getTime()) / 60_000);
+      matchMin = `${Math.min(Math.max(0, elapsed), 120)}'`;
+    }
 
     remaining.push({
       selectionId: sel.id,
