@@ -401,7 +401,12 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
   const shareBet = async (betId: number): Promise<string | null> => {
     setIsSharing(true);
     try {
-      const res = await fetch(`/api/bets/${betId}/share`, { method: "POST", credentials: "include" });
+      const token = localStorage.getItem("gowin_token");
+      const res = await fetch(`/api/bets/${betId}/share`, {
+        method: "POST",
+        credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || "Failed to share bet");
@@ -421,7 +426,12 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
   // current bet slip so the user can place a fresh bet without re-selecting manually.
   const replayBet = async (betId: number): Promise<{ loaded: number; skipped: number }> => {
     try {
-      const res = await fetch(`/api/bets/${betId}/share`, { method: "POST", credentials: "include" });
+      const token = localStorage.getItem("gowin_token");
+      const res = await fetch(`/api/bets/${betId}/share`, {
+        method: "POST",
+        credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || "Failed to load bet");
