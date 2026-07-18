@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import {
   Building2, Plus, Pencil, Trash2, Users, UserPlus, ChevronDown, ChevronRight,
-  ShieldCheck, Target, DollarSign, BarChart3,
+  ShieldCheck, Target, DollarSign, BarChart3, MapPin, Phone, Mail, ArrowUpCircle, ArrowDownCircle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
@@ -270,97 +270,96 @@ export default function BranchesPage() {
           <p>{t("branches.none")}</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {branches.map((b) => (
-            <div key={b.id} className="bg-zinc-800/80 border border-zinc-700/60 rounded-xl overflow-hidden hover:border-zinc-600/80 transition-colors">
+            <div key={b.id} className="group bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden hover:border-zinc-700 transition-all duration-200 shadow-lg shadow-black/20">
 
-              {/* ── Top row: icon + name/code/status + edit/delete ── */}
-              <div className="px-4 pt-3 pb-1 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-zinc-700/60 flex items-center justify-center shrink-0">
-                  <Building2 className="w-4 h-4 text-emerald-400" />
+              {/* ── Header ── */}
+              <div className="px-5 pt-5 pb-4 flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                    <Building2 className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-bold text-white text-base whitespace-nowrap">{b.name}</h3>
+                      <span className="font-mono text-[10px] bg-zinc-800 text-zinc-500 border border-zinc-700 px-1.5 py-0.5 rounded-md tracking-wider">{b.code}</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold tracking-wide ${b.status === "active" ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25" : "bg-red-500/15 text-red-400 border border-red-500/25"}`}>
+                        {b.status.toUpperCase()}
+                      </span>
+                    </div>
+                    {/* Contact line */}
+                    <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                      <span className="flex items-center gap-1 text-[11px] text-zinc-500">
+                        <MapPin className="w-3 h-3 shrink-0" />
+                        {b.city}, {b.country}{b.address ? ` · ${b.address}` : ""}
+                      </span>
+                      {b.phone && (
+                        <span className="flex items-center gap-1 text-[11px] text-zinc-500">
+                          <Phone className="w-3 h-3 shrink-0" />{b.phone}
+                        </span>
+                      )}
+                      {b.email && (
+                        <span className="flex items-center gap-1 text-[11px] text-zinc-500">
+                          <Mail className="w-3 h-3 shrink-0" />{b.email}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
-                  <h3 className="font-bold text-white text-sm whitespace-nowrap">{b.name}</h3>
-                  <span className="font-mono text-[10px] bg-zinc-700 text-zinc-400 px-1.5 py-0.5 rounded">{b.code}</span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${b.status === "active" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"}`}>
-                    {b.status}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button onClick={() => openEdit(b)}
-                    className="p-1.5 rounded-lg hover:bg-zinc-700 text-zinc-500 hover:text-zinc-200 transition-colors" title="Edit">
+                    className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-600 hover:text-zinc-200 transition-colors" title="Edit">
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
                   <button onClick={() => { if (confirm(`Delete branch "${b.name}"?`)) deleteMut.mutate(b.id); }}
-                    className="p-1.5 rounded-lg hover:bg-zinc-700 text-zinc-500 hover:text-red-400 transition-colors" title="Delete">
+                    className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-600 hover:text-red-400 transition-colors" title="Delete">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
 
-              {/* ── Contact details — full width, each item one line ── */}
-              <div className="px-4 pb-2 flex flex-col gap-0.5 text-xs text-zinc-500">
-                <div className="flex items-center gap-1 whitespace-nowrap">
-                  <span className="shrink-0">📍</span>
-                  <span>{b.city}, {b.country}{b.address ? ` — ${b.address}` : ""}</span>
+              {/* ── Stats bar ── */}
+              <div className="mx-5 mb-4 grid grid-cols-2 divide-x divide-zinc-800 bg-zinc-800/40 border border-zinc-800 rounded-xl overflow-hidden">
+                <div className="px-4 py-3">
+                  <p className="text-[10px] font-medium text-zinc-500 uppercase tracking-widest mb-0.5">Balance</p>
+                  <p className="text-lg font-black text-emerald-400 leading-none">{formatCurrency(parseFloat(String(b.balance ?? "0")))}</p>
                 </div>
-                {b.phone && (
-                  <div className="flex items-center gap-1 whitespace-nowrap">
-                    <span className="shrink-0">📞</span>
-                    <span>{b.phone}</span>
-                  </div>
-                )}
-                {b.email && (
-                  <div className="flex items-center gap-1 whitespace-nowrap">
-                    <span className="shrink-0">✉️</span>
-                    <span>{b.email}</span>
-                  </div>
-                )}
+                <div className="px-4 py-3">
+                  <p className="text-[10px] font-medium text-zinc-500 uppercase tracking-widest mb-0.5">Members</p>
+                  <p className="text-lg font-black text-white leading-none">{b.agentCount}</p>
+                </div>
               </div>
 
-              {/* ── Stats row: balance + members ── */}
-              <div className="px-4 pb-2 flex items-center gap-3 text-xs">
-                <span className="flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2.5 py-1 text-emerald-400 font-bold">
-                  <DollarSign className="w-3 h-3" />
-                  {formatCurrency(parseFloat(String(b.balance ?? "0")))}
-                </span>
-                <span className="flex items-center gap-1 text-zinc-500">
-                  <Users className="w-3 h-3" />
-                  {b.agentCount !== 1
-                    ? t("branches.member_count_plural").replace("{n}", String(b.agentCount))
-                    : t("branches.member_count").replace("{n}", String(b.agentCount))}
-                </span>
-              </div>
-
-              {/* ── Action row: Credit / Debit / Members / Add Admin ── */}
-              <div className="px-3 pb-3 grid grid-cols-4 gap-1.5 border-t border-zinc-700/40 pt-2.5">
+              {/* ── Action row ── */}
+              <div className="px-5 pb-5 grid grid-cols-4 gap-2">
                 <button
                   onClick={() => { setCreditBranch(b); setCreditAmount(""); setCreditNotes(""); setError(""); }}
-                  className="flex flex-col items-center gap-1 py-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-[10px] font-medium transition-colors border border-emerald-500/20"
+                  className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-semibold transition-all border border-emerald-500/20 hover:border-emerald-500/40"
                 >
-                  <DollarSign className="w-3.5 h-3.5" />
-                  <span>{t("branches.credit")}</span>
+                  <ArrowUpCircle className="w-3.5 h-3.5" />
+                  {t("branches.credit")}
                 </button>
                 <button
                   onClick={() => { setDebitBranch(b); setDebitAmount(""); setDebitNotes(""); setError(""); }}
-                  className="flex flex-col items-center gap-1 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[10px] font-medium transition-colors border border-red-500/20"
+                  className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-semibold transition-all border border-red-500/20 hover:border-red-500/40"
                 >
-                  <DollarSign className="w-3.5 h-3.5" />
-                  <span>Debit</span>
+                  <ArrowDownCircle className="w-3.5 h-3.5" />
+                  Debit
                 </button>
                 <button
                   onClick={() => setShowAddAdmin(b.id)}
-                  className="flex flex-col items-center gap-1 py-2 rounded-lg bg-zinc-700/40 hover:bg-zinc-700 text-zinc-400 hover:text-emerald-400 text-[10px] font-medium transition-colors border border-zinc-600/40"
+                  className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700/80 text-zinc-400 hover:text-zinc-100 text-xs font-semibold transition-all border border-zinc-700/60"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
-                  <span>Add Admin</span>
+                  Add Admin
                 </button>
                 <button
                   onClick={() => toggleExpand(b.id)}
-                  className={`flex flex-col items-center gap-1 py-2 rounded-lg text-[10px] font-medium transition-colors border ${expandedId === b.id ? "bg-zinc-600/60 border-zinc-500/40 text-zinc-200" : "bg-zinc-700/40 border-zinc-600/40 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60"}`}
+                  className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-all border ${expandedId === b.id ? "bg-zinc-700 border-zinc-600 text-white" : "bg-zinc-800 border-zinc-700/60 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700/80"}`}
                 >
                   <Users className="w-3.5 h-3.5" />
-                  <span>{expandedId === b.id ? "Hide" : t("branches.members")}</span>
+                  {expandedId === b.id ? "Hide" : t("branches.members")}
                 </button>
               </div>
 
