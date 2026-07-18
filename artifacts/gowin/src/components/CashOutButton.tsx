@@ -193,7 +193,7 @@ export function CashOutButton({
       ? "text-emerald-400"
       : flash === "down"
       ? "text-red-400"
-      : "text-amber-500";
+      : "text-emerald-500";
 
   return (
     <>
@@ -204,7 +204,7 @@ export function CashOutButton({
           setOpen(true);
         }}
         disabled={isFetching && !offer}
-        className={`bg-amber-500 hover:bg-amber-600 text-black font-bold shrink-0 transition-all duration-300 ${flashClass}`}
+        className={`bg-emerald-500 hover:bg-emerald-600 text-white font-bold shrink-0 transition-all duration-300 ${flashClass}`}
       >
         {isFetching ? (
           <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
@@ -272,7 +272,7 @@ export function CashOutButton({
             <Button
               onClick={handleConfirm}
               disabled={submitting || isFetching}
-              className="bg-amber-500 hover:bg-amber-600 text-black font-bold"
+              className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold"
             >
               {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
               {t("bets.cash_out_confirm_button")}

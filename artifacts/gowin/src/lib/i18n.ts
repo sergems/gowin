@@ -1302,7 +1302,7 @@ const translations = {
     "bets.no_selections": "Aucune sélection trouvée.",
     "bets.print": "Imprimer",
     "bets.cashed_out": "Encaissé",
-    "bets.cash_out": "Encaisser",
+    "bets.cash_out": "Cash Out",
     "bets.cash_out_offer": "Offre d'encaissement",
     "bets.cash_out_confirm_title": "Confirmer l'encaissement",
     "bets.cash_out_confirm_desc": "Cette action est irréversible. Une fois confirmé, votre ticket sera réglé immédiatement au montant de l'offre ci-dessous.",
