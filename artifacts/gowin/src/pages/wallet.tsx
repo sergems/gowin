@@ -347,30 +347,30 @@ export default function Wallet() {
       {isWalletLoading ? (
         <div className="h-20 bg-accent/50 rounded-xl animate-pulse" />
       ) : (
-        <Card className="border-primary/20 bg-primary/5">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                <WalletIcon className="w-5 h-5 text-primary" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-0.5">
-                  {isRestrictedRole ? t("wallet.balance_allocated") : t("wallet.balance")}
-                </p>
-                <h2 className="text-2xl font-black tracking-tight break-all">{formatCurrency(wallet?.balance ?? 0)}</h2>
-                {(wallet?.bonusBalance ?? 0) > 0 && (
-                  <div className="mt-1 flex items-center gap-2 text-xs">
-                    <span className="text-muted-foreground">Bonus:</span>
-                    <span className="font-semibold text-amber-500">{formatCurrency(wallet?.bonusBalance ?? 0)}</span>
-                    {(wallet?.bonusRolloverRemaining ?? 0) > 0 && (
-                      <span className="text-muted-foreground">(${Number(wallet?.bonusRolloverRemaining ?? 0).toFixed(2)} rollover)</span>
-                    )}
-                  </div>
-                )}
-              </div>
+        <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+              <WalletIcon className="w-4 h-4 text-primary" />
             </div>
-          </CardContent>
-        </Card>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-0.5">
+                {isRestrictedRole ? t("wallet.balance_allocated") : t("wallet.balance")}
+              </p>
+              <p className="text-xl font-black tracking-tight text-foreground break-all leading-none">
+                {formatCurrency(wallet?.balance ?? 0)}
+              </p>
+            </div>
+          </div>
+          {(wallet?.bonusBalance ?? 0) > 0 && (
+            <div className="shrink-0 text-right">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-0.5">Bonus</p>
+              <p className="text-sm font-bold text-amber-500 leading-none">{formatCurrency(wallet?.bonusBalance ?? 0)}</p>
+              {(wallet?.bonusRolloverRemaining ?? 0) > 0 && (
+                <p className="text-[10px] text-muted-foreground mt-0.5">${Number(wallet?.bonusRolloverRemaining ?? 0).toFixed(2)} rollover</p>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Action Tabs — hidden for staff */}
