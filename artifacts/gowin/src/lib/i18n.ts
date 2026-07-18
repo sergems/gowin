@@ -1301,7 +1301,7 @@ const translations = {
     "bets.odds": "Cote",
     "bets.no_selections": "Aucune sélection trouvée.",
     "bets.print": "Imprimer",
-    "bets.cashed_out": "Encaissé",
+    "bets.cashed_out": "Cashed Out",
     "bets.cash_out": "Cash Out",
     "bets.cash_out_offer": "Offre d'encaissement",
     "bets.cash_out_confirm_title": "Confirmer l'encaissement",
