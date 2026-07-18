@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-quer
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { ConfirmProvider } from "@/contexts/ConfirmContext";
 import { BetSlipProvider } from "@/contexts/BetSlipContext";
 import { LiveSocketProvider } from "@/contexts/LiveSocketContext";
 import { SiteSettingsProvider } from "@/contexts/SiteSettingsContext";
@@ -243,10 +244,12 @@ function App() {
           <LiveSocketProvider>
           <BetSlipProvider>
             <TooltipProvider>
-              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-                <Router />
-              </WouterRouter>
-              <Toaster />
+              <ConfirmProvider>
+                <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                  <Router />
+                </WouterRouter>
+                <Toaster />
+              </ConfirmProvider>
             </TooltipProvider>
           </BetSlipProvider>
           </LiveSocketProvider>

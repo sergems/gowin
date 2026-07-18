@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useConfirm } from "@/contexts/ConfirmContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -148,6 +149,7 @@ export default function BranchesPage() {
   const qc = useQueryClient();
   const { token } = useAuth();
   const { formatCurrency, t } = useSiteSettings();
+  const confirm = useConfirm();
   const [showCreate, setShowCreate] = useState(false);
   const [editBranch, setEditBranch] = useState<Branch | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -312,7 +314,7 @@ export default function BranchesPage() {
                     className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-600 hover:text-zinc-200 transition-colors" title="Edit">
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
-                  <button onClick={() => { if (confirm(`Delete branch "${b.name}"?`)) deleteMut.mutate(b.id); }}
+                  <button onClick={async () => { if (await confirm(`Delete branch "${b.name}"?`, { variant: "destructive", confirmLabel: "Delete", cancelLabel: "Cancel" })) deleteMut.mutate(b.id); }}
                     className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-600 hover:text-red-400 transition-colors" title="Delete">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>

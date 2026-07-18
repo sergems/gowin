@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import { useSiteSettings } from "../../contexts/SiteSettingsContext";
@@ -25,6 +26,7 @@ const emptyForm = { username: "", email: "", firstName: "", lastName: "", phoneN
 export default function BranchAgentsPage() {
   const { formatCurrency } = useSiteSettings();
   const qc = useQueryClient();
+  const { toast } = useToast();
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [tempCred, setTempCred] = useState<{ username: string; email: string; tempPassword: string; role: string } | null>(null);
@@ -55,7 +57,7 @@ export default function BranchAgentsPage() {
     mutationFn: ({ id, disabled }: { id: number; disabled: boolean }) =>
       api.patch<{ ok: boolean }>(`/api/branch/agents/${id}/suspend`, { disabled }).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["branch-agents"] }),
-    onError: (e: any) => alert(e.response?.data?.error ?? e.message ?? "Failed to update staff status"),
+    onError: (e: any) => toast({ title: "Error", description: e.response?.data?.error ?? e.message ?? "Failed to update staff status", variant: "destructive" }),
   });
 
   const agents: Agent[] = data?.agents ?? [];

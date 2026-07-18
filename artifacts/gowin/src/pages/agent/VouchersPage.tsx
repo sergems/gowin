@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useConfirm } from "@/contexts/ConfirmContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import { useSiteSettings } from "../../contexts/SiteSettingsContext";
@@ -17,6 +18,7 @@ interface Voucher {
 export default function AgentVouchersPage() {
   const qc = useQueryClient();
   const { formatCurrency, t } = useSiteSettings();
+  const confirm = useConfirm();
   const [printedCode, setPrintedCode] = useState<{ code: string; value: number } | null>(null);
   const [filter, setFilter] = useState<"all" | "available" | "sold" | "printed">("all");
 
@@ -170,7 +172,7 @@ export default function AgentVouchersPage() {
                             <Printer className="w-3.5 h-3.5" /> {t("agent.vouchers.print")}
                           </button>
                           <button
-                            onClick={() => { if (confirm(t("agent.vouchers.sell_confirm"))) sellMut.mutate(v.id); }}
+                            onClick={async () => { if (await confirm(t("agent.vouchers.sell_confirm"), { confirmLabel: "Sell", cancelLabel: "Cancel" })) sellMut.mutate(v.id); }}
                             disabled={sellMut.isPending}
                             className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-900/40 hover:bg-emerald-900/70 text-emerald-400 text-xs font-medium transition-colors disabled:opacity-50">
                             <ShoppingCart className="w-3.5 h-3.5" /> {t("agent.vouchers.sell")}

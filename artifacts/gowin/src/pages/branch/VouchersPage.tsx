@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import { useSiteSettings } from "../../contexts/SiteSettingsContext";
@@ -25,6 +26,7 @@ interface Agent { id: number; username: string; firstName: string | null; lastNa
 export default function BranchVouchersPage() {
   const qc = useQueryClient();
   const { formatCurrency } = useSiteSettings();
+  const { toast } = useToast();
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [showAllocate, setShowAllocate] = useState(false);
   const [targetAgentId, setTargetAgentId] = useState<number | null>(null);
@@ -50,7 +52,7 @@ export default function BranchVouchersPage() {
       setShowAllocate(false);
       setTargetAgentId(null);
       setError("");
-      alert(`${data.allocated} voucher(s) allocated to agent.`);
+      toast({ title: "Vouchers allocated", description: `${data.allocated} voucher(s) allocated to agent.`, variant: "success" });
     },
     onError: (e: any) => setError(e.response?.data?.error ?? e.message ?? "Failed to allocate"),
   });

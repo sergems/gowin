@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirm } from "@/contexts/ConfirmContext";
 import { format } from "date-fns";
 import { Search, CheckCircle2, XCircle, Clock, HelpCircle, Hash } from "lucide-react";
 
@@ -196,11 +197,12 @@ export default function AdminBets() {
   const { data, isLoading } = useListAllBets(undefined, { query: { queryKey: ["allBets"] } });
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const confirm = useConfirm();
   const voidMutation = useVoidBet();
   const bets = data?.bets || [];
 
   const handleVoid = async (betId: number) => {
-    if (!confirm(t("admin.bets.void_confirm"))) return;
+    if (!await confirm(t("admin.bets.void_confirm"), { variant: "destructive", confirmLabel: "Void Bet", cancelLabel: "Cancel" })) return;
     try {
       await voidMutation.mutateAsync({ id: betId });
       toast({ title: t("admin.bets.void_success"), description: t("admin.bets.stake_refunded"), variant: "success" });
