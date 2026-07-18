@@ -23,6 +23,38 @@ let running = false;
 let pendingFixtureIds = new Set<number>();
 let updateSeq = 0;
 
+// ── Suspension tracking ────────────────────────────────────────────────────────
+// When a significant live event fires (goal, red card, halftime) the affected
+// fixtures are suspended immediately so the frontend shows "Recalculating…"
+// while fresh odds are being fetched.  Suspension is lifted explicitly by
+// clearCashOutSuspensionForFixtures() — called by syncLiveOdds once new odds are
+// written to the DB — OR auto-expires after `durationMs` as a safety net so a
+// failed odds-sync never leaves the offer permanently suspended.
+
+const suspendedFixtures = new Map<number, number>(); // fixtureId → expiry timestamp
+
+/** Mark fixtures as suspended for up to `durationMs` ms (default 20 s). */
+export function suspendCashOutForFixtures(fixtureIds: number[], durationMs = 20_000): void {
+  const expiry = Date.now() + durationMs;
+  for (const id of fixtureIds) suspendedFixtures.set(id, expiry);
+}
+
+/** Explicitly lift the suspension once fresh odds are confirmed in the DB. */
+export function clearCashOutSuspensionForFixtures(fixtureIds: number[]): void {
+  for (const id of fixtureIds) suspendedFixtures.delete(id);
+}
+
+/** Returns true if any of the supplied fixture IDs is currently suspended. */
+export function isAnyCashOutFixtureSuspended(fixtureIds: number[]): boolean {
+  const now = Date.now();
+  return fixtureIds.some((id) => {
+    const expiry = suspendedFixtures.get(id);
+    if (expiry === undefined) return false;
+    if (now > expiry) { suspendedFixtures.delete(id); return false; } // auto-expire
+    return true;
+  });
+}
+
 async function runRecalc(fixtureIds: number[]): Promise<void> {
   try {
     // Find all bet selections that belong to these fixtures

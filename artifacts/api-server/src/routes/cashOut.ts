@@ -1,6 +1,6 @@
 import { Router } from "express";
 import {
-  db, betsTable, betSelectionsTable, fixturesTable, leaguesTable,
+  db, betsTable, betSelectionsTable, fixturesTable, leaguesTable, sportsTable,
   marketsTable, oddsTable, walletsTable, transactionsTable, usersTable,
   cashOutAuditLogTable, settingsTable,
 } from "@workspace/db";
@@ -10,6 +10,7 @@ import {
   getCashOutConfig, saveCashOutConfig, computeCashOutOffer, checkCashOutEligibility,
   DEFAULT_CASH_OUT_CONFIG, type CashOutConfig, type RemainingSelectionInput, type CashOutEligibilityContext,
 } from "../lib/cashOut";
+import { isAnyCashOutFixtureSuspended } from "../lib/cashOutEngine";
 import { getSelectionOutcome } from "../lib/autoSettle";
 import { UP_SELECTIONS } from "../lib/upMarkets";
 import { createNotification } from "../lib/notifications";
@@ -50,6 +51,24 @@ async function buildBetContext(bet: any, executor: typeof db = db): Promise<BetC
   const leagueIds = [...new Set(fixtures.map((f) => f.leagueId))];
   const leagues = leagueIds.length > 0 ? await executor.select().from(leaguesTable).where(inArray(leaguesTable.id, leagueIds)) : [];
   const leagueMap = Object.fromEntries(leagues.map((l) => [l.id, l]));
+
+  // ── Football-only enforcement ─────────────────────────────────────────────
+  // Cash Out is available for Football bets only. Fetch sport names for all
+  // leagues on this ticket and reject immediately if any fixture belongs to
+  // a different sport (Basketball, Tennis, Cricket, …).
+  const sportIds = [...new Set(leagues.map((l) => l.sportId).filter((id): id is number => id != null))];
+  const sports = sportIds.length > 0
+    ? await executor.select({ id: sportsTable.id, name: sportsTable.name }).from(sportsTable).where(inArray(sportsTable.id, sportIds))
+    : [];
+  const sportNameMap = new Map(sports.map((s) => [s.id, s.name.toLowerCase()]));
+  const hasNonFootball = leagues.some((l) => {
+    if (l.sportId == null) return false;
+    const name = sportNameMap.get(l.sportId) ?? "";
+    return name !== "" && !name.includes("football");
+  });
+  if (hasNonFootball) {
+    return { bet, ctx: null, settledLegsWinFactor: 1, blockedReason: "Cash Out is only available for Football bets" };
+  }
 
   const markets = fixtureIds.length > 0 ? await executor.select().from(marketsTable).where(inArray(marketsTable.fixtureId, fixtureIds)) : [];
   const marketIds = markets.map((m) => m.id);
@@ -187,6 +206,13 @@ router.get("/bets/:id/cash-out", requireAuth, async (req: AuthRequest, res): Pro
     return;
   }
 
+  // Immediately return "Recalculating…" if a significant live event (goal, red card,
+  // halftime) was just detected and we are waiting for fresh odds to land in the DB.
+  if (isAnyCashOutFixtureSuspended(ctx.remaining.map((r) => r.fixtureId))) {
+    res.json({ eligible: false, reason: "Cash Out suspended — recalculating after live event" });
+    return;
+  }
+
   const offer = computeCashOutOffer(ctx, parseFloat(bet.potentialWin), config, settledLegsWinFactor);
   res.json(offer);
 });
@@ -216,6 +242,11 @@ router.post("/bets/:id/cash-out", requireAuth, async (req: AuthRequest, res): Pr
   const preliminary = await buildBetContext(bet);
   if (!preliminary.ctx) {
     res.status(400).json({ error: preliminary.blockedReason ?? "This ticket is not eligible for Cash Out" });
+    return;
+  }
+  // Reject accept attempts during the recalculation window — odds haven't settled yet
+  if (isAnyCashOutFixtureSuspended(preliminary.ctx.remaining.map((r) => r.fixtureId))) {
+    res.status(409).json({ error: "Cash Out is temporarily suspended while odds are being recalculated after a live event. Please try again in a moment." });
     return;
   }
   const preliminaryOffer = computeCashOutOffer(preliminary.ctx, parseFloat(bet.potentialWin), config, preliminary.settledLegsWinFactor);

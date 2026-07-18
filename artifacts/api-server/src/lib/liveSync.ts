@@ -4,7 +4,7 @@ import { logger } from "./logger";
 import { liveCache, type LiveFixture, type LiveMarket, type LiveStats } from "./liveCache";
 import { broadcast } from "./wsServer";
 import { settleUpMarketBets, getUpMarketsConfig, injectUpMarkets } from "./upMarkets";
-import { triggerCashOutRecalcForFixtures } from "./cashOutEngine";
+import { triggerCashOutRecalcForFixtures, suspendCashOutForFixtures, clearCashOutSuspensionForFixtures } from "./cashOutEngine";
 
 async function getApiKey(): Promise<string | null> {
   try {
@@ -306,8 +306,10 @@ export async function syncLiveFixtures(): Promise<void> {
       }
     }
 
-    // ── Event detection: goal or halftime → immediate odds refresh ──────────
+    // ── Event detection: goal or halftime → immediate suspension + odds refresh
     let significantEvent = false;
+    const cashOutSuspendIds = new Set<number>(); // fixtures with live events → suspend immediately
+
     for (const f of fixtures) {
       const prev = prevMap.get(f.id);
       if (!prev) continue;
@@ -319,9 +321,10 @@ export async function syncLiveFixtures(): Promise<void> {
       ) {
         logger.info(
           { fixtureId: f.id, score: `${f.scoreHome}-${f.scoreAway}`, prev: `${prev.scoreHome}-${prev.scoreAway}` },
-          "LiveSync: goal detected — triggering immediate odds refresh",
+          "LiveSync: goal detected — suspending cash-out and triggering odds refresh",
         );
         significantEvent = true;
+        cashOutSuspendIds.add(f.id);
 
         // 1UP/2UP live settlement: run asynchronously so it doesn't block sync
         if (f.scoreHome !== null && f.scoreAway !== null && (f.sportName ?? "Football").toLowerCase() === "football") {
@@ -332,19 +335,27 @@ export async function syncLiveFixtures(): Promise<void> {
         }
       }
 
-      // Halftime kick-off
+      // Halftime / second-half kick-off — odds reset; must suspend before new offer shows
       if (f.matchMinute !== prev.matchMinute) {
         if (f.matchMinute === "HT" || f.matchMinute === "2H") {
-          logger.info({ fixtureId: f.id, minute: f.matchMinute }, "LiveSync: period change — triggering immediate odds refresh");
+          logger.info({ fixtureId: f.id, minute: f.matchMinute }, "LiveSync: period change — suspending cash-out and triggering odds refresh");
           significantEvent = true;
+          cashOutSuspendIds.add(f.id);
         }
       }
+    }
+
+    // Suspend cash-out immediately so the frontend shows "Recalculating…" while
+    // syncLiveOdds fetches and writes fresh odds to the DB.
+    if (cashOutSuspendIds.size > 0) {
+      suspendCashOutForFixtures([...cashOutSuspendIds]);
     }
 
     liveCache.setFixtures(fixtures);
     broadcast("LIVE_FIXTURE_UPDATE", { fixtures });
 
-    // Push cash-out recalculation for all live fixtures — fire-and-forget
+    // Push cash-out recalculation for all live fixtures — fire-and-forget.
+    // Suspended fixtures return "Recalculating…"; others return a fresh offer.
     if (fixtures.length > 0) {
       triggerCashOutRecalcForFixtures(fixtures.map((f) => f.id)).catch(() => {});
     }
@@ -430,8 +441,10 @@ export async function syncLiveOdds(): Promise<void> {
 
     liveCache.setLastOddsSync(new Date().toISOString());
     if (updates.length > 0) {
+      // Fresh odds are now in the DB — lift any active suspension before signalling
+      // the frontend to refetch so the new amount is shown (not "Recalculating…").
+      clearCashOutSuspensionForFixtures(updates.map((u) => u.fixtureId));
       broadcast("LIVE_ODDS_UPDATE", { updates });
-      // Odds changed — immediately push cash-out recalc for affected fixtures
       triggerCashOutRecalcForFixtures(updates.map((u) => u.fixtureId)).catch(() => {});
     }
   } catch (err: any) {
@@ -455,6 +468,8 @@ export async function syncLiveStats(): Promise<void> {
     let fetchOk = false;
     let redCardEvent = false;
 
+    const redCardFixtureIds = new Set<number>(); // fixtures that received a new red card
+
     for (const fixture of fixtures) {
       const stats = await fetchFixtureStats(apiKey, fixture.externalId!);
       if (stats) {
@@ -466,9 +481,10 @@ export async function syncLiveStats(): Promise<void> {
           if (newRed > prevRed) {
             logger.info(
               { fixtureId: fixture.id, prevRed, newRed },
-              "LiveSync: red card detected — triggering immediate odds refresh",
+              "LiveSync: red card detected — suspending cash-out and triggering odds refresh",
             );
             redCardEvent = true;
+            redCardFixtureIds.add(fixture.id);
           }
         }
 
@@ -477,6 +493,11 @@ export async function syncLiveStats(): Promise<void> {
         statsUpdates.push({ fixtureId: fixture.id, stats });
         fetchOk = true;
       }
+    }
+
+    // Suspend cash-out immediately for red-card fixtures
+    if (redCardFixtureIds.size > 0) {
+      suspendCashOutForFixtures([...redCardFixtureIds]);
     }
 
     if (!fetchOk && fixtures.length > 0) {
@@ -488,11 +509,11 @@ export async function syncLiveStats(): Promise<void> {
     liveCache.setLastStatsSync(new Date().toISOString());
     if (statsUpdates.length > 0) {
       broadcast("LIVE_STATS_UPDATE", { updates: statsUpdates });
-      // Stats changed (may include red cards) — push cash-out recalc
+      // Signal cash-out refetch — suspended fixtures return "Recalculating…"
       triggerCashOutRecalcForFixtures(statsUpdates.map((u) => u.fixtureId)).catch(() => {});
     }
 
-    // Immediate odds refresh on red card
+    // Immediate odds refresh on red card — syncLiveOdds will clear the suspension
     if (redCardEvent) {
       syncLiveOdds().catch(() => {});
     }
@@ -540,26 +561,6 @@ export async function syncSettledFixtures(): Promise<void> {
   }
 }
 
-// ── Dedicated cash-out recalc across ALL sports ───────────────────────────
-// The main fixture sync (above) only loads Football into liveCache, so its
-// triggerCashOutRecalcForFixtures call only covers Football fixture IDs.
-// This worker queries the DB for ALL live fixtures (all sports) every 15 s
-// and fires the WS signal so Basketball / Tennis / Cricket bets also get
-// real-time offer updates pushed to connected clients.
-async function syncCashOutAllSports(): Promise<void> {
-  try {
-    const allLive = await db
-      .select({ id: fixturesTable.id })
-      .from(fixturesTable)
-      .where(eq(fixturesTable.status, "live"));
-    if (allLive.length > 0) {
-      triggerCashOutRecalcForFixtures(allLive.map((f) => f.id)).catch(() => {});
-    }
-  } catch {
-    // non-critical — next interval will retry
-  }
-}
-
 // ── Start all live sync intervals ─────────────────────────────────────────
 export function startLiveSyncWorkers(): void {
   // Initial sync
@@ -569,6 +570,7 @@ export function startLiveSyncWorkers(): void {
   setInterval(() => { syncLiveFixtures().catch(() => {}); }, 15_000);
 
   // Odds: AllSports API update + DB read + broadcast every 10 s
+  // Also clears any active cash-out suspensions once fresh odds land in the DB
   setInterval(() => { syncLiveOdds().catch(() => {}); }, 10_000);
 
   // Stats from AllSports statistics API every 30 s
@@ -577,9 +579,5 @@ export function startLiveSyncWorkers(): void {
   // Settled results: remove finished fixtures from cache every 60 s
   setInterval(() => { syncSettledFixtures().catch(() => {}); }, 60_000);
 
-  // Cash-out recalc for ALL sports (not just Football) every 15 s
-  // Ensures Basketball / Tennis / Cricket live bets receive CASH_OUT_UPDATE signals
-  setInterval(() => { syncCashOutAllSports().catch(() => {}); }, 15_000);
-
-  logger.info("Live sync workers started (fixture:15s, odds:10s API+DB, stats:30s, settled:60s, cashOut-all-sports:15s)");
+  logger.info("Live sync workers started (fixture:15s, odds:10s API+DB, stats:30s, settled:60s)");
 }
