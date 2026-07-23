@@ -112,10 +112,9 @@ export async function settleLotteryDraw(
         oddsStr = payoutConfig.includedBonus?.[String(pickedCount)];
       }
     } else if (mode === "with_bonus" || mode === "include") {
-      // "Including Bonus Ball" mode: win only if ALL main numbers match
-      // AND the drawn bonus ball is among the selected numbers.
-      const bonusInSelected = bonusWinSet.size > 0 && [...bonusWinSet].some((b) => userNumbers.includes(b));
-      if (allMainMatched && bonusInSelected) {
+      // "With Bonus Ball" mode: win only if ALL main numbers match
+      // AND the user's picked bonus number matches the drawn bonus ball.
+      if (allMainMatched && bonusMatched) {
         oddsStr = payoutConfig.withBonus?.[String(pickedCount)];
       }
     } else {

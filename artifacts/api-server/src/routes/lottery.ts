@@ -164,8 +164,8 @@ router.post("/lottery/tickets", requireAuth, async (req: AuthRequest, res): Prom
     }
   }
 
-  // No bonus ball picker for any mode — only bonus_only requires explicit bonus pick
-  const needsBonus = isBonusOnly;
+  // bonus_only and with_bonus both require an explicit bonus ball pick
+  const needsBonus = isBonusOnly || bonusMode === "with_bonus";
   let bonusNums: number[] = [];
   if (needsBonus) {
     if (bonusNumber === null || bonusNumber === undefined) {

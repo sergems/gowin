@@ -219,8 +219,8 @@ const BONUS_MODE_OPTIONS: { mode: BonusMode; label: string; desc: string }[] = [
   },
   {
     mode: "with_bonus",
-    label: "Including Bonus Ball",
-    desc: "All numbers must be in the main draw AND the drawn bonus ball must be one of your picks",
+    label: "With Bonus Ball",
+    desc: "All main numbers must match AND your picked bonus ball must match the drawn bonus ball",
   },
 ];
 
@@ -430,8 +430,8 @@ export default function LotteryGame() {
 
   const isBonusOnly = playType === "bonus_only";
   const requiredMain = isBonusOnly ? 0 : parseInt(playType);
-  // Only bonus_only needs an explicit bonus ball pick; main modes don't
-  const needsBonusPick = isBonusOnly;
+  // bonus_only and with_bonus both require an explicit bonus ball pick
+  const needsBonusPick = isBonusOnly || bonusMode === "with_bonus";
   const hasBonus = (game?.bonusNumbersCount ?? 0) > 0;
 
   // Compute odds string
@@ -503,7 +503,7 @@ export default function LotteryGame() {
       if (!isBonusOnly) {
         body.bonusMode = bonusMode;
       }
-      if (needsBonusPick && selectedBonus !== null) {
+      if ((needsBonusPick || bonusMode === "with_bonus") && selectedBonus !== null) {
         body.bonusNumber = selectedBonus;
       }
       const { data } = await api.post("/api/lottery/tickets", body);
