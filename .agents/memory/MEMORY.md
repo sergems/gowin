@@ -13,3 +13,4 @@
 - [Full Cash Out feature](full-cash-out.md) — Dynamic live engine: event-driven recalc via liveSync → cashOutEngine → CASH_OUT_UPDATE WS (privacy-safe, no betIds); CashOutButton animates green/red on change; late-match-losing suspension at 85'
 - [Financial accept race safety](financial-accept-race-safety.md) — pattern for accept-a-live-offer + wallet-credit endpoints: re-quote inside the lock, atomic SQL increment, advisory-lock cap checks — test with concurrent curl requests, not sequential
 - [api-server dist bundle](api-server-dist-bundle.md) — dev script runs dist/index.mjs not src; also covers lib/db's own stale tsbuildinfo/dist affecting api-server via project references
+- [Lottery API sync](lottery-api-sync.md) — APIVerve auto-settle + jackpot sync; free tier covers powerball/megamillions/euromillions only; 3s stagger required; shared settle in lotterySettle.ts

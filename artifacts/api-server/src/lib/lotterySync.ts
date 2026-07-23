@@ -64,6 +64,7 @@ export async function syncLotteryDraws(): Promise<void> {
   }
 
   const now = new Date();
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
   for (const [slug, apiType] of Object.entries(APIVERVE_GAMES)) {
     try {
@@ -162,5 +163,8 @@ export async function syncLotteryDraws(): Promise<void> {
     } catch (err) {
       logger.error({ err, slug }, "Lottery sync failed for game");
     }
+
+    // Stagger calls to stay within APIVerve free-tier rate limits
+    await sleep(3_000);
   }
 }

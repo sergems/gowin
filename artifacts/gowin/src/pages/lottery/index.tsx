@@ -154,7 +154,8 @@ export default function LotteryLobby() {
     queryFn: async () => {
       const res = await fetch("/api/lottery/games");
       if (!res.ok) throw new Error("Failed to load games");
-      return res.json();
+      const data = await res.json();
+      return data.games;
     },
     staleTime: 30 * 1000,
   });
