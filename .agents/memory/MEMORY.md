@@ -14,3 +14,4 @@
 - [Financial accept race safety](financial-accept-race-safety.md) — pattern for accept-a-live-offer + wallet-credit endpoints: re-quote inside the lock, atomic SQL increment, advisory-lock cap checks — test with concurrent curl requests, not sequential
 - [api-server dist bundle](api-server-dist-bundle.md) — dev script runs dist/index.mjs not src; also covers lib/db's own stale tsbuildinfo/dist affecting api-server via project references
 - [Lottery API sync](lottery-api-sync.md) — APIVerve auto-settle + jackpot sync; free tier covers powerball/megamillions/euromillions only; 3s stagger required; shared settle in lotterySettle.ts
+- [Lottery flexible betting](lottery-flexible-betting.md) — 7 play markets (1–6 numbers + Bonus Ball Only); "jackpot" odds string pays draw.jackpot; POST /lottery/tickets requires playType+bonusMode+stake

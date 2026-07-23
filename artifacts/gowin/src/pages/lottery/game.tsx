@@ -1,15 +1,25 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
-import { ArrowLeft, Clock, Shuffle, Plus, Minus, Trophy, Ticket, Info, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Clock, Shuffle, Trophy, Ticket, Info, ChevronDown, ChevronUp, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import api from "@/lib/api";
-import { format, formatDistanceToNow, differenceInSeconds } from "date-fns";
+import { format, differenceInSeconds } from "date-fns";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface PayoutConfig {
+  excludedBonus: Record<string, string>;
+  includedBonus: Record<string, string>;
+  bonusOnly: string;
+  withBonus: Record<string, string>;
+}
 
 interface LotteryDraw {
   id: number;
@@ -37,9 +47,19 @@ interface LotteryGameDetail {
   color: string;
   emoji: string;
   description: string | null;
+  payoutConfig: PayoutConfig;
+  enabledPlayTypes: string[];
+  minStake: number;
+  maxStake: number;
+  maxPayout: number;
   recentDraws: LotteryDraw[];
   nextDraw: LotteryDraw | null;
 }
+
+type PlayType = "1" | "2" | "3" | "4" | "5" | "6" | "bonus_only";
+type BonusMode = "include" | "exclude";
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatJackpot(amount: number | null | undefined): string {
   const n = Number(amount ?? 0);
@@ -49,10 +69,31 @@ function formatJackpot(amount: number | null | undefined): string {
   return `$${n.toFixed(2)}`;
 }
 
-// Countdown timer hook
+function parseOdds(odds: string): number {
+  if (!odds || odds.toLowerCase() === "jackpot") return 0;
+  const parts = odds.split("/");
+  const num = parseFloat(parts[0] ?? "0");
+  const den = parseFloat(parts[1] ?? "1");
+  if (!isFinite(num) || !isFinite(den) || den === 0) return 1;
+  return (num + den) / den;
+}
+
+function fmtOdds(odds: string | undefined): string {
+  if (!odds) return "—";
+  if (odds.toLowerCase() === "jackpot") return "Jackpot";
+  return `${odds}`;
+}
+
+function computePotentialWin(oddsStr: string | undefined, stake: number, jackpot: number): number {
+  if (!oddsStr) return 0;
+  if (oddsStr.toLowerCase() === "jackpot") return jackpot;
+  return stake * parseOdds(oddsStr);
+}
+
+// ── Countdown ─────────────────────────────────────────────────────────────────
+
 function useCountdown(targetDate: string | null) {
   const [timeLeft, setTimeLeft] = useState(0);
-
   useEffect(() => {
     if (!targetDate) return;
     const calc = () => Math.max(0, differenceInSeconds(new Date(targetDate), new Date()));
@@ -60,7 +101,6 @@ function useCountdown(targetDate: string | null) {
     const interval = setInterval(() => setTimeLeft(calc()), 1000);
     return () => clearInterval(interval);
   }, [targetDate]);
-
   const days = Math.floor(timeLeft / 86400);
   const hours = Math.floor((timeLeft % 86400) / 3600);
   const mins = Math.floor((timeLeft % 3600) / 60);
@@ -72,37 +112,29 @@ function CountdownUnit({ value, label }: { value: number; label: string }) {
   return (
     <div className="flex flex-col items-center">
       <div className="w-14 h-14 rounded-xl bg-muted/50 border border-border/60 flex items-center justify-center">
-        <span className="text-2xl font-black tabular-nums text-foreground">
-          {String(value).padStart(2, "0")}
-        </span>
+        <span className="text-2xl font-black tabular-nums text-foreground">{String(value).padStart(2, "0")}</span>
       </div>
       <span className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">{label}</span>
     </div>
   );
 }
 
-// Number ball component
+// ── Number Ball ───────────────────────────────────────────────────────────────
+
 function NumberBall({
-  num,
-  selected,
-  onClick,
-  disabled,
-  color,
-  isWinning,
+  num, selected, onClick, disabled, color, isBonus = false, isWinning = false,
 }: {
-  num: number;
-  selected: boolean;
-  onClick: () => void;
-  disabled: boolean;
-  color: string;
-  isWinning?: boolean;
+  num: number; selected: boolean; onClick: () => void; disabled: boolean;
+  color: string; isBonus?: boolean; isWinning?: boolean;
 }) {
+  const bonusColor = "#f59e0b";
+  const activeColor = isBonus ? bonusColor : color;
   return (
     <button
       onClick={onClick}
       disabled={disabled && !selected}
       className={`
-        w-9 h-9 sm:w-10 sm:h-10 rounded-full text-sm font-bold transition-all duration-200
+        w-9 h-9 sm:w-10 sm:h-10 rounded-full text-sm font-bold transition-all duration-150
         flex items-center justify-center shrink-0
         ${selected
           ? "scale-110 text-white shadow-lg"
@@ -115,9 +147,9 @@ function NumberBall({
       `}
       style={
         selected
-          ? { background: color, boxShadow: `0 0 12px ${color}60` }
+          ? { background: activeColor, boxShadow: `0 0 12px ${activeColor}60` }
           : isWinning
-          ? { background: `${color}30`, borderColor: color, color: color }
+          ? { background: `${activeColor}30`, borderColor: activeColor, color: activeColor }
           : {}
       }
     >
@@ -126,6 +158,197 @@ function NumberBall({
   );
 }
 
+// ── Play Type Selector ────────────────────────────────────────────────────────
+
+const PLAY_TYPE_LABELS: Record<string, string> = {
+  "1": "1 Number",
+  "2": "2 Numbers",
+  "3": "3 Numbers",
+  "4": "4 Numbers",
+  "5": "5 Numbers",
+  "6": "6 Numbers",
+  "bonus_only": "Bonus Ball Only",
+};
+
+function PlayTypeSelector({
+  value, onChange, enabled, color,
+}: {
+  value: PlayType; onChange: (v: PlayType) => void; enabled: string[]; color: string;
+}) {
+  const types: PlayType[] = ["1", "2", "3", "4", "5", "6", "bonus_only"];
+  const available = types.filter((t) => enabled.includes(t));
+
+  return (
+    <div>
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Play Type</p>
+      <div className="flex flex-wrap gap-2">
+        {available.map((pt) => {
+          const active = value === pt;
+          return (
+            <button
+              key={pt}
+              onClick={() => onChange(pt)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all duration-150 ${
+                active
+                  ? "text-white border-transparent shadow-sm"
+                  : "text-muted-foreground border-border/50 hover:border-border bg-muted/20 hover:bg-muted/40"
+              }`}
+              style={active ? { background: color, borderColor: color } : {}}
+            >
+              {PLAY_TYPE_LABELS[pt]}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Bonus Mode Selector ───────────────────────────────────────────────────────
+
+function BonusModeSelector({
+  value, onChange, hasBonus,
+}: {
+  value: BonusMode; onChange: (v: BonusMode) => void; hasBonus: boolean;
+}) {
+  if (!hasBonus) return null;
+
+  return (
+    <div>
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Bonus Mode</p>
+      <div className="flex gap-2">
+        {(["exclude", "include"] as BonusMode[]).map((mode) => {
+          const active = value === mode;
+          const label = mode === "include" ? "Include Bonus Ball" : "Exclude Bonus Ball";
+          const desc = mode === "include"
+            ? "Win only if all numbers + bonus match"
+            : "Win if all numbers match (bonus ignored)";
+          return (
+            <button
+              key={mode}
+              onClick={() => onChange(mode)}
+              className={`flex-1 rounded-lg border p-3 text-left transition-all duration-150 ${
+                active
+                  ? "border-primary/50 bg-primary/10"
+                  : "border-border/50 bg-muted/20 hover:bg-muted/40"
+              }`}
+            >
+              <div className={`flex items-center gap-2 mb-0.5 ${active ? "text-primary" : "text-foreground"}`}>
+                <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${active ? "border-primary" : "border-muted-foreground/50"}`}>
+                  {active && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
+                </div>
+                <span className="text-sm font-semibold">{label}</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground ml-5">{desc}</p>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Payout Table ──────────────────────────────────────────────────────────────
+
+function PayoutTable({ game }: { game: LotteryGameDetail }) {
+  const [open, setOpen] = useState(false);
+  const cfg = game.payoutConfig;
+  const mainKeys = ["1", "2", "3", "4", "5", "6"].filter(
+    (k) => game.enabledPlayTypes.includes(k) && (cfg.excludedBonus?.[k] || cfg.includedBonus?.[k])
+  );
+  const bonusKeys = Object.keys(cfg.withBonus ?? {}).sort();
+
+  return (
+    <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
+      <button
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/20 transition-colors"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <div className="flex items-center gap-2 font-semibold text-foreground">
+          <Info className="w-4 h-4 text-primary" />
+          Payout Table
+        </div>
+        {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+      </button>
+
+      {open && (
+        <div className="border-t border-border/30 px-5 py-4 space-y-5">
+          {/* Excluded Bonus */}
+          {mainKeys.length > 0 && (
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Excluding Bonus</p>
+              <table className="w-full text-sm">
+                <tbody className="divide-y divide-border/20">
+                  {mainKeys.map((k) => {
+                    const odds = cfg.excludedBonus?.[k];
+                    if (!odds) return null;
+                    return (
+                      <tr key={k}>
+                        <td className="py-1.5 text-muted-foreground">{k} {k === "1" ? "Number" : "Numbers"}</td>
+                        <td className="py-1.5 text-right font-semibold" style={{ color: game.color }}>{fmtOdds(odds)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Included Bonus */}
+          {game.bonusNumbersCount > 0 && mainKeys.length > 0 && (
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Including Bonus Ball</p>
+              <table className="w-full text-sm">
+                <tbody className="divide-y divide-border/20">
+                  {mainKeys.map((k) => {
+                    const odds = cfg.includedBonus?.[k];
+                    if (!odds) return null;
+                    return (
+                      <tr key={k}>
+                        <td className="py-1.5 text-muted-foreground">{k} {k === "1" ? "Number" : "Numbers"} + Bonus</td>
+                        <td className="py-1.5 text-right font-semibold text-yellow-500">{fmtOdds(odds)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Bonus Ball Only */}
+          {game.bonusNumbersCount > 0 && game.enabledPlayTypes.includes("bonus_only") && (
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Bonus Ball</p>
+              <table className="w-full text-sm">
+                <tbody className="divide-y divide-border/20">
+                  <tr>
+                    <td className="py-1.5 text-muted-foreground">Bonus Ball Only</td>
+                    <td className="py-1.5 text-right font-semibold text-yellow-400">{fmtOdds(cfg.bonusOnly)}</td>
+                  </tr>
+                  {bonusKeys.map((k) => {
+                    const odds = cfg.withBonus?.[k];
+                    if (!odds) return null;
+                    return (
+                      <tr key={k}>
+                        <td className="py-1.5 text-muted-foreground">{k} {k === "1" ? "Number" : "Numbers"} + Bonus</td>
+                        <td className="py-1.5 text-right font-semibold text-yellow-400">{fmtOdds(odds)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <p className="text-[11px] text-muted-foreground/60">All payouts include stake. Jackpot is the current prize pool.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
+
 export default function LotteryGame() {
   const { gameId: slug } = useParams<{ gameId: string }>();
   const { user } = useAuth();
@@ -133,9 +356,11 @@ export default function LotteryGame() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const [playType, setPlayType] = useState<PlayType>("1");
+  const [bonusMode, setBonusMode] = useState<BonusMode>("exclude");
   const [selectedMain, setSelectedMain] = useState<number[]>([]);
-  const [selectedBonus, setSelectedBonus] = useState<number[]>([]);
-  const [quantity, setQuantity] = useState(1);
+  const [selectedBonus, setSelectedBonus] = useState<number | null>(null);
+  const [stake, setStake] = useState<string>("");
   const [showPrizeBreakdown, setShowPrizeBreakdown] = useState(false);
 
   const { data: game, isLoading } = useQuery<LotteryGameDetail>({
@@ -144,89 +369,137 @@ export default function LotteryGame() {
       const res = await fetch(`/api/lottery/games/${slug}`);
       if (!res.ok) throw new Error("Game not found");
       const data = await res.json();
-      // API returns { game, recentDraws, nextDraw } — flatten into one object
-      return { ...data.game, recentDraws: data.recentDraws ?? [], nextDraw: data.nextDraw ?? null };
+      const g = data.game;
+      return {
+        ...g,
+        ticketPrice: Number(g.ticketPrice ?? 0),
+        jackpot: Number(g.jackpot ?? 0),
+        minStake: Number(g.minStake ?? 1),
+        maxStake: Number(g.maxStake ?? 100),
+        maxPayout: Number(g.maxPayout ?? 500000),
+        enabledPlayTypes: g.enabledPlayTypes ?? ["1","2","3","4","5","6","bonus_only"],
+        recentDraws: data.recentDraws ?? [],
+        nextDraw: data.nextDraw ?? null,
+      };
     },
     enabled: !!slug,
   });
 
   const countdown = useCountdown(game?.nextDrawAt ?? null);
 
+  // When play type changes, trim selected numbers to new required count
+  useEffect(() => {
+    if (playType === "bonus_only") {
+      setSelectedMain([]);
+    } else {
+      const count = parseInt(playType);
+      setSelectedMain((prev) => prev.slice(0, count));
+    }
+    setSelectedBonus(null);
+  }, [playType]);
+
+  // When bonus mode changes to exclude, clear bonus selection
+  useEffect(() => {
+    if (bonusMode === "exclude") setSelectedBonus(null);
+  }, [bonusMode]);
+
+  const isBonusOnly = playType === "bonus_only";
+  const requiredMain = isBonusOnly ? 0 : parseInt(playType);
+  const needsBonusPick = isBonusOnly || bonusMode === "include";
+  const hasBonus = (game?.bonusNumbersCount ?? 0) > 0;
+
+  // Compute odds string
+  const payoutConfig = game?.payoutConfig;
+  let oddsStr: string | undefined;
+  if (payoutConfig) {
+    if (isBonusOnly) {
+      oddsStr = payoutConfig.bonusOnly ?? undefined;
+    } else if (bonusMode === "include") {
+      oddsStr = payoutConfig.includedBonus?.[playType] ?? undefined;
+    } else {
+      oddsStr = payoutConfig.excludedBonus?.[playType] ?? undefined;
+    }
+  }
+
+  const stakeAmount = parseFloat(stake) || 0;
+  const potentialWin = game && oddsStr && stakeAmount > 0
+    ? computePotentialWin(oddsStr, stakeAmount, game.jackpot)
+    : 0;
+
+  const isJackpot = oddsStr?.toLowerCase() === "jackpot";
+
+  const isReady =
+    selectedMain.length === requiredMain &&
+    (!needsBonusPick || !hasBonus || selectedBonus !== null) &&
+    stakeAmount > 0 &&
+    !!game &&
+    stakeAmount >= game.minStake &&
+    stakeAmount <= game.maxStake;
+
   const quickPick = useCallback(() => {
     if (!game) return;
-    const mainPool = Array.from({ length: game.mainNumbersMax }, (_, i) => i + 1);
-    const shuffled = mainPool.sort(() => Math.random() - 0.5).slice(0, game.mainNumbersCount);
-    setSelectedMain(shuffled.sort((a, b) => a - b));
-
-    if (game.bonusNumbersCount > 0) {
-      const bonusPool = Array.from({ length: game.bonusNumbersMax }, (_, i) => i + 1);
-      const bonusPicked = bonusPool.sort(() => Math.random() - 0.5).slice(0, game.bonusNumbersCount);
-      setSelectedBonus(bonusPicked.sort((a, b) => a - b));
+    if (!isBonusOnly) {
+      const pool = Array.from({ length: game.mainNumbersMax }, (_, i) => i + 1);
+      const picked = pool.sort(() => Math.random() - 0.5).slice(0, requiredMain).sort((a, b) => a - b);
+      setSelectedMain(picked);
     }
-  }, [game]);
+    if ((needsBonusPick && hasBonus) || isBonusOnly) {
+      const bPool = Array.from({ length: game.bonusNumbersMax }, (_, i) => i + 1);
+      setSelectedBonus(bPool[Math.floor(Math.random() * bPool.length)]!);
+    }
+  }, [game, isBonusOnly, needsBonusPick, hasBonus, requiredMain]);
 
   function toggleMain(num: number) {
     if (!game) return;
     setSelectedMain((prev) => {
       if (prev.includes(num)) return prev.filter((n) => n !== num);
-      if (prev.length >= game.mainNumbersCount) return prev;
+      if (prev.length >= requiredMain) return prev;
       return [...prev, num].sort((a, b) => a - b);
     });
   }
 
   function toggleBonus(num: number) {
-    if (!game) return;
-    setSelectedBonus((prev) => {
-      if (prev.includes(num)) return prev.filter((n) => n !== num);
-      if (prev.length >= game.bonusNumbersCount) return prev;
-      return [...prev, num].sort((a, b) => a - b);
-    });
+    setSelectedBonus((prev) => (prev === num ? null : num));
   }
-
-  const totalStake = game ? game.ticketPrice * quantity : 0;
-  const isReady =
-    game &&
-    selectedMain.length === game.mainNumbersCount &&
-    selectedBonus.length === game.bonusNumbersCount;
 
   const buyMutation = useMutation({
     mutationFn: async () => {
       if (!game) throw new Error("No game");
-      // Buy multiple tickets
-      const results = [];
-      for (let i = 0; i < quantity; i++) {
-        const nums = i === 0
-          ? { numbers: selectedMain, bonusNumbers: selectedBonus }
-          : (() => {
-              const mainPool = Array.from({ length: game.mainNumbersMax }, (_, j) => j + 1);
-              const main = mainPool.sort(() => Math.random() - 0.5).slice(0, game.mainNumbersCount).sort((a, b) => a - b);
-              const bonus = game.bonusNumbersCount > 0
-                ? Array.from({ length: game.bonusNumbersMax }, (_, j) => j + 1).sort(() => Math.random() - 0.5).slice(0, game.bonusNumbersCount).sort((a, b) => a - b)
-                : [];
-              return { numbers: main, bonusNumbers: bonus };
-            })();
-        const { data } = await api.post("/api/lottery/tickets", {
-          gameId: game.id,
-          ...nums,
-          stake: game.ticketPrice,
-        });
-        results.push(data);
+      const body: Record<string, unknown> = {
+        gameId: game.id,
+        playType,
+        stake: stakeAmount,
+        numbers: selectedMain,
+      };
+      if (!isBonusOnly) {
+        body.bonusMode = bonusMode;
       }
-      return results;
+      if (needsBonusPick && selectedBonus !== null) {
+        body.bonusNumber = selectedBonus;
+      }
+      const { data } = await api.post("/api/lottery/tickets", body);
+      return data;
     },
-    onSuccess: () => {
-      toast({ title: "🎰 Tickets purchased!", description: `${quantity} ticket(s) entered for ${game?.name}` });
+    onSuccess: (data) => {
+      const win = potentialWin > 0
+        ? ` • Potential win: ${formatCurrency ? formatCurrency(potentialWin) : `$${potentialWin.toFixed(2)}`}`
+        : "";
+      toast({
+        title: "🎰 Ticket purchased!",
+        description: `${PLAY_TYPE_LABELS[playType]} @ ${fmtOdds(oddsStr)} — Stake: $${stakeAmount.toFixed(2)}${win}`,
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/lottery/tickets/my"] });
       queryClient.invalidateQueries({ queryKey: ["/api/wallet"] });
-      // Reset
       setSelectedMain([]);
-      setSelectedBonus([]);
-      setQuantity(1);
+      setSelectedBonus(null);
+      setStake("");
     },
     onError: (err: Error) => {
       toast({ title: "Purchase failed", description: err.message, variant: "destructive" });
     },
   });
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   if (isLoading) {
     return (
@@ -278,11 +551,10 @@ export default function LotteryGame() {
               {game.description && <p className="text-sm text-muted-foreground/70 mt-1 max-w-sm">{game.description}</p>}
             </div>
           </div>
-
           <div className="md:ml-auto text-center">
             <div className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1.5">
               <Trophy className="w-3 h-3" />
-              <span>EST. JACKPOT</span>
+              <span>JACKPOT</span>
             </div>
             <div className="text-3xl md:text-4xl font-black" style={{ color: game.color }}>
               {formatJackpot(game.jackpot)}
@@ -310,14 +582,13 @@ export default function LotteryGame() {
         )}
       </div>
 
-      {/* Number picker */}
-      <div className="rounded-xl border border-border/50 bg-card p-5 space-y-5">
+      {/* Betting Panel */}
+      <div className="rounded-xl border border-border/50 bg-card p-5 space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h2 className="font-bold text-foreground">Pick Your Numbers</h2>
+            <h2 className="font-bold text-foreground">Place Your Bet</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Select {game.mainNumbersCount} main numbers from 1–{game.mainNumbersMax}
-              {game.bonusNumbersCount > 0 && ` + ${game.bonusNumbersCount} bonus from 1–${game.bonusNumbersMax}`}
+              Choose your play type, numbers, and stake
             </p>
           </div>
           <Button onClick={quickPick} variant="outline" size="sm" className="gap-2">
@@ -326,43 +597,62 @@ export default function LotteryGame() {
           </Button>
         </div>
 
-        {/* Main numbers */}
-        <div>
-          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
-            <span>Main Numbers</span>
-            <Badge
-              variant="outline"
-              className="text-[10px]"
-              style={selectedMain.length === game.mainNumbersCount ? { borderColor: `${game.color}60`, color: game.color } : {}}
-            >
-              {selectedMain.length} / {game.mainNumbersCount}
-            </Badge>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {Array.from({ length: game.mainNumbersMax }, (_, i) => i + 1).map((num) => (
-              <NumberBall
-                key={num}
-                num={num}
-                selected={selectedMain.includes(num)}
-                onClick={() => toggleMain(num)}
-                disabled={selectedMain.length >= game.mainNumbersCount}
-                color={game.color}
-              />
-            ))}
-          </div>
-        </div>
+        {/* Step 1: Play Type */}
+        <PlayTypeSelector
+          value={playType}
+          onChange={(v) => setPlayType(v)}
+          enabled={game.enabledPlayTypes}
+          color={game.color}
+        />
 
-        {/* Bonus numbers */}
-        {game.bonusNumbersCount > 0 && (
+        {/* Step 2: Bonus Mode (not shown for bonus_only) */}
+        {!isBonusOnly && (
+          <BonusModeSelector value={bonusMode} onChange={setBonusMode} hasBonus={hasBonus} />
+        )}
+
+        {/* Step 3: Main Number Grid */}
+        {!isBonusOnly && (
           <div>
-            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
-              <span>Bonus Numbers</span>
+            <div className="flex items-center gap-2 mb-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Pick {requiredMain} Number{requiredMain !== 1 ? "s" : ""}
+              </p>
               <Badge
                 variant="outline"
                 className="text-[10px]"
-                style={selectedBonus.length === game.bonusNumbersCount ? { borderColor: "#f59e0b60", color: "#f59e0b" } : {}}
+                style={selectedMain.length === requiredMain ? { borderColor: `${game.color}60`, color: game.color } : {}}
               >
-                {selectedBonus.length} / {game.bonusNumbersCount}
+                {selectedMain.length} / {requiredMain}
+              </Badge>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {Array.from({ length: game.mainNumbersMax }, (_, i) => i + 1).map((num) => (
+                <NumberBall
+                  key={num}
+                  num={num}
+                  selected={selectedMain.includes(num)}
+                  onClick={() => toggleMain(num)}
+                  disabled={selectedMain.length >= requiredMain}
+                  color={game.color}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Bonus Ball Picker (include mode or bonus_only) */}
+        {hasBonus && (needsBonusPick) && (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <p className="text-xs font-semibold text-yellow-500 uppercase tracking-wider">
+                {isBonusOnly ? "Pick Your Bonus Ball" : "Pick Bonus Ball"}
+              </p>
+              <Badge
+                variant="outline"
+                className="text-[10px]"
+                style={selectedBonus !== null ? { borderColor: "#f59e0b60", color: "#f59e0b" } : {}}
+              >
+                {selectedBonus !== null ? "1 / 1" : "0 / 1"}
               </Badge>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -370,10 +660,11 @@ export default function LotteryGame() {
                 <NumberBall
                   key={num}
                   num={num}
-                  selected={selectedBonus.includes(num)}
+                  selected={selectedBonus === num}
                   onClick={() => toggleBonus(num)}
-                  disabled={selectedBonus.length >= game.bonusNumbersCount}
-                  color="#f59e0b"
+                  disabled={false}
+                  color={game.color}
+                  isBonus
                 />
               ))}
             </div>
@@ -381,7 +672,7 @@ export default function LotteryGame() {
         )}
 
         {/* Selected display */}
-        {(selectedMain.length > 0 || selectedBonus.length > 0) && (
+        {(selectedMain.length > 0 || selectedBonus !== null) && (
           <div className="rounded-lg bg-muted/30 border border-border/40 p-3 flex flex-wrap gap-2 items-center">
             <span className="text-xs text-muted-foreground">Your pick:</span>
             {selectedMain.map((n) => (
@@ -391,50 +682,88 @@ export default function LotteryGame() {
                 style={{ background: game.color }}
               >{n}</span>
             ))}
-            {selectedBonus.map((n) => (
+            {selectedBonus !== null && (
               <span
-                key={`b${n}`}
                 className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white"
                 style={{ background: "#f59e0b" }}
-              >{n}</span>
-            ))}
+              >{selectedBonus}</span>
+            )}
           </div>
         )}
 
-        {/* Quantity + total */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4 pt-2 border-t border-border/30">
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-foreground">Tickets:</span>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                disabled={quantity <= 1}
-              >
-                <Minus className="w-3 h-3" />
-              </Button>
-              <span className="w-8 text-center font-bold text-foreground">{quantity}</span>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setQuantity((q) => Math.min(10, q + 1))}
-                disabled={quantity >= 10}
-              >
-                <Plus className="w-3 h-3" />
-              </Button>
+        {/* Step 4: Stake + Payout Preview */}
+        <div className="rounded-lg border border-border/40 bg-muted/20 p-4 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex-1 space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Stake
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">$</span>
+                <Input
+                  type="number"
+                  min={game.minStake}
+                  max={game.maxStake}
+                  step="0.01"
+                  placeholder={`${game.minStake.toFixed(2)} – ${game.maxStake.toFixed(2)}`}
+                  value={stake}
+                  onChange={(e) => setStake(e.target.value)}
+                  className="pl-7"
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Min: ${game.minStake.toFixed(2)} · Max: ${game.maxStake.toFixed(2)}
+              </p>
             </div>
+
+            {oddsStr && stakeAmount > 0 && (
+              <div className="sm:w-52 rounded-lg border border-border/50 bg-card p-3 space-y-1.5">
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Play Type</span>
+                  <span className="font-medium text-foreground">{PLAY_TYPE_LABELS[playType]}</span>
+                </div>
+                {!isBonusOnly && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Bonus Mode</span>
+                    <span className="font-medium text-foreground capitalize">{bonusMode}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Odds</span>
+                  <span className="font-semibold text-primary">{fmtOdds(oddsStr)}</span>
+                </div>
+                <div className="flex justify-between text-xs border-t border-border/30 pt-1.5">
+                  <span className="text-muted-foreground">Potential Win</span>
+                  <span
+                    className="font-black text-base"
+                    style={{ color: game.color }}
+                  >
+                    {isJackpot ? "Jackpot" : `$${potentialWin.toFixed(2)}`}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="sm:ml-auto flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Total:</span>
-            <span className="font-black text-lg" style={{ color: game.color }}>${totalStake.toFixed(2)}</span>
+          {/* Quick stake presets */}
+          <div className="flex gap-2 flex-wrap">
+            {[game.minStake, 5, 10, 20, 50].filter((v, i, a) => a.indexOf(v) === i && v <= game.maxStake).map((v) => (
+              <button
+                key={v}
+                onClick={() => setStake(v.toFixed(2))}
+                className={`px-2.5 py-1 rounded text-xs font-semibold border transition-all ${
+                  stakeAmount === v
+                    ? "border-primary/50 bg-primary/10 text-primary"
+                    : "border-border/50 bg-muted/20 text-muted-foreground hover:bg-muted/40"
+                }`}
+              >
+                ${v}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Buy button */}
+        {/* Buy Button */}
         {!user ? (
           <Link href="/login">
             <Button className="w-full h-12 text-base font-bold gap-2">
@@ -449,68 +778,39 @@ export default function LotteryGame() {
             onClick={() => buyMutation.mutate()}
             style={isReady ? { background: game.color, color: "white" } : {}}
           >
-            <Ticket className="w-5 h-5" />
-            {buyMutation.isPending ? "Processing…" : `Buy ${quantity} Ticket${quantity > 1 ? "s" : ""} — $${totalStake.toFixed(2)}`}
+            {buyMutation.isPending ? (
+              <>Processing…</>
+            ) : (
+              <>
+                <Ticket className="w-5 h-5" />
+                {isReady
+                  ? `Buy Ticket — $${stakeAmount.toFixed(2)}`
+                  : "Complete your selection"}
+              </>
+            )}
           </Button>
         )}
 
-        {!isReady && (
+        {/* Validation hint */}
+        {!isReady && user && (
           <p className="text-xs text-muted-foreground text-center">
-            {selectedMain.length < game.mainNumbersCount
-              ? `Select ${game.mainNumbersCount - selectedMain.length} more main number${game.mainNumbersCount - selectedMain.length !== 1 ? "s" : ""}`
-              : `Select ${game.bonusNumbersCount - selectedBonus.length} more bonus number${game.bonusNumbersCount - selectedBonus.length !== 1 ? "s" : ""}`}
+            {selectedMain.length < requiredMain
+              ? `Select ${requiredMain - selectedMain.length} more number${requiredMain - selectedMain.length !== 1 ? "s" : ""}`
+              : needsBonusPick && hasBonus && selectedBonus === null
+              ? "Select your bonus ball number"
+              : stakeAmount <= 0
+              ? "Enter your stake amount"
+              : stakeAmount < game.minStake
+              ? `Minimum stake is $${game.minStake.toFixed(2)}`
+              : stakeAmount > game.maxStake
+              ? `Maximum stake is $${game.maxStake.toFixed(2)}`
+              : ""}
           </p>
         )}
       </div>
 
-      {/* Prize breakdown (mock) */}
-      <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
-        <button
-          className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/20 transition-colors"
-          onClick={() => setShowPrizeBreakdown((v) => !v)}
-        >
-          <div className="flex items-center gap-2 font-semibold text-foreground">
-            <Info className="w-4 h-4 text-primary" />
-            Prize Breakdown
-          </div>
-          {showPrizeBreakdown ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-        </button>
-        {showPrizeBreakdown && (
-          <div className="border-t border-border/30 px-5 py-4">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-muted-foreground text-xs uppercase tracking-wider">
-                  <th className="text-left pb-3">Match</th>
-                  <th className="text-right pb-3">Prize</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/30">
-                <tr>
-                  <td className="py-2.5 font-medium text-foreground">{game.mainNumbersCount} + {game.bonusNumbersCount > 0 ? `${game.bonusNumbersCount} Bonus` : "0"}</td>
-                  <td className="py-2.5 text-right font-bold" style={{ color: game.color }}>JACKPOT — {formatJackpot(game.jackpot)}</td>
-                </tr>
-                <tr>
-                  <td className="py-2.5 text-muted-foreground">{game.mainNumbersCount} + 0</td>
-                  <td className="py-2.5 text-right text-muted-foreground">$1,000,000</td>
-                </tr>
-                <tr>
-                  <td className="py-2.5 text-muted-foreground">{Math.max(2, game.mainNumbersCount - 1)} + {game.bonusNumbersCount > 0 ? "1 Bonus" : "0"}</td>
-                  <td className="py-2.5 text-right text-muted-foreground">$50,000</td>
-                </tr>
-                <tr>
-                  <td className="py-2.5 text-muted-foreground">{Math.max(2, game.mainNumbersCount - 1)} + 0</td>
-                  <td className="py-2.5 text-right text-muted-foreground">$100</td>
-                </tr>
-                <tr>
-                  <td className="py-2.5 text-muted-foreground">{Math.max(1, game.mainNumbersCount - 2)} + 0</td>
-                  <td className="py-2.5 text-right text-muted-foreground">$7</td>
-                </tr>
-              </tbody>
-            </table>
-            <p className="text-[11px] text-muted-foreground/60 mt-3">* Prize breakdown shown is indicative. Actual prizes depend on number of winners.</p>
-          </div>
-        )}
-      </div>
+      {/* Payout Table */}
+      <PayoutTable game={game} />
 
       {/* Recent draws */}
       {game.recentDraws.length > 0 && (

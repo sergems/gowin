@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, lotteryGamesTable, lotteryDrawsTable, lotteryTicketsTable, walletsTable, transactionsTable } from "@workspace/db";
-import { DEFAULT_PAYOUT_CONFIG } from "@workspace/db";
+import { DEFAULT_PAYOUT_CONFIG, DEFAULT_ENABLED_PLAY_TYPES } from "@workspace/db";
 import { eq, desc, and, count } from "drizzle-orm";
 import { requireAuth, requireAdmin, type AuthRequest } from "../middlewares/auth";
 import type { PayoutConfig } from "@workspace/db";
@@ -22,7 +22,11 @@ function fmtGame(g: typeof lotteryGamesTable.$inferSelect) {
     ...g,
     ticketPrice: parseFloat(g.ticketPrice),
     jackpot: parseFloat(g.jackpot),
+    minStake: parseFloat(g.minStake),
+    maxStake: parseFloat(g.maxStake),
+    maxPayout: parseFloat(g.maxPayout),
     payoutConfig: (g.payoutConfig as PayoutConfig | null) ?? DEFAULT_PAYOUT_CONFIG,
+    enabledPlayTypes: (g.enabledPlayTypes as string[] | null) ?? DEFAULT_ENABLED_PLAY_TYPES,
   };
 }
 
@@ -74,25 +78,34 @@ router.get("/lottery/games/:slug", async (req, res): Promise<void> => {
   });
 });
 
-// POST /lottery/tickets — buy a ticket
-// Body: { gameId, numbers: number[], bonusNumber?: number | null }
-// numbers: 1 to game.mainNumbersCount picks (flexible — all must match to win)
-// bonusNumber: optional single bonus ball (null/omitted = excluded from ticket)
+// POST /lottery/tickets — buy a ticket (flexible betting)
+// Body: { gameId, playType, bonusMode?, numbers, bonusNumber?, stake }
+// playType: '1'|'2'|'3'|'4'|'5'|'6'|'bonus_only'
+// bonusMode: 'include'|'exclude' (required unless playType === 'bonus_only')
+// numbers: exactly N main numbers matching playType (0 for bonus_only)
+// bonusNumber: required when bonusMode === 'include' OR playType === 'bonus_only'
+// stake: bet amount (validated against game min/max)
 router.post("/lottery/tickets", requireAuth, async (req: AuthRequest, res): Promise<void> => {
-  const { gameId, numbers, bonusNumber = null } = req.body;
+  const { gameId, playType, bonusMode, numbers, bonusNumber = null, stake } = req.body;
 
-  if (!gameId || !Array.isArray(numbers)) {
-    res.status(400).json({ error: "gameId and numbers are required" });
+  if (!gameId || !playType) {
+    res.status(400).json({ error: "gameId and playType are required" });
     return;
   }
 
-  // Must pick at least 1 main number OR a bonus number (bonus-only tickets are valid)
-  if (numbers.length === 0 && (bonusNumber === null || bonusNumber === undefined)) {
-    res.status(400).json({ error: "Pick at least one main number or a bonus number" });
+  const VALID_PLAY_TYPES = ["1", "2", "3", "4", "5", "6", "bonus_only"];
+  if (!VALID_PLAY_TYPES.includes(String(playType))) {
+    res.status(400).json({ error: "Invalid playType" });
     return;
   }
 
-  // Load game — price is always taken server-side; never trust the client
+  const isBonusOnly = playType === "bonus_only";
+  if (!isBonusOnly && bonusMode !== "include" && bonusMode !== "exclude") {
+    res.status(400).json({ error: "bonusMode must be 'include' or 'exclude'" });
+    return;
+  }
+
+  // Load game
   const [game] = await db
     .select()
     .from(lotteryGamesTable)
@@ -104,32 +117,62 @@ router.post("/lottery/tickets", requireAuth, async (req: AuthRequest, res): Prom
     return;
   }
 
-  // Flexible count: 0 (bonus-only) to mainNumbersCount
-  if (numbers.length > game.mainNumbersCount) {
-    res.status(400).json({ error: `Pick up to ${game.mainNumbersCount} numbers` });
+  // Check play type is enabled for this game
+  const enabledTypes = (game.enabledPlayTypes as string[] | null) ?? DEFAULT_ENABLED_PLAY_TYPES;
+  if (!enabledTypes.includes(String(playType))) {
+    res.status(400).json({ error: "This play type is not available for this game" });
     return;
   }
 
-  const mainNums: number[] = numbers.map((n: unknown) => Number(n));
+  // Validate stake
+  const stakeAmount = parseFloat(String(stake));
+  if (!isFinite(stakeAmount) || stakeAmount <= 0) {
+    res.status(400).json({ error: "Invalid stake amount" });
+    return;
+  }
+  const minStake = parseFloat(game.minStake);
+  const maxStake = parseFloat(game.maxStake);
+  const maxPayout = parseFloat(game.maxPayout);
+  if (stakeAmount < minStake) {
+    res.status(400).json({ error: `Minimum stake is ${minStake.toFixed(2)}` });
+    return;
+  }
+  if (stakeAmount > maxStake) {
+    res.status(400).json({ error: `Maximum stake is ${maxStake.toFixed(2)}` });
+    return;
+  }
 
-  // Validate range + uniqueness (skip if no main numbers picked — bonus-only ticket)
+  // Validate numbers
+  const requiredCount = isBonusOnly ? 0 : parseInt(String(playType));
+  const mainNums: number[] = Array.isArray(numbers) ? numbers.map(Number) : [];
+
+  if (mainNums.length !== requiredCount) {
+    res.status(400).json({ error: `Pick exactly ${requiredCount} number${requiredCount !== 1 ? "s" : ""}` });
+    return;
+  }
+
   if (mainNums.length > 0) {
-    const allMainValid = mainNums.every((n) => Number.isInteger(n) && n >= 1 && n <= game.mainNumbersMax);
-    if (!allMainValid) {
-      res.status(400).json({ error: `Main numbers must be integers between 1 and ${game.mainNumbersMax}` });
+    const allValid = mainNums.every((n) => Number.isInteger(n) && n >= 1 && n <= game.mainNumbersMax);
+    if (!allValid) {
+      res.status(400).json({ error: `Numbers must be integers between 1 and ${game.mainNumbersMax}` });
       return;
     }
     if (new Set(mainNums).size !== mainNums.length) {
-      res.status(400).json({ error: "Main numbers must be unique" });
+      res.status(400).json({ error: "Numbers must be unique" });
       return;
     }
   }
 
-  // Validate bonus number (optional single value)
+  // Validate bonus number (required for include mode or bonus_only)
+  const needsBonus = isBonusOnly || bonusMode === "include";
   let bonusNums: number[] = [];
-  if (bonusNumber !== null && bonusNumber !== undefined) {
+  if (needsBonus) {
+    if (bonusNumber === null || bonusNumber === undefined) {
+      res.status(400).json({ error: "Select your bonus ball number" });
+      return;
+    }
     if (game.bonusNumbersCount === 0) {
-      res.status(400).json({ error: "This lottery has no bonus ball" });
+      res.status(400).json({ error: "This game has no bonus ball" });
       return;
     }
     const bn = Number(bonusNumber);
@@ -138,6 +181,42 @@ router.post("/lottery/tickets", requireAuth, async (req: AuthRequest, res): Prom
       return;
     }
     bonusNums = [bn];
+  }
+
+  // Look up odds from payout config
+  const payoutConfig = (game.payoutConfig as PayoutConfig | null) ?? DEFAULT_PAYOUT_CONFIG;
+  const effectiveBonusMode = isBonusOnly ? "bonus_only" : (bonusMode as string);
+
+  let oddsStr: string | undefined;
+  if (isBonusOnly) {
+    oddsStr = payoutConfig.bonusOnly ?? undefined;
+  } else if (bonusMode === "include") {
+    oddsStr = payoutConfig.includedBonus?.[String(playType)] ?? undefined;
+  } else {
+    oddsStr = payoutConfig.excludedBonus?.[String(playType)] ?? undefined;
+  }
+
+  if (!oddsStr) {
+    res.status(400).json({ error: "No payout configured for this play type. Contact support." });
+    return;
+  }
+
+  // Calculate potential win
+  let potentialWin: number;
+  if (oddsStr.toLowerCase() === "jackpot") {
+    potentialWin = parseFloat(game.jackpot);
+  } else {
+    const parts = oddsStr.split("/");
+    const num = parseFloat(parts[0] ?? "0");
+    const den = parseFloat(parts[1] ?? "1");
+    const multiplier = isFinite(num) && isFinite(den) && den !== 0 ? (num + den) / den : 1;
+    potentialWin = stakeAmount * multiplier;
+  }
+
+  if (potentialWin > maxPayout) {
+    const reducedStake = (maxPayout / (potentialWin / stakeAmount)).toFixed(2);
+    res.status(400).json({ error: `Maximum payout is ${maxPayout.toFixed(2)}. Reduce your stake to ${reducedStake} or less.` });
+    return;
   }
 
   // Require a pending draw
@@ -153,8 +232,7 @@ router.post("/lottery/tickets", requireAuth, async (req: AuthRequest, res): Prom
     return;
   }
 
-  // Deduct wallet — price is authoritative from server
-  const ticketPrice = parseFloat(game.ticketPrice);
+  // Deduct wallet
   const [wallet] = await db
     .select()
     .from(walletsTable)
@@ -167,19 +245,23 @@ router.post("/lottery/tickets", requireAuth, async (req: AuthRequest, res): Prom
   }
 
   const balance = parseFloat(wallet.balance);
-  if (balance < ticketPrice) {
+  if (balance < stakeAmount) {
     res.status(400).json({ error: "Insufficient balance" });
     return;
   }
 
-  const newBalance = (balance - ticketPrice).toFixed(2);
+  const newBalance = (balance - stakeAmount).toFixed(2);
   await db.update(walletsTable).set({ balance: newBalance }).where(eq(walletsTable.id, wallet.id));
+
+  const numsDesc = isBonusOnly
+    ? `Bonus only: ${bonusNums[0]}`
+    : `${mainNums.join(",")}${bonusNums.length ? `+B${bonusNums[0]}` : ""}`;
 
   await db.insert(transactionsTable).values({
     walletId: wallet.id,
-    amount: ticketPrice.toFixed(2),
+    amount: stakeAmount.toFixed(2),
     type: "debit",
-    description: `Lottery ticket — ${game.name} (${mainNums.join(",")}${bonusNums.length ? `+B${bonusNums[0]}` : ""})`,
+    description: `Lottery — ${game.name} [${playType} | ${effectiveBonusMode}] (${numsDesc})`,
   });
 
   const [ticket] = await db
@@ -190,8 +272,12 @@ router.post("/lottery/tickets", requireAuth, async (req: AuthRequest, res): Prom
       drawId: nextDraw.id,
       numbers: mainNums,
       bonusNumbers: bonusNums,
-      stake: ticketPrice.toFixed(2),
+      stake: stakeAmount.toFixed(2),
       status: "pending",
+      bonusMode: effectiveBonusMode,
+      playType: String(playType),
+      odds: oddsStr,
+      potentialWin: potentialWin.toFixed(2),
     })
     .returning();
 
@@ -199,6 +285,7 @@ router.post("/lottery/tickets", requireAuth, async (req: AuthRequest, res): Prom
     ...ticket,
     stake: parseFloat(ticket.stake),
     prizeAmount: ticket.prizeAmount ? parseFloat(ticket.prizeAmount) : null,
+    potentialWin: ticket.potentialWin ? parseFloat(ticket.potentialWin) : null,
     newBalance: parseFloat(newBalance),
   });
 });
@@ -296,7 +383,7 @@ router.patch("/admin/lottery/games/:id", requireAdmin, async (req, res): Promise
     name, country, ticketPrice, nextDrawAt,
     isActive, color, emoji, description,
     mainNumbersCount, mainNumbersMax, bonusNumbersCount, bonusNumbersMax,
-    payoutConfig,
+    payoutConfig, minStake, maxStake, maxPayout, enabledPlayTypes,
   } = req.body;
 
   const updates: Record<string, unknown> = {};
@@ -313,6 +400,10 @@ router.patch("/admin/lottery/games/:id", requireAdmin, async (req, res): Promise
   if (bonusNumbersCount !== undefined) updates.bonusNumbersCount = parseInt(bonusNumbersCount);
   if (bonusNumbersMax !== undefined) updates.bonusNumbersMax = parseInt(bonusNumbersMax);
   if (payoutConfig !== undefined) updates.payoutConfig = payoutConfig;
+  if (minStake !== undefined) updates.minStake = parseFloat(minStake).toFixed(2);
+  if (maxStake !== undefined) updates.maxStake = parseFloat(maxStake).toFixed(2);
+  if (maxPayout !== undefined) updates.maxPayout = parseFloat(maxPayout).toFixed(2);
+  if (enabledPlayTypes !== undefined) updates.enabledPlayTypes = enabledPlayTypes;
 
   if (Object.keys(updates).length === 0) {
     res.status(400).json({ error: "No valid fields to update" });

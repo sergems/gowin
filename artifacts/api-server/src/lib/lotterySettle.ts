@@ -17,6 +17,7 @@ import type { PayoutConfig } from "@workspace/db";
 import { logger } from "./logger";
 
 export function parseOdds(odds: string): number {
+  if (!odds || odds.toLowerCase() === "jackpot") return 0; // handled separately
   const parts = odds.split("/");
   const num = parseFloat(parts[0] ?? "0");
   const den = parseFloat(parts[1] ?? "1");
@@ -126,7 +127,14 @@ export async function settleLotteryDraw(
     const storedOdds = (ticket as any).odds as string | undefined;
     const effectiveOdds = storedOdds && oddsStr ? storedOdds : oddsStr;
 
-    const prizeAmount = effectiveOdds ? stake * parseOdds(effectiveOdds) : 0;
+    let prizeAmount = 0;
+    if (effectiveOdds) {
+      if (effectiveOdds.toLowerCase() === "jackpot") {
+        prizeAmount = parseFloat(row.draw.jackpot ?? "0");
+      } else {
+        prizeAmount = stake * parseOdds(effectiveOdds);
+      }
+    }
     const isWinner = prizeAmount > 0;
 
     if (isWinner) {

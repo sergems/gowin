@@ -39,6 +39,10 @@ interface LotteryGame {
   emoji: string;
   description: string | null;
   payoutConfig: PayoutConfig | null;
+  minStake: number;
+  maxStake: number;
+  maxPayout: number;
+  enabledPlayTypes: string[];
 }
 
 interface LotteryDraw {
@@ -81,10 +85,16 @@ async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
 // ── Default payout config ─────────────────────────────────────────────────────
 
 const DEFAULT_PAYOUT_CONFIG: PayoutConfig = {
-  excludedBonus: { "1": "13/2", "2": "60/1", "3": "600/1", "4": "10000/1", "5": "100000/1" },
-  includedBonus: { "1": "11/2", "2": "50/1", "3": "420/1", "4": "5000/1", "5": "50000/1" },
+  excludedBonus: { "1": "13/2", "2": "60/1", "3": "600/1", "4": "10000/1", "5": "100000/1", "6": "jackpot" },
+  includedBonus: { "1": "11/2", "2": "50/1", "3": "420/1", "4": "5000/1", "5": "50000/1", "6": "jackpot" },
   bonusOnly: "45/1",
   withBonus: { "1": "344/1", "2": "2805/1", "3": "27645/1", "4": "460045/1" },
+};
+
+const ALL_PLAY_TYPES = ["1", "2", "3", "4", "5", "6", "bonus_only"] as const;
+const PLAY_TYPE_LABELS: Record<string, string> = {
+  "1": "1 Number", "2": "2 Numbers", "3": "3 Numbers", "4": "4 Numbers",
+  "5": "5 Numbers", "6": "6 Numbers (Full)", "bonus_only": "Bonus Ball Only",
 };
 
 // ── Payout Config Editor ──────────────────────────────────────────────────────
@@ -93,7 +103,7 @@ function PayoutConfigEditor({ value, onChange }: {
   value: PayoutConfig;
   onChange: (v: PayoutConfig) => void;
 }) {
-  const mainKeys = ["1", "2", "3", "4", "5"];
+  const mainKeys = ["1", "2", "3", "4", "5", "6"];
   const bonusKeys = ["1", "2", "3", "4"];
 
   function setMain(section: "excludedBonus" | "includedBonus", key: string, val: string) {
@@ -102,20 +112,24 @@ function PayoutConfigEditor({ value, onChange }: {
 
   return (
     <div className="space-y-5 rounded-xl border border-border/50 bg-background/40 p-4">
-      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Payout Odds (fractional, e.g. 13/2)</p>
+      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+        Payout Odds (fractional e.g. 420/1, or "jackpot" for 6-number jackpot)
+      </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Excluded Bonus */}
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-muted-foreground italic">Classic — Excluded Bonus</p>
+          <p className="text-xs font-semibold text-muted-foreground italic">Excluding Bonus Ball</p>
           {mainKeys.map((k) => (
             <div key={k} className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground w-20 shrink-0">{k} number{k !== "1" ? "s" : ""}</span>
+              <span className="text-xs text-muted-foreground w-20 shrink-0">
+                {k} {k === "6" ? "Numbers ★" : k === "1" ? "Number" : "Numbers"}
+              </span>
               <Input
                 className="h-7 text-xs"
                 value={value.excludedBonus?.[k] ?? ""}
                 onChange={(e) => setMain("excludedBonus", k, e.target.value)}
-                placeholder="e.g. 13/2"
+                placeholder={k === "6" ? "jackpot" : "e.g. 13/2"}
               />
             </div>
           ))}
@@ -123,24 +137,26 @@ function PayoutConfigEditor({ value, onChange }: {
 
         {/* Included Bonus */}
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-muted-foreground italic">Classic — Included Bonus</p>
+          <p className="text-xs font-semibold text-muted-foreground italic">Including Bonus Ball</p>
           {mainKeys.map((k) => (
             <div key={k} className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground w-20 shrink-0">{k} number{k !== "1" ? "s" : ""}</span>
+              <span className="text-xs text-muted-foreground w-20 shrink-0">
+                {k} {k === "6" ? "Numbers ★" : k === "1" ? "Number" : "Numbers"}
+              </span>
               <Input
                 className="h-7 text-xs"
                 value={value.includedBonus?.[k] ?? ""}
                 onChange={(e) => setMain("includedBonus", k, e.target.value)}
-                placeholder="e.g. 11/2"
+                placeholder={k === "6" ? "jackpot" : "e.g. 11/2"}
               />
             </div>
           ))}
         </div>
       </div>
 
-      {/* Bonus ball */}
+      {/* Bonus ball only */}
       <div className="flex items-center gap-3 border-t border-border/30 pt-4">
-        <span className="text-xs font-bold text-yellow-500 w-24 shrink-0">Bonus Ball</span>
+        <span className="text-xs font-bold text-yellow-500 w-24 shrink-0">Bonus Ball Only</span>
         <Input
           className="h-7 text-xs w-28"
           value={value.bonusOnly ?? ""}
@@ -149,13 +165,13 @@ function PayoutConfigEditor({ value, onChange }: {
         />
       </div>
 
-      {/* N + Bonus Ball */}
+      {/* N + Bonus Ball (exclude mode enhanced) */}
       <div className="space-y-2">
-        <p className="text-xs font-semibold text-yellow-500/80">N + Bonus Ball (main match + bonus)</p>
+        <p className="text-xs font-semibold text-yellow-500/80">N Numbers + Bonus (exclude mode bonus coincidence)</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {bonusKeys.map((k) => (
             <div key={k} className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground w-20 shrink-0">{k}+ Bonus</span>
+              <span className="text-xs text-muted-foreground w-20 shrink-0">{k} + Bonus</span>
               <Input
                 className="h-7 text-xs"
                 value={value.withBonus?.[k] ?? ""}
@@ -173,13 +189,17 @@ function PayoutConfigEditor({ value, onChange }: {
 // ── Game Form ─────────────────────────────────────────────────────────────────
 
 const DEFAULT_GAME = {
-  name: "", slug: "", country: "", mainNumbersCount: 5, mainNumbersMax: 50,
-  bonusNumbersCount: 0, bonusNumbersMax: 0, ticketPrice: 2,
+  name: "", slug: "", country: "", mainNumbersCount: 6, mainNumbersMax: 52,
+  bonusNumbersCount: 1, bonusNumbersMax: 52, ticketPrice: 2,
   nextDrawAt: "", color: "#4ade80", emoji: "🎰", description: "", isActive: true,
   payoutConfig: DEFAULT_PAYOUT_CONFIG,
+  minStake: 1, maxStake: 100, maxPayout: 500000,
+  enabledPlayTypes: ["1", "2", "3", "4", "5", "6", "bonus_only"],
 };
 
-type GameForm = typeof DEFAULT_GAME;
+type GameForm = typeof DEFAULT_GAME & {
+  enabledPlayTypes: string[];
+};
 
 function GameFormPanel({ initial, onSave, onCancel }: {
   initial?: Partial<GameForm>;
@@ -260,6 +280,65 @@ function GameFormPanel({ initial, onSave, onCancel }: {
       <div className="space-y-1.5">
         <Label>Description (optional)</Label>
         <Textarea value={form.description} onChange={(e) => set("description", e.target.value)} rows={2} />
+      </div>
+
+      {/* Stake & payout limits */}
+      <div>
+        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Stake & Payout Limits</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="space-y-1.5">
+            <Label>Min Stake ($)</Label>
+            <Input
+              type="number" min="0.01" step="0.01"
+              value={form.minStake}
+              onChange={(e) => set("minStake", parseFloat(e.target.value) || 1)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Max Stake ($)</Label>
+            <Input
+              type="number" min="1" step="1"
+              value={form.maxStake}
+              onChange={(e) => set("maxStake", parseFloat(e.target.value) || 100)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Max Payout ($)</Label>
+            <Input
+              type="number" min="100" step="100"
+              value={form.maxPayout}
+              onChange={(e) => set("maxPayout", parseFloat(e.target.value) || 500000)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Enabled Play Types */}
+      <div>
+        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Enabled Play Types</p>
+        <div className="flex flex-wrap gap-2">
+          {ALL_PLAY_TYPES.map((pt) => {
+            const enabled = (form.enabledPlayTypes ?? []).includes(pt);
+            return (
+              <button
+                key={pt}
+                type="button"
+                onClick={() => {
+                  const current = form.enabledPlayTypes ?? [];
+                  set("enabledPlayTypes", enabled ? current.filter((x) => x !== pt) : [...current, pt]);
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                  enabled
+                    ? "bg-primary/15 border-primary/40 text-primary"
+                    : "bg-muted/20 border-border/50 text-muted-foreground"
+                }`}
+              >
+                {PLAY_TYPE_LABELS[pt]}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-2">Toggle which play types are available for this game.</p>
       </div>
 
       <div className="flex items-center gap-3">
@@ -521,8 +600,13 @@ export default function AdminLottery() {
             <GameFormPanel
               initial={{
                 ...editGame,
+                description: editGame.description ?? "",
                 nextDrawAt: editGame.nextDrawAt ? editGame.nextDrawAt.slice(0, 16) : "",
                 payoutConfig: editGame.payoutConfig ?? DEFAULT_PAYOUT_CONFIG,
+                minStake: editGame.minStake ?? 1,
+                maxStake: editGame.maxStake ?? 100,
+                maxPayout: editGame.maxPayout ?? 500000,
+                enabledPlayTypes: editGame.enabledPlayTypes ?? ["1","2","3","4","5","6","bonus_only"],
               }}
               onSave={async (data) => { await updateGame.mutateAsync({ id: editGame.id, data }); }}
               onCancel={() => setEditGame(null)}
