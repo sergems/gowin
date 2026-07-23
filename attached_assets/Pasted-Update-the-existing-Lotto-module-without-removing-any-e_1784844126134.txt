@@ -1,0 +1,316 @@
+Update the existing Lotto module without removing any existing functionality. Extend the current system to support flexible betting options similar to professional lottery bookmakers.
+
+Overall Requirements
+
+The current system only allows users to play a full lotto ticket.
+
+Update it so that users can bet on:
+
+1 Number
+2 Numbers
+3 Numbers
+4 Numbers
+5 Numbers
+6 Numbers (Full Jackpot)
+
+Each of these must be treated as a separate betting market.
+
+Bonus Ball Modes
+
+For every ticket the player must choose one of three bonus options.
+
+Option 1
+
+Include Bonus Ball
+
+Meaning:
+Selections are matched including the bonus ball.
+
+Example:
+
+Player picks
+
+12
+18
+25
+31
+
+Bonus Included
+
+If the player matches the required numbers including the bonus ball, payout is based on the "Included Bonus" table.
+
+Option 2
+
+Exclude Bonus Ball
+
+The bonus ball is ignored.
+
+Example
+
+Player chooses
+
+7
+14
+28
+
+No bonus considered.
+
+Payout comes from the Excluded Bonus table.
+
+Option 3
+
+Bonus Ball Only
+
+Player only bets on the Bonus Ball.
+
+They select ONE number only.
+
+Example
+
+Bonus Ball
+
+17
+
+Only the Bonus Ball determines winnings.
+
+Betting Flow
+
+Step 1
+
+Select Lotto Draw
+
+Example
+
+Classic Lotto
+
+Powerball
+
+Daily Lotto
+
+etc.
+
+Step 2
+
+Choose Play Type
+
+Radio buttons
+
+○ 1 Number
+
+○ 2 Numbers
+
+○ 3 Numbers
+
+○ 4 Numbers
+
+○ 5 Numbers
+
+○ 6 Numbers
+
+○ Bonus Ball Only
+
+Step 3
+
+Choose Bonus Mode
+
+Only visible if Play Type is NOT Bonus Ball Only.
+
+Radio buttons
+
+○ Include Bonus
+
+○ Exclude Bonus
+
+Step 4
+
+Pick Numbers
+
+If user selected
+
+1 Number
+
+Allow exactly ONE number.
+
+If
+
+2 Numbers
+
+Allow exactly TWO numbers.
+
+Continue similarly until
+
+6 Numbers
+
+Allow exactly six unique numbers.
+
+Validation:
+
+No duplicates.
+
+Cannot submit unless exact quantity selected.
+
+Bonus Ball Only
+
+Only one number selector.
+
+Number Selection UI
+
+Keep current number grid.
+
+Improve it.
+
+Selectable buttons
+
+1
+
+2
+
+3
+
+...
+
+52
+
+(or based on lotto rules)
+
+Selected numbers become highlighted.
+
+Display
+
+Selected
+
+12
+
+18
+
+31
+
+Stake
+
+Player enters stake.
+
+Example
+
+R10
+
+Potential payout updates automatically.
+
+Dynamic Payout Display
+
+Example
+
+Stake
+
+R10
+
+Play Type
+
+3 Numbers
+
+Bonus Mode
+
+Included
+
+Current Odds
+
+420/1
+
+Potential Win
+
+R4 200
+
+Automatically update after:
+
+stake changes
+
+play type changes
+
+bonus option changes
+
+Admin Panel Update
+
+Add new menu
+
+Lottery Settings
+
+Inside each lotto create configurable payout tables.
+
+Example
+
+Classic Lotto
+
+Included Bonus
+
+1 Number
+
+11.5
+
+2 Numbers
+
+50
+
+3 Numbers
+
+420
+
+4 Numbers
+
+5000
+
+5 Numbers
+
+50000
+
+6 Numbers
+
+Jackpot Multiplier or Fixed Jackpot
+
+Excluded Bonus
+
+1 Number
+
+13.5
+
+2 Numbers
+
+60
+
+3 Numbers
+
+600
+
+4 Numbers
+
+10000
+
+5 Numbers
+
+100000
+
+6 Numbers
+
+Jackpot
+
+Bonus Ball
+
+45
+
+1 + Bonus
+
+344
+
+2 + Bonus
+
+2805
+
+3 + Bonus
+
+27645
+
+4 + Bonus
+
+460045
+
+Everything editable.
+
+No hardcoded odds anywhere.

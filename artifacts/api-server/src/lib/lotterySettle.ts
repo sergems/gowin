@@ -1,6 +1,7 @@
 /**
  * Shared lottery draw settlement logic.
- * Used by both the admin settle route and the automated APIVerve sync.
+ * Uses the ticket's stored bonus_mode for accurate settlement.
+ * Falls back to legacy behaviour (infer from bonusNumbers presence) for old tickets.
  */
 import {
   db,
@@ -15,12 +16,12 @@ import { eq, and } from "drizzle-orm";
 import type { PayoutConfig } from "@workspace/db";
 import { logger } from "./logger";
 
-function parseOdds(odds: string): number {
+export function parseOdds(odds: string): number {
   const parts = odds.split("/");
   const num = parseFloat(parts[0] ?? "0");
   const den = parseFloat(parts[1] ?? "1");
   if (!isFinite(num) || !isFinite(den) || den === 0) return 1;
-  return (num + den) / den;
+  return (num + den) / den; // total return multiplier (stake × result = total back incl. stake)
 }
 
 export interface SettleResult {
@@ -31,9 +32,16 @@ export interface SettleResult {
 }
 
 /**
- * Settle a pending draw: record winning numbers, evaluate all tickets, credit winners.
- * Returns counts of settled tickets and winners.
- * Throws if the draw is not found or already settled.
+ * Settle a pending draw: record winning numbers, evaluate every ticket, credit winners.
+ *
+ * Settlement rules per bonus_mode:
+ *   bonus_only — win if the one selected bonus number appears in the draw's bonus numbers
+ *   include    — win ONLY if ALL main numbers match AND the bonus number matches → includedBonus[N]
+ *   exclude    — win if ALL main numbers match → excludedBonus[N]
+ *                enhanced: if bonus also matches → withBonus[N] (falls back to excludedBonus[N])
+ *
+ * The ticket's stored `odds` field is used when available so that config changes
+ * after ticket purchase cannot retroactively alter outcomes.
  */
 export async function settleLotteryDraw(
   drawId: number,
@@ -53,13 +61,12 @@ export async function settleLotteryDraw(
   const payoutConfig: PayoutConfig =
     (row.game?.payoutConfig as PayoutConfig | null) ?? DEFAULT_PAYOUT_CONFIG;
 
-  // Mark draw as settled with winning numbers
+  // Mark draw settled
   await db
     .update(lotteryDrawsTable)
     .set({ winningNumbers, bonusNumbers, status: "settled" })
     .where(eq(lotteryDrawsTable.id, drawId));
 
-  // Load all pending tickets for this draw
   const tickets = await db
     .select()
     .from(lotteryTicketsTable)
@@ -74,34 +81,52 @@ export async function settleLotteryDraw(
   for (const ticket of tickets) {
     const userNumbers = ticket.numbers as number[];
     const userBonusNums = ticket.bonusNumbers as number[];
-    const userIncludedBonus = userBonusNums.length > 0;
-    const userBonusNum = userIncludedBonus ? userBonusNums[0]! : null;
-    const stake = parseFloat(ticket.stake);
     const pickedCount = userNumbers.length;
+    const stake = parseFloat(ticket.stake);
 
-    const allMainMatched =
-      pickedCount > 0 && userNumbers.every((n) => winSet.has(n));
+    // Determine bonus_mode — use stored value, fall back to legacy inference
+    const storedMode = (ticket as any).bonusMode as string | null;
+    const mode: string = storedMode ?? (userBonusNums.length > 0 ? "include" : "exclude");
+
+    const allMainMatched = pickedCount > 0 && userNumbers.every((n) => winSet.has(n));
     const bonusMatched =
-      userIncludedBonus && userBonusNum !== null && bonusWinSet.has(userBonusNum);
+      userBonusNums.length > 0 &&
+      userBonusNums[0] !== undefined &&
+      bonusWinSet.has(userBonusNums[0]);
 
     let oddsStr: string | undefined;
 
-    if (allMainMatched) {
-      if (userIncludedBonus && bonusMatched) {
-        oddsStr = payoutConfig.withBonus?.[String(pickedCount)];
+    if (mode === "bonus_only") {
+      // Win if the selected bonus number is the drawn bonus ball
+      const userBonus = userBonusNums[0];
+      if (userBonus !== undefined && bonusWinSet.has(userBonus)) {
+        oddsStr = payoutConfig.bonusOnly;
       }
-      if (!oddsStr && userIncludedBonus) {
+    } else if (mode === "include") {
+      // Win ONLY if all main numbers match AND bonus matches
+      if (allMainMatched && bonusMatched) {
         oddsStr = payoutConfig.includedBonus?.[String(pickedCount)];
       }
-      if (!oddsStr && !userIncludedBonus) {
-        oddsStr = payoutConfig.excludedBonus?.[String(pickedCount)];
+      // else: loss — no consolation for include mode
+    } else {
+      // exclude mode: win if all main numbers match
+      if (allMainMatched) {
+        if (bonusMatched) {
+          // Enhanced payout when exclude-mode player also hits bonus
+          oddsStr =
+            payoutConfig.withBonus?.[String(pickedCount)] ??
+            payoutConfig.excludedBonus?.[String(pickedCount)];
+        } else {
+          oddsStr = payoutConfig.excludedBonus?.[String(pickedCount)];
+        }
       }
-    } else if (!allMainMatched && bonusMatched && pickedCount === 0) {
-      // Bonus-only ticket
-      oddsStr = payoutConfig.bonusOnly;
     }
 
-    const prizeAmount = oddsStr ? stake * parseOdds(oddsStr) : 0;
+    // Prefer the odds stored at ticket purchase time (config-change-safe)
+    const storedOdds = (ticket as any).odds as string | undefined;
+    const effectiveOdds = storedOdds && oddsStr ? storedOdds : oddsStr;
+
+    const prizeAmount = effectiveOdds ? stake * parseOdds(effectiveOdds) : 0;
     const isWinner = prizeAmount > 0;
 
     if (isWinner) {
@@ -113,15 +138,12 @@ export async function settleLotteryDraw(
 
       if (wallet) {
         const newBal = (parseFloat(wallet.balance) + prizeAmount).toFixed(2);
-        await db
-          .update(walletsTable)
-          .set({ balance: newBal })
-          .where(eq(walletsTable.id, wallet.id));
+        await db.update(walletsTable).set({ balance: newBal }).where(eq(walletsTable.id, wallet.id));
         await db.insert(transactionsTable).values({
           walletId: wallet.id,
           amount: prizeAmount.toFixed(2),
           type: "credit",
-          description: `Lottery win — ${row.game?.name} @ ${oddsStr} (Draw #${drawId})`,
+          description: `Lottery win — ${row.game?.name} @ ${effectiveOdds} (Draw #${drawId})`,
         });
       }
 

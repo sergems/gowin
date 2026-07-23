@@ -3,9 +3,9 @@ import { usersTable } from "./users";
 
 export type PayoutConfig = {
   excludedBonus: Record<string, string>; // "1" → "13/2", "2" → "60/1" …
-  includedBonus: Record<string, string>; // "1" → "11/2", "2" → "50/1" …
+  includedBonus: Record<string, string>; // "1" → "11/2", "2" → "50/1" … (include mode, all N + bonus matched)
   bonusOnly: string;                     // "45/1"
-  withBonus: Record<string, string>;     // "1" → "344/1", "2" → "2805/1" …
+  withBonus: Record<string, string>;     // "1" → "344/1" … (exclude mode player also hits bonus)
 };
 
 export const DEFAULT_PAYOUT_CONFIG: PayoutConfig = {
@@ -14,6 +14,8 @@ export const DEFAULT_PAYOUT_CONFIG: PayoutConfig = {
   bonusOnly: "45/1",
   withBonus: { "1": "344/1", "2": "2805/1", "3": "27645/1", "4": "460045/1" },
 };
+
+export const DEFAULT_ENABLED_PLAY_TYPES = ["1", "2", "3", "4", "5", "6", "bonus_only"];
 
 export const lotteryGamesTable = pgTable("lottery_games", {
   id: serial("id").primaryKey(),
@@ -32,6 +34,12 @@ export const lotteryGamesTable = pgTable("lottery_games", {
   emoji: text("emoji").notNull().default("🎰"),
   description: text("description"),
   payoutConfig: jsonb("payout_config").$type<PayoutConfig>().default(DEFAULT_PAYOUT_CONFIG),
+  // Stake / payout limits
+  minStake: numeric("min_stake", { precision: 10, scale: 2 }).notNull().default("1.00"),
+  maxStake: numeric("max_stake", { precision: 10, scale: 2 }).notNull().default("100.00"),
+  maxPayout: numeric("max_payout", { precision: 20, scale: 2 }).notNull().default("500000.00"),
+  // Enabled play types: ["1","2","3","4","5","6","bonus_only"]
+  enabledPlayTypes: jsonb("enabled_play_types").$type<string[]>().notNull().default(DEFAULT_ENABLED_PLAY_TYPES),
 });
 
 export const lotteryDrawsTable = pgTable("lottery_draws", {
@@ -62,6 +70,11 @@ export const lotteryTicketsTable = pgTable("lottery_tickets", {
   status: text("status").notNull().default("pending"), // pending | won | lost
   prizeAmount: numeric("prize_amount", { precision: 20, scale: 2 }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // New flexible betting fields
+  bonusMode: text("bonus_mode"),    // 'include' | 'exclude' | 'bonus_only'
+  playType: text("play_type"),      // '1'|'2'|'3'|'4'|'5'|'6'|'bonus_only'
+  odds: text("odds"),               // e.g. "420/1"
+  potentialWin: numeric("potential_win", { precision: 20, scale: 2 }),
 });
 
 export type LotteryGame = typeof lotteryGamesTable.$inferSelect;
