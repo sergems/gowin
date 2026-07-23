@@ -14,6 +14,7 @@ import { attachWebSocketServer } from "./lib/wsServer";
 import { startLiveSyncWorkers } from "./lib/liveSync";
 import { runFullFixtureSync } from "./routes/apiSync";
 import { seedLotteryGames } from "./lib/lotterySeed";
+import { syncLotteryDraws } from "./lib/lotterySync";
 
 const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
@@ -67,6 +68,10 @@ server.listen(port, async () => {
 
   // Start live betting sync workers after server is ready
   startLiveSyncWorkers();
+
+  // Lottery API sync — run immediately then every hour
+  syncLotteryDraws();
+  setInterval(syncLotteryDraws, 60 * 60 * 1000);
 });
 
 // ── Result sync helper ────────────────────────────────────────────────────────

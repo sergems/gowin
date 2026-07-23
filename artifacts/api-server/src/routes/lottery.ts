@@ -4,6 +4,7 @@ import { DEFAULT_PAYOUT_CONFIG } from "@workspace/db";
 import { eq, desc, and, count } from "drizzle-orm";
 import { requireAuth, requireAdmin, type AuthRequest } from "../middlewares/auth";
 import type { PayoutConfig } from "@workspace/db";
+import { settleLotteryDraw } from "../lib/lotterySettle";
 
 const router = Router();
 
@@ -85,6 +86,12 @@ router.post("/lottery/tickets", requireAuth, async (req: AuthRequest, res): Prom
     return;
   }
 
+  // Must pick at least 1 main number OR a bonus number (bonus-only tickets are valid)
+  if (numbers.length === 0 && (bonusNumber === null || bonusNumber === undefined)) {
+    res.status(400).json({ error: "Pick at least one main number or a bonus number" });
+    return;
+  }
+
   // Load game — price is always taken server-side; never trust the client
   const [game] = await db
     .select()
@@ -97,23 +104,25 @@ router.post("/lottery/tickets", requireAuth, async (req: AuthRequest, res): Prom
     return;
   }
 
-  // Flexible count: 1 to mainNumbersCount
-  if (numbers.length < 1 || numbers.length > game.mainNumbersCount) {
-    res.status(400).json({ error: `Pick between 1 and ${game.mainNumbersCount} numbers` });
+  // Flexible count: 0 (bonus-only) to mainNumbersCount
+  if (numbers.length > game.mainNumbersCount) {
+    res.status(400).json({ error: `Pick up to ${game.mainNumbersCount} numbers` });
     return;
   }
 
   const mainNums: number[] = numbers.map((n: unknown) => Number(n));
 
-  // Validate range + uniqueness
-  const allMainValid = mainNums.every((n) => Number.isInteger(n) && n >= 1 && n <= game.mainNumbersMax);
-  if (!allMainValid) {
-    res.status(400).json({ error: `Main numbers must be integers between 1 and ${game.mainNumbersMax}` });
-    return;
-  }
-  if (new Set(mainNums).size !== mainNums.length) {
-    res.status(400).json({ error: "Main numbers must be unique" });
-    return;
+  // Validate range + uniqueness (skip if no main numbers picked — bonus-only ticket)
+  if (mainNums.length > 0) {
+    const allMainValid = mainNums.every((n) => Number.isInteger(n) && n >= 1 && n <= game.mainNumbersMax);
+    if (!allMainValid) {
+      res.status(400).json({ error: `Main numbers must be integers between 1 and ${game.mainNumbersMax}` });
+      return;
+    }
+    if (new Set(mainNums).size !== mainNums.length) {
+      res.status(400).json({ error: "Main numbers must be unique" });
+      return;
+    }
   }
 
   // Validate bonus number (optional single value)
@@ -384,111 +393,19 @@ router.post("/admin/lottery/draws/:id/settle", requireAdmin, async (req, res): P
     return;
   }
 
-  const [row] = await db
-    .select({ draw: lotteryDrawsTable, game: lotteryGamesTable })
-    .from(lotteryDrawsTable)
-    .leftJoin(lotteryGamesTable, eq(lotteryGamesTable.id, lotteryDrawsTable.gameId))
-    .where(eq(lotteryDrawsTable.id, drawId))
-    .limit(1);
-
-  if (!row) {
-    res.status(404).json({ error: "Draw not found" });
-    return;
-  }
-  if (row.draw.status === "settled") {
-    res.status(400).json({ error: "Draw already settled" });
-    return;
-  }
-
-  const payoutConfig: PayoutConfig = (row.game?.payoutConfig as PayoutConfig | null) ?? DEFAULT_PAYOUT_CONFIG;
-
-  // Mark draw as settled
-  await db
-    .update(lotteryDrawsTable)
-    .set({ winningNumbers, bonusNumbers, status: "settled" })
-    .where(eq(lotteryDrawsTable.id, drawId));
-
-  // Settle all pending tickets for this draw
-  const tickets = await db
-    .select()
-    .from(lotteryTicketsTable)
-    .where(and(eq(lotteryTicketsTable.drawId, drawId), eq(lotteryTicketsTable.status, "pending")));
-
-  const winSet = new Set<number>(winningNumbers.map(Number));
-  const bonusWinSet = new Set<number>((bonusNumbers as number[]).map(Number));
-
-  let settled = 0;
-  let winners = 0;
-
-  for (const ticket of tickets) {
-    const userNumbers = (ticket.numbers as number[]);
-    const userBonusNums = (ticket.bonusNumbers as number[]);
-    const userIncludedBonus = userBonusNums.length > 0;
-    const userBonusNum = userIncludedBonus ? userBonusNums[0]! : null;
-    const stake = parseFloat(ticket.stake);
-
-    // ALL selected main numbers must appear in winning set
-    const allMainMatched = userNumbers.length > 0 && userNumbers.every((n) => winSet.has(n));
-    const bonusMatched = userIncludedBonus && userBonusNum !== null && bonusWinSet.has(userBonusNum);
-    const pickedCount = userNumbers.length;
-
-    let oddsStr: string | undefined;
-
-    if (allMainMatched && pickedCount > 0) {
-      if (userIncludedBonus && bonusMatched) {
-        // All main + bonus matched → highest tier
-        oddsStr = payoutConfig.withBonus?.[String(pickedCount)];
-      }
-      if (!oddsStr && userIncludedBonus) {
-        // All main matched, bonus included but didn't match (or no withBonus entry)
-        oddsStr = payoutConfig.includedBonus?.[String(pickedCount)];
-      }
-      if (!oddsStr && !userIncludedBonus) {
-        // All main matched, no bonus selected
-        oddsStr = payoutConfig.excludedBonus?.[String(pickedCount)];
-      }
-    } else if (!allMainMatched && bonusMatched && pickedCount === 0) {
-      // Bonus-only ticket
-      oddsStr = payoutConfig.bonusOnly;
-    }
-
-    const prizeAmount = oddsStr ? stake * parseOdds(oddsStr) : 0;
-    const isWinner = prizeAmount > 0;
-
-    if (isWinner) {
-      const [wallet] = await db
-        .select()
-        .from(walletsTable)
-        .where(eq(walletsTable.userId, ticket.userId))
-        .limit(1);
-
-      if (wallet) {
-        const newBal = (parseFloat(wallet.balance) + prizeAmount).toFixed(2);
-        await db.update(walletsTable).set({ balance: newBal }).where(eq(walletsTable.id, wallet.id));
-        await db.insert(transactionsTable).values({
-          walletId: wallet.id,
-          amount: prizeAmount.toFixed(2),
-          type: "credit",
-          description: `Lottery win — ${row.game?.name} @ ${oddsStr} (Draw #${drawId})`,
-        });
-      }
-
-      await db
-        .update(lotteryTicketsTable)
-        .set({ status: "won", prizeAmount: prizeAmount.toFixed(2) })
-        .where(eq(lotteryTicketsTable.id, ticket.id));
-
-      winners++;
+  try {
+    const result = await settleLotteryDraw(drawId, winningNumbers as number[], bonusNumbers as number[]);
+    res.json(result);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("not found")) {
+      res.status(404).json({ error: msg });
+    } else if (msg.includes("already settled")) {
+      res.status(400).json({ error: msg });
     } else {
-      await db
-        .update(lotteryTicketsTable)
-        .set({ status: "lost" })
-        .where(eq(lotteryTicketsTable.id, ticket.id));
+      res.status(500).json({ error: "Settlement failed" });
     }
-    settled++;
   }
-
-  res.json({ settled, winners, winningNumbers, bonusNumbers });
 });
 
 // GET /admin/lottery/tickets
