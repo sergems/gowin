@@ -154,9 +154,9 @@ export default function LotteryLobby() {
             <span className="text-3xl">🎰</span>
             <Badge className="bg-primary/20 text-primary border-primary/30 text-xs">LIVE</Badge>
           </div>
-          <h1 className="text-3xl md:text-4xl font-black text-foreground mb-2">Lottery</h1>
+          <h1 className="text-3xl md:text-4xl font-black text-foreground mb-2">Lucky Numbers</h1>
           <p className="text-muted-foreground text-sm md:text-base max-w-lg">
-            Play major international lotteries. Pick your numbers, buy your ticket, and win big jackpots.
+            Pick your lucky numbers, buy your ticket, and win big!
           </p>
         </div>
       </div>
@@ -175,7 +175,7 @@ export default function LotteryLobby() {
         ) : !games || games.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground">
             <span className="text-5xl mb-4 block">🎰</span>
-            <p className="text-lg font-medium">No lottery games available yet</p>
+            <p className="text-lg font-medium">No games available yet</p>
             <p className="text-sm mt-1">Check back soon</p>
           </div>
         ) : (

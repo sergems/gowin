@@ -74,7 +74,7 @@ function TicketCard({ ticket }: { ticket: LotteryTicket }) {
         <div className="flex items-center gap-2">
           {game && <span className="text-lg">{game.emoji}</span>}
           <div>
-            <div className="font-semibold text-sm text-foreground">{game?.name ?? "Lottery Ticket"}</div>
+            <div className="font-semibold text-sm text-foreground">{game?.name ?? "Lucky Numbers Ticket"}</div>
             <div className="text-xs text-muted-foreground">#{ticket.id} · {format(new Date(ticket.createdAt), "PP")}</div>
           </div>
         </div>
@@ -209,7 +209,7 @@ export default function LotteryTickets() {
         <div>
           <h1 className="text-2xl font-black text-foreground flex items-center gap-2">
             <Ticket className="w-6 h-6 text-primary" />
-            My Lottery Tickets
+            My Lucky Numbers Tickets
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">{data?.total ?? 0} total tickets</p>
         </div>

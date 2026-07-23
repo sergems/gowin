@@ -543,9 +543,9 @@ export default function LotteryGame() {
   if (!game) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-16 text-center">
-        <p className="text-lg font-medium text-muted-foreground">Lottery game not found</p>
+        <p className="text-lg font-medium text-muted-foreground">Game not found</p>
         <Link href="/lottery">
-          <Button variant="outline" className="mt-4">← Back to Lottery</Button>
+          <Button variant="outline" className="mt-4">← Back to Lucky Numbers</Button>
         </Link>
       </div>
     );
@@ -557,7 +557,7 @@ export default function LotteryGame() {
       <Link href="/lottery">
         <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="w-4 h-4" />
-          Back to Lottery
+          Back to Lucky Numbers
         </button>
       </Link>
 
