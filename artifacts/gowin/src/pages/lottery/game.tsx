@@ -332,7 +332,7 @@ function PayoutTable({ game }: { game: LotteryGameDetail }) {
           {/* Including Bonus Ball (all main must match + drawn bonus must be among picks) */}
           {game.bonusNumbersCount > 0 && bonusKeys.length > 0 && (
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Including Bonus Ball</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Lotto With Bonus Ball</p>
               <table className="w-full text-sm">
                 <tbody className="divide-y divide-border/20">
                   {bonusKeys.map((k) => {
