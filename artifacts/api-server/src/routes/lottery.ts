@@ -100,8 +100,9 @@ router.post("/lottery/tickets", requireAuth, async (req: AuthRequest, res): Prom
   }
 
   const isBonusOnly = playType === "bonus_only";
-  if (!isBonusOnly && bonusMode !== "include" && bonusMode !== "exclude") {
-    res.status(400).json({ error: "bonusMode must be 'include' or 'exclude'" });
+  const validBonusModes = ["exclude", "bonus", "with_bonus", "include"]; // "include" kept for back-compat
+  if (!isBonusOnly && !validBonusModes.includes(String(bonusMode))) {
+    res.status(400).json({ error: "bonusMode must be 'exclude', 'bonus', or 'with_bonus'" });
     return;
   }
 
@@ -163,8 +164,8 @@ router.post("/lottery/tickets", requireAuth, async (req: AuthRequest, res): Prom
     }
   }
 
-  // Validate bonus number (required for include mode or bonus_only)
-  const needsBonus = isBonusOnly || bonusMode === "include";
+  // No bonus ball picker for any mode — only bonus_only requires explicit bonus pick
+  const needsBonus = isBonusOnly;
   let bonusNums: number[] = [];
   if (needsBonus) {
     if (bonusNumber === null || bonusNumber === undefined) {
@@ -190,9 +191,14 @@ router.post("/lottery/tickets", requireAuth, async (req: AuthRequest, res): Prom
   let oddsStr: string | undefined;
   if (isBonusOnly) {
     oddsStr = payoutConfig.bonusOnly ?? undefined;
-  } else if (bonusMode === "include") {
+  } else if (bonusMode === "bonus") {
+    // Bonus ball counts as part of drawn set — uses includedBonus odds
     oddsStr = payoutConfig.includedBonus?.[String(playType)] ?? undefined;
+  } else if (bonusMode === "with_bonus" || bonusMode === "include") {
+    // All main must match AND drawn bonus must coincide with selections — uses withBonus odds
+    oddsStr = payoutConfig.withBonus?.[String(playType)] ?? undefined;
   } else {
+    // exclude: bonus completely ignored
     oddsStr = payoutConfig.excludedBonus?.[String(playType)] ?? undefined;
   }
 

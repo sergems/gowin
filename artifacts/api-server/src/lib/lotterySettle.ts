@@ -103,23 +103,26 @@ export async function settleLotteryDraw(
       if (userBonus !== undefined && bonusWinSet.has(userBonus)) {
         oddsStr = payoutConfig.bonusOnly;
       }
-    } else if (mode === "include") {
-      // Win ONLY if all main numbers match AND bonus matches
-      if (allMainMatched && bonusMatched) {
+    } else if (mode === "bonus") {
+      // "Bonus" mode: bonus ball counts as part of the drawn set.
+      // Win if ALL selected main numbers appear in (main draw ∪ bonus draw).
+      const combinedWinSet = new Set([...winSet, ...bonusWinSet]);
+      const allInCombined = pickedCount > 0 && userNumbers.every((n) => combinedWinSet.has(n));
+      if (allInCombined) {
         oddsStr = payoutConfig.includedBonus?.[String(pickedCount)];
       }
-      // else: loss — no consolation for include mode
+    } else if (mode === "with_bonus" || mode === "include") {
+      // "Including Bonus Ball" mode: win only if ALL main numbers match
+      // AND the drawn bonus ball is among the selected numbers.
+      const bonusInSelected = bonusWinSet.size > 0 && [...bonusWinSet].some((b) => userNumbers.includes(b));
+      if (allMainMatched && bonusInSelected) {
+        oddsStr = payoutConfig.withBonus?.[String(pickedCount)];
+      }
     } else {
-      // exclude mode: win if all main numbers match
+      // "Excluding Bonus" mode (default): win if ALL main numbers match.
+      // Bonus ball is completely ignored — no enhanced payout.
       if (allMainMatched) {
-        if (bonusMatched) {
-          // Enhanced payout when exclude-mode player also hits bonus
-          oddsStr =
-            payoutConfig.withBonus?.[String(pickedCount)] ??
-            payoutConfig.excludedBonus?.[String(pickedCount)];
-        } else {
-          oddsStr = payoutConfig.excludedBonus?.[String(pickedCount)];
-        }
+        oddsStr = payoutConfig.excludedBonus?.[String(pickedCount)];
       }
     }
 

@@ -57,7 +57,7 @@ interface LotteryGameDetail {
 }
 
 type PlayType = "1" | "2" | "3" | "4" | "5" | "6" | "bonus_only";
-type BonusMode = "include" | "exclude";
+type BonusMode = "exclude" | "bonus" | "with_bonus";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -206,6 +206,24 @@ function PlayTypeSelector({
 
 // ── Bonus Mode Selector ───────────────────────────────────────────────────────
 
+const BONUS_MODE_OPTIONS: { mode: BonusMode; label: string; desc: string }[] = [
+  {
+    mode: "exclude",
+    label: "Excluding Bonus",
+    desc: "Bonus ball not counted — all picks must be in the main draw",
+  },
+  {
+    mode: "bonus",
+    label: "Bonus",
+    desc: "Bonus ball counts as part of the draw — your numbers can match it",
+  },
+  {
+    mode: "with_bonus",
+    label: "Including Bonus Ball",
+    desc: "All numbers must be in the main draw AND the drawn bonus ball must be one of your picks",
+  },
+];
+
 function BonusModeSelector({
   value, onChange, hasBonus,
 }: {
@@ -216,18 +234,14 @@ function BonusModeSelector({
   return (
     <div>
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Bonus Mode</p>
-      <div className="flex gap-2">
-        {(["exclude", "include"] as BonusMode[]).map((mode) => {
+      <div className="flex flex-col gap-2">
+        {BONUS_MODE_OPTIONS.map(({ mode, label, desc }) => {
           const active = value === mode;
-          const label = mode === "include" ? "Include Bonus Ball" : "Exclude Bonus Ball";
-          const desc = mode === "include"
-            ? "Win only if all numbers + bonus match"
-            : "Win if all numbers match (bonus ignored)";
           return (
             <button
               key={mode}
               onClick={() => onChange(mode)}
-              className={`flex-1 rounded-lg border p-3 text-left transition-all duration-150 ${
+              className={`rounded-lg border p-3 text-left transition-all duration-150 ${
                 active
                   ? "border-primary/50 bg-primary/10"
                   : "border-border/50 bg-muted/20 hover:bg-muted/40"
@@ -273,7 +287,7 @@ function PayoutTable({ game }: { game: LotteryGameDetail }) {
 
       {open && (
         <div className="border-t border-border/30 px-5 py-4 space-y-5">
-          {/* Excluded Bonus */}
+          {/* Excluding Bonus */}
           {mainKeys.length > 0 && (
             <div>
               <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Excluding Bonus</p>
@@ -294,10 +308,10 @@ function PayoutTable({ game }: { game: LotteryGameDetail }) {
             </div>
           )}
 
-          {/* Included Bonus */}
+          {/* Bonus (bonus ball counts as part of drawn set) */}
           {game.bonusNumbersCount > 0 && mainKeys.length > 0 && (
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Including Bonus Ball</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Bonus</p>
               <table className="w-full text-sm">
                 <tbody className="divide-y divide-border/20">
                   {mainKeys.map((k) => {
@@ -305,8 +319,29 @@ function PayoutTable({ game }: { game: LotteryGameDetail }) {
                     if (!odds) return null;
                     return (
                       <tr key={k}>
-                        <td className="py-1.5 text-muted-foreground">{k} {k === "1" ? "Number" : "Numbers"} + Bonus</td>
+                        <td className="py-1.5 text-muted-foreground">{k} {k === "1" ? "Number" : "Numbers"}</td>
                         <td className="py-1.5 text-right font-semibold text-yellow-500">{fmtOdds(odds)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Including Bonus Ball (all main must match + drawn bonus must be among picks) */}
+          {game.bonusNumbersCount > 0 && bonusKeys.length > 0 && (
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Including Bonus Ball</p>
+              <table className="w-full text-sm">
+                <tbody className="divide-y divide-border/20">
+                  {bonusKeys.map((k) => {
+                    const odds = cfg.withBonus?.[k];
+                    if (!odds) return null;
+                    return (
+                      <tr key={k}>
+                        <td className="py-1.5 text-muted-foreground">{k} {k === "1" ? "Number" : "Numbers"} + Bonus Ball</td>
+                        <td className="py-1.5 text-right font-semibold text-yellow-400">{fmtOdds(odds)}</td>
                       </tr>
                     );
                   })}
@@ -318,23 +353,13 @@ function PayoutTable({ game }: { game: LotteryGameDetail }) {
           {/* Bonus Ball Only */}
           {game.bonusNumbersCount > 0 && game.enabledPlayTypes.includes("bonus_only") && (
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Bonus Ball</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Bonus Ball Only</p>
               <table className="w-full text-sm">
                 <tbody className="divide-y divide-border/20">
                   <tr>
                     <td className="py-1.5 text-muted-foreground">Bonus Ball Only</td>
                     <td className="py-1.5 text-right font-semibold text-yellow-400">{fmtOdds(cfg.bonusOnly)}</td>
                   </tr>
-                  {bonusKeys.map((k) => {
-                    const odds = cfg.withBonus?.[k];
-                    if (!odds) return null;
-                    return (
-                      <tr key={k}>
-                        <td className="py-1.5 text-muted-foreground">{k} {k === "1" ? "Number" : "Numbers"} + Bonus</td>
-                        <td className="py-1.5 text-right font-semibold text-yellow-400">{fmtOdds(odds)}</td>
-                      </tr>
-                    );
-                  })}
                 </tbody>
               </table>
             </div>
@@ -398,14 +423,15 @@ export default function LotteryGame() {
     setSelectedBonus(null);
   }, [playType]);
 
-  // When bonus mode changes to exclude, clear bonus selection
+  // Clear bonus selection when switching away from bonus_only — none of the main modes need a bonus pick
   useEffect(() => {
-    if (bonusMode === "exclude") setSelectedBonus(null);
-  }, [bonusMode]);
+    setSelectedBonus(null);
+  }, [bonusMode, playType]);
 
   const isBonusOnly = playType === "bonus_only";
   const requiredMain = isBonusOnly ? 0 : parseInt(playType);
-  const needsBonusPick = isBonusOnly || bonusMode === "include";
+  // Only bonus_only needs an explicit bonus ball pick; main modes don't
+  const needsBonusPick = isBonusOnly;
   const hasBonus = (game?.bonusNumbersCount ?? 0) > 0;
 
   // Compute odds string
@@ -414,8 +440,10 @@ export default function LotteryGame() {
   if (payoutConfig) {
     if (isBonusOnly) {
       oddsStr = payoutConfig.bonusOnly ?? undefined;
-    } else if (bonusMode === "include") {
+    } else if (bonusMode === "bonus") {
       oddsStr = payoutConfig.includedBonus?.[playType] ?? undefined;
+    } else if (bonusMode === "with_bonus") {
+      oddsStr = payoutConfig.withBonus?.[playType] ?? undefined;
     } else {
       oddsStr = payoutConfig.excludedBonus?.[playType] ?? undefined;
     }
@@ -443,11 +471,12 @@ export default function LotteryGame() {
       const picked = pool.sort(() => Math.random() - 0.5).slice(0, requiredMain).sort((a, b) => a - b);
       setSelectedMain(picked);
     }
-    if ((needsBonusPick && hasBonus) || isBonusOnly) {
+    // Only auto-pick bonus ball for bonus_only mode
+    if (isBonusOnly && hasBonus) {
       const bPool = Array.from({ length: game.bonusNumbersMax }, (_, i) => i + 1);
       setSelectedBonus(bPool[Math.floor(Math.random() * bPool.length)]!);
     }
-  }, [game, isBonusOnly, needsBonusPick, hasBonus, requiredMain]);
+  }, [game, isBonusOnly, hasBonus, requiredMain]);
 
   function toggleMain(num: number) {
     if (!game) return;
