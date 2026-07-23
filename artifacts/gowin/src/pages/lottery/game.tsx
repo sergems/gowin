@@ -41,11 +41,12 @@ interface LotteryGameDetail {
   nextDraw: LotteryDraw | null;
 }
 
-function formatJackpot(amount: number): string {
-  if (amount >= 1_000_000_000) return `$${(amount / 1_000_000_000).toFixed(1)}B`;
-  if (amount >= 1_000_000) return `$${(amount / 1_000_000).toFixed(1)}M`;
-  if (amount >= 1_000) return `$${(amount / 1_000).toFixed(1)}K`;
-  return `$${amount.toFixed(2)}`;
+function formatJackpot(amount: number | null | undefined): string {
+  const n = Number(amount ?? 0);
+  if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(1)}B`;
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}K`;
+  return `$${n.toFixed(2)}`;
 }
 
 // Countdown timer hook
@@ -142,7 +143,9 @@ export default function LotteryGame() {
     queryFn: async () => {
       const res = await fetch(`/api/lottery/games/${slug}`);
       if (!res.ok) throw new Error("Game not found");
-      return res.json();
+      const data = await res.json();
+      // API returns { game, recentDraws, nextDraw } — flatten into one object
+      return { ...data.game, recentDraws: data.recentDraws ?? [], nextDraw: data.nextDraw ?? null };
     },
     enabled: !!slug,
   });
