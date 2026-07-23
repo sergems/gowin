@@ -1,0 +1,336 @@
+Lotto
+1. Analyze your existing GoWin project from GitHub.
+
+2. Match the exact color scheme and layout.
+
+3. Build a complete lottery module (frontend + backend).
+
+4. Prepare the system for external lottery APIs.
+
+5. Keep the architecture production-ready.
+
+### Paste this into Replit AI
+
+### Project Context
+
+I already have an existing sports betting platform project hosted at:
+
+[https://github.com/sergems/gowin.git](https://github.com/sergems/gowin.git)
+
+Clone and analyze the existing project structure, styling, routing, and color palette. The new lottery module must match the exact visual identity of the current GoWin project, including:
+
+* Dark theme styling
+
+* Primary and accent colors
+
+* Typography
+
+* Sidebar/top navigation layout
+
+* Card components and spacing
+
+* Responsive mobile design
+
+### Goal
+
+Add a fully functional Lottery section to the existing sportsbook platform. The lottery system must support multiple international lottery games and be designed to consume data from external lottery APIs later.
+
+### Technology Stack
+
+Use the same stack already used in the GoWin project. If missing, standardize on:
+
+* Frontend: React + TypeScript + TailwindCSS
+
+* Backend: Node.js + Express/NestJS
+
+* Database: PostgreSQL + Prisma ORM
+
+* State/API: React Query (TanStack Query)
+
+* Authentication: JWT-based auth from existing project
+
+### Features to Build
+
+### 1. Lottery Lobby Page
+
+Create a new route: /lottery
+
+Display a grid of major lottery games with beautiful jackpot cards, including:
+
+* Powerball
+
+* Mega Millions
+
+* EuroMillions
+
+* EuroJackpot
+
+* UK Lotto
+
+* South African Lotto
+
+* Daily Lotto
+
+* Any additional placeholder lotteries
+
+Each card should show:
+
+* Lottery logo/icon
+
+* Current jackpot
+
+* Next draw date/time
+
+* Ticket price
+
+* “Play Now” button
+
+### 2. Lottery Game Details Page
+
+Create dynamic route: /lottery/:gameId
+
+This page should display:
+
+* Large jackpot banner
+
+* Countdown timer to next draw
+
+* Recent winning numbers
+
+* Prize breakdown table
+
+* Number selection interface
+
+* Quick pick / random numbers button
+
+* Ticket quantity selector
+
+* Stake selector
+
+* Potential jackpot display
+
+* “Add to Bet Slip” or “Buy Ticket” button
+
+### 3. Lottery Ticket Builder
+
+Implement a reusable number picker component:
+
+* Selectable number balls
+
+* Supports different ranges per game (e.g., 1–69, 1–50, bonus balls, etc.)
+
+* Supports main numbers + bonus numbers
+
+* Highlights selected numbers with GoWin accent colors
+
+* Validates correct number count before submission
+
+### 4. User Lottery Tickets Page
+
+Create route: /lottery/tickets
+
+Users can view:
+
+* Pending tickets
+
+* Won tickets
+
+* Lost tickets
+
+* Draw date
+
+* Selected numbers
+
+* Winning numbers
+
+* Prize won
+
+* Ticket status
+
+### 5. Backend Lottery System
+
+Create database models for:
+
+### LotteryGame
+
+* id
+
+* name
+
+* slug
+
+* country
+
+* mainNumbersCount
+
+* mainNumbersMax
+
+* bonusNumbersCount
+
+* bonusNumbersMax
+
+* ticketPrice
+
+* jackpot
+
+* nextDrawAt
+
+* isActive
+
+### LotteryDraw
+
+* id
+
+* gameId
+
+* drawDate
+
+* winningNumbers
+
+* bonusNumbers
+
+* jackpot
+
+* status
+
+### LotteryTicket
+
+* id
+
+* userId
+
+* drawId
+
+* numbers
+
+* bonusNumbers
+
+* stake
+
+* status
+
+* prizeAmount
+
+* createdAt
+
+### 6. API-Ready Services
+
+Create backend services prepared for external lottery API integration:
+
+* LotterySyncService – sync games, jackpots, and draw dates
+
+* LotteryResultsService – sync winning numbers and settle tickets
+
+* LotteryJackpotService – update jackpot amounts periodically
+
+For now, use mock/seed data but structure the code so an external API can easily be plugged in later.
+
+### 7. Admin Dashboard Integration
+
+Extend the existing admin dashboard with:
+
+* Lottery Games Management
+
+* Lottery Draws Management
+
+* Manual draw result entry
+
+* Ticket monitoring
+
+* Jackpot updates
+
+* Lottery analytics cards
+
+### 8. Wallet Integration
+
+Integrate with the existing wallet system:
+
+* Deduct balance when a ticket is purchased
+
+* Credit winnings automatically when a ticket wins
+
+* Create wallet transactions for lottery purchases and payouts
+
+### 9. UX / UI Requirements
+
+The design must feel like a premium sportsbook/lottery platform similar to major betting brands.
+
+Include:
+
+* Smooth hover animations
+
+* Glowing jackpot cards
+
+* Animated number balls
+
+* Sticky ticket summary panel on desktop
+
+* Fully responsive mobile experience
+
+* Loading skeletons for API data
+
+* Toast notifications for ticket purchases
+
+Use the existing GoWin branding colors automatically by extracting the Tailwind/theme configuration from the repository.
+
+### 10. Routing & Navigation
+
+Add a new navigation item in the main sidebar/top nav:
+
+🎰 Lottery
+
+Routes to create:
+
+* /lottery – lobby
+
+* /lottery/:gameId – game details
+
+* /lottery/tickets – user tickets
+
+* /admin/lottery – admin management
+
+### 11. Deliverables
+
+Generate:
+
+1. Updated project structure
+
+2. All React pages/components
+
+3. Backend routes/controllers/services
+
+4. Prisma schema updates
+
+5. Seed data for major lotteries
+
+6. Navigation updates
+
+7. Responsive Tailwind styling matching GoWin
+
+8. Working end-to-end mock functionality
+
+9. README section explaining how to connect a real lottery API later
+
+### Important Instructions
+
+* Do not create placeholder-only UI.
+
+* Build working CRUD functionality for lottery games, draws, and tickets.
+
+* Reuse existing authentication and wallet systems from the GoWin project.
+
+* Keep code modular and production-ready.
+
+* Match the existing GoWin design exactly.
+
+### After Replit Generates It
+
+Then tell Replit AI:
+
+Now implement this in phases:
+
+1. Clone and analyze the existing GoWin project 2. Add database models and migrations 3. Build the Lottery Lobby UI 4. Build the Lottery Game Details page with number picker 5. Implement ticket purchase flow with wallet deduction 6. Build user ticket history page 7. Build admin lottery management pages 8. Add mock seed data for major lotteries 9. Ensure the final UI matches the existing GoWin color scheme perfectly
+
+
+f05jCEBeUvZ1XvuEZRfbKoPNS82nvLlbSuB4SgZ8Bd
+

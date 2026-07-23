@@ -10,3 +10,4 @@ export * from "./pawapay";
 export * from "./notifications";
 export * from "./referral";
 export * from "./cashOut";
+export * from "./lottery";
