@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 
 function getEmailFromUrl(): string {
@@ -97,9 +98,8 @@ export default function ResetPassword() {
               <p className="text-sm text-muted-foreground">{t("reset.set_password_instruction")}</p>
               <div className="space-y-2">
                 <Label htmlFor="newPassword">{t("reset.new_password")}</Label>
-                <Input
+                <PasswordInput
                   id="newPassword"
-                  type="password"
                   placeholder={t("reset.new_password_ph")}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
@@ -109,9 +109,8 @@ export default function ResetPassword() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">{t("reset.confirm_password")}</Label>
-                <Input
+                <PasswordInput
                   id="confirmPassword"
-                  type="password"
                   placeholder={t("reset.confirm_password_ph")}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}

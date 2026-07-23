@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, Lock, ShieldOff } from "lucide-react";
+import { PasswordInput } from "@/components/ui/password-input";
 import gowinLogo from "@/assets/logo.png";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 
@@ -103,9 +104,8 @@ export default function Login() {
                     {t("auth.forgot_password")}
                   </Link>
                 </div>
-                <Input
+                <PasswordInput
                   id="password"
-                  type="password"
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); clearError(); }}
                   autoComplete="current-password"

@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Gift } from "lucide-react";
+import { PasswordInput } from "@/components/ui/password-input";
 import gowinLogo from "@/assets/logo.png";
 
 export default function Register() {
@@ -142,9 +143,8 @@ export default function Register() {
 
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required

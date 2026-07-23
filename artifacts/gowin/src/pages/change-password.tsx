@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ShieldCheck } from "lucide-react";
+import { PasswordInput } from "@/components/ui/password-input";
 
 export default function ChangePassword() {
   const { token, refreshUser } = useAuth();
@@ -66,9 +67,8 @@ export default function ChangePassword() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="newPassword">New password</Label>
-              <Input
+              <PasswordInput
                 id="newPassword"
-                type="password"
                 placeholder="At least 6 characters"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
@@ -78,9 +78,8 @@ export default function ChangePassword() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm password</Label>
-              <Input
+              <PasswordInput
                 id="confirmPassword"
-                type="password"
                 placeholder="Repeat your new password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
