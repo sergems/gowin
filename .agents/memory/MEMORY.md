@@ -15,3 +15,4 @@
 - [api-server dist bundle](api-server-dist-bundle.md) — dev script runs dist/index.mjs not src; also covers lib/db's own stale tsbuildinfo/dist affecting api-server via project references
 - [Lottery API sync](lottery-api-sync.md) — APIVerve auto-settle + jackpot sync; free tier covers powerball/megamillions/euromillions only; 3s stagger required; shared settle in lotterySettle.ts
 - [Lottery flexible betting](lottery-flexible-betting.md) — 7 play markets (1–6 numbers + Bonus Ball Only); "jackpot" odds string pays draw.jackpot; POST /lottery/tickets requires playType+bonusMode+stake
+- [Lottery scraper engine](lottery-scraper-engine.md) — Web-scraper pipeline: ScraperManager → scrapers/ → settleLotteryDraw(); scraper_logs + settlement_logs tables; 5-min cron; admin routes in lotteryScrapers.ts

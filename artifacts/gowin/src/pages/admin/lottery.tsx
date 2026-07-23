@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Trophy, ChevronDown, ChevronUp, Check, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Trophy, ChevronDown, ChevronUp, Check, Loader2, Play, RefreshCw, Globe, Clock, Activity, AlertCircle, CheckCircle, XCircle, MinusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -67,6 +67,46 @@ interface LotteryTicket {
   bonusNumbers: number[];
   game: { id: number; name: string; slug: string; emoji: string } | null;
 }
+
+interface ScraperLog {
+  id: number;
+  gameId: number | null;
+  website: string | null;
+  status: string;
+  message: string | null;
+  executionTime: number | null;
+  createdAt: string;
+  game: { id: number; name: string; emoji: string } | null;
+}
+
+interface SettlementLog {
+  id: number;
+  drawId: number | null;
+  gameId: number | null;
+  ticketsChecked: number;
+  winningTickets: number;
+  totalPaid: number;
+  executionTime: number | null;
+  createdAt: string;
+  game: { id: number; name: string; emoji: string } | null;
+  draw: { id: number; drawDate: string; winningNumbers: number[]; bonusNumbers: number[] } | null;
+}
+
+interface ScraperInfo {
+  id: number;
+  name: string;
+  slug: string;
+  emoji: string;
+  isActive: boolean;
+  website: string | null;
+  scraperClass: string | null;
+  drawDays: number[];
+  drawTime: string | null;
+  timezone: string;
+  lastLog: ScraperLog | null;
+}
+
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 
@@ -482,7 +522,7 @@ function SettleDrawPanel({ draw, onSettle, onCancel }: {
 export default function AdminLottery() {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"games" | "draws" | "tickets">("games");
+  const [tab, setTab] = useState<"games" | "draws" | "tickets" | "scrapers" | "scraper-logs" | "settlement-logs">("games");
   const [showAddGame, setShowAddGame] = useState(false);
   const [editGame, setEditGame] = useState<LotteryGame | null>(null);
   const [settleDraw, setSettleDraw] = useState<LotteryDraw | null>(null);
@@ -561,6 +601,52 @@ export default function AdminLottery() {
     enabled: tab === "tickets",
   });
 
+  // ── Scrapers ──
+  const { data: scrapersData, isLoading: scrapersLoading, refetch: refetchScrapers } = useQuery<{
+    games: ScraperInfo[]; registeredScrapers: string[];
+  }>({
+    queryKey: ["/admin/lottery/scrapers"],
+    queryFn: () => apiFetch("/api/admin/lottery/scrapers"),
+    enabled: tab === "scrapers",
+    refetchInterval: tab === "scrapers" ? 10_000 : false,
+  });
+
+  const runScraper = useMutation({
+    mutationFn: (gameId: number) =>
+      apiFetch<{ status: string; message: string }>(`/api/admin/lottery/scrapers/${gameId}/run`, { method: "POST" }),
+    onSuccess: (data) => {
+      refetchScrapers();
+      qc.invalidateQueries({ queryKey: ["/admin/lottery/scraper-logs"] });
+      const variant = data.status === "SUCCESS" ? "default" : "destructive";
+      toast({ title: `Scraper: ${data.status}`, description: data.message.slice(0, 120), variant });
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const runAllScrapers = useMutation({
+    mutationFn: () => apiFetch<{ message: string }>("/api/admin/lottery/scrapers/run-all", { method: "POST" }),
+    onSuccess: (data) => {
+      toast({ title: "Scrapers triggered", description: data.message });
+      setTimeout(() => { refetchScrapers(); qc.invalidateQueries({ queryKey: ["/admin/lottery/scraper-logs"] }); }, 3000);
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  // ── Scraper Logs ──
+  const [scraperLogStatus, setScraperLogStatus] = useState("");
+  const { data: scraperLogsData, isLoading: scraperLogsLoading } = useQuery<{ logs: ScraperLog[]; total: number }>({
+    queryKey: ["/admin/lottery/scraper-logs", scraperLogStatus],
+    queryFn: () => apiFetch(`/api/admin/lottery/scraper-logs?limit=100${scraperLogStatus ? `&status=${scraperLogStatus}` : ""}`),
+    enabled: tab === "scraper-logs",
+  });
+
+  // ── Settlement Logs ──
+  const { data: settlementLogsData, isLoading: settlementLogsLoading } = useQuery<{ logs: SettlementLog[]; total: number }>({
+    queryKey: ["/admin/lottery/settlement-logs"],
+    queryFn: () => apiFetch("/api/admin/lottery/settlement-logs?limit=100"),
+    enabled: tab === "settlement-logs",
+  });
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -573,10 +659,13 @@ export default function AdminLottery() {
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="games">Games</TabsTrigger>
           <TabsTrigger value="draws">Draws</TabsTrigger>
           <TabsTrigger value="tickets">Tickets</TabsTrigger>
+          <TabsTrigger value="scrapers">🤖 Scrapers</TabsTrigger>
+          <TabsTrigger value="scraper-logs">📋 Scraper Logs</TabsTrigger>
+          <TabsTrigger value="settlement-logs">💰 Settlement Logs</TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -760,6 +849,280 @@ export default function AdminLottery() {
                             </Button>
                           )}
                         </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
+
+      {/* ── SCRAPERS TAB ── */}
+      {tab === "scrapers" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <p className="text-sm text-muted-foreground">
+              Automated scrapers fetch official lottery results every 5 minutes and settle pending tickets.
+            </p>
+            <Button
+              onClick={() => runAllScrapers.mutate()}
+              disabled={runAllScrapers.isPending}
+              className="gap-2"
+            >
+              {runAllScrapers.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              Run All Scrapers
+            </Button>
+          </div>
+
+          {scrapersLoading ? (
+            <div className="text-center py-12 text-muted-foreground">Loading scrapers…</div>
+          ) : (
+            <div className="rounded-xl border border-border/50 overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Lottery</TableHead>
+                    <TableHead>Scraper</TableHead>
+                    <TableHead><Globe className="w-3.5 h-3.5 inline mr-1" />Website</TableHead>
+                    <TableHead><Clock className="w-3.5 h-3.5 inline mr-1" />Schedule</TableHead>
+                    <TableHead>Last Status</TableHead>
+                    <TableHead>Last Run</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(scrapersData?.games ?? []).map((g) => {
+                    const log = g.lastLog;
+                    const statusColor =
+                      log?.status === "SUCCESS" ? "text-primary border-primary/30" :
+                      log?.status === "FAILED" ? "text-destructive border-destructive/30" :
+                      log?.status === "DUPLICATE" ? "text-blue-400 border-blue-500/30" :
+                      "text-muted-foreground border-border/30";
+
+                    return (
+                      <TableRow key={g.id} className={!g.scraperClass ? "opacity-50" : ""}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">{g.emoji}</span>
+                            <div>
+                              <div className="font-medium text-foreground text-sm">{g.name}</div>
+                              <Badge variant="outline" className={`text-[10px] mt-0.5 ${g.isActive ? "text-primary border-primary/30" : "text-muted-foreground"}`}>
+                                {g.isActive ? "Active" : "Inactive"}
+                              </Badge>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs font-mono text-muted-foreground">
+                          {g.scraperClass ?? <span className="text-yellow-500 italic">Not configured</span>}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {g.website ? (
+                            <a href={g.website} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline truncate max-w-[160px] block">
+                              {g.website.replace(/^https?:\/\//, "")}
+                            </a>
+                          ) : <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {g.drawDays.length > 0 ? (
+                            <div>
+                              <div>{g.drawDays.map((d) => DAY_NAMES[d]).join(", ")}</div>
+                              {g.drawTime && <div className="font-mono">{g.drawTime} {g.timezone.split("/")[1] ?? g.timezone}</div>}
+                            </div>
+                          ) : <span className="italic">Not set</span>}
+                        </TableCell>
+                        <TableCell>
+                          {log ? (
+                            <Badge variant="outline" className={`text-[10px] ${statusColor}`}>
+                              {log.status}
+                            </Badge>
+                          ) : <span className="text-xs text-muted-foreground">Never run</span>}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {log ? (
+                            <div>
+                              <div>{format(new Date(log.createdAt), "PP")}</div>
+                              <div className="text-[10px]">{format(new Date(log.createdAt), "p")}</div>
+                            </div>
+                          ) : "—"}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex justify-end">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1.5 text-xs"
+                              disabled={!g.scraperClass || runScraper.isPending}
+                              onClick={() => runScraper.mutate(g.id)}
+                            >
+                              <Play className="w-3 h-3" /> Run Now
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
+          {scrapersData && (
+            <p className="text-[11px] text-muted-foreground">
+              Registered scrapers: {scrapersData.registeredScrapers.join(", ")}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* ── SCRAPER LOGS TAB ── */}
+      {tab === "scraper-logs" && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 flex-wrap">
+            <p className="text-sm text-muted-foreground flex-1">{scraperLogsData?.total ?? 0} total log entries</p>
+            <div className="flex gap-2">
+              {["", "SUCCESS", "FAILED", "NO_RESULT", "DUPLICATE"].map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setScraperLogStatus(s)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
+                    scraperLogStatus === s
+                      ? "bg-primary/15 border-primary/40 text-primary"
+                      : "bg-muted/20 border-border/50 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {s || "All"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border/50 overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date / Time</TableHead>
+                  <TableHead>Lottery</TableHead>
+                  <TableHead>Website</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Message</TableHead>
+                  <TableHead>Time (ms)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {scraperLogsLoading ? (
+                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
+                ) : (scraperLogsData?.logs ?? []).length === 0 ? (
+                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No logs yet. Run a scraper to see results here.</TableCell></TableRow>
+                ) : (
+                  (scraperLogsData?.logs ?? []).map((log) => {
+                    const StatusIcon =
+                      log.status === "SUCCESS" ? CheckCircle :
+                      log.status === "FAILED" ? XCircle :
+                      log.status === "DUPLICATE" ? MinusCircle :
+                      AlertCircle;
+                    const iconColor =
+                      log.status === "SUCCESS" ? "text-primary" :
+                      log.status === "FAILED" ? "text-destructive" :
+                      log.status === "DUPLICATE" ? "text-blue-400" :
+                      "text-muted-foreground";
+
+                    return (
+                      <TableRow key={log.id}>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                          <div>{format(new Date(log.createdAt), "PP")}</div>
+                          <div>{format(new Date(log.createdAt), "p")}</div>
+                        </TableCell>
+                        <TableCell>
+                          {log.game ? (
+                            <span className="text-sm font-medium">{log.game.emoji} {log.game.name}</span>
+                          ) : <span className="text-xs text-muted-foreground">Unknown</span>}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground max-w-[140px] truncate">
+                          {log.website?.replace(/^https?:\/\//, "") ?? "—"}
+                        </TableCell>
+                        <TableCell>
+                          <div className={`flex items-center gap-1.5 text-xs font-semibold ${iconColor}`}>
+                            <StatusIcon className="w-3.5 h-3.5 shrink-0" />
+                            {log.status}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground max-w-[280px]">
+                          <span title={log.message ?? ""} className="truncate block">
+                            {log.message ?? "—"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground font-mono">
+                          {log.executionTime != null ? `${log.executionTime}ms` : "—"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
+
+      {/* ── SETTLEMENT LOGS TAB ── */}
+      {tab === "settlement-logs" && (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">{settlementLogsData?.total ?? 0} settlement operations recorded</p>
+          <div className="rounded-xl border border-border/50 overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date / Time</TableHead>
+                  <TableHead>Lottery</TableHead>
+                  <TableHead>Winning Numbers</TableHead>
+                  <TableHead>Tickets Checked</TableHead>
+                  <TableHead>Winners</TableHead>
+                  <TableHead>Total Paid</TableHead>
+                  <TableHead>Time (ms)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {settlementLogsLoading ? (
+                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
+                ) : (settlementLogsData?.logs ?? []).length === 0 ? (
+                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No settlements yet. Settlement logs appear after the scraper finds and settles a draw.</TableCell></TableRow>
+                ) : (
+                  (settlementLogsData?.logs ?? []).map((log) => (
+                    <TableRow key={log.id}>
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                        <div>{format(new Date(log.createdAt), "PP")}</div>
+                        <div>{format(new Date(log.createdAt), "p")}</div>
+                      </TableCell>
+                      <TableCell>
+                        {log.game ? (
+                          <span className="text-sm font-medium">{log.game.emoji} {log.game.name}</span>
+                        ) : <span className="text-xs text-muted-foreground">Unknown</span>}
+                      </TableCell>
+                      <TableCell>
+                        {log.draw && log.draw.winningNumbers.length > 0 ? (
+                          <div className="flex gap-1 flex-wrap">
+                            {log.draw.winningNumbers.map((n) => (
+                              <span key={n} className="w-6 h-6 rounded-full bg-primary/20 text-primary text-[10px] font-bold flex items-center justify-center">{n}</span>
+                            ))}
+                            {log.draw.bonusNumbers.map((n) => (
+                              <span key={`b${n}`} className="w-6 h-6 rounded-full bg-yellow-500/20 text-yellow-500 text-[10px] font-bold flex items-center justify-center">{n}</span>
+                            ))}
+                          </div>
+                        ) : <span className="text-xs text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell className="text-sm text-center">{log.ticketsChecked}</TableCell>
+                      <TableCell>
+                        <span className={`text-sm font-semibold ${log.winningTickets > 0 ? "text-primary" : "text-muted-foreground"}`}>
+                          {log.winningTickets}
+                        </span>
+                      </TableCell>
+                      <TableCell className={`text-sm font-semibold ${log.totalPaid > 0 ? "text-primary" : "text-muted-foreground"}`}>
+                        ${log.totalPaid.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground font-mono">
+                        {log.executionTime != null ? `${log.executionTime}ms` : "—"}
                       </TableCell>
                     </TableRow>
                   ))

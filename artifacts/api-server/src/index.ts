@@ -15,6 +15,7 @@ import { startLiveSyncWorkers } from "./lib/liveSync";
 import { runFullFixtureSync } from "./routes/apiSync";
 import { seedLotteryGames } from "./lib/lotterySeed";
 import { syncLotteryDraws } from "./lib/lotterySync";
+import { runAllScrapers } from "./lib/scrapers/ScraperManager";
 
 const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
@@ -72,6 +73,14 @@ server.listen(port, async () => {
   // Lottery API sync — run immediately then every hour
   syncLotteryDraws();
   setInterval(syncLotteryDraws, 60 * 60 * 1000);
+
+  // Lottery web scraper — run every 5 minutes (with 2-min delay on first run)
+  setTimeout(() => {
+    runAllScrapers().catch((err) => logger.error({ err }, "Lottery scraper run failed"));
+    setInterval(() => {
+      runAllScrapers().catch((err) => logger.error({ err }, "Lottery scraper run failed"));
+    }, 5 * 60 * 1000);
+  }, 2 * 60 * 1000);
 });
 
 // ── Result sync helper ────────────────────────────────────────────────────────

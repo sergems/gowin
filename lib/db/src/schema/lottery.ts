@@ -40,6 +40,12 @@ export const lotteryGamesTable = pgTable("lottery_games", {
   maxPayout: numeric("max_payout", { precision: 20, scale: 2 }).notNull().default("500000.00"),
   // Enabled play types: ["1","2","3","4","5","6","bonus_only"]
   enabledPlayTypes: jsonb("enabled_play_types").$type<string[]>().notNull().default(DEFAULT_ENABLED_PLAY_TYPES),
+  // Scraper configuration
+  website: text("website"),
+  scraperClass: text("scraper_class"),
+  drawDays: jsonb("draw_days").$type<number[]>().default([]),
+  drawTime: text("draw_time"),
+  timezone: text("timezone").default("UTC"),
 });
 
 export const lotteryDrawsTable = pgTable("lottery_draws", {
@@ -77,6 +83,31 @@ export const lotteryTicketsTable = pgTable("lottery_tickets", {
   potentialWin: numeric("potential_win", { precision: 20, scale: 2 }),
 });
 
+/** Tracks each scraper execution (one row per game per run). */
+export const scraperLogsTable = pgTable("scraper_logs", {
+  id: serial("id").primaryKey(),
+  gameId: integer("game_id").references(() => lotteryGamesTable.id, { onDelete: "cascade" }),
+  website: text("website"),
+  status: text("status").notNull(), // SUCCESS | FAILED | NO_RESULT | DUPLICATE
+  message: text("message"),
+  executionTime: integer("execution_time"), // milliseconds
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Tracks each settlement operation triggered by the scraper. */
+export const settlementLogsTable = pgTable("settlement_logs", {
+  id: serial("id").primaryKey(),
+  drawId: integer("draw_id").references(() => lotteryDrawsTable.id, { onDelete: "set null" }),
+  gameId: integer("game_id").references(() => lotteryGamesTable.id, { onDelete: "set null" }),
+  ticketsChecked: integer("tickets_checked").notNull().default(0),
+  winningTickets: integer("winning_tickets").notNull().default(0),
+  totalPaid: numeric("total_paid", { precision: 20, scale: 2 }).notNull().default("0"),
+  executionTime: integer("execution_time"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type LotteryGame = typeof lotteryGamesTable.$inferSelect;
 export type LotteryDraw = typeof lotteryDrawsTable.$inferSelect;
 export type LotteryTicket = typeof lotteryTicketsTable.$inferSelect;
+export type ScraperLog = typeof scraperLogsTable.$inferSelect;
+export type SettlementLog = typeof settlementLogsTable.$inferSelect;
