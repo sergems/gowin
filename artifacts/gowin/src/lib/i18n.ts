@@ -830,6 +830,7 @@ const translations = {
     "shell.cash_out": "Cash Out",
     "shell.up_markets": "1UP / 2UP Markets",
     "shell.referral_program": "Referral Program",
+    "nav.lottery": "Lottery",
 
     "admin.dashboard.title": "Admin Dashboard",
     "admin.dashboard.desc": "Platform overview and statistics",
@@ -1862,6 +1863,7 @@ const translations = {
     "shell.cash_out": "Encaissement",
     "shell.up_markets": "Marchés 1UP / 2UP",
     "shell.referral_program": "Programme de parrainage",
+    "nav.lottery": "Loterie",
 
     "admin.dashboard.title": "Tableau de bord Admin",
     "admin.dashboard.desc": "Vue d'ensemble et statistiques de la plateforme",

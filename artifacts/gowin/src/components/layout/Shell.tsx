@@ -350,6 +350,7 @@ export function Shell({ children }: { children: ReactNode }) {
     { href: "/admin/referral",           icon: Share2,            label: t("shell.referral_program"),   match: (l: string) => l === "/admin/referral" },
     { href: "/admin/slides",             icon: Images,            label: t("nav.slides"),               match: (l: string) => l === "/admin/slides" },
     { href: "/admin/win-bonus",          icon: Sparkles,          label: t("shell.win_bonus"),          match: (l: string) => l === "/admin/win-bonus" },
+    { href: "/admin/lottery",            icon: Trophy,            label: t("nav.lottery"),               match: (l: string) => l.startsWith("/admin/lottery") },
     { href: "/admin/settings",           icon: SlidersHorizontal, label: t("nav.settings"),             match: (l: string) => l === "/admin/settings" },
   ] : [];
 
@@ -569,6 +570,16 @@ export function Shell({ children }: { children: ReactNode }) {
               <CheckCircle2 className="w-4 h-4 shrink-0" />
               {open && <span className="flex-1">{t("nav.results")}</span>}
             </Link>
+
+            {!isStaffRole && (
+              <Link href="/lottery" title={!open ? t("nav.lottery") : undefined} onClick={onNav}
+                className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                  ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
+                  ${location.startsWith("/lottery") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
+                <span className="w-4 h-4 shrink-0 text-base leading-none flex items-center justify-center">🎰</span>
+                {open && <span className="flex-1">{t("nav.lottery")}</span>}
+              </Link>
+            )}
 
             {!isStaffRole && (
               <a

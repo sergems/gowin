@@ -49,6 +49,12 @@ import AdminCashOut from "@/pages/admin/cash-out";
 import BranchPerformancePage from "@/pages/admin/BranchPerformancePage";
 import ReferralPage from "@/pages/referral";
 
+// Lottery Pages
+import LotteryLobby from "@/pages/lottery/index";
+import LotteryGame from "@/pages/lottery/game";
+import LotteryTickets from "@/pages/lottery/tickets";
+import AdminLottery from "@/pages/admin/lottery";
+
 // Branch Admin Pages
 import BranchDashboard from "@/pages/branch/DashboardPage";
 import BranchAgents from "@/pages/branch/AgentsPage";
@@ -203,6 +209,12 @@ function Router() {
         <Route path="/admin/cash-out" component={() => <ProtectedRoute component={AdminCashOut} adminOnly />} />
         <Route path="/admin/branch-performance" component={() => <ProtectedRoute component={BranchPerformancePage} allowedRoles={["admin", "manager"]} />} />
         <Route path="/referral" component={() => <ProtectedRoute component={ReferralPage} allowedRoles={["user", "admin"]} />} />
+
+        {/* Lottery Routes */}
+        <Route path="/lottery/tickets" component={() => <ProtectedRoute component={LotteryTickets} allowedRoles={["user", "admin"]} />} />
+        <Route path="/lottery/:gameId" component={LotteryGame} />
+        <Route path="/lottery" component={LotteryLobby} />
+        <Route path="/admin/lottery" component={() => <ProtectedRoute component={AdminLottery} adminOnly />} />
 
         {/* Branch Admin Routes */}
         <Route path="/branch" component={() => <ProtectedRoute component={BranchDashboard} allowedRoles={["branch_admin"]} />} />
