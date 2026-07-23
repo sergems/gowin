@@ -98,7 +98,13 @@ export async function syncFixtureResults(): Promise<{ updated: number; errors: n
       const tenMinFromNow = new Date(now.getTime() + 10 * 60 * 1000);
 
       const [existing] = await db
-        .select({ id: fixturesTable.id, status: fixturesTable.status, startTime: fixturesTable.startTime })
+        .select({
+          id: fixturesTable.id,
+          status: fixturesTable.status,
+          startTime: fixturesTable.startTime,
+          scoreHome: fixturesTable.scoreHome,
+          scoreAway: fixturesTable.scoreAway,
+        })
         .from(fixturesTable)
         .where(eq(fixturesTable.externalId, fixtureExtId))
         .limit(1);
@@ -159,10 +165,35 @@ export async function syncFixtureResults(): Promise<{ updated: number; errors: n
         // rescheduled to an earlier date. Update startTime to the API-computed value so the
         // record reflects when the game is actually being played. We do this ONLY on live
         // transitions to avoid overwriting otherwise-accurate upcoming startTimes.
-        const updateSet: Record<string, unknown> = { status: finalStatus, scoreHome: score.home, scoreAway: score.away };
+        const updateSet: Record<string, unknown> = { status: finalStatus };
         if (finalStatus === "live" && t > now) {
           updateSet.startTime = apiStartTime;
         }
+
+        // ── Score update guard ───────────────────────────────────────────────
+        // The batch API endpoint (event_ft_result) can lag behind the live-sync
+        // worker, which tracks goals in real time. If we blindly overwrite a
+        // confirmed 3-2 with a stale 0-0 from the batch response, bets settle
+        // incorrectly. Rule: never let the total goals go backward.
+        //
+        // Exception: if the DB score is null (never set by live sync), always
+        // accept the API score (even 0-0) so the field gets populated.
+        const dbTotal = (existing.scoreHome ?? -1) + (existing.scoreAway ?? -1);
+        const apiTotal = (score.home ?? -1) + (score.away ?? -1);
+        const dbHasScore = existing.scoreHome !== null && existing.scoreAway !== null;
+        const apiHasScore = score.home !== null && score.away !== null;
+
+        if (apiHasScore && (!dbHasScore || apiTotal >= dbTotal)) {
+          // API has a meaningful score and it is not a regression — accept it.
+          updateSet.scoreHome = score.home;
+          updateSet.scoreAway = score.away;
+        } else if (!apiHasScore && !dbHasScore) {
+          // Neither side has a score — write null explicitly to keep things tidy.
+          updateSet.scoreHome = null;
+          updateSet.scoreAway = null;
+        }
+        // If apiHasScore but apiTotal < dbTotal: API is lagging (e.g. returns
+        // "0-0" while DB already has "3-2"). Keep DB score — do not touch it.
 
         // Race-safe write: if another worker (e.g. fixtureExpiry) has already moved this
         // fixture to "finished" between our SELECT and this UPDATE, do not regress it back
