@@ -308,10 +308,10 @@ function PayoutTable({ game }: { game: LotteryGameDetail }) {
             </div>
           )}
 
-          {/* Bonus (bonus ball counts as part of drawn set) */}
+          {/* Including Bonus (bonus ball counts as part of drawn set) */}
           {game.bonusNumbersCount > 0 && mainKeys.length > 0 && (
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Bonus</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Including Bonus</p>
               <table className="w-full text-sm">
                 <tbody className="divide-y divide-border/20">
                   {mainKeys.map((k) => {
