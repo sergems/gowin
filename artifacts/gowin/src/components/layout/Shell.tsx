@@ -898,7 +898,7 @@ export function Shell({ children }: { children: ReactNode }) {
               </Link>
             )}
             {user && !isStaffRole && <NotificationBell />}
-            {!betSlipOpen && (
+            {!betSlipOpen && !location.startsWith("/lottery") && (
               <button
                 onClick={() => setBetSlipOpen(true)}
                 className="hidden md:flex items-center gap-1.5 text-white/80 hover:text-white transition-colors p-1.5 rounded-md hover:bg-white/10 relative drop-shadow"
@@ -941,8 +941,8 @@ export function Shell({ children }: { children: ReactNode }) {
         </footer>
       </main>
 
-      {/* ── Desktop Bet Slip ─────────────────────────────────────────────────── */}
-      {betSlipOpen && (
+      {/* ── Desktop Bet Slip (hidden on lottery pages) ───────────────────────── */}
+      {betSlipOpen && !location.startsWith("/lottery") && (
         <aside className="w-80 border-l border-border bg-card hidden md:flex flex-col shrink-0">
           <BetSlipBody onToggle={() => setBetSlipOpen(false)} />
         </aside>
@@ -990,7 +990,8 @@ export function Shell({ children }: { children: ReactNode }) {
           </>
         )}
 
-        {/* Bet Slip FAB */}
+        {/* Bet Slip FAB — hidden on lottery pages */}
+        {!location.startsWith("/lottery") && (
         <button onClick={() => setMobileBetSlipOpen(true)}
           className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-md transition-colors relative
             ${mobileBetSlipOpen ? "text-primary" : "text-muted-foreground"}`}>
@@ -1004,6 +1005,7 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
           <span className="text-[10px] font-medium">{t("betslip.title")}</span>
         </button>
+        )}
 
         {/* Logout (logged-in only) */}
         {user && (
