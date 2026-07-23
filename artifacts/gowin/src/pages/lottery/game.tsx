@@ -214,7 +214,7 @@ const BONUS_MODE_OPTIONS: { mode: BonusMode; label: string; desc: string }[] = [
   },
   {
     mode: "bonus",
-    label: "Bonus",
+    label: "Including Bonus",
     desc: "Bonus ball counts as part of the draw — your numbers can match it",
   },
   {
