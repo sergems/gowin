@@ -13,6 +13,7 @@ import { eq, sql } from "drizzle-orm";
 import { attachWebSocketServer } from "./lib/wsServer";
 import { startLiveSyncWorkers } from "./lib/liveSync";
 import { runFullFixtureSync } from "./routes/apiSync";
+import { seedLotteryGames } from "./lib/lotterySeed";
 
 const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
@@ -60,6 +61,9 @@ server.listen(port, async () => {
   } catch (err) {
     logger.warn({ err }, "Could not load JWT secret from DB — falling back to env var");
   }
+
+  // Seed default lottery games (no-op if already seeded)
+  await seedLotteryGames();
 
   // Start live betting sync workers after server is ready
   startLiveSyncWorkers();

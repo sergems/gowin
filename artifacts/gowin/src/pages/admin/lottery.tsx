@@ -173,6 +173,84 @@ function GameFormPanel({ initial, onSave, onCancel }: {
   );
 }
 
+// ── Draw Form Panel ───────────────────────────────────────────────────────────
+function DrawFormPanel({ games, onSave, onCancel }: {
+  games: LotteryGame[];
+  onSave: (data: { gameId: number; drawDate: string; jackpot: number }) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [gameId, setGameId] = useState<number>(games[0]?.id ?? 0);
+  const [drawDate, setDrawDate] = useState(() => {
+    const d = new Date(Date.now() + 3 * 86_400_000);
+    return d.toISOString().slice(0, 16);
+  });
+  const [jackpot, setJackpot] = useState<number>(games[0]?.jackpot ?? 1_000_000);
+  const [saving, setSaving] = useState(false);
+
+  // When game changes, pre-fill jackpot from game default
+  function handleGameChange(id: number) {
+    setGameId(id);
+    const g = games.find((g) => g.id === id);
+    if (g) setJackpot(g.jackpot);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!gameId || !drawDate || !jackpot) return;
+    setSaving(true);
+    try { await onSave({ gameId, drawDate, jackpot }); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="rounded-xl border border-primary/30 bg-card p-5 space-y-4">
+      <h3 className="font-bold text-foreground">Schedule New Draw</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="space-y-1.5">
+          <Label>Game</Label>
+          <select
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            value={gameId}
+            onChange={(e) => handleGameChange(parseInt(e.target.value))}
+            required
+          >
+            {games.map((g) => (
+              <option key={g.id} value={g.id}>{g.emoji} {g.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <Label>Draw Date & Time</Label>
+          <Input
+            type="datetime-local"
+            value={drawDate}
+            onChange={(e) => setDrawDate(e.target.value)}
+            required
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Jackpot ($)</Label>
+          <Input
+            type="number"
+            min="0"
+            step="1000"
+            value={jackpot}
+            onChange={(e) => setJackpot(parseFloat(e.target.value))}
+            required
+          />
+        </div>
+      </div>
+      <div className="flex gap-3 pt-1">
+        <Button type="submit" disabled={saving || !gameId} className="gap-2">
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+          {saving ? "Creating…" : "Create Draw"}
+        </Button>
+        <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
+      </div>
+    </form>
+  );
+}
+
 // ── Settle Draw Modal ─────────────────────────────────────────────────────────
 function SettleDrawPanel({ draw, onSettle, onCancel }: {
   draw: LotteryDraw;
@@ -231,7 +309,7 @@ export default function AdminLottery() {
   const { data: games = [], isLoading: gamesLoading } = useQuery<LotteryGame[]>({
     queryKey: ["/admin/lottery/games"],
     queryFn: () => apiFetch("/api/admin/lottery/games"),
-    enabled: tab === "games",
+    // always fetch — needed for draw form game selector on any tab
   });
 
   const createGame = useMutation({
@@ -401,6 +479,24 @@ export default function AdminLottery() {
       {/* ── DRAWS TAB ── */}
       {tab === "draws" && (
         <div className="space-y-4">
+          <div className="flex justify-end">
+            <Button
+              onClick={() => { setShowAddDraw(games[0]?.id ?? null); setSettleDraw(null); }}
+              className="gap-2"
+              disabled={games.length === 0}
+            >
+              <Plus className="w-4 h-4" /> Add Draw
+            </Button>
+          </div>
+
+          {showAddDraw !== null && games.length > 0 && (
+            <DrawFormPanel
+              games={games}
+              onSave={async (data) => { await createDraw.mutateAsync(data); }}
+              onCancel={() => setShowAddDraw(null)}
+            />
+          )}
+
           {settleDraw && (
             <SettleDrawPanel
               draw={settleDraw}
