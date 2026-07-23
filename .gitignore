@@ -50,3 +50,6 @@ Thumbs.db
 
 # Runtime-generated uploads (PDF reports etc.)
 artifacts/api-server/uploads/
+
+# Replit attached assets (user uploads, not source)
+attached_assets/
