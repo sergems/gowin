@@ -3,7 +3,8 @@
  * Safe to call on every startup: it only inserts when no games exist yet.
  */
 import { db, lotteryGamesTable, lotteryDrawsTable } from "@workspace/db";
-import { count, eq, and } from "drizzle-orm";
+import { DEFAULT_PAYOUT_CONFIG } from "@workspace/db";
+import { count } from "drizzle-orm";
 import { logger } from "./logger";
 
 const SEED_GAMES = [
@@ -16,11 +17,11 @@ const SEED_GAMES = [
     bonusNumbersCount: 1,
     bonusNumbersMax: 26,
     ticketPrice: "2.00",
-    jackpot: "150000000.00",
+    jackpot: "0.00",
     drawOffsetDays: 3,
     color: "#ef4444",
     emoji: "🔴",
-    description: "America's favorite lottery. Match 5 numbers + the Powerball to win the jackpot.",
+    description: "America's favorite lottery. Pick 1–5 numbers + optional Powerball to win.",
   },
   {
     name: "Mega Millions",
@@ -31,11 +32,11 @@ const SEED_GAMES = [
     bonusNumbersCount: 1,
     bonusNumbersMax: 25,
     ticketPrice: "2.00",
-    jackpot: "220000000.00",
+    jackpot: "0.00",
     drawOffsetDays: 2,
     color: "#f59e0b",
     emoji: "⭐",
-    description: "One of the world's largest lottery jackpots. Pick 5 numbers plus the Mega Ball.",
+    description: "One of the world's largest lotteries. Pick 1–5 numbers plus optional Mega Ball.",
   },
   {
     name: "EuroMillions",
@@ -46,11 +47,11 @@ const SEED_GAMES = [
     bonusNumbersCount: 2,
     bonusNumbersMax: 12,
     ticketPrice: "2.50",
-    jackpot: "90000000.00",
+    jackpot: "0.00",
     drawOffsetDays: 4,
     color: "#3b82f6",
     emoji: "🇪🇺",
-    description: "Europe's biggest transnational lottery. Pick 5 main numbers and 2 Lucky Stars.",
+    description: "Europe's biggest transnational lottery. Pick 1–5 main numbers and optional Lucky Stars.",
   },
   {
     name: "EuroJackpot",
@@ -61,11 +62,11 @@ const SEED_GAMES = [
     bonusNumbersCount: 2,
     bonusNumbersMax: 10,
     ticketPrice: "2.00",
-    jackpot: "47000000.00",
+    jackpot: "0.00",
     drawOffsetDays: 5,
     color: "#8b5cf6",
     emoji: "💜",
-    description: "A pan-European lottery with a jackpot cap of €120 million.",
+    description: "A pan-European lottery. Pick 1–5 numbers + optional Euro Numbers.",
   },
   {
     name: "UK Lotto",
@@ -76,11 +77,11 @@ const SEED_GAMES = [
     bonusNumbersCount: 0,
     bonusNumbersMax: 0,
     ticketPrice: "2.00",
-    jackpot: "9200000.00",
+    jackpot: "0.00",
     drawOffsetDays: 1,
     color: "#10b981",
     emoji: "🇬🇧",
-    description: "The UK's flagship lottery. Pick 6 numbers from 1 to 59.",
+    description: "The UK's flagship lottery. Pick 1–6 numbers from 1 to 59.",
   },
   {
     name: "South African Lotto",
@@ -91,11 +92,11 @@ const SEED_GAMES = [
     bonusNumbersCount: 1,
     bonusNumbersMax: 52,
     ticketPrice: "1.50",
-    jackpot: "18000000.00",
+    jackpot: "0.00",
     drawOffsetDays: 2,
     color: "#06b6d4",
     emoji: "🇿🇦",
-    description: "South Africa's national lottery. Pick 6 numbers plus a bonus ball.",
+    description: "South Africa's national lottery. Pick 1–6 numbers plus optional bonus ball.",
   },
   {
     name: "Daily Lotto",
@@ -106,12 +107,12 @@ const SEED_GAMES = [
     bonusNumbersCount: 0,
     bonusNumbersMax: 0,
     ticketPrice: "1.00",
-    jackpot: "500000.00",
+    jackpot: "0.00",
     drawOffsetDays: 0,
     drawOffsetHours: 12,
     color: "#f97316",
     emoji: "🌅",
-    description: "Daily draws every night. Pick 5 from 1–36. No rollover — jackpot always won!",
+    description: "Daily draws every night. Pick 1–5 from 1–36. No rollover — always pays out!",
   },
   {
     name: "Irish Lotto",
@@ -122,11 +123,11 @@ const SEED_GAMES = [
     bonusNumbersCount: 1,
     bonusNumbersMax: 47,
     ticketPrice: "2.00",
-    jackpot: "3500000.00",
+    jackpot: "0.00",
     drawOffsetDays: 3,
     color: "#4ade80",
     emoji: "🍀",
-    description: "Ireland's national lottery. Pick 6 numbers plus a bonus from 1–47.",
+    description: "Ireland's national lottery. Pick 1–6 numbers plus optional bonus from 1–47.",
   },
 ] as const;
 
@@ -165,16 +166,16 @@ export async function seedLotteryGames(): Promise<void> {
           emoji: g.emoji,
           description: g.description,
           isActive: true,
+          payoutConfig: DEFAULT_PAYOUT_CONFIG,
         })
         .onConflictDoNothing()
         .returning({ id: lotteryGamesTable.id, name: lotteryGamesTable.name });
 
       if (game) {
-        // Create an initial pending draw for each game
         await db.insert(lotteryDrawsTable).values({
           gameId: game.id,
           drawDate: nextDrawAt,
-          jackpot: g.jackpot,
+          jackpot: "0.00",
           winningNumbers: [],
           bonusNumbers: [],
           status: "pending",

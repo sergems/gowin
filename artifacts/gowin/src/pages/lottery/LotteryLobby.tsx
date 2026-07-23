@@ -1,12 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Trophy, Ticket, Clock, Sparkles } from "lucide-react";
+import { Trophy, Ticket, Clock, Zap } from "lucide-react";
 import { format } from "date-fns";
+
+interface PayoutConfig {
+  excludedBonus: Record<string, string>;
+  includedBonus: Record<string, string>;
+  bonusOnly: string;
+  withBonus: Record<string, string>;
+}
 
 interface LotteryGame {
   id: number;
@@ -18,38 +24,51 @@ interface LotteryGame {
   bonusNumbersCount: number;
   bonusNumbersMax: number;
   ticketPrice: number;
-  jackpot: number;
   nextDrawAt: string | null;
   isActive: boolean;
   color: string;
   emoji: string;
   description: string | null;
+  payoutConfig: PayoutConfig | null;
 }
 
-function fmtJackpot(n: number): string {
-  if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(1)}B`;
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
-  return `$${n.toFixed(2)}`;
+/** Return the highest-odds string from a payout config for display (e.g. "100 000/1") */
+function topOdds(config: PayoutConfig | null): string {
+  if (!config) return "—";
+  const all = [
+    ...Object.values(config.excludedBonus ?? {}),
+    ...Object.values(config.withBonus ?? {}),
+  ];
+  if (all.length === 0) return "—";
+  // Pick the entry whose numerator is largest
+  let best = all[0]!;
+  for (const o of all) {
+    const [an, ad] = o.split("/").map(Number);
+    const [bn, bd] = best.split("/").map(Number);
+    if ((an ?? 0) / (ad ?? 1) > (bn ?? 0) / (bd ?? 1)) best = o;
+  }
+  return best;
 }
 
 function GameCard({ game }: { game: LotteryGame }) {
   const glowStyle = { boxShadow: `0 0 30px ${game.color}22, 0 0 60px ${game.color}11` };
   const borderStyle = { borderColor: `${game.color}40` };
+  const top = topOdds(game.payoutConfig);
+  const hasBonusBall = game.bonusNumbersCount > 0;
 
   return (
     <div
       className="relative rounded-2xl border bg-card overflow-hidden flex flex-col transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 group"
       style={{ ...glowStyle, ...borderStyle }}
     >
-      {/* Header gradient */}
+      {/* Top colour bar */}
       <div
         className="h-1.5 w-full"
         style={{ background: `linear-gradient(to right, ${game.color}, ${game.color}88)` }}
       />
 
       <div className="p-5 flex flex-col gap-4 flex-1">
-        {/* Top row */}
+        {/* Name + format badge */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2.5">
             <span className="text-3xl leading-none">{game.emoji}</span>
@@ -58,26 +77,28 @@ function GameCard({ game }: { game: LotteryGame }) {
               <p className="text-xs text-muted-foreground mt-0.5">{game.country}</p>
             </div>
           </div>
-          <Badge variant="outline" className="text-[10px] shrink-0" style={{ borderColor: `${game.color}50`, color: game.color }}>
-            {game.mainNumbersCount}/{game.mainNumbersMax}
-            {game.bonusNumbersCount > 0 && ` +${game.bonusNumbersCount}`}
-          </Badge>
+          {hasBonusBall && (
+            <Badge variant="outline" className="text-[10px] shrink-0 border-yellow-500/40 text-yellow-500">
+              +Bonus
+            </Badge>
+          )}
         </div>
 
-        {/* Jackpot */}
-        <div className="text-center py-3 rounded-xl bg-background/60 border border-border/40">
-          <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mb-1">
-            Jackpot
-          </p>
-          <p
-            className="text-2xl font-extrabold tabular-nums leading-none"
-            style={{ color: game.color }}
-          >
-            {fmtJackpot(game.jackpot)}
-          </p>
-          <div className="flex items-center justify-center gap-1 mt-1.5">
-            <Sparkles className="w-3 h-3 text-muted-foreground/50" />
-            <span className="text-[10px] text-muted-foreground/60">Estimated jackpot</span>
+        {/* Pick format + top odds */}
+        <div className="rounded-xl bg-background/60 border border-border/40 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Pick</span>
+            <span className="text-sm font-bold text-foreground">
+              1–{game.mainNumbersCount} numbers from 1–{game.mainNumbersMax}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium flex items-center gap-1">
+              <Zap className="w-3 h-3" /> Top Prize
+            </span>
+            <span className="text-sm font-extrabold tabular-nums" style={{ color: game.color }}>
+              {top}
+            </span>
           </div>
         </div>
 
@@ -85,7 +106,12 @@ function GameCard({ game }: { game: LotteryGame }) {
         {game.nextDrawAt && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Clock className="w-3.5 h-3.5 shrink-0" />
-            <span>Next draw: <span className="text-foreground font-medium">{format(new Date(game.nextDrawAt), "EEE, MMM d 'at' HH:mm")}</span></span>
+            <span>
+              Next draw:{" "}
+              <span className="text-foreground font-medium">
+                {format(new Date(game.nextDrawAt), "EEE, MMM d 'at' HH:mm")}
+              </span>
+            </span>
           </div>
         )}
 
@@ -135,7 +161,6 @@ function CardSkeleton() {
 
 export default function LotteryLobby() {
   const { user } = useAuth();
-  const { formatCurrency } = useSiteSettings();
 
   const { data, isLoading } = useQuery<{ games: LotteryGame[] }>({
     queryKey: ["lottery-games"],
@@ -154,21 +179,19 @@ export default function LotteryLobby() {
             <Trophy className="w-5 h-5 text-primary" />
             <span className="text-xs font-semibold uppercase tracking-widest text-primary">Lottery</span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-extrabold">
-            Win Life-Changing Jackpots
-          </h1>
+          <h1 className="text-2xl md:text-3xl font-extrabold">Pick Your Numbers. Win Big.</h1>
           <p className="text-muted-foreground text-sm leading-relaxed max-w-lg">
-            Play the world's biggest lotteries. Pick your lucky numbers, buy your ticket, and you could be our next jackpot winner.
+            Play 1 to 6 numbers per ticket — with or without the bonus ball. Prizes paid at fixed odds. The more numbers you match, the bigger your win.
           </p>
         </div>
         <div className="flex flex-col items-center gap-2">
-          <div className="text-4xl font-black text-primary tabular-nums">
-            {games.length > 0 ? fmtJackpot(Math.max(...games.map((g) => g.jackpot))) : "—"}
+          <div className="text-center">
+            <div className="text-3xl font-black text-primary tabular-nums">Up to 100 000/1</div>
+            <p className="text-xs text-muted-foreground mt-1">Best available odds</p>
           </div>
-          <p className="text-xs text-muted-foreground">Biggest current jackpot</p>
           {user && (
             <Link href="/lottery/tickets">
-              <Button variant="outline" size="sm" className="gap-1.5">
+              <Button variant="outline" size="sm" className="gap-1.5 mt-2">
                 <Ticket className="w-3.5 h-3.5" /> My Tickets
               </Button>
             </Link>

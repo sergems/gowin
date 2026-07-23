@@ -1,6 +1,20 @@
 import { pgTable, serial, integer, numeric, text, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 
+export type PayoutConfig = {
+  excludedBonus: Record<string, string>; // "1" → "13/2", "2" → "60/1" …
+  includedBonus: Record<string, string>; // "1" → "11/2", "2" → "50/1" …
+  bonusOnly: string;                     // "45/1"
+  withBonus: Record<string, string>;     // "1" → "344/1", "2" → "2805/1" …
+};
+
+export const DEFAULT_PAYOUT_CONFIG: PayoutConfig = {
+  excludedBonus: { "1": "13/2", "2": "60/1", "3": "600/1", "4": "10000/1", "5": "100000/1" },
+  includedBonus: { "1": "11/2", "2": "50/1", "3": "420/1", "4": "5000/1", "5": "50000/1" },
+  bonusOnly: "45/1",
+  withBonus: { "1": "344/1", "2": "2805/1", "3": "27645/1", "4": "460045/1" },
+};
+
 export const lotteryGamesTable = pgTable("lottery_games", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -17,6 +31,7 @@ export const lotteryGamesTable = pgTable("lottery_games", {
   color: text("color").notNull().default("#4ade80"),
   emoji: text("emoji").notNull().default("🎰"),
   description: text("description"),
+  payoutConfig: jsonb("payout_config").$type<PayoutConfig>().default(DEFAULT_PAYOUT_CONFIG),
 });
 
 export const lotteryDrawsTable = pgTable("lottery_draws", {

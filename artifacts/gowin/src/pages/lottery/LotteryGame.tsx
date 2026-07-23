@@ -2,14 +2,24 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Clock, Shuffle, Trophy, Ticket, CheckCircle2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, Clock, Shuffle, Trophy, Ticket, CheckCircle2, Star, Zap } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface PayoutConfig {
+  excludedBonus: Record<string, string>;
+  includedBonus: Record<string, string>;
+  bonusOnly: string;
+  withBonus: Record<string, string>;
+}
 
 interface LotteryGame {
   id: number;
@@ -21,12 +31,13 @@ interface LotteryGame {
   bonusNumbersCount: number;
   bonusNumbersMax: number;
   ticketPrice: number;
-  jackpot: number;
   nextDrawAt: string | null;
   color: string;
   emoji: string;
   description: string | null;
+  payoutConfig: PayoutConfig | null;
 }
+
 interface LotteryDraw {
   id: number;
   drawDate: string;
@@ -36,11 +47,12 @@ interface LotteryDraw {
   status: string;
 }
 
-function fmtJackpot(n: number) {
-  if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(1)}B`;
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
-  return `$${n.toFixed(2)}`;
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function parseOdds(odds: string): number {
+  const [n, d] = odds.split("/").map(Number);
+  if (!isFinite(n!) || !isFinite(d!) || d === 0) return 1;
+  return (n! + d!) / d!;
 }
 
 function useCountdown(targetDate: string | null) {
@@ -50,11 +62,12 @@ function useCountdown(targetDate: string | null) {
     function tick() {
       const diff = new Date(targetDate!).getTime() - Date.now();
       if (diff <= 0) { setTimeLeft({ d: 0, h: 0, m: 0, s: 0 }); return; }
-      const d = Math.floor(diff / 86400000);
-      const h = Math.floor((diff % 86400000) / 3600000);
-      const m = Math.floor((diff % 3600000) / 60000);
-      const s = Math.floor((diff % 60000) / 1000);
-      setTimeLeft({ d, h, m, s });
+      setTimeLeft({
+        d: Math.floor(diff / 86400000),
+        h: Math.floor((diff % 86400000) / 3600000),
+        m: Math.floor((diff % 3600000) / 60000),
+        s: Math.floor((diff % 60000) / 1000),
+      });
     }
     tick();
     const id = setInterval(tick, 1000);
@@ -63,20 +76,13 @@ function useCountdown(targetDate: string | null) {
   return timeLeft;
 }
 
+// ── Sub-components ────────────────────────────────────────────────────────────
+
 function NumberBall({
-  n,
-  selected,
-  bonus = false,
-  color,
-  onClick,
-  size = "md",
+  n, selected, bonus = false, color, onClick, size = "md",
 }: {
-  n: number;
-  selected: boolean;
-  bonus?: boolean;
-  color: string;
-  onClick?: () => void;
-  size?: "sm" | "md";
+  n: number; selected: boolean; bonus?: boolean; color: string;
+  onClick?: () => void; size?: "sm" | "md";
 }) {
   const base = size === "sm" ? "w-8 h-8 text-xs" : "w-10 h-10 text-sm";
   return (
@@ -98,22 +104,15 @@ function NumberBall({
   );
 }
 
-function NumberPicker({
-  max,
-  count,
-  selected,
-  color,
-  onToggle,
-  label,
+/** Flexible number picker — user can select 1 to `maxCount` numbers */
+function FlexiblePicker({
+  maxNum, maxCount, selected, color, onToggle, label,
 }: {
-  max: number;
-  count: number;
-  selected: number[];
-  color: string;
-  onToggle: (n: number) => void;
-  label?: string;
+  maxNum: number; maxCount: number; selected: number[];
+  color: string; onToggle: (n: number) => void; label?: string;
 }) {
-  const nums = Array.from({ length: max }, (_, i) => i + 1);
+  const nums = Array.from({ length: maxNum }, (_, i) => i + 1);
+  const full = selected.length >= maxCount;
   return (
     <div>
       {label && (
@@ -121,26 +120,127 @@ function NumberPicker({
           <p className="text-sm font-medium text-muted-foreground">{label}</p>
           <Badge
             variant="outline"
-            style={selected.length === count ? { borderColor: color, color } : {}}
+            className="transition-colors"
+            style={selected.length > 0 ? { borderColor: color, color } : {}}
           >
-            {selected.length} / {count} selected
+            {selected.length} of {maxCount} max
           </Badge>
         </div>
       )}
       <div className="flex flex-wrap gap-2">
-        {nums.map((n) => (
-          <NumberBall
-            key={n}
-            n={n}
-            selected={selected.includes(n)}
-            color={color}
-            onClick={() => onToggle(n)}
-          />
-        ))}
+        {nums.map((n) => {
+          const sel = selected.includes(n);
+          return (
+            <NumberBall
+              key={n}
+              n={n}
+              selected={sel}
+              color={color}
+              onClick={() => {
+                if (sel || !full) onToggle(n);
+              }}
+            />
+          );
+        })}
       </div>
+      {full && (
+        <p className="text-xs text-muted-foreground mt-2">
+          Maximum {maxCount} numbers selected. Deselect one to change.
+        </p>
+      )}
     </div>
   );
 }
+
+/** Single-select bonus ball picker */
+function BonusPicker({
+  maxNum, selected, color, onSelect,
+}: {
+  maxNum: number; selected: number | null; color: string; onSelect: (n: number | null) => void;
+}) {
+  const nums = Array.from({ length: maxNum }, (_, i) => i + 1);
+  return (
+    <div className="flex flex-wrap gap-2">
+      {nums.map((n) => (
+        <NumberBall
+          key={n}
+          n={n}
+          selected={selected === n}
+          color={color}
+          onClick={() => onSelect(selected === n ? null : n)}
+        />
+      ))}
+    </div>
+  );
+}
+
+/** Prize structure table matching the payout config */
+function PayoutTable({ config, color, hasBonusBall }: {
+  config: PayoutConfig; color: string; hasBonusBall: boolean;
+}) {
+  const excEntries = Object.entries(config.excludedBonus ?? {}).sort(([a], [b]) => +a - +b);
+  const incEntries = Object.entries(config.includedBonus ?? {}).sort(([a], [b]) => +a - +b);
+  const withBonusEntries = Object.entries(config.withBonus ?? {}).sort(([a], [b]) => +a - +b);
+
+  return (
+    <div className="rounded-2xl border bg-card overflow-hidden text-sm">
+      <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
+        <Trophy className="w-4 h-4 text-primary" />
+        <span className="font-bold">Prize Structure</span>
+      </div>
+
+      {hasBonusBall && incEntries.length > 0 && (
+        <>
+          <div className="px-4 py-2 bg-primary/5 border-b border-border/30">
+            <p className="text-[10px] font-extrabold uppercase tracking-widest italic" style={{ color }}>
+              Included Bonus
+            </p>
+          </div>
+          {incEntries.map(([count, odds]) => (
+            <div key={count} className="flex justify-between px-4 py-2 border-b border-border/20">
+              <span className="text-muted-foreground">{count} Number{count !== "1" ? "s" : ""}</span>
+              <span className="font-bold tabular-nums" style={{ color }}>{odds}</span>
+            </div>
+          ))}
+        </>
+      )}
+
+      {excEntries.length > 0 && (
+        <>
+          <div className="px-4 py-2 bg-muted/40 border-b border-border/30">
+            <p className="text-[10px] font-extrabold uppercase tracking-widest italic text-muted-foreground">
+              {hasBonusBall ? "Excluded Bonus" : "Payouts"}
+            </p>
+          </div>
+          {excEntries.map(([count, odds]) => (
+            <div key={count} className="flex justify-between px-4 py-2 border-b border-border/20">
+              <span className="text-muted-foreground">{count} Number{count !== "1" ? "s" : ""}</span>
+              <span className="font-bold tabular-nums">{odds}</span>
+            </div>
+          ))}
+        </>
+      )}
+
+      {hasBonusBall && config.bonusOnly && (
+        <div className="flex justify-between items-center px-4 py-3 border-b border-yellow-500/20 bg-yellow-500/5">
+          <span className="font-bold text-yellow-500 flex items-center gap-1">
+            <Star className="w-3.5 h-3.5" /> Bonus Ball
+          </span>
+          <span className="font-black text-lg text-yellow-500 tabular-nums">{config.bonusOnly}</span>
+        </div>
+      )}
+
+      {hasBonusBall && withBonusEntries.map(([count, odds]) => (
+        <div key={count} className="flex justify-between px-4 py-2 border-b border-border/20">
+          <span className="text-muted-foreground">{count}+ Bonus Ball</span>
+          <span className="font-bold tabular-nums text-yellow-500">{odds}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function LotteryGame() {
   const { gameId: slug } = useParams<{ gameId: string }>();
@@ -150,10 +250,15 @@ export default function LotteryGame() {
   const qc = useQueryClient();
 
   const [numbers, setNumbers] = useState<number[]>([]);
-  const [bonusNumbers, setBonusNumbers] = useState<number[]>([]);
+  const [includeBonus, setIncludeBonus] = useState(false);
+  const [bonusNumber, setBonusNumber] = useState<number | null>(null);
   const [purchased, setPurchased] = useState(false);
 
-  const { data, isLoading } = useQuery<{ game: LotteryGame; recentDraws: LotteryDraw[] }>({
+  const { data, isLoading } = useQuery<{
+    game: LotteryGame;
+    recentDraws: LotteryDraw[];
+    nextDraw: LotteryDraw | null;
+  }>({
     queryKey: ["lottery-game", slug],
     queryFn: () => fetch(`/api/lottery/games/${slug}`).then((r) => r.json()),
     staleTime: 30_000,
@@ -162,31 +267,33 @@ export default function LotteryGame() {
   const game = data?.game;
   const recentDraws = data?.recentDraws ?? [];
   const countdown = useCountdown(game?.nextDrawAt ?? null);
+  const color = game?.color ?? "#4ade80";
+  const BONUS_COLOR = "#f59e0b";
 
-  const toggleNumber = useCallback((n: number, max: number, count: number, selected: number[], setSelected: (v: number[]) => void) => {
-    if (selected.includes(n)) {
-      setSelected(selected.filter((x) => x !== n));
-    } else if (selected.length < count) {
-      setSelected([...selected, n].sort((a, b) => a - b));
-    }
-  }, []);
+  // Reset bonus when game changes or bonus toggled off
+  useEffect(() => {
+    if (!includeBonus) setBonusNumber(null);
+  }, [includeBonus]);
+
+  const toggleNumber = useCallback((n: number) => {
+    setNumbers((prev) => {
+      if (prev.includes(n)) return prev.filter((x) => x !== n);
+      if (!game || prev.length >= game.mainNumbersCount) return prev;
+      return [...prev, n].sort((a, b) => a - b);
+    });
+  }, [game]);
 
   const quickPick = () => {
     if (!game) return;
-    const pool = Array.from({ length: game.mainNumbersMax }, (_, i) => i + 1);
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j]!, pool[i]!];
-    }
-    setNumbers(pool.slice(0, game.mainNumbersCount).sort((a, b) => a - b));
+    const pool = Array.from({ length: game.mainNumbersMax }, (_, i) => i + 1)
+      .sort(() => Math.random() - 0.5)
+      .slice(0, game.mainNumbersCount)
+      .sort((a, b) => a - b);
+    setNumbers(pool);
 
-    if (game.bonusNumbersCount > 0) {
-      const bpool = Array.from({ length: game.bonusNumbersMax }, (_, i) => i + 1);
-      for (let i = bpool.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [bpool[i], bpool[j]] = [bpool[j]!, bpool[i]!];
-      }
-      setBonusNumbers(bpool.slice(0, game.bonusNumbersCount).sort((a, b) => a - b));
+    if (includeBonus && game.bonusNumbersCount > 0) {
+      const bn = Math.floor(Math.random() * game.bonusNumbersMax) + 1;
+      setBonusNumber(bn);
     }
   };
 
@@ -207,27 +314,44 @@ export default function LotteryGame() {
       const r = await fetch("/api/lottery/tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ slug, numbers, bonusNumbers }),
+        body: JSON.stringify({
+          gameId: game!.id,
+          numbers,
+          bonusNumber: includeBonus && bonusNumber !== null ? bonusNumber : null,
+        }),
       });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error ?? "Purchase failed");
-      return data;
+      const json = await r.json();
+      if (!r.ok) throw new Error(json.error ?? "Purchase failed");
+      return json;
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
       setPurchased(true);
       qc.invalidateQueries({ queryKey: ["wallet-balance"] });
       qc.invalidateQueries({ queryKey: ["lottery-tickets"] });
-      toast({ title: "Ticket purchased! 🎰", description: "Good luck! Check your tickets page for results.", variant: "success" });
+      toast({
+        title: "Ticket purchased! 🎰",
+        description: `Good luck! New balance: $${res.newBalance?.toFixed(2)}`,
+        variant: "success",
+      });
     },
     onError: (err: any) => {
       toast({ title: "Purchase failed", description: err.message, variant: "destructive" });
     },
   });
 
-  const isReady = game
-    ? numbers.length === game.mainNumbersCount &&
-      (game.bonusNumbersCount === 0 || bonusNumbers.length === game.bonusNumbersCount)
-    : false;
+  const isReady = numbers.length >= 1 && (!includeBonus || bonusNumber !== null);
+
+  // Work out the potential odds for the current selection
+  const config = game?.payoutConfig ?? null;
+  let potentialOdds: string | null = null;
+  if (config && numbers.length > 0) {
+    const k = String(numbers.length);
+    if (includeBonus && config.includedBonus[k]) potentialOdds = config.includedBonus[k]!;
+    else if (!includeBonus && config.excludedBonus[k]) potentialOdds = config.excludedBonus[k]!;
+  }
+  const potentialReturn = potentialOdds && game
+    ? (game.ticketPrice * parseOdds(potentialOdds)).toFixed(2)
+    : null;
 
   if (isLoading) {
     return (
@@ -243,12 +367,16 @@ export default function LotteryGame() {
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 text-center text-muted-foreground">
         <p>Lottery game not found.</p>
-        <Link href="/lottery"><Button variant="outline" className="mt-4 gap-2"><ArrowLeft className="w-4 h-4" /> Back to Lottery</Button></Link>
+        <Link href="/lottery">
+          <Button variant="outline" className="mt-4 gap-2">
+            <ArrowLeft className="w-4 h-4" /> Back to Lottery
+          </Button>
+        </Link>
       </div>
     );
   }
 
-  const color = game.color;
+  const hasBonusBall = game.bonusNumbersCount > 0;
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
@@ -270,11 +398,19 @@ export default function LotteryGame() {
             <div>
               <h1 className="text-2xl font-extrabold">{game.name}</h1>
               <p className="text-sm text-muted-foreground mt-0.5">{game.country}</p>
+              {game.description && (
+                <p className="text-xs text-muted-foreground/70 mt-1 max-w-sm">{game.description}</p>
+              )}
             </div>
           </div>
           <div className="md:ml-auto text-center">
-            <p className="text-xs uppercase tracking-widest text-muted-foreground mb-1">Jackpot</p>
-            <p className="text-4xl font-black tabular-nums" style={{ color }}>{fmtJackpot(game.jackpot)}</p>
+            <div className="flex items-center gap-2 justify-center">
+              <Zap className="w-4 h-4 text-primary" />
+              <p className="text-xs uppercase tracking-widest text-muted-foreground">Top prize</p>
+            </div>
+            <p className="text-3xl font-black tabular-nums mt-1" style={{ color }}>
+              {config ? Object.values(config.excludedBonus).at(-1) ?? "—" : "—"}
+            </p>
           </div>
         </div>
 
@@ -285,12 +421,12 @@ export default function LotteryGame() {
               <Clock className="w-3.5 h-3.5" /> Next draw: {format(new Date(game.nextDrawAt), "EEEE, MMMM d 'at' HH:mm")}
             </p>
             <div className="flex gap-3">
-              {[
+              {([
                 { v: countdown.d, l: "Days" },
                 { v: countdown.h, l: "Hours" },
                 { v: countdown.m, l: "Mins" },
                 { v: countdown.s, l: "Secs" },
-              ].map(({ v, l }) => (
+              ] as const).map(({ v, l }) => (
                 <div key={l} className="text-center bg-background/60 rounded-lg px-3 py-2 min-w-[56px] border border-border/40">
                   <p className="text-xl font-black tabular-nums" style={{ color }}>{String(v).padStart(2, "0")}</p>
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{l}</p>
@@ -302,40 +438,79 @@ export default function LotteryGame() {
       </div>
 
       <div className="grid md:grid-cols-[1fr_300px] gap-6">
-        {/* Number picker */}
+        {/* ── Left column: pickers + history ── */}
         <div className="space-y-4">
           <div className="rounded-2xl border bg-card p-5 space-y-5">
             <div className="flex items-center justify-between">
-              <h2 className="font-bold text-base">Pick Your Numbers</h2>
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={quickPick}>
-                <Shuffle className="w-3.5 h-3.5" /> Quick Pick
-              </Button>
+              <div>
+                <h2 className="font-bold text-base">Pick Your Numbers</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Choose 1–{game.mainNumbersCount} numbers from 1–{game.mainNumbersMax}</p>
+              </div>
+              <div className="flex gap-2">
+                {numbers.length > 0 && (
+                  <Button variant="ghost" size="sm" className="text-muted-foreground text-xs" onClick={() => setNumbers([])}>
+                    Clear
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" className="gap-1.5" onClick={quickPick}>
+                  <Shuffle className="w-3.5 h-3.5" /> Quick Pick
+                </Button>
+              </div>
             </div>
 
-            <NumberPicker
-              max={game.mainNumbersMax}
-              count={game.mainNumbersCount}
+            <FlexiblePicker
+              maxNum={game.mainNumbersMax}
+              maxCount={game.mainNumbersCount}
               selected={numbers}
               color={color}
               label={`Main Numbers (1–${game.mainNumbersMax})`}
-              onToggle={(n) => toggleNumber(n, game.mainNumbersMax, game.mainNumbersCount, numbers, setNumbers)}
+              onToggle={toggleNumber}
             />
 
-            {game.bonusNumbersCount > 0 && (
-              <div className="border-t border-border/50 pt-4">
-                <NumberPicker
-                  max={game.bonusNumbersMax}
-                  count={game.bonusNumbersCount}
-                  selected={bonusNumbers}
-                  color="#f59e0b"
-                  label={`Bonus Numbers (1–${game.bonusNumbersMax})`}
-                  onToggle={(n) => toggleNumber(n, game.bonusNumbersMax, game.bonusNumbersCount, bonusNumbers, setBonusNumbers)}
-                />
+            {/* Bonus ball toggle */}
+            {hasBonusBall && (
+              <div className="border-t border-border/50 pt-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="include-bonus" className="font-semibold text-sm cursor-pointer">
+                      Include Bonus Ball
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Better odds with bonus — worse base odds without
+                    </p>
+                  </div>
+                  <Switch
+                    id="include-bonus"
+                    checked={includeBonus}
+                    onCheckedChange={setIncludeBonus}
+                  />
+                </div>
+
+                {includeBonus && (
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Bonus Ball (1–{game.bonusNumbersMax})
+                      </p>
+                      {bonusNumber !== null && (
+                        <Badge variant="outline" style={{ borderColor: BONUS_COLOR, color: BONUS_COLOR }}>
+                          {bonusNumber} selected
+                        </Badge>
+                      )}
+                    </div>
+                    <BonusPicker
+                      maxNum={game.bonusNumbersMax}
+                      selected={bonusNumber}
+                      color={BONUS_COLOR}
+                      onSelect={setBonusNumber}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>
 
-          {/* Recent results */}
+          {/* Recent winning numbers */}
           {recentDraws.length > 0 && (
             <div className="rounded-2xl border bg-card p-5">
               <h3 className="font-semibold text-sm mb-4">Recent Winning Numbers</h3>
@@ -352,9 +527,9 @@ export default function LotteryGame() {
                       ))}
                       {(draw.bonusNumbers as number[]).length > 0 && (
                         <>
-                          <span className="text-muted-foreground text-xs">+</span>
+                          <span className="text-muted-foreground text-xs mx-1">+</span>
                           {(draw.bonusNumbers as number[]).map((n) => (
-                            <NumberBall key={n} n={n} selected color="#f59e0b" size="sm" />
+                            <NumberBall key={`b${n}`} n={n} selected color={BONUS_COLOR} size="sm" />
                           ))}
                         </>
                       )}
@@ -364,9 +539,14 @@ export default function LotteryGame() {
               </div>
             </div>
           )}
+
+          {/* Prize table */}
+          {config && (
+            <PayoutTable config={config} color={color} hasBonusBall={hasBonusBall} />
+          )}
         </div>
 
-        {/* Ticket summary */}
+        {/* ── Right column: ticket summary ── */}
         <div className="space-y-4">
           <div className="rounded-2xl border bg-card p-5 space-y-4 sticky top-4">
             <h2 className="font-bold text-sm">Your Ticket</h2>
@@ -374,24 +554,44 @@ export default function LotteryGame() {
             {/* Selected numbers display */}
             <div className="rounded-xl bg-background/60 p-3 border border-border/40 min-h-[80px]">
               {numbers.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-4">Select {game.mainNumbersCount} numbers above</p>
+                <p className="text-xs text-muted-foreground text-center py-4">
+                  Select at least 1 number above
+                </p>
               ) : (
-                <div className="flex flex-wrap gap-1.5">
-                  {numbers.map((n) => (
-                    <NumberBall key={n} n={n} selected color={color} size="sm" />
-                  ))}
-                  {bonusNumbers.map((n) => (
-                    <NumberBall key={`b${n}`} n={n} selected color="#f59e0b" size="sm" />
-                  ))}
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {numbers.map((n) => (
+                      <NumberBall key={n} n={n} selected color={color} size="sm" />
+                    ))}
+                  </div>
+                  {bonusNumber !== null && includeBonus && (
+                    <div className="flex items-center gap-1.5 pt-1 border-t border-border/30">
+                      <span className="text-[10px] text-yellow-500 font-bold uppercase">Bonus:</span>
+                      <NumberBall n={bonusNumber} selected color={BONUS_COLOR} size="sm" />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
+            {/* Summary */}
             <div className="space-y-2 text-sm">
               <div className="flex justify-between text-muted-foreground">
                 <span>Ticket price</span>
                 <span className="font-medium text-foreground">${game.ticketPrice.toFixed(2)}</span>
               </div>
+              {numbers.length > 0 && potentialOdds && (
+                <div className="flex justify-between text-muted-foreground">
+                  <span>{numbers.length} number{numbers.length !== 1 ? "s" : ""} odds</span>
+                  <span className="font-bold" style={{ color }}>{potentialOdds}</span>
+                </div>
+              )}
+              {potentialReturn && (
+                <div className="flex justify-between font-semibold border-t border-border/50 pt-2 mt-2">
+                  <span>Potential return</span>
+                  <span style={{ color }}>${potentialReturn}</span>
+                </div>
+              )}
               {walletData && (
                 <div className="flex justify-between text-muted-foreground">
                   <span>Your balance</span>
@@ -400,10 +600,6 @@ export default function LotteryGame() {
                   </span>
                 </div>
               )}
-              <div className="flex justify-between font-semibold border-t border-border/50 pt-2 mt-2">
-                <span>Jackpot</span>
-                <span style={{ color }}>{fmtJackpot(game.jackpot)}</span>
-              </div>
             </div>
 
             {purchased ? (
@@ -422,7 +618,11 @@ export default function LotteryGame() {
                 onClick={() => buyMutation.mutate()}
                 style={isReady ? { backgroundColor: color } : {}}
               >
-                {buyMutation.isPending ? "Processing…" : isReady ? `Buy Ticket — $${game.ticketPrice.toFixed(2)}` : "Select your numbers"}
+                {buyMutation.isPending
+                  ? "Processing…"
+                  : isReady
+                  ? `Buy Ticket — $${game.ticketPrice.toFixed(2)}`
+                  : "Select at least 1 number"}
               </Button>
             )}
 
@@ -431,28 +631,6 @@ export default function LotteryGame() {
                 <Ticket className="w-3.5 h-3.5" /> View my tickets
               </Button>
             </Link>
-          </div>
-
-          {/* Prize tiers info */}
-          <div className="rounded-2xl border bg-card p-5 space-y-3">
-            <div className="flex items-center gap-2">
-              <Trophy className="w-4 h-4 text-primary" />
-              <h3 className="font-semibold text-sm">Prize Tiers</h3>
-            </div>
-            <div className="space-y-1.5 text-xs">
-              {[
-                { label: `Match ${game.mainNumbersCount}${game.bonusNumbersCount > 0 ? `+${game.bonusNumbersCount}` : ""}`, prize: "Jackpot", highlight: true },
-                { label: `Match ${game.mainNumbersCount}${game.bonusNumbersCount > 0 ? "+0" : ""}`, prize: "1% of Jackpot" },
-                { label: "Match 4+", prize: "$200× ticket" },
-                { label: "Match 3+", prize: "$50× ticket" },
-                { label: "Match 2+", prize: "$5× ticket" },
-              ].map(({ label, prize, highlight }) => (
-                <div key={label} className={`flex justify-between py-1.5 px-2 rounded-lg ${highlight ? "bg-primary/10" : ""}`}>
-                  <span className={highlight ? "font-semibold text-primary" : "text-muted-foreground"}>{label}</span>
-                  <span className={highlight ? "font-bold text-primary" : "font-medium"}>{prize}</span>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </div>
