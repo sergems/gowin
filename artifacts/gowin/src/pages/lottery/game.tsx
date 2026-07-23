@@ -711,7 +711,15 @@ export default function LotteryGame() {
           </div>
         )}
 
-        {/* Step 4: Stake + Payout Preview */}
+        {/* Bonus ball required hint */}
+        {needsBonusPick && hasBonus && selectedBonus === null && (
+          <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-4 py-3 text-sm text-yellow-500 font-medium">
+            ⭐ Select your Bonus Ball above to continue
+          </div>
+        )}
+
+        {/* Step 4: Stake + Payout Preview — hidden until bonus ball is picked (when required) */}
+        {(!needsBonusPick || !hasBonus || selectedBonus !== null) && (
         <div className="rounded-lg border border-border/40 bg-muted/20 p-4 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex-1 space-y-1">
@@ -782,6 +790,7 @@ export default function LotteryGame() {
             ))}
           </div>
         </div>
+        )}
 
         {/* Buy Button */}
         {!user ? (
