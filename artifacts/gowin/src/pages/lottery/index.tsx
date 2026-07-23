@@ -87,23 +87,6 @@ function LotteryCard({ game }: { game: LotteryGame }) {
             )}
           </div>
 
-          {/* Jackpot */}
-          <div
-            className="rounded-lg px-4 py-3 text-center"
-            style={{ background: `${game.color}15`, border: `1px solid ${game.color}25` }}
-          >
-            <div className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1.5">
-              <Trophy className="w-3 h-3" />
-              <span>JACKPOT</span>
-            </div>
-            <div
-              className="text-2xl font-black tracking-tight"
-              style={{ color: game.color }}
-            >
-              {formatJackpot(game.jackpot)}
-            </div>
-          </div>
-
           {/* Stats */}
           <div className="grid grid-cols-2 gap-2">
             <div className="rounded-lg bg-muted/30 px-3 py-2 text-center">

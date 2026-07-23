@@ -580,15 +580,6 @@ export default function LotteryGame() {
               {game.description && <p className="text-sm text-muted-foreground/70 mt-1 max-w-sm">{game.description}</p>}
             </div>
           </div>
-          <div className="md:ml-auto text-center">
-            <div className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1.5">
-              <Trophy className="w-3 h-3" />
-              <span>JACKPOT</span>
-            </div>
-            <div className="text-3xl md:text-4xl font-black" style={{ color: game.color }}>
-              {formatJackpot(game.jackpot)}
-            </div>
-          </div>
         </div>
 
         {/* Countdown */}
@@ -852,7 +843,7 @@ export default function LotteryGame() {
             {game.recentDraws.map((draw) => (
               <div key={draw.id} className="rounded-lg bg-muted/20 p-3">
                 <div className="text-xs text-muted-foreground mb-2">
-                  {format(new Date(draw.drawDate), "PPP")} — Jackpot: {formatJackpot(draw.jackpot)}
+                  {format(new Date(draw.drawDate), "PPP")}
                 </div>
                 <div className="flex flex-wrap gap-1.5 items-center">
                   {(draw.winningNumbers as number[]).map((n) => (
