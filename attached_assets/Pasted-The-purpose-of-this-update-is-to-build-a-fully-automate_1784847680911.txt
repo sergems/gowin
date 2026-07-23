@@ -1,0 +1,603 @@
+The purpose of this update is to build a fully automated Lottery Scraper Engine that periodically checks official lottery websites, imports new results into the database, and automatically settles all bets.
+
+OBJECTIVE
+
+Build a modular scraping engine that:
+
+Scrapes official lottery websites
+Detects newly published results
+Saves them into the database
+Prevents duplicate imports
+Automatically settles all pending tickets
+Credits winners
+Logs every operation
+Can easily support additional lotteries later
+
+No API integration is required at this stage.
+
+PROJECT STRUCTURE
+
+Create a new backend module:
+
+backend/
+
+services/
+
+Lottery/
+
+Scrapers/
+
+Settlement/
+
+Cron/
+
+Logs/
+
+Repositories/
+
+Keep all scraper logic isolated from the betting system.
+
+DATABASE TABLES
+lottery_results
+id
+
+lottery_id
+
+draw_date
+
+draw_number
+
+winning_numbers
+
+bonus_number
+
+jackpot
+
+source
+
+status
+
+created_at
+
+Example
+
+winning_numbers
+
+5,12,18,31,44,49
+
+bonus_number
+
+16
+
+source
+
+SCRAPER
+scraper_logs
+id
+
+lottery_id
+
+website
+
+status
+
+message
+
+execution_time
+
+created_at
+
+Status
+
+SUCCESS
+
+FAILED
+
+NO_RESULT
+
+DUPLICATE
+SCRAPER ENGINE
+
+Create
+
+ScraperManager.php
+
+Responsibilities
+
+Load all active lotteries
+
+↓
+
+Determine scraper
+
+↓
+
+Visit website
+
+↓
+
+Extract results
+
+↓
+
+Normalize
+
+↓
+
+Validate
+
+↓
+
+Save database
+
+↓
+
+Run settlement
+
+↓
+
+Log success
+SCRAPER CLASSES
+
+Each lottery should have its own scraper class.
+
+Example
+
+ClassicLottoScraper
+
+PowerballScraper
+
+DailyLottoScraper
+
+Each scraper returns exactly the same structure.
+
+Example
+
+[
+    "draw_date"=>"2026-07-25",
+
+    "draw_number"=>"2045",
+
+    "numbers"=>[4,12,18,29,35,47],
+
+    "bonus"=>16,
+
+    "jackpot"=>18000000
+]
+
+Never return raw HTML.
+
+SCRAPING
+
+The scraper should
+
+Download the official lottery webpage
+
+Parse HTML
+
+Locate
+
+Winning Numbers
+
+Bonus Ball
+
+Draw Date
+
+Jackpot
+
+Draw Number
+
+Normalize data.
+
+Remove whitespace.
+
+Convert numbers to integers.
+
+Sort if required.
+
+DUPLICATE CHECK
+
+Before saving
+
+Search database
+
+lottery_id
+
++
+
+draw_date
+
+If already exists
+
+Do NOT save again.
+
+Log
+
+DUPLICATE RESULT
+
+Continue processing.
+
+SAVE RESULTS
+
+Insert into
+
+lottery_results
+
+Mark
+
+source
+
+SCRAPER
+
+Status
+
+VERIFIED
+AUTOMATIC SETTLEMENT
+
+Immediately after saving a new result
+
+Run
+
+SettlementService
+
+Process
+
+Load all pending tickets
+
+↓
+
+Compare selected numbers
+
+↓
+
+Determine winners
+
+↓
+
+Calculate payouts
+
+↓
+
+Credit wallets
+
+↓
+
+Update ticket status
+
+↓
+
+Generate settlement log
+
+No manual action required.
+
+SETTLEMENT LOG
+
+Create
+
+settlement_logs
+id
+
+result_id
+
+tickets_checked
+
+winning_tickets
+
+total_paid
+
+execution_time
+
+created_at
+CRON JOB
+
+Create
+
+cron/check_results.php
+
+Cron execution
+
+Every
+
+5 minutes
+
+Flow
+
+Load lotteries
+
+↓
+
+Run scraper
+
+↓
+
+New result?
+
+↓
+
+YES
+
+↓
+
+Store
+
+↓
+
+Settle bets
+
+↓
+
+Finish
+
+↓
+
+NO
+
+↓
+
+Log
+
+↓
+
+Finish
+LOTTERY CONFIGURATION
+
+Create
+
+lotteries
+
+Fields
+
+id
+
+name
+
+country
+
+website
+
+scraper_class
+
+draw_days
+
+draw_time
+
+timezone
+
+active
+
+Example
+
+Classic Lotto
+
+South Africa
+
+website
+
+https://official-website
+
+scraper
+
+ClassicLottoScraper
+
+timezone
+
+Africa/Johannesburg
+
+Never hardcode websites.
+
+Everything should come from the database.
+
+SCRAPER MANAGER
+
+Should dynamically load scraper classes.
+
+Example
+
+ClassicLottoScraper
+
+↓
+
+run()
+
+↓
+
+Return Result
+
+↓
+
+Save
+
+↓
+
+Settlement
+
+Adding a new lottery should only require:
+
+Adding a database record
+
+Creating one scraper class
+
+No core modifications.
+
+ADMIN PANEL
+
+Create
+
+Lottery Scrapers
+
+Display
+
+Lottery
+
+Website
+
+Status
+
+Last Checked
+
+Last Result
+
+Next Draw
+
+Last Execution
+
+Run Now
+
+Buttons
+
+Run Scraper
+
+View Logs
+
+View Results
+SCRAPER LOG PAGE
+
+Display
+
+Date
+
+Lottery
+
+Website
+
+Execution Time
+
+Status
+
+Message
+
+Allow
+
+Filter
+
+Search
+
+Pagination
+
+RESULTS PAGE
+
+Display all imported results
+
+Lottery
+
+Draw Date
+
+Winning Numbers
+
+Bonus Ball
+
+Jackpot
+
+Imported At
+
+Newest first.
+
+ERROR HANDLING
+
+If
+
+Website unavailable
+
+Log
+
+Website Offline
+
+If HTML changed
+
+Log
+
+Selector Not Found
+
+If parsing fails
+
+Log
+
+Parsing Failed
+
+Never crash the application.
+
+Continue processing other lotteries.
+
+PERFORMANCE
+
+Only scrape lotteries scheduled to draw that day.
+
+Skip inactive lotteries.
+
+Use HTTP timeouts.
+
+Retry failed requests once.
+
+Cache downloaded pages during execution.
+
+Prevent concurrent scraper execution.
+
+SECURITY
+
+Sanitize all scraped values.
+
+Validate numbers.
+
+Validate dates.
+
+Use database transactions.
+
+Prevent duplicate settlement.
+
+CODE QUALITY
+Follow PSR-12 coding standards.
+Use a service-oriented architecture.
+Keep scraping logic separate from settlement logic.
+Do not place business logic inside controllers.
+Use dependency injection where possible.
+Return consistent JSON responses from backend endpoints.
+Add detailed comments for maintainability.
+Make the system easy to extend for additional lotteries and countries.
+EXPECTED WORKFLOW
+Cron starts
+        │
+        ▼
+Load today's active lotteries
+        │
+        ▼
+Visit official lottery website
+        │
+        ▼
+Extract latest draw
+        │
+        ▼
+Check if draw already exists
+        │
+        ├──────────────► Exists
+        │                   │
+        │                   ▼
+        │               Write log
+        │                   │
+        │                   ▼
+        │                 Finish
+        │
+        ▼
+Save new result
+        │
+        ▼
+Run SettlementService
+        │
+        ▼
+Check all pending tickets
+        │
+        ▼
+Determine winners
+        │
+        ▼
+Credit player wallets
+        │
+        ▼
+Mark tickets as Settled
+        │
+        ▼
+Create settlement log
+        │
+        ▼
+Finish
+
+Important: Build the scraper engine as a generic, reusable framework rather than a one-off scraper. The scraper should be configurable via the database so that future lotteries can be added without modifying the core engine. Every successful import must automatically trigger ticket settlement, ensuring the lottery system remains fully automated.

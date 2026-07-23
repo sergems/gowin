@@ -167,7 +167,7 @@ const PLAY_TYPE_LABELS: Record<string, string> = {
   "4": "4 Numbers",
   "5": "5 Numbers",
   "6": "6 Numbers",
-  "bonus_only": "Bonus Ball Only",
+  "bonus_only": "Bonus Ball",
 };
 
 function PlayTypeSelector({
@@ -350,10 +350,10 @@ function PayoutTable({ game }: { game: LotteryGameDetail }) {
             </div>
           )}
 
-          {/* Bonus Ball Only */}
+          {/* Bonus Ball */}
           {game.bonusNumbersCount > 0 && game.enabledPlayTypes.includes("bonus_only") && (
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Bonus Ball Only</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Bonus Ball</p>
               <table className="w-full text-sm">
                 <tbody className="divide-y divide-border/20">
                   <tr>
@@ -674,7 +674,7 @@ export default function LotteryGame() {
           <div>
             <div className="flex items-center gap-2 mb-3">
               <p className="text-xs font-semibold text-yellow-500 uppercase tracking-wider">
-                {isBonusOnly ? "Pick Your Bonus Ball" : "Pick Bonus Ball"}
+                Bonus Ball
               </p>
               <Badge
                 variant="outline"
