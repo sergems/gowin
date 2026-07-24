@@ -20,6 +20,7 @@ import { SALotteryScraper } from "./SALotteryScraper";
 import { IrishLottoScraper } from "./IrishLottoScraper";
 import { FrenchLotoScraper } from "./FrenchLotoScraper";
 import { UK49sBrunchtimeScraper, UK49sLunchtimeScraper, UK49sDrivetimeScraper, UK49sTeatimeScraper } from "./UK49sScraper";
+import { UKNationalLottoScraper, UKEuroMillionsScraper, UKThunderballScraper, UKSetForLifeScraper } from "./UKNationalLotteryScraper";
 import {
   GosLoto645Scraper,
   GosLoto645PlusScraper,
@@ -45,6 +46,11 @@ const REGISTRY: Record<string, BaseScraper> = {
   UK49sLunchtimeScraper:    new UK49sLunchtimeScraper(),
   UK49sDrivetimeScraper:    new UK49sDrivetimeScraper(),
   UK49sTeatimeScraper:      new UK49sTeatimeScraper(),
+  // UK National Lottery games
+  UKNationalLottoScraper:   new UKNationalLottoScraper(),
+  UKEuroMillionsScraper:    new UKEuroMillionsScraper(),
+  UKThunderballScraper:     new UKThunderballScraper(),
+  UKSetForLifeScraper:      new UKSetForLifeScraper(),
   // Russian Gosloto games
   GosLoto645Scraper:        new GosLoto645Scraper(),
   GosLoto645PlusScraper:    new GosLoto645PlusScraper(),

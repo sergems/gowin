@@ -86,21 +86,7 @@ const SEED_GAMES = [
     emoji: "💜",
     description: "A pan-European lottery. Pick 1–5 numbers + optional Euro Numbers.",
   },
-  {
-    name: "UK Lotto",
-    slug: "uk-lotto",
-    country: "United Kingdom",
-    mainNumbersCount: 6,
-    mainNumbersMax: 59,
-    bonusNumbersCount: 0,
-    bonusNumbersMax: 0,
-    ticketPrice: "2.00",
-    jackpot: "0.00",
-    drawOffsetDays: 1,
-    color: "#10b981",
-    emoji: "🇬🇧",
-    description: "The UK's flagship lottery. Pick 1–6 numbers from 1 to 59.",
-  },
+  // UK National Lottery games are managed by ensureUKNationalLotteryGames() at startup
   {
     name: "South African Lotto",
     slug: "sa-lotto",
@@ -448,6 +434,167 @@ export async function ensureSouthAfricanLotteryLogos(): Promise<void> {
  * separate from the empty-database seed because imported dumps already have
  * games and therefore skip the normal seed path.
  */
+// ── UK National Lottery ───────────────────────────────────────────────────────
+
+const UK_TIMEZONE = "Europe/London";
+
+/**
+ * Compute the next draw datetime (UTC) for a UK National Lottery game.
+ * @param days     ISO weekday numbers (0=Sun … 6=Sat)
+ * @param hour     Draw hour in UK local time (e.g. 20)
+ * @param minute   Draw minute in UK local time (e.g. 45)
+ */
+function nextUKDraw(days: number[], hour: number, minute: number): Date {
+  const now = new Date();
+  for (let offset = 0; offset <= 7; offset++) {
+    const candidate = new Date(now.getTime() + offset * 86_400_000);
+    // Convert candidate to London local date
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: UK_TIMEZONE,
+      year: "numeric", month: "numeric", day: "numeric",
+      hour: "numeric", minute: "numeric", hour12: false,
+    }).formatToParts(candidate);
+    const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
+    const londonWeekday = new Date(
+      Date.UTC(get("year"), get("month") - 1, get("day")),
+    ).getUTCDay();
+
+    if (!days.includes(londonWeekday)) continue;
+
+    // Build the draw time in UTC by finding when London==hour:minute on that date
+    const baseUtc = Date.UTC(get("year"), get("month") - 1, get("day"), 0, 0, 0);
+    // Probe: what UTC offset does London have at noon on that day?
+    const noon = new Date(baseUtc + 12 * 3_600_000);
+    const londonNoon = new Intl.DateTimeFormat("en-US", {
+      timeZone: UK_TIMEZONE, hour: "numeric", hour12: false,
+    }).formatToParts(noon);
+    const utcNoon = noon.getUTCHours();
+    const localNoon = Number(londonNoon.find((p) => p.type === "hour")?.value ?? utcNoon);
+    const offsetH = localNoon - utcNoon; // e.g. 1 for BST, 0 for GMT
+
+    const drawUtc = new Date(baseUtc + (hour - offsetH) * 3_600_000 + minute * 60_000);
+    if (drawUtc > now) return drawUtc;
+  }
+  return new Date(now.getTime() + 7 * 86_400_000);
+}
+
+const UK_NATIONAL_GAMES = [
+  {
+    slug: "uk-lotto",
+    name: "Lotto",
+    mainNumbersCount: 6, mainNumbersMax: 59,
+    bonusNumbersCount: 1, bonusNumbersMax: 59,
+    ticketPrice: "2.00",
+    color: "#f59e0b", emoji: "🎰",
+    description: "The UK National Lottery Lotto. Pick 1–6 numbers from 1–59. Draws every Wednesday and Saturday at 20:00 UK time.",
+    drawDays: [3, 6], drawHour: 20, drawMinute: 0, drawTime: "20:00",
+    scraperClass: "UKNationalLottoScraper",
+    website: "https://www.lottery.co.uk/lotto/results",
+  },
+  {
+    slug: "uk-euromillions",
+    name: "EuroMillions",
+    mainNumbersCount: 5, mainNumbersMax: 50,
+    bonusNumbersCount: 2, bonusNumbersMax: 12,
+    ticketPrice: "2.50",
+    color: "#3b82f6", emoji: "⭐",
+    description: "Europe's biggest lottery, drawn in the UK. Pick 1–5 numbers from 1–50 plus optional Lucky Stars. Draws Tuesdays and Fridays at 20:45 UK time.",
+    drawDays: [2, 5], drawHour: 20, drawMinute: 45, drawTime: "20:45",
+    scraperClass: "UKEuroMillionsScraper",
+    website: "https://www.lottery.co.uk/euromillions/results",
+  },
+  {
+    slug: "uk-thunderball",
+    name: "Thunderball",
+    mainNumbersCount: 5, mainNumbersMax: 39,
+    bonusNumbersCount: 1, bonusNumbersMax: 14,
+    ticketPrice: "1.00",
+    color: "#ef4444", emoji: "⚡",
+    description: "UK National Lottery Thunderball. Pick 1–5 numbers from 1–39 plus an optional Thunderball from 1–14. Draws Tuesdays, Wednesdays, Fridays, and Saturdays at 20:00 UK time.",
+    drawDays: [2, 3, 5, 6], drawHour: 20, drawMinute: 0, drawTime: "20:00",
+    scraperClass: "UKThunderballScraper",
+    website: "https://www.lottery.co.uk/thunderball/results",
+  },
+  {
+    slug: "uk-set-for-life",
+    name: "Set For Life",
+    mainNumbersCount: 5, mainNumbersMax: 47,
+    bonusNumbersCount: 1, bonusNumbersMax: 10,
+    ticketPrice: "1.50",
+    color: "#10b981", emoji: "🍀",
+    description: "UK National Lottery Set For Life. Pick 1–5 numbers from 1–47 plus an optional Life Ball from 1–10. Draws Mondays and Thursdays at 20:00 UK time.",
+    drawDays: [1, 4], drawHour: 20, drawMinute: 0, drawTime: "20:00",
+    scraperClass: "UKSetForLifeScraper",
+    website: "https://www.lottery.co.uk/set-for-life/results",
+  },
+] as const;
+
+/**
+ * Upsert UK National Lottery games on every startup.
+ * Safe to run on both fresh and imported databases.
+ */
+export async function ensureUKNationalLotteryGames(): Promise<void> {
+  for (const cfg of UK_NATIONAL_GAMES) {
+    const nextDrawAt = nextUKDraw([...cfg.drawDays], cfg.drawHour, cfg.drawMinute);
+    const [existing] = await db
+      .select({ id: lotteryGamesTable.id })
+      .from(lotteryGamesTable)
+      .where(eq(lotteryGamesTable.slug, cfg.slug))
+      .limit(1);
+
+    if (existing) {
+      await db.update(lotteryGamesTable).set({
+        name: cfg.name,
+        country: "United Kingdom",
+        mainNumbersCount: cfg.mainNumbersCount,
+        mainNumbersMax: cfg.mainNumbersMax,
+        bonusNumbersCount: cfg.bonusNumbersCount,
+        bonusNumbersMax: cfg.bonusNumbersMax,
+        color: cfg.color,
+        emoji: cfg.emoji,
+        description: cfg.description,
+        drawDays: [...cfg.drawDays],
+        drawTime: cfg.drawTime,
+        timezone: UK_TIMEZONE,
+        scraperClass: cfg.scraperClass,
+        website: cfg.website,
+        nextDrawAt,
+      }).where(eq(lotteryGamesTable.id, existing.id));
+
+      const [pending] = await db
+        .select({ id: lotteryDrawsTable.id })
+        .from(lotteryDrawsTable)
+        .where(and(eq(lotteryDrawsTable.gameId, existing.id), eq(lotteryDrawsTable.status, "pending")))
+        .limit(1);
+      if (!pending) {
+        await db.insert(lotteryDrawsTable).values({
+          gameId: existing.id, drawDate: nextDrawAt,
+          jackpot: "0.00", winningNumbers: [], bonusNumbers: [], status: "pending",
+        });
+      }
+      continue;
+    }
+
+    const [game] = await db.insert(lotteryGamesTable).values({
+      name: cfg.name, slug: cfg.slug, country: "United Kingdom",
+      mainNumbersCount: cfg.mainNumbersCount, mainNumbersMax: cfg.mainNumbersMax,
+      bonusNumbersCount: cfg.bonusNumbersCount, bonusNumbersMax: cfg.bonusNumbersMax,
+      ticketPrice: cfg.ticketPrice, jackpot: "0.00", nextDrawAt, isActive: true,
+      color: cfg.color, emoji: cfg.emoji, description: cfg.description,
+      payoutConfig: DEFAULT_PAYOUT_CONFIG,
+      drawDays: [...cfg.drawDays], drawTime: cfg.drawTime, timezone: UK_TIMEZONE,
+      scraperClass: cfg.scraperClass, website: cfg.website,
+    }).returning({ id: lotteryGamesTable.id });
+
+    if (game) {
+      await db.insert(lotteryDrawsTable).values({
+        gameId: game.id, drawDate: nextDrawAt,
+        jackpot: "0.00", winningNumbers: [], bonusNumbers: [], status: "pending",
+      });
+    }
+  }
+}
+
 export async function ensureSouthAfricanLotteryGames(): Promise<void> {
   for (const config of SA_GAME_CONFIG) {
     const nextDrawAt = nextSADraw(config.drawDays);
