@@ -8,6 +8,14 @@ import { DEFAULT_PAYOUT_CONFIG } from "@workspace/db";
 import { and, count, eq } from "drizzle-orm";
 import { logger } from "./logger";
 
+const UK_49S_LOGO_URL = "/images/lottery/uk-49s.webp";
+const UK_49S_SLUGS = [
+  "uk-49s-lunchtime",
+  "uk-49s-teatime",
+  "uk-49s-brunchtime",
+  "uk-49s-drivetime",
+] as const;
+
 const SEED_GAMES = [
   {
     name: "Powerball",
@@ -387,6 +395,19 @@ const SA_GAME_CONFIG = [
   { slug: "sa-lotto-plus-1", name: "Lotto Plus 1", mainNumbersCount: 6, mainNumbersMax: 52, bonusNumbersCount: 1, bonusNumbersMax: 52, drawDays: SA_SCHEDULES["sa-lotto-plus-1"]!, drawTime: "21:00", description: "Lotto Plus 1. Draws Wednesdays and Saturdays at 21:00 SAST." },
   { slug: "sa-lotto-5-max", name: "Lotto 5 Max", mainNumbersCount: 6, mainNumbersMax: 52, bonusNumbersCount: 1, bonusNumbersMax: 52, drawDays: SA_SCHEDULES["sa-lotto-5-max"]!, drawTime: "21:00", description: "Lotto 5 Max. Draws Wednesdays and Saturdays at 21:00 SAST." },
 ] as const;
+
+/**
+ * Keep all UK 49s draw variants on the official locally-hosted brand image.
+ * This also repairs imported databases that still point at the old placeholder.
+ */
+export async function ensureUK49sLotteryLogos(): Promise<void> {
+  for (const slug of UK_49S_SLUGS) {
+    await db
+      .update(lotteryGamesTable)
+      .set({ logoUrl: UK_49S_LOGO_URL })
+      .where(eq(lotteryGamesTable.slug, slug));
+  }
+}
 
 /**
  * Reconcile SA lottery rows in imported databases. This is intentionally
