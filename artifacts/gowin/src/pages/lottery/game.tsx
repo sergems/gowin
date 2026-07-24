@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
-import { ArrowLeft, Clock, Shuffle, Trophy, Ticket, Info, ChevronDown, ChevronUp, Zap } from "lucide-react";
+import { ArrowLeft, Clock, Shuffle, Trophy, Ticket, Info, ChevronDown, ChevronUp, Zap, Lock, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -412,6 +412,16 @@ export default function LotteryGame() {
 
   const countdown = useCountdown(game?.nextDrawAt ?? null);
 
+  // ── Betting cutoff — 15 minutes before draw ───────────────────────────────
+  const cutoffIso = game?.nextDraw
+    ? new Date(new Date(game.nextDraw.drawDate).getTime() - 15 * 60 * 1000).toISOString()
+    : null;
+  const cutoffCountdown = useCountdown(cutoffIso);
+  // Betting is closed once the cutoff countdown expires (total hits 0)
+  const isBettingClosed = cutoffIso !== null && cutoffCountdown.total === 0;
+  // Show warning banner in the last 30 minutes before cutoff
+  const showCutoffWarning = cutoffIso !== null && cutoffCountdown.total > 0 && cutoffCountdown.total <= 30 * 60;
+
   // When play type changes, trim selected numbers to new required count
   useEffect(() => {
     if (playType === "bonus_only") {
@@ -457,6 +467,7 @@ export default function LotteryGame() {
   const isJackpot = oddsStr?.toLowerCase() === "jackpot";
 
   const isReady =
+    !isBettingClosed &&
     selectedMain.length === requiredMain &&
     (!needsBonusPick || !hasBonus || selectedBonus !== null) &&
     stakeAmount > 0 &&
@@ -584,7 +595,7 @@ export default function LotteryGame() {
 
         {/* Countdown */}
         {game.nextDrawAt && (
-          <div className="mt-6 pt-6 border-t border-border/30">
+          <div className="mt-6 pt-6 border-t border-border/30 space-y-4">
             <div className="text-xs text-muted-foreground mb-3 text-center flex items-center justify-center gap-1.5">
               <Clock className="w-3 h-3" />
               <span>Next draw: {format(new Date(game.nextDrawAt), "PPP 'at' p")}</span>
@@ -598,12 +609,53 @@ export default function LotteryGame() {
               <span className="text-xl font-black text-muted-foreground/50 pb-5">:</span>
               <CountdownUnit value={countdown.secs} label="Sec" />
             </div>
+
+            {/* Betting cutoff warning — shown in the last 30 min before cutoff */}
+            {showCutoffWarning && (
+              <div className="flex items-center justify-center gap-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30 px-4 py-2.5 text-yellow-500 text-sm font-semibold">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>
+                  Betting closes in{" "}
+                  {cutoffCountdown.hours > 0 && `${cutoffCountdown.hours}h `}
+                  {cutoffCountdown.mins}m {String(cutoffCountdown.secs).padStart(2, "0")}s
+                </span>
+              </div>
+            )}
+
+            {/* Betting closed notice in hero */}
+            {isBettingClosed && (
+              <div className="flex items-center justify-center gap-2 rounded-lg bg-destructive/10 border border-destructive/30 px-4 py-2.5 text-destructive text-sm font-semibold">
+                <Lock className="w-4 h-4 shrink-0" />
+                <span>Betting is closed — draw in progress</span>
+              </div>
+            )}
           </div>
         )}
       </div>
 
       {/* Betting Panel */}
       <div className="rounded-xl border border-border/50 bg-card p-5 space-y-6">
+        {/* ── Betting closed state ─────────────────────────────────────────── */}
+        {isBettingClosed ? (
+          <div className="flex flex-col items-center gap-4 py-6 text-center">
+            <div className="w-16 h-16 rounded-full bg-muted/40 border border-border/60 flex items-center justify-center">
+              <Lock className="w-7 h-7 text-muted-foreground" />
+            </div>
+            <div>
+              <h2 className="font-bold text-foreground text-lg">Betting Closed</h2>
+              <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+                Bets must be placed at least 15 minutes before the draw. Betting will reopen once the draw result is published.
+              </p>
+            </div>
+            {game.nextDraw && (
+              <div className="rounded-lg bg-muted/30 border border-border/40 px-5 py-3 text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">Draw time: </span>
+                {format(new Date(game.nextDraw.drawDate), "PPP 'at' p")}
+              </div>
+            )}
+          </div>
+        ) : (
+        <>
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h2 className="font-bold text-foreground">Place Your Bet</h2>

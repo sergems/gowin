@@ -227,7 +227,7 @@ router.post("/lottery/tickets", requireAuth, async (req: AuthRequest, res): Prom
 
   // Require a pending draw
   const [nextDraw] = await db
-    .select({ id: lotteryDrawsTable.id })
+    .select({ id: lotteryDrawsTable.id, drawDate: lotteryDrawsTable.drawDate })
     .from(lotteryDrawsTable)
     .where(and(eq(lotteryDrawsTable.gameId, game.id), eq(lotteryDrawsTable.status, "pending")))
     .orderBy(lotteryDrawsTable.drawDate)
@@ -235,6 +235,21 @@ router.post("/lottery/tickets", requireAuth, async (req: AuthRequest, res): Prom
 
   if (!nextDraw) {
     res.status(400).json({ error: "No upcoming draw scheduled for this lottery. Check back later." });
+    return;
+  }
+
+  // ── 15-minute betting cutoff ─────────────────────────────────────────────────
+  // Bets must be placed at least 15 minutes before the draw closes.
+  const CUTOFF_MS = 15 * 60 * 1000;
+  const msToDrawDate = nextDraw.drawDate.getTime() - Date.now();
+  if (msToDrawDate < CUTOFF_MS) {
+    const cutoffAt = new Date(nextDraw.drawDate.getTime() - CUTOFF_MS);
+    res.status(400).json({
+      error: `Betting is closed for this draw. Bets must be placed at least 15 minutes before the draw.`,
+      bettingCutoff: cutoffAt.toISOString(),
+      drawDate: nextDraw.drawDate.toISOString(),
+      code: "BETTING_CLOSED",
+    });
     return;
   }
 
