@@ -24,6 +24,7 @@ import {
   GosLoto749Scraper,
   GosLoto420Field1Scraper,
   GosLoto420Field2Scraper,
+  GosLoto550Scraper,
 } from "./GosLotoScraper";
 
 /** Map of scraper_class column value → BaseScraper instance */
@@ -46,6 +47,7 @@ const REGISTRY: Record<string, BaseScraper> = {
   GosLoto749Scraper:        new GosLoto749Scraper(),
   GosLoto420Field1Scraper:  new GosLoto420Field1Scraper(),
   GosLoto420Field2Scraper:  new GosLoto420Field2Scraper(),
+  GosLoto550Scraper:        new GosLoto550Scraper(),
 };
 
 export function getScraperByClass(className: string): BaseScraper | null {

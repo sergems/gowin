@@ -252,6 +252,30 @@ const SEED_GAMES = [
     scraperClass: "GosLoto420Field2Scraper",
     website: "https://iss.stoloto.ru/rapido2/draws?count=1",
   },
+  {
+    name: "Gosloto 5/50",
+    slug: "gosloto-550",
+    country: "Russia",
+    mainNumbersCount: 5,
+    mainNumbersMax: 50,
+    bonusNumbersCount: 0,
+    bonusNumbersMax: 0,
+    ticketPrice: "2.00",
+    jackpot: "0.00",
+    drawOffsetDays: 1,
+    color: "#c2410c",
+    emoji: "🇷🇺",
+    description: "Gosloto 5/50. Pick 1–4 numbers from 1 to 50. No bonus ball.",
+    enabledPlayTypes: ["1", "2", "3", "4"],
+    payoutConfig: {
+      excludedBonus: { "1": "6/1", "2": "99/1", "3": "1199/1", "4": "24999/1" },
+      includedBonus: {},
+      bonusOnly: "",
+      withBonus: {},
+    },
+    scraperClass: "GosLoto550Scraper",
+    website: "https://iss.stoloto.ru/gosloto550/draws?count=1",
+  },
 ] as const;
 
 export async function seedLotteryGames(): Promise<void> {

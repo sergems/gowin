@@ -184,3 +184,10 @@ export class GosLoto420Field2Scraper extends GosLotoBaseScraper {
   readonly expectedCount = 4;
   readonly maxNumber = 20;
 }
+
+/** Gosloto 5/50 — 5 numbers drawn from 1–50 */
+export class GosLoto550Scraper extends GosLotoBaseScraper {
+  readonly name = "GosLoto550Scraper";
+  readonly expectedCount = 5;
+  readonly maxNumber = 50;
+}
