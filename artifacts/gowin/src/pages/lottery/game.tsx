@@ -46,6 +46,7 @@ interface LotteryGameDetail {
   isActive: boolean;
   color: string;
   emoji: string;
+  logoUrl: string | null;
   description: string | null;
   payoutConfig: PayoutConfig;
   enabledPlayTypes: string[];
@@ -580,10 +581,23 @@ export default function LotteryGame() {
         <div className="flex flex-col md:flex-row md:items-center gap-6">
           <div className="flex items-center gap-4">
             <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shrink-0"
+              className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shrink-0 overflow-hidden"
               style={{ background: `${game.color}25`, border: `1px solid ${game.color}40` }}
             >
-              {game.emoji}
+              {game.logoUrl ? (
+                <img
+                  src={game.logoUrl}
+                  alt={game.name}
+                  className="w-full h-full object-contain p-1"
+                  onError={(e) => {
+                    const img = e.currentTarget;
+                    img.style.display = "none";
+                    const fallback = img.nextSibling as HTMLElement | null;
+                    if (fallback) fallback.style.display = "flex";
+                  }}
+                />
+              ) : null}
+              <span style={{ display: game.logoUrl ? "none" : "flex" }}>{game.emoji}</span>
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl font-black text-foreground">{game.name}</h1>
