@@ -186,11 +186,6 @@ function LotteryCard({ game }: { game: LotteryGame }) {
                 CLOSING
               </Badge>
             )}
-            {tier === "soon" && (
-              <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-400 bg-amber-500/10 shrink-0">
-                SOON
-              </Badge>
-            )}
           </div>
 
           {/* Stats */}
