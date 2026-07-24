@@ -17,6 +17,7 @@ import { UKLottoScraper } from "./UKLottoScraper";
 import { SALottoScraper } from "./SALottoScraper";
 import { DailyLottoScraper } from "./DailyLottoScraper";
 import { IrishLottoScraper } from "./IrishLottoScraper";
+import { FrenchLotoScraper } from "./FrenchLotoScraper";
 import { UK49sBrunchtimeScraper, UK49sLunchtimeScraper, UK49sDrivetimeScraper, UK49sTeatimeScraper } from "./UK49sScraper";
 import {
   GosLoto645Scraper,
@@ -37,6 +38,7 @@ const REGISTRY: Record<string, BaseScraper> = {
   SALottoScraper:           new SALottoScraper(),
   DailyLottoScraper:        new DailyLottoScraper(),
   IrishLottoScraper:        new IrishLottoScraper(),
+  FrenchLotoScraper:        new FrenchLotoScraper(),
   UK49sBrunchtimeScraper:   new UK49sBrunchtimeScraper(),
   UK49sLunchtimeScraper:    new UK49sLunchtimeScraper(),
   UK49sDrivetimeScraper:    new UK49sDrivetimeScraper(),
