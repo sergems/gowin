@@ -1,94 +1,126 @@
 /**
- * EuroMillions scraper — scrapes euro-millions.com results page.
+ * EuroMillions scraper — scrapes euro-millions.com/results.
  *
- * The results page embeds ball numbers in elements with class "ball" (main)
- * and "lucky-star" or "ls" (bonus Lucky Stars).
+ * Page structure (server-rendered HTML):
+ *   The page shows multiple draws. When a draw is in progress the current
+ *   draw's balls all contain "-" (invalid).  We skip those and return the
+ *   first draw whose balls are all valid numbers.
+ *
+ *   Date header (h2-class div):
+ *     "Friday's Result - 24<sup>th</sup> July 2026"
+ *   Balls (ul.balls):
+ *     <li class="resultBall ball">2</li>      × 5 main
+ *     <li class="resultBall lucky-star">2</li> × 2 Lucky Stars
+ *   Historical draws use class "resultBall ball small" — excluded.
  */
 import { BaseScraper } from "./BaseScraper";
 import type { DrawResult } from "./types";
 import * as cheerio from "cheerio";
 
+const MONTHS: Record<string, string> = {
+  january: "01", february: "02", march: "03", april: "04",
+  may: "05", june: "06", july: "07", august: "08",
+  september: "09", october: "10", november: "11", december: "12",
+};
+
 export class EuroMillionsScraper extends BaseScraper {
   readonly name = "EuroMillionsScraper";
 
   async scrape(website: string): Promise<DrawResult | null> {
-    const url = `${website.replace(/\/$/, "")}/results`;
+    const url = website.replace(/\/$/, "") + "/results";
     const html = await this.fetchPage(url);
     if (!html) return null;
 
     const $ = cheerio.load(html);
 
-    // Extract draw date — look for first date-like pattern in page title or result heading
-    let drawDate: string | null = null;
-    $("time, .date, .draw-date, [data-draw-date]").each((_, el) => {
-      if (drawDate) return;
-      const dt = $(el).attr("datetime") ?? $(el).attr("data-draw-date") ?? $(el).text().trim();
-      drawDate = this.extractDate(dt);
+    // Walk every draw section. Each section has:
+    //   - a date header div (h2-class) containing "Xth Month YYYY"
+    //   - a <ul class="balls"> with <li class="resultBall ball"> items (NOT .small)
+    // We collect (date, numbers, bonus) pairs and return the first with valid numbers.
+
+    // Gather date headers in document order
+    interface DrawSection { date: string | null; $balls: cheerio.Cheerio<cheerio.Element> }
+    const sections: DrawSection[] = [];
+
+    // The date headers are divs with class "h2" that contain the word "Result"
+    $("div.h2, div[class*='h2']").each((_, el) => {
+      const text = $(el).text();
+      if (!/Result/i.test(text)) return;
+      const date = this.parseOrdinalDate(text);
+      // Find the next ul.balls sibling (may be nested a few levels down)
+      const container = $(el).closest(".fx, .box, section, [class*='box']");
+      const $balls = container.find("ul.balls").first();
+      if ($balls.length) {
+        sections.push({ date, $balls });
+      }
     });
 
-    // Fallback: scan text nodes for date patterns
-    if (!drawDate) {
-      const pageText = $.root().text();
-      const dRe = /(\d{1,2})[\s\/\-](\w+)[\s\/\-](\d{4})/;
-      const dM = dRe.exec(pageText);
-      if (dM) drawDate = this.parseVerboseDate(dM[0]);
-    }
+    for (const section of sections) {
+      const numbers: number[] = [];
+      const bonus: number[] = [];
 
-    if (!drawDate) drawDate = this.todayUTC();
-
-    // Main balls
-    const numbers: number[] = [];
-    $(".ball, .balls .ball-number, li.ball").each((_, el) => {
-      const n = parseInt($(el).text().trim(), 10);
-      if (!isNaN(n) && n > 0 && numbers.length < 5) numbers.push(n);
-    });
-
-    // Lucky Stars (bonus)
-    const bonus: number[] = [];
-    $(".lucky-star, .ls, .lucky-stars .ball-number, li.lucky-star").each((_, el) => {
-      const n = parseInt($(el).text().trim(), 10);
-      if (!isNaN(n) && n > 0 && bonus.length < 2) bonus.push(n);
-    });
-
-    // Broader fallback using numbered lists
-    if (numbers.length === 0) {
-      $("ul.result li, .result-numbers li, .winning-numbers li").each((_, el) => {
+      // Only non-.small li elements are the current draw's balls
+      section.$balls.find("li.resultBall.ball:not(.small)").each((_, el) => {
         const n = parseInt($(el).text().trim(), 10);
-        if (!isNaN(n) && n > 0) {
-          if (numbers.length < 5) numbers.push(n);
-          else if (bonus.length < 2) bonus.push(n);
-        }
+        if (!isNaN(n) && n > 0) numbers.push(n);
       });
+      section.$balls.find("li.resultBall.lucky-star:not(.small)").each((_, el) => {
+        const n = parseInt($(el).text().trim(), 10);
+        if (!isNaN(n) && n > 0) bonus.push(n);
+      });
+
+      // Skip draws in progress (balls contain "-" → NaN) or incomplete
+      if (numbers.length < 5) continue;
+
+      const drawDate = section.date ?? this.todayUTC();
+      return {
+        drawDate,
+        numbers: numbers.slice(0, 5),
+        bonus: bonus.slice(0, 2),
+        jackpot: 0,
+      };
     }
 
-    if (numbers.length === 0) return null;
+    // Fallback: try the original broad selector approach on first ul.balls with real numbers
+    let fallbackDate: string | null = null;
+    $("time, .date, .draw-date, [data-draw-date]").each((_, el) => {
+      if (fallbackDate) return;
+      const dt = $(el).attr("datetime") ?? $(el).attr("data-draw-date") ?? $(el).text().trim();
+      const iso = dt.match(/(\d{4}-\d{2}-\d{2})/);
+      if (iso) { fallbackDate = iso[1] ?? null; return; }
+      fallbackDate = this.parseOrdinalDate(dt);
+    });
 
-    return { drawDate, numbers, bonus, jackpot: 0 };
-  }
+    const fallbackNumbers: number[] = [];
+    const fallbackBonus: number[] = [];
+    $("li.resultBall.ball:not(.small)").each((_, el) => {
+      const n = parseInt($(el).text().trim(), 10);
+      if (!isNaN(n) && n > 0 && fallbackNumbers.length < 5) fallbackNumbers.push(n);
+    });
+    $("li.resultBall.lucky-star:not(.small)").each((_, el) => {
+      const n = parseInt($(el).text().trim(), 10);
+      if (!isNaN(n) && n > 0 && fallbackBonus.length < 2) fallbackBonus.push(n);
+    });
 
-  private extractDate(raw: string): string | null {
-    if (!raw) return null;
-    // ISO format
-    const iso = raw.match(/(\d{4}-\d{2}-\d{2})/);
-    if (iso) return iso[1] ?? null;
-    // dd/mm/yyyy
-    const dmy = raw.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-    if (dmy) return this.parseDMYDate(dmy[0]);
-    return null;
-  }
+    if (fallbackNumbers.length < 5) return null;
 
-  private parseVerboseDate(raw: string): string | null {
-    // "25 July 2026" or "25/07/2026"
-    const months: Record<string, string> = {
-      january: "01", february: "02", march: "03", april: "04",
-      may: "05", june: "06", july: "07", august: "08",
-      september: "09", october: "10", november: "11", december: "12",
+    return {
+      drawDate: fallbackDate ?? this.todayUTC(),
+      numbers: fallbackNumbers,
+      bonus: fallbackBonus,
+      jackpot: 0,
     };
-    const m = raw.match(/(\d{1,2})\s+(\w+)\s+(\d{4})/i);
-    if (m) {
-      const mon = months[(m[2] ?? "").toLowerCase()];
-      if (mon) return `${m[3]}-${mon}-${(m[1] ?? "1").padStart(2, "0")}`;
-    }
-    return null;
+  }
+
+  /**
+   * Parse "24th July 2026" / "1st January 2025" / "Friday's Result - 24th July 2026"
+   * → "YYYY-MM-DD"
+   */
+  private parseOrdinalDate(raw: string): string | null {
+    const m = raw.match(/(\d{1,2})(?:st|nd|rd|th)\s+(\w+)\s+(\d{4})/i);
+    if (!m) return null;
+    const mon = MONTHS[(m[2] ?? "").toLowerCase()];
+    if (!mon) return null;
+    return `${m[3]}-${mon}-${(m[1] ?? "1").padStart(2, "0")}`;
   }
 }

@@ -84,6 +84,16 @@ async function fetchDraw(
   });
 
   const latest = matching[0]!;
+
+  // Staleness guard: 49s.co.uk embeds JSON-LD from its SSR snapshot.
+  // If the most-recent matching event is more than 14 days old, the
+  // site's JSON-LD hasn't refreshed — return null so we log NO_RESULT
+  // instead of re-serving stale historical data.
+  if (latest.startDate) {
+    const ageMs = Date.now() - new Date(latest.startDate).getTime();
+    const ageDays = ageMs / (1000 * 60 * 60 * 24);
+    if (ageDays > 14) return null;
+  }
   const numbers = (latest.resultNumbers ?? []).filter(
     (n): n is number => typeof n === "number" && n > 0
   );
