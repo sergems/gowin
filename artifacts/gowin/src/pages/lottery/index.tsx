@@ -333,9 +333,21 @@ function CountryGroup({
 }
 
 function compareDrawTime(a: LotteryGame, b: LotteryGame): number {
-  const aTime = a.drawTime ?? "99:99";
-  const bTime = b.drawTime ?? "99:99";
-  return aTime.localeCompare(bTime) || a.name.localeCompare(b.name);
+  // Sort by actual next draw datetime; games with no upcoming draw go last
+  const aTime = a.nextDrawAt ? new Date(a.nextDrawAt).getTime() : Infinity;
+  const bTime = b.nextDrawAt ? new Date(b.nextDrawAt).getTime() : Infinity;
+  if (aTime !== bTime) return aTime - bTime;
+  // Fall back to recurring draw time, then name
+  const aDraw = a.drawTime ?? "99:99";
+  const bDraw = b.drawTime ?? "99:99";
+  return aDraw.localeCompare(bDraw) || a.name.localeCompare(b.name);
+}
+
+function earliestDrawMs(games: LotteryGame[]): number {
+  return games.reduce((best, g) => {
+    const t = g.nextDrawAt ? new Date(g.nextDrawAt).getTime() : Infinity;
+    return t < best ? t : best;
+  }, Infinity);
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -353,7 +365,7 @@ export default function LotteryLobby() {
     refetchInterval: 60 * 1000,
   });
 
-  // Group by country, sort alphabetically (Europe/International last)
+  // Group by country; within each group sort by nextDrawAt; sort groups by their earliest draw
   const grouped = (() => {
     const map = new Map<string, LotteryGame[]>();
     for (const g of [...(games ?? [])].sort(compareDrawTime)) {
@@ -361,9 +373,7 @@ export default function LotteryLobby() {
       map.get(g.country)!.push(g);
     }
     return [...map.entries()].sort(([a, aGames], [b, bGames]) => {
-      const aFirstTime = aGames[0]?.drawTime ?? "99:99";
-      const bFirstTime = bGames[0]?.drawTime ?? "99:99";
-      const byTime = aFirstTime.localeCompare(bFirstTime);
+      const byTime = earliestDrawMs(aGames) - earliestDrawMs(bGames);
       if (byTime !== 0) return byTime;
 
       const intl = new Set(["europe", "international", "world"]);

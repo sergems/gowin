@@ -53,9 +53,14 @@ function topOdds(config: PayoutConfig | null): string {
 }
 
 function compareDrawTime(a: LotteryGame, b: LotteryGame): number {
-  const aTime = a.drawTime ?? "99:99";
-  const bTime = b.drawTime ?? "99:99";
-  return aTime.localeCompare(bTime) || a.name.localeCompare(b.name);
+  // Sort by actual next draw datetime; games with no upcoming draw go last
+  const aTime = a.nextDrawAt ? new Date(a.nextDrawAt).getTime() : Infinity;
+  const bTime = b.nextDrawAt ? new Date(b.nextDrawAt).getTime() : Infinity;
+  if (aTime !== bTime) return aTime - bTime;
+  // Fall back to recurring draw time, then name
+  const aDraw = a.drawTime ?? "99:99";
+  const bDraw = b.drawTime ?? "99:99";
+  return aDraw.localeCompare(bDraw) || a.name.localeCompare(b.name);
 }
 
 function GameCard({ game }: { game: LotteryGame }) {
