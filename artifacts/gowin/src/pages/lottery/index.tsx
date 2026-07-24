@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Ticket, Clock, Trophy, Zap, Globe } from "lucide-react";
+import { Ticket, Clock, Zap, Globe } from "lucide-react";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -164,29 +164,8 @@ export default function LotteryLobby() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-      {/* Hero */}
-      <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-primary/20 via-primary/5 to-transparent border border-primary/20 p-6 md:p-8">
-        <div className="absolute inset-0 opacity-30 pointer-events-none"
-          style={{ backgroundImage: "radial-gradient(ellipse at 80% 50%, hsl(142 71% 45% / 0.3) 0%, transparent 60%)" }} />
-        <div className="relative">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-3xl">🎰</span>
-            <Badge className="bg-primary/20 text-primary border-primary/30 text-xs">LIVE</Badge>
-          </div>
-          <h1 className="text-3xl md:text-4xl font-black text-foreground mb-2">Lucky Numbers</h1>
-          <p className="text-muted-foreground text-sm md:text-base max-w-lg">
-            Pick your lucky numbers, buy your ticket, and win big!
-          </p>
-        </div>
-      </div>
-
       {/* Games Grid */}
       <div>
-        <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-          <Trophy className="w-5 h-5 text-primary" />
-          Available Lotteries
-        </h2>
-
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {Array.from({ length: 8 }).map((_, i) => <LotteryCardSkeleton key={i} />)}
