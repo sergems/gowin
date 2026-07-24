@@ -1,12 +1,85 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Clock, Zap, Globe, Timer, ChevronDown, ChevronRight } from "lucide-react";
+import { Clock, Zap, Globe, Timer, ChevronDown, ChevronRight, ChevronLeft } from "lucide-react";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import { countryFlagUrl } from "@/lib/countryFlags";
+
+// ── Banner slider ─────────────────────────────────────────────────────────────
+
+interface SlideItem { id: number; url: string; sortOrder: number; }
+
+function BannerSlider() {
+  const { data: slides = [] } = useQuery<SlideItem[]>({
+    queryKey: ["slides"],
+    queryFn: () => fetch("/api/slides").then((r) => r.json()),
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const [current, setCurrent] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  const next = useCallback(() => setCurrent((c) => (c + 1) % slides.length), [slides.length]);
+  const prev = useCallback(() => setCurrent((c) => (c - 1 + slides.length) % slides.length), [slides.length]);
+
+  useEffect(() => {
+    if (slides.length <= 1 || paused) return;
+    const id = setInterval(next, 5000);
+    return () => clearInterval(id);
+  }, [slides.length, paused, next]);
+
+  useEffect(() => { setCurrent(0); }, [slides.length]);
+
+  if (slides.length === 0) return null;
+
+  return (
+    <div
+      className="relative w-full overflow-hidden select-none rounded-xl"
+      style={{ aspectRatio: "956 / 412" }}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      {slides.map((slide, i) => (
+        <img
+          key={slide.id}
+          src={slide.url}
+          alt={`Banner ${i + 1}`}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${i === current ? "opacity-100" : "opacity-0"}`}
+          draggable={false}
+        />
+      ))}
+
+      {slides.length > 1 && (
+        <>
+          <button
+            onClick={prev}
+            className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full w-8 h-8 flex items-center justify-center transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={next}
+            className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full w-8 h-8 flex items-center justify-center transition-colors"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
+            {slides.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrent(i)}
+                className={`rounded-full transition-all ${i === current ? "bg-white w-4 h-1.5" : "bg-white/50 w-1.5 h-1.5"}`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 interface LotteryGame {
   id: number;
@@ -291,7 +364,8 @@ export default function LotteryLobby() {
   })();
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 space-y-2">
+    <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
+      <BannerSlider />
       {isLoading ? (
         <LotterySkeleton />
       ) : grouped.length === 0 ? (
