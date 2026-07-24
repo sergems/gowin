@@ -1,10 +1,11 @@
 /**
- * Lottery seed — inserts the 8 default lottery games if the table is empty.
- * Safe to call on every startup: it only inserts when no games exist yet.
+ * Lottery seed — inserts the default lottery games if the table is empty.
+ * South African game configuration is also reconciled on every startup so
+ * imported databases receive new games and corrected number ranges.
  */
 import { db, lotteryGamesTable, lotteryDrawsTable } from "@workspace/db";
 import { DEFAULT_PAYOUT_CONFIG } from "@workspace/db";
-import { count } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { logger } from "./logger";
 
 const SEED_GAMES = [
@@ -112,7 +113,67 @@ const SEED_GAMES = [
     drawOffsetHours: 12,
     color: "#f97316",
     emoji: "🌅",
-    description: "Daily draws every night. Pick 1–5 from 1–36. No rollover — always pays out!",
+    description: "Daily draws Monday to Sunday at 21:00 SAST, except Christmas Day. Pick 1–5 from 1–36.",
+  },
+  {
+    name: "PowerBall",
+    slug: "sa-powerball",
+    country: "South Africa",
+    mainNumbersCount: 5,
+    mainNumbersMax: 50,
+    bonusNumbersCount: 1,
+    bonusNumbersMax: 20,
+    ticketPrice: "10.00",
+    jackpot: "0.00",
+    drawOffsetDays: 1,
+    color: "#2563eb",
+    emoji: "🔵",
+    description: "South African PowerBall. Draws Tuesdays and Fridays at 21:00 SAST.",
+  },
+  {
+    name: "PowerBall XTRA",
+    slug: "sa-powerball-xtra",
+    country: "South Africa",
+    mainNumbersCount: 5,
+    mainNumbersMax: 50,
+    bonusNumbersCount: 1,
+    bonusNumbersMax: 20,
+    ticketPrice: "5.00",
+    jackpot: "0.00",
+    drawOffsetDays: 1,
+    color: "#7c3aed",
+    emoji: "✖️",
+    description: "PowerBall XTRA. Draws Tuesdays and Fridays at 21:00 SAST.",
+  },
+  {
+    name: "Lotto Plus 1",
+    slug: "sa-lotto-plus-1",
+    country: "South Africa",
+    mainNumbersCount: 6,
+    mainNumbersMax: 52,
+    bonusNumbersCount: 1,
+    bonusNumbersMax: 52,
+    ticketPrice: "2.50",
+    jackpot: "0.00",
+    drawOffsetDays: 2,
+    color: "#0891b2",
+    emoji: "➕",
+    description: "Lotto Plus 1. Draws Wednesdays and Saturdays at 21:00 SAST.",
+  },
+  {
+    name: "Lotto 5 Max",
+    slug: "sa-lotto-5-max",
+    country: "South Africa",
+    mainNumbersCount: 6,
+    mainNumbersMax: 52,
+    bonusNumbersCount: 1,
+    bonusNumbersMax: 52,
+    ticketPrice: "2.50",
+    jackpot: "0.00",
+    drawOffsetDays: 2,
+    color: "#0e7490",
+    emoji: "⑤",
+    description: "Lotto 5 Max. Draws Wednesdays and Saturdays at 21:00 SAST.",
   },
   {
     name: "Irish Lotto",
@@ -283,6 +344,145 @@ const SEED_GAMES = [
     logoUrl: "https://flagcdn.com/40x30/ru.png",
   },
 ] as const;
+
+const SA_SOURCE = "https://www.nationallottery.co.za/#/results";
+const SA_TIMEZONE = "Africa/Johannesburg";
+const SA_SCHEDULES: Record<string, number[]> = {
+  "daily-lotto": [0, 1, 2, 3, 4, 5, 6],
+  "sa-powerball": [2, 5],
+  "sa-powerball-xtra": [2, 5],
+  "sa-lotto": [3, 6],
+  "sa-lotto-plus-1": [3, 6],
+  "sa-lotto-5-max": [3, 6],
+};
+
+function nextSADraw(days: number[]): Date {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: SA_TIMEZONE,
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    hour12: false,
+  }).formatToParts(now);
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
+  const base = new Date(Date.UTC(get("year"), get("month") - 1, get("day"), 19, 0, 0));
+
+  for (let offset = 0; offset <= 7; offset++) {
+    const candidate = new Date(base.getTime() + offset * 86_400_000);
+    const weekday = candidate.getUTCDay();
+    const christmas = candidate.getUTCMonth() === 11 && candidate.getUTCDate() === 25;
+    if (days.includes(weekday) && !christmas && candidate > now) return candidate;
+  }
+  return new Date(now.getTime() + 7 * 86_400_000);
+}
+
+const SA_GAME_CONFIG = [
+  { slug: "daily-lotto", name: "Daily Lotto", mainNumbersCount: 5, mainNumbersMax: 36, bonusNumbersCount: 0, bonusNumbersMax: 0, drawDays: SA_SCHEDULES["daily-lotto"]!, drawTime: "21:00", description: "Daily draws Monday to Sunday at 21:00 SAST, except Christmas Day. Pick 1–5 from 1–36." },
+  { slug: "sa-lotto", name: "South African Lotto", mainNumbersCount: 6, mainNumbersMax: 52, bonusNumbersCount: 1, bonusNumbersMax: 52, drawDays: SA_SCHEDULES["sa-lotto"]!, drawTime: "21:00", description: "South Africa's Lotto. Draws Wednesdays and Saturdays at 21:00 SAST with a bonus ball." },
+  { slug: "sa-powerball", name: "PowerBall", mainNumbersCount: 5, mainNumbersMax: 50, bonusNumbersCount: 1, bonusNumbersMax: 20, drawDays: SA_SCHEDULES["sa-powerball"]!, drawTime: "21:00", description: "South African PowerBall. Draws Tuesdays and Fridays at 21:00 SAST." },
+  { slug: "sa-powerball-xtra", name: "PowerBall XTRA", mainNumbersCount: 5, mainNumbersMax: 50, bonusNumbersCount: 1, bonusNumbersMax: 20, drawDays: SA_SCHEDULES["sa-powerball-xtra"]!, drawTime: "21:00", description: "PowerBall XTRA. Draws Tuesdays and Fridays at 21:00 SAST." },
+  { slug: "sa-lotto-plus-1", name: "Lotto Plus 1", mainNumbersCount: 6, mainNumbersMax: 52, bonusNumbersCount: 1, bonusNumbersMax: 52, drawDays: SA_SCHEDULES["sa-lotto-plus-1"]!, drawTime: "21:00", description: "Lotto Plus 1. Draws Wednesdays and Saturdays at 21:00 SAST." },
+  { slug: "sa-lotto-5-max", name: "Lotto 5 Max", mainNumbersCount: 6, mainNumbersMax: 52, bonusNumbersCount: 1, bonusNumbersMax: 52, drawDays: SA_SCHEDULES["sa-lotto-5-max"]!, drawTime: "21:00", description: "Lotto 5 Max. Draws Wednesdays and Saturdays at 21:00 SAST." },
+] as const;
+
+/**
+ * Reconcile SA lottery rows in imported databases. This is intentionally
+ * separate from the empty-database seed because imported dumps already have
+ * games and therefore skip the normal seed path.
+ */
+export async function ensureSouthAfricanLotteryGames(): Promise<void> {
+  for (const config of SA_GAME_CONFIG) {
+    const nextDrawAt = nextSADraw(config.drawDays);
+    const [existing] = await db
+      .select({ id: lotteryGamesTable.id })
+      .from(lotteryGamesTable)
+      .where(eq(lotteryGamesTable.slug, config.slug))
+      .limit(1);
+
+    if (existing) {
+      await db
+        .update(lotteryGamesTable)
+        .set({
+          name: config.name,
+          country: "South Africa",
+          mainNumbersCount: config.mainNumbersCount,
+          mainNumbersMax: config.mainNumbersMax,
+          bonusNumbersCount: config.bonusNumbersCount,
+          bonusNumbersMax: config.bonusNumbersMax,
+          description: config.description,
+          website: `${SA_SOURCE}/${config.slug}`,
+          scraperClass: "SALotteryScraper",
+          drawDays: config.drawDays,
+          drawTime: config.drawTime,
+          timezone: SA_TIMEZONE,
+          nextDrawAt,
+        })
+        .where(eq(lotteryGamesTable.id, existing.id));
+
+      const [pending] = await db
+        .select({ id: lotteryDrawsTable.id })
+        .from(lotteryDrawsTable)
+        .where(
+          and(
+            eq(lotteryDrawsTable.gameId, existing.id),
+            eq(lotteryDrawsTable.status, "pending"),
+          ),
+        )
+        .limit(1);
+      if (!pending) {
+        await db.insert(lotteryDrawsTable).values({
+          gameId: existing.id,
+          drawDate: nextDrawAt,
+          jackpot: "0.00",
+          winningNumbers: [],
+          bonusNumbers: [],
+          status: "pending",
+        });
+      }
+      continue;
+    }
+
+    const [game] = await db
+      .insert(lotteryGamesTable)
+      .values({
+        name: config.name,
+        slug: config.slug,
+        country: "South Africa",
+        mainNumbersCount: config.mainNumbersCount,
+        mainNumbersMax: config.mainNumbersMax,
+        bonusNumbersCount: config.bonusNumbersCount,
+        bonusNumbersMax: config.bonusNumbersMax,
+        ticketPrice: config.slug === "daily-lotto" ? "1.00" : "2.50",
+        jackpot: "0.00",
+        nextDrawAt,
+        isActive: true,
+        color: "#06b6d4",
+        emoji: "🇿🇦",
+        description: config.description,
+        payoutConfig: DEFAULT_PAYOUT_CONFIG,
+        website: `${SA_SOURCE}/${config.slug}`,
+        scraperClass: "SALotteryScraper",
+        drawDays: config.drawDays,
+        drawTime: config.drawTime,
+        timezone: SA_TIMEZONE,
+      })
+      .returning({ id: lotteryGamesTable.id });
+
+    if (game) {
+      await db.insert(lotteryDrawsTable).values({
+        gameId: game.id,
+        drawDate: nextDrawAt,
+        jackpot: "0.00",
+        winningNumbers: [],
+        bonusNumbers: [],
+        status: "pending",
+      });
+    }
+  }
+}
 
 export async function seedLotteryGames(): Promise<void> {
   try {

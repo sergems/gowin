@@ -13,7 +13,7 @@ import { eq, sql } from "drizzle-orm";
 import { attachWebSocketServer } from "./lib/wsServer";
 import { startLiveSyncWorkers } from "./lib/liveSync";
 import { runFullFixtureSync } from "./routes/apiSync";
-import { seedLotteryGames } from "./lib/lotterySeed";
+import { seedLotteryGames, ensureSouthAfricanLotteryGames } from "./lib/lotterySeed";
 import { syncLotteryDraws } from "./lib/lotterySync";
 import { runAllScrapers } from "./lib/scrapers/ScraperManager";
 
@@ -66,6 +66,7 @@ server.listen(port, async () => {
 
   // Seed default lottery games (no-op if already seeded)
   await seedLotteryGames();
+  await ensureSouthAfricanLotteryGames();
 
   // Start live betting sync workers after server is ready
   startLiveSyncWorkers();
