@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Ticket, Clock, Zap, Globe, Timer, ChevronDown, ChevronRight } from "lucide-react";
+import { Clock, Zap, Globe, Timer, ChevronDown, ChevronRight } from "lucide-react";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -185,15 +185,6 @@ function LotteryGameRow({ game }: { game: LotteryGame }) {
           <div className="text-xs font-semibold">
             <DrawTimer drawDate={drawDate} />
           </div>
-        </div>
-
-        {/* Ticket price */}
-        <div className="shrink-0 text-right hidden md:block">
-          <div className="text-[10px] text-muted-foreground mb-0.5 flex items-center justify-end gap-1">
-            <Ticket className="w-3 h-3" />
-            <span>Ticket</span>
-          </div>
-          <div className="text-xs font-semibold">${game.ticketPrice.toFixed(2)}</div>
         </div>
 
         {/* Play button */}
