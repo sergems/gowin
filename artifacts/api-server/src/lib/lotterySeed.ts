@@ -15,6 +15,15 @@ const UK_49S_SLUGS = [
   "uk-49s-brunchtime",
   "uk-49s-drivetime",
 ] as const;
+const SA_DAILY_LOTTO_LOGO_URL = "/images/lottery/sa-daily-lotto.png";
+const SA_LOTTO_LOGO_URL = "/images/lottery/sa-lotto.png";
+const SA_POWERBALL_LOGO_URL = "/images/lottery/sa-powerball.png";
+const SA_LOTTO_SLUGS = [
+  "sa-lotto",
+  "sa-lotto-plus-1",
+  "sa-lotto-5-max",
+] as const;
+const SA_POWERBALL_SLUGS = ["sa-powerball", "sa-powerball-xtra"] as const;
 
 const SEED_GAMES = [
   {
@@ -405,6 +414,31 @@ export async function ensureUK49sLotteryLogos(): Promise<void> {
     await db
       .update(lotteryGamesTable)
       .set({ logoUrl: UK_49S_LOGO_URL })
+      .where(eq(lotteryGamesTable.slug, slug));
+  }
+}
+
+/**
+ * Keep South African lottery variants on their official locally-hosted logos.
+ * This repairs imported databases and prevents old placeholder URLs returning.
+ */
+export async function ensureSouthAfricanLotteryLogos(): Promise<void> {
+  await db
+    .update(lotteryGamesTable)
+    .set({ logoUrl: SA_DAILY_LOTTO_LOGO_URL })
+    .where(eq(lotteryGamesTable.slug, "daily-lotto"));
+
+  for (const slug of SA_LOTTO_SLUGS) {
+    await db
+      .update(lotteryGamesTable)
+      .set({ logoUrl: SA_LOTTO_LOGO_URL })
+      .where(eq(lotteryGamesTable.slug, slug));
+  }
+
+  for (const slug of SA_POWERBALL_SLUGS) {
+    await db
+      .update(lotteryGamesTable)
+      .set({ logoUrl: SA_POWERBALL_LOGO_URL })
       .where(eq(lotteryGamesTable.slug, slug));
   }
 }
