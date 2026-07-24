@@ -17,3 +17,4 @@
 - [Lottery flexible betting](lottery-flexible-betting.md) — 7 play markets (1–6 numbers + Bonus Ball Only); "jackpot" odds string pays draw.jackpot; POST /lottery/tickets requires playType+bonusMode+stake
 - [Lottery scraper engine](lottery-scraper-engine.md) — Web-scraper pipeline: ScraperManager → scrapers/ → settleLotteryDraw(); scraper_logs + settlement_logs tables; 5-min cron; admin routes in lotteryScrapers.ts
 - [UK49s scraper — live API](uk49s-scraper-api.md) — use api.49s.co.uk/results/latest with specific browser headers; event_number 1-4 = Brunchtime/Lunchtime/Drivetime/Teatime; JSON-LD on 49s.co.uk is stale CDN cache, never use it
+- [National Lottery asset CDN](national-lottery-asset-cdn.md) — nationallottery.co.za blocks Replit-side image downloads with CDN 403s; use user-uploaded assets or an accessible mirror instead
