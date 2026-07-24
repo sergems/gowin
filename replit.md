@@ -46,6 +46,33 @@ sed '5d' database.sql | psql $DATABASE_URL
 - Referral rewards system
 - Admin panel with financial reporting
 
+## Replit setup (first-time)
+
+On a fresh clone/import, run these steps before starting the workflows:
+
+1. **Install dependencies**
+   ```bash
+   pnpm install
+   ```
+
+2. **Import the database** (`DATABASE_URL` is provided automatically by Replit)
+   ```bash
+   sed '5d' database.sql | psql $DATABASE_URL
+   ```
+
+3. **Start both workflows** — they will start automatically, or restart them from the Replit UI.
+
+The following environment variables/secrets are required for full functionality:
+
+| Secret | Purpose | Required? |
+|--------|---------|-----------|
+| `DATABASE_URL` | PostgreSQL connection (auto-provided by Replit) | ✅ Always |
+| `SESSION_SECRET` | JWT fallback secret | ✅ Always |
+| `ALLSPORTS_API_KEY` | Live fixture/odds sync (AllSportsAPI) | For live betting |
+| `PAWAPAY_API_KEY` | PawaPay mobile money gateway | For payments |
+| `PAWAPAY_BASE_URL` | PawaPay base URL (sandbox or prod) | For payments |
+| `APIVERVE_KEY` | Lottery draw results sync | For lottery |
+
 ## User preferences
 
 - Keep existing project structure and stack
