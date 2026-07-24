@@ -101,6 +101,19 @@ async function fetchDraw(
   return { drawDate, numbers: numbers.slice(0, 6), bonus: bonus.slice(0, 1), jackpot: 0 };
 }
 
+// ── Brunchtime ─────────────────────────────────────────────────────────────
+
+export class UK49sBrunchtimeScraper extends BaseScraper {
+  readonly name = "UK49sBrunchtimeScraper";
+
+  async scrape(website: string): Promise<DrawResult | null> {
+    return (
+      (await fetchDraw(website, "brunchtime", this)) ??
+      (await fetchDraw(website, "brunch time", this))
+    );
+  }
+}
+
 // ── Lunchtime ──────────────────────────────────────────────────────────────
 
 export class UK49sLunchtimeScraper extends BaseScraper {
@@ -111,16 +124,28 @@ export class UK49sLunchtimeScraper extends BaseScraper {
   }
 }
 
+// ── Drivetime ──────────────────────────────────────────────────────────────
+
+export class UK49sDrivetimeScraper extends BaseScraper {
+  readonly name = "UK49sDrivetimeScraper";
+
+  async scrape(website: string): Promise<DrawResult | null> {
+    return (
+      (await fetchDraw(website, "drivetime", this)) ??
+      (await fetchDraw(website, "drive time", this))
+    );
+  }
+}
+
 // ── Teatime ────────────────────────────────────────────────────────────────
 
 export class UK49sTeatimeScraper extends BaseScraper {
   readonly name = "UK49sTeatimeScraper";
 
   async scrape(website: string): Promise<DrawResult | null> {
-    // Also try "Teatime" and "Drivetime" (the site uses both names)
-    const result =
+    return (
       (await fetchDraw(website, "teatime", this)) ??
-      (await fetchDraw(website, "drivetime", this));
-    return result;
+      (await fetchDraw(website, "tea time", this))
+    );
   }
 }

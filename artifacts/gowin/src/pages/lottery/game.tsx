@@ -127,7 +127,7 @@ function NumberBall({
   num: number; selected: boolean; onClick: () => void; disabled: boolean;
   color: string; isBonus?: boolean; isWinning?: boolean;
 }) {
-  const bonusColor = "#f59e0b";
+  const bonusColor = "#e11d48";
   const activeColor = isBonus ? bonusColor : color;
   return (
     <button
