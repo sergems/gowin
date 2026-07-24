@@ -21,6 +21,7 @@ interface LotteryGame {
   isActive: boolean;
   color: string;
   emoji: string;
+  logoUrl: string | null;
   description: string | null;
 }
 
@@ -68,10 +69,28 @@ function LotteryCard({ game }: { game: LotteryGame }) {
           {/* Header */}
           <div className="flex items-start gap-3">
             <div
-              className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0 group-hover:scale-110 transition-transform duration-300"
+              className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0 group-hover:scale-110 transition-transform duration-300 overflow-hidden"
               style={{ background: `${game.color}20`, border: `1px solid ${game.color}30` }}
             >
-              {game.emoji}
+              {game.logoUrl ? (
+                <img
+                  src={game.logoUrl}
+                  alt={game.name}
+                  className="w-full h-full object-contain p-0.5"
+                  onError={(e) => {
+                    const img = e.currentTarget;
+                    img.style.display = "none";
+                    const fallback = img.nextSibling as HTMLElement | null;
+                    if (fallback) fallback.style.display = "flex";
+                  }}
+                />
+              ) : null}
+              <span
+                className="text-2xl"
+                style={{ display: game.logoUrl ? "none" : "flex" }}
+              >
+                {game.emoji}
+              </span>
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="font-bold text-foreground group-hover:text-primary transition-colors truncate">{game.name}</h3>

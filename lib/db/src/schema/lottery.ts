@@ -46,6 +46,8 @@ export const lotteryGamesTable = pgTable("lottery_games", {
   drawDays: jsonb("draw_days").$type<number[]>().default([]),
   drawTime: text("draw_time"),
   timezone: text("timezone").default("UTC"),
+  // Logo image (served from /images/lottery/<slug>.svg or external URL)
+  logoUrl: text("logo_url"),
 });
 
 export const lotteryDrawsTable = pgTable("lottery_draws", {

@@ -28,6 +28,7 @@ interface LotteryGame {
   isActive: boolean;
   color: string;
   emoji: string;
+  logoUrl: string | null;
   description: string | null;
   payoutConfig: PayoutConfig | null;
 }
@@ -71,7 +72,23 @@ function GameCard({ game }: { game: LotteryGame }) {
         {/* Name + format badge */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2.5">
-            <span className="text-3xl leading-none">{game.emoji}</span>
+            {game.logoUrl ? (
+              <img
+                src={game.logoUrl}
+                alt={game.name}
+                className="w-14 h-10 object-contain rounded"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                  (e.currentTarget.nextSibling as HTMLElement).style.display = "inline";
+                }}
+              />
+            ) : null}
+            <span
+              className="text-3xl leading-none"
+              style={{ display: game.logoUrl ? "none" : "inline" }}
+            >
+              {game.emoji}
+            </span>
             <div>
               <h3 className="font-bold text-base leading-tight">{game.name}</h3>
               <p className="text-xs text-muted-foreground mt-0.5">{game.country}</p>

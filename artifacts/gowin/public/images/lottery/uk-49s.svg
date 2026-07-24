@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 120">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1c1917"/>
+      <stop offset="100%" style="stop-color:#292524"/>
+    </linearGradient>
+    <linearGradient id="amber" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fde68a"/>
+      <stop offset="100%" style="stop-color:#f59e0b"/>
+    </linearGradient>
+    <linearGradient id="ball1" x1="20%" y1="20%" x2="80%" y2="80%">
+      <stop offset="0%" style="stop-color:#f59e0b"/>
+      <stop offset="100%" style="stop-color:#d97706"/>
+    </linearGradient>
+    <linearGradient id="ball2" x1="20%" y1="20%" x2="80%" y2="80%">
+      <stop offset="0%" style="stop-color:#8b5cf6"/>
+      <stop offset="100%" style="stop-color:#7c3aed"/>
+    </linearGradient>
+  </defs>
+  <rect width="280" height="120" rx="12" fill="url(#bg)"/>
+  <!-- Lottery balls -->
+  <circle cx="22" cy="60" r="16" fill="url(#ball1)"/>
+  <circle cx="17" cy="54" r="5" fill="white" opacity="0.2"/>
+  <text x="22" y="65" font-family="Arial Black" font-size="13" font-weight="900" fill="white" text-anchor="middle">4</text>
+  <circle cx="52" cy="60" r="16" fill="url(#ball2)"/>
+  <circle cx="47" cy="54" r="5" fill="white" opacity="0.2"/>
+  <text x="52" y="65" font-family="Arial Black" font-size="13" font-weight="900" fill="white" text-anchor="middle">9</text>
+  <!-- 49s text -->
+  <text x="172" y="50" font-family="Arial Black, Arial" font-weight="900" font-size="46" fill="url(#amber)" text-anchor="middle" letter-spacing="-2">49s</text>
+  <!-- UK label -->
+  <rect x="88" y="66" width="40" height="20" rx="4" fill="#f59e0b"/>
+  <text x="108" y="80" font-family="Arial Black" font-size="12" font-weight="900" fill="#1c1917" text-anchor="middle">UK</text>
+  <!-- Bottom text -->
+  <rect x="70" y="90" width="175" height="2" rx="1" fill="#f59e0b" opacity="0.4"/>
+  <text x="172" y="110" font-family="Arial, sans-serif" font-size="10" fill="#fbbf24" opacity="0.8" text-anchor="middle" letter-spacing="2">TWICE DAILY</text>
+</svg>

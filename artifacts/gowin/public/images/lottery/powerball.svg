@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 120">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#16213e"/>
+    </linearGradient>
+    <linearGradient id="ball" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ef4444"/>
+      <stop offset="100%" style="stop-color:#b91c1c"/>
+    </linearGradient>
+    <linearGradient id="stripe" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#ef4444"/>
+      <stop offset="100%" style="stop-color:#dc2626"/>
+    </linearGradient>
+  </defs>
+  <rect width="280" height="120" rx="12" fill="url(#bg)"/>
+  <!-- Red stripe -->
+  <rect x="0" y="78" width="280" height="42" rx="0" fill="url(#stripe)"/>
+  <rect x="0" y="78" width="280" height="42" rx="12" fill="url(#stripe)"/>
+  <rect x="0" y="78" width="280" height="20" fill="url(#stripe)"/>
+  <!-- Powerball text -->
+  <text x="140" y="55" font-family="Arial Black, Arial" font-weight="900" font-size="38" fill="white" text-anchor="middle" letter-spacing="-1">POWERBALL</text>
+  <!-- Red ball icon -->
+  <circle cx="30" cy="48" r="18" fill="url(#ball)"/>
+  <circle cx="30" cy="42" r="6" fill="white" opacity="0.3"/>
+  <!-- Bottom text -->
+  <text x="140" y="105" font-family="Arial, sans-serif" font-weight="700" font-size="16" fill="white" text-anchor="middle" letter-spacing="3">LOTTERY</text>
+</svg>

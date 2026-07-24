@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 120">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e3a8a"/>
+      <stop offset="100%" style="stop-color:#1e40af"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#fde68a"/>
+      <stop offset="100%" style="stop-color:#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="280" height="120" rx="12" fill="url(#bg)"/>
+  <!-- EU stars ring -->
+  <g transform="translate(38,60)">
+    <text x="0" y="-28" font-size="9" fill="#fbbf24" text-anchor="middle">★</text>
+    <text x="14" y="-24" font-size="9" fill="#fbbf24" text-anchor="middle">★</text>
+    <text x="24" y="-12" font-size="9" fill="#fbbf24" text-anchor="middle">★</text>
+    <text x="24" y="4" font-size="9" fill="#fbbf24" text-anchor="middle">★</text>
+    <text x="14" y="16" font-size="9" fill="#fbbf24" text-anchor="middle">★</text>
+    <text x="0" y="20" font-size="9" fill="#fbbf24" text-anchor="middle">★</text>
+    <text x="-14" y="16" font-size="9" fill="#fbbf24" text-anchor="middle">★</text>
+    <text x="-24" y="4" font-size="9" fill="#fbbf24" text-anchor="middle">★</text>
+    <text x="-24" y="-12" font-size="9" fill="#fbbf24" text-anchor="middle">★</text>
+    <text x="-14" y="-24" font-size="9" fill="#fbbf24" text-anchor="middle">★</text>
+    <text x="-6" y="-28" font-size="9" fill="#fbbf24" text-anchor="middle">★</text>
+    <text x="6" y="-28" font-size="9" fill="#fbbf24" text-anchor="middle">★</text>
+  </g>
+  <!-- Main text -->
+  <text x="158" y="45" font-family="Arial Black, Arial" font-weight="900" font-size="28" fill="url(#gold)" text-anchor="middle" letter-spacing="0">euro</text>
+  <text x="158" y="78" font-family="Arial Black, Arial" font-weight="900" font-size="28" fill="white" text-anchor="middle" letter-spacing="0">millions</text>
+  <!-- Accent bar -->
+  <rect x="80" y="87" width="155" height="2" rx="1" fill="#fbbf24" opacity="0.5"/>
+  <text x="158" y="108" font-family="Arial, sans-serif" font-size="10" fill="white" opacity="0.6" text-anchor="middle" letter-spacing="3">EUROPE'S BIGGEST</text>
+</svg>

@@ -17,17 +17,20 @@ import { UKLottoScraper } from "./UKLottoScraper";
 import { SALottoScraper } from "./SALottoScraper";
 import { DailyLottoScraper } from "./DailyLottoScraper";
 import { IrishLottoScraper } from "./IrishLottoScraper";
+import { UK49sLunchtimeScraper, UK49sTeatimeScraper } from "./UK49sScraper";
 
 /** Map of scraper_class column value → BaseScraper instance */
 const REGISTRY: Record<string, BaseScraper> = {
-  PowerballScraper:    new PowerballScraper(),
-  MegaMillionsScraper: new MegaMillionsScraper(),
-  EuroMillionsScraper: new EuroMillionsScraper(),
-  EuroJackpotScraper:  new EuroJackpotScraper(),
-  UKLottoScraper:      new UKLottoScraper(),
-  SALottoScraper:      new SALottoScraper(),
-  DailyLottoScraper:   new DailyLottoScraper(),
-  IrishLottoScraper:   new IrishLottoScraper(),
+  PowerballScraper:      new PowerballScraper(),
+  MegaMillionsScraper:   new MegaMillionsScraper(),
+  EuroMillionsScraper:   new EuroMillionsScraper(),
+  EuroJackpotScraper:    new EuroJackpotScraper(),
+  UKLottoScraper:        new UKLottoScraper(),
+  SALottoScraper:        new SALottoScraper(),
+  DailyLottoScraper:     new DailyLottoScraper(),
+  IrishLottoScraper:     new IrishLottoScraper(),
+  UK49sLunchtimeScraper: new UK49sLunchtimeScraper(),
+  UK49sTeatimeScraper:   new UK49sTeatimeScraper(),
 };
 
 export function getScraperByClass(className: string): BaseScraper | null {

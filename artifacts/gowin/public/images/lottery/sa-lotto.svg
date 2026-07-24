@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 120">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0c4a6e"/>
+      <stop offset="100%" style="stop-color:#0369a1"/>
+    </linearGradient>
+  </defs>
+  <rect width="280" height="120" rx="12" fill="url(#bg)"/>
+  <!-- SA flag inspired icon -->
+  <g transform="translate(38,60)">
+    <circle r="26" fill="white"/>
+    <!-- SA flag colors: green, black, yellow, red, blue, white -->
+    <path d="M-26,0 L0,0 L-13,-22 Z" fill="#007a4d"/>
+    <path d="M-26,0 L0,0 L-13,22 Z" fill="#007a4d"/>
+    <path d="M0,0 L-13,-22 L26,-22 L26,-10 Z" fill="#0032a0"/>
+    <path d="M0,0 L-13,22 L26,22 L26,10 Z" fill="#e03c31"/>
+    <path d="M0,0 L26,-10 L26,10 Z" fill="#ffb81c"/>
+    <!-- Black triangle -->
+    <path d="M-26,-8 L-26,8 L-8,0 Z" fill="#1a1a1a"/>
+    <!-- White borders -->
+    <path d="M-26,-5 L-5,0 L-26,5" fill="none" stroke="white" stroke-width="2"/>
+    <circle r="26" fill="none" stroke="white" stroke-width="1" opacity="0.3"/>
+  </g>
+  <!-- Text -->
+  <text x="163" y="42" font-family="Arial Black, Arial" font-weight="900" font-size="18" fill="#ffb81c" text-anchor="middle" letter-spacing="2">SOUTH AFRICA</text>
+  <text x="163" y="74" font-family="Arial Black, Arial" font-weight="900" font-size="32" fill="white" text-anchor="middle" letter-spacing="-1">LOTTO</text>
+  <rect x="78" y="87" width="165" height="2" rx="1" fill="#ffb81c" opacity="0.5"/>
+  <text x="163" y="108" font-family="Arial, sans-serif" font-size="10" fill="#ffb81c" opacity="0.8" text-anchor="middle" letter-spacing="2">ITHUBA</text>
+</svg>
