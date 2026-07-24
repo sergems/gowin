@@ -16,4 +16,4 @@
 - [Lottery API sync](lottery-api-sync.md) — APIVerve auto-settle + jackpot sync; free tier covers powerball/megamillions/euromillions only; 3s stagger required; shared settle in lotterySettle.ts
 - [Lottery flexible betting](lottery-flexible-betting.md) — 7 play markets (1–6 numbers + Bonus Ball Only); "jackpot" odds string pays draw.jackpot; POST /lottery/tickets requires playType+bonusMode+stake
 - [Lottery scraper engine](lottery-scraper-engine.md) — Web-scraper pipeline: ScraperManager → scrapers/ → settleLotteryDraw(); scraper_logs + settlement_logs tables; 5-min cron; admin routes in lotteryScrapers.ts
-- [UK49s scraper limitation](uk49s-scraper-limitation.md) — 49s.co.uk uses Firebase JS SDK for live data; JSON-LD is stale SSR snapshot; NO_RESULT until a live source is found
+- [UK49s scraper — live API](uk49s-scraper-api.md) — use api.49s.co.uk/results/latest with specific browser headers; event_number 1-4 = Brunchtime/Lunchtime/Drivetime/Teatime; JSON-LD on 49s.co.uk is stale CDN cache, never use it
