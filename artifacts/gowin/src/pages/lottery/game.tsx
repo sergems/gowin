@@ -888,7 +888,8 @@ export default function LotteryGame() {
               : ""}
           </p>
         )}
-      </div>
+      </>
+      )}
 
       {/* Payout Table */}
       <PayoutTable game={game} />
@@ -927,6 +928,7 @@ export default function LotteryGame() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
