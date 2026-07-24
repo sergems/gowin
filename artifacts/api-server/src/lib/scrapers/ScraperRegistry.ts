@@ -18,21 +18,34 @@ import { SALottoScraper } from "./SALottoScraper";
 import { DailyLottoScraper } from "./DailyLottoScraper";
 import { IrishLottoScraper } from "./IrishLottoScraper";
 import { UK49sBrunchtimeScraper, UK49sLunchtimeScraper, UK49sDrivetimeScraper, UK49sTeatimeScraper } from "./UK49sScraper";
+import {
+  GosLoto645Scraper,
+  GosLoto645PlusScraper,
+  GosLoto749Scraper,
+  GosLoto420Field1Scraper,
+  GosLoto420Field2Scraper,
+} from "./GosLotoScraper";
 
 /** Map of scraper_class column value → BaseScraper instance */
 const REGISTRY: Record<string, BaseScraper> = {
-  PowerballScraper:       new PowerballScraper(),
-  MegaMillionsScraper:    new MegaMillionsScraper(),
-  EuroMillionsScraper:    new EuroMillionsScraper(),
-  EuroJackpotScraper:     new EuroJackpotScraper(),
-  UKLottoScraper:         new UKLottoScraper(),
-  SALottoScraper:         new SALottoScraper(),
-  DailyLottoScraper:      new DailyLottoScraper(),
-  IrishLottoScraper:      new IrishLottoScraper(),
-  UK49sBrunchtimeScraper: new UK49sBrunchtimeScraper(),
-  UK49sLunchtimeScraper:  new UK49sLunchtimeScraper(),
-  UK49sDrivetimeScraper:  new UK49sDrivetimeScraper(),
-  UK49sTeatimeScraper:    new UK49sTeatimeScraper(),
+  PowerballScraper:         new PowerballScraper(),
+  MegaMillionsScraper:      new MegaMillionsScraper(),
+  EuroMillionsScraper:      new EuroMillionsScraper(),
+  EuroJackpotScraper:       new EuroJackpotScraper(),
+  UKLottoScraper:           new UKLottoScraper(),
+  SALottoScraper:           new SALottoScraper(),
+  DailyLottoScraper:        new DailyLottoScraper(),
+  IrishLottoScraper:        new IrishLottoScraper(),
+  UK49sBrunchtimeScraper:   new UK49sBrunchtimeScraper(),
+  UK49sLunchtimeScraper:    new UK49sLunchtimeScraper(),
+  UK49sDrivetimeScraper:    new UK49sDrivetimeScraper(),
+  UK49sTeatimeScraper:      new UK49sTeatimeScraper(),
+  // Russian Gosloto games
+  GosLoto645Scraper:        new GosLoto645Scraper(),
+  GosLoto645PlusScraper:    new GosLoto645PlusScraper(),
+  GosLoto749Scraper:        new GosLoto749Scraper(),
+  GosLoto420Field1Scraper:  new GosLoto420Field1Scraper(),
+  GosLoto420Field2Scraper:  new GosLoto420Field2Scraper(),
 };
 
 export function getScraperByClass(className: string): BaseScraper | null {
