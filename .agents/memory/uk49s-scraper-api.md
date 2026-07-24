@@ -4,9 +4,9 @@ description: How to get real-time UK 49s draw results from the official API (rep
 ---
 
 ## Rule
-Use `https://api.49s.co.uk/results/latest` — NOT the JSON-LD in the 49s.co.uk HTML (that is CDN-cached SSR and always months stale).
+Use `https://api.49s.co.uk/results/latest` for the newest completed draw. For missed earlier slots, use the dated page `https://49s.co.uk/49s/results/YYYY-MM-DD` and parse its JSON-LD result events.
 
-**Why:** 49s.co.uk is a React/Firebase SPA. The SSR-rendered JSON-LD is a stale snapshot baked at build time. The real-time data comes from the backend at `api.49s.co.uk`.
+**Why:** The latest API returns only the newest completed draw, so it cannot recover Brunchtime/Lunchtime/Drivetime once a later slot has completed. The dated page contains all four completed slots for that date. The undated/SPA HTML can be stale, but the dated result pages expose the requested date's JSON-LD.
 
 ## How to apply
 Fetch `GET https://api.49s.co.uk/results/latest` with these headers (all required — without them you get 403/406):
@@ -49,8 +49,14 @@ No auth token required — the endpoint is public with correct browser headers.
 - `drawns[].bonus === true` → bonus ball; `false` → main number
 - `/results/latest` returns only the most recently completed draw (not all 4 for the day)
 
+The dated page's JSON-LD events are named `Brunchtime Draw Results`, `Lunchtime Draw Results`, `Drivetime Draw Results`, and `Teatime Draw Results`; each contains `resultNumbers`, `bonusNumbers`, and `eventStatus`.
+
 ## Scraper design
-Each draw scraper (Brunchtime/Lunchtime/Drivetime/Teatime) calls the same endpoint and matches by `event_number`. Returns null if the current latest draw doesn't match. The 5-minute cron captures each draw within its window; ScraperManager duplicate-check prevents double recording.
+Each draw scraper (Brunchtime/Lunchtime/Drivetime/Teatime) calls the same endpoint and matches by `event_number`; if the latest result is another slot, it falls back to today's then yesterday's dated page and matches the JSON-LD label. The dated page needs a simple `User-Agent: curl/8.0` request in this environment; browser-like headers trigger a Cloudflare challenge. The 5-minute cron captures each draw within its window; ScraperManager duplicate-check prevents double recording.
+
+The source event mapping is: 1=Brunchtime, 2=Lunchtime, 3=Drivetime, 4=Teatime. Source UK times are 12:49, 13:49, 16:49, and 17:49 during BST; for DRC display/scheduling use `Africa/Lubumbashi` with 12:49, 13:49, 17:49, and 18:49 respectively.
+
+Settlement must match pending draws by the same calendar date. Never attach a recovered result to the nearest future pending draw.
 
 ## What was tried and failed
 - Firebase Firestore REST API → SERVICE_DISABLED (Firestore REST not enabled)

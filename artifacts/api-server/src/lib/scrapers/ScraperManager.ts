@@ -164,23 +164,27 @@ export async function runScraper(gameId: number): Promise<ScraperRunResult> {
     );
   }
 
-  // Find the nearest pending draw for this game
+  // Only reuse a pending draw for the same calendar date. The old
+  // nearest-pending behavior could attach a missed historical result to a
+  // placeholder draw several days in the future, which made settlement and
+  // ticket history appear under the wrong date.
   const [pendingDraw] = await db
     .select()
     .from(lotteryDrawsTable)
-    .where(and(eq(lotteryDrawsTable.gameId, gameId), eq(lotteryDrawsTable.status, "pending")))
+    .where(
+      and(
+        eq(lotteryDrawsTable.gameId, gameId),
+        eq(lotteryDrawsTable.status, "pending"),
+        gte(lotteryDrawsTable.drawDate, drawDateStart),
+        lte(lotteryDrawsTable.drawDate, drawDateEnd),
+      ),
+    )
     .orderBy(lotteryDrawsTable.drawDate)
     .limit(1);
 
   let drawId: number;
 
   if (pendingDraw) {
-    // Settle the existing pending draw — update its drawDate to the actual
-    // scraped date first, so the duplicate-check can find it on the next run.
-    await db
-      .update(lotteryDrawsTable)
-      .set({ drawDate: new Date(result.drawDate + "T20:00:00Z") })
-      .where(eq(lotteryDrawsTable.id, pendingDraw.id));
     drawId = pendingDraw.id;
   } else {
     // No pending draw — create a settled record to store the result

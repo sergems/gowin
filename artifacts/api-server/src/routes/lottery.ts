@@ -128,7 +128,7 @@ router.get("/lottery/games/:slug", async (req, res): Promise<void> => {
     .from(lotteryDrawsTable)
     .where(and(eq(lotteryDrawsTable.gameId, game.id), eq(lotteryDrawsTable.status, "settled")))
     .orderBy(desc(lotteryDrawsTable.drawDate))
-    .limit(5);
+    .limit(7);
 
   const [nextDraw] = await db
     .select()

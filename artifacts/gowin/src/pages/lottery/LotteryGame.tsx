@@ -511,11 +511,11 @@ export default function LotteryGame() {
           </div>
 
           {/* Recent winning numbers */}
-          {recentDraws.length > 0 && (
+          {recentDraws.slice(0, 7).length > 0 && (
             <div className="rounded-2xl border bg-card p-5">
               <h3 className="font-semibold text-sm mb-4">Recent Winning Numbers</h3>
               <div className="space-y-3">
-                {recentDraws.map((draw) => (
+                {recentDraws.slice(0, 7).map((draw) => (
                   <div key={draw.id} className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">{format(new Date(draw.drawDate), "MMM d, yyyy")}</span>

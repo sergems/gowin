@@ -909,14 +909,14 @@ export default function LotteryGame() {
       <PayoutTable game={game} />
 
       {/* Recent draws */}
-      {game.recentDraws.length > 0 && (
+      {game.recentDraws.slice(0, 7).length > 0 && (
         <div className="rounded-xl border border-border/50 bg-card p-5 space-y-4">
           <h3 className="font-bold text-foreground flex items-center gap-2">
             <Trophy className="w-4 h-4 text-primary" />
             Recent Winning Numbers
           </h3>
           <div className="space-y-3">
-            {game.recentDraws.map((draw) => (
+            {game.recentDraws.slice(0, 7).map((draw) => (
               <div key={draw.id} className="rounded-lg bg-muted/20 p-3">
                 <div className="text-xs text-muted-foreground mb-2">
                   {format(new Date(draw.drawDate), "PPP")}
