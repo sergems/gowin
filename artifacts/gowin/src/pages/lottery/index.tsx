@@ -98,6 +98,7 @@ interface LotteryGame {
   emoji: string;
   logoUrl: string | null;
   description: string | null;
+  drawTime: string | null;
 }
 
 // ── Countdown display ────────────────────────────────────────────────────────
@@ -331,6 +332,12 @@ function CountryGroup({
   );
 }
 
+function compareDrawTime(a: LotteryGame, b: LotteryGame): number {
+  const aTime = a.drawTime ?? "99:99";
+  const bTime = b.drawTime ?? "99:99";
+  return aTime.localeCompare(bTime) || a.name.localeCompare(b.name);
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function LotteryLobby() {
@@ -349,11 +356,16 @@ export default function LotteryLobby() {
   // Group by country, sort alphabetically (Europe/International last)
   const grouped = (() => {
     const map = new Map<string, LotteryGame[]>();
-    for (const g of games ?? []) {
+    for (const g of [...(games ?? [])].sort(compareDrawTime)) {
       if (!map.has(g.country)) map.set(g.country, []);
       map.get(g.country)!.push(g);
     }
-    return [...map.entries()].sort(([a], [b]) => {
+    return [...map.entries()].sort(([a, aGames], [b, bGames]) => {
+      const aFirstTime = aGames[0]?.drawTime ?? "99:99";
+      const bFirstTime = bGames[0]?.drawTime ?? "99:99";
+      const byTime = aFirstTime.localeCompare(bFirstTime);
+      if (byTime !== 0) return byTime;
+
       const intl = new Set(["europe", "international", "world"]);
       const aIntl = intl.has(a.toLowerCase());
       const bIntl = intl.has(b.toLowerCase());

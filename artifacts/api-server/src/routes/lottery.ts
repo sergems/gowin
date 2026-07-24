@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, lotteryGamesTable, lotteryDrawsTable, lotteryTicketsTable, walletsTable, transactionsTable } from "@workspace/db";
 import { DEFAULT_PAYOUT_CONFIG, DEFAULT_ENABLED_PLAY_TYPES } from "@workspace/db";
-import { eq, desc, and, count } from "drizzle-orm";
+import { eq, desc, and, count, sql } from "drizzle-orm";
 import { requireAuth, requireAdmin, type AuthRequest } from "../middlewares/auth";
 import type { PayoutConfig } from "@workspace/db";
 import { settleLotteryDraw } from "../lib/lotterySettle";
@@ -104,7 +104,9 @@ router.get("/lottery/games", async (_req, res): Promise<void> => {
     .select()
     .from(lotteryGamesTable)
     .where(eq(lotteryGamesTable.isActive, true))
-    .orderBy(lotteryGamesTable.name);
+    // Display games in their configured daily starting-time order. Games
+    // without a schedule are kept at the end, with name as a stable tie-breaker.
+    .orderBy(sql`${lotteryGamesTable.drawTime} ASC NULLS LAST`, lotteryGamesTable.name);
 
   res.json({ games: games.map(fmtGame) });
 });
@@ -420,7 +422,10 @@ router.get("/lottery/tickets/my", requireAuth, async (req: AuthRequest, res): Pr
 
 // GET /admin/lottery/games
 router.get("/admin/lottery/games", requireAdmin, async (_req, res): Promise<void> => {
-  const games = await db.select().from(lotteryGamesTable).orderBy(lotteryGamesTable.name);
+  const games = await db
+    .select()
+    .from(lotteryGamesTable)
+    .orderBy(sql`${lotteryGamesTable.drawTime} ASC NULLS LAST`, lotteryGamesTable.name);
   res.json(games.map(fmtGame));
 });
 

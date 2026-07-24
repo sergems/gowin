@@ -15,7 +15,7 @@ import {
   settlementLogsTable,
   lotteryDrawsTable,
 } from "@workspace/db";
-import { eq, desc, count, isNotNull, and } from "drizzle-orm";
+import { eq, desc, count, isNotNull, and, sql } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/auth";
 import { runAllScrapers, runScraper } from "../lib/scrapers/ScraperManager";
 import { listRegisteredScrapers } from "../lib/scrapers/ScraperRegistry";
@@ -29,7 +29,7 @@ router.get("/admin/lottery/scrapers", requireAdmin, async (_req, res): Promise<v
   const games = await db
     .select()
     .from(lotteryGamesTable)
-    .orderBy(lotteryGamesTable.name);
+    .orderBy(sql`${lotteryGamesTable.drawTime} ASC NULLS LAST`, lotteryGamesTable.name);
 
   // Last scraper log per game
   const lastLogs = await db

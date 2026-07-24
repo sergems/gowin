@@ -31,6 +31,7 @@ interface LotteryGame {
   logoUrl: string | null;
   description: string | null;
   payoutConfig: PayoutConfig | null;
+  drawTime: string | null;
 }
 
 /** Return the highest-odds string from a payout config for display (e.g. "100 000/1") */
@@ -49,6 +50,12 @@ function topOdds(config: PayoutConfig | null): string {
     if ((an ?? 0) / (ad ?? 1) > (bn ?? 0) / (bd ?? 1)) best = o;
   }
   return best;
+}
+
+function compareDrawTime(a: LotteryGame, b: LotteryGame): number {
+  const aTime = a.drawTime ?? "99:99";
+  const bTime = b.drawTime ?? "99:99";
+  return aTime.localeCompare(bTime) || a.name.localeCompare(b.name);
 }
 
 function GameCard({ game }: { game: LotteryGame }) {
@@ -185,7 +192,7 @@ export default function LotteryLobby() {
     staleTime: 60_000,
   });
 
-  const games = data?.games ?? [];
+  const games = [...(data?.games ?? [])].sort(compareDrawTime);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
