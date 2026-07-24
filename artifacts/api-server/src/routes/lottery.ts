@@ -17,9 +17,75 @@ function parseOdds(odds: string): number {
   return (num + den) / den;
 }
 
+/**
+ * Compute the next draw timestamp from a game's schedule (drawTime + drawDays + timezone).
+ * Used when nextDrawAt is null but a schedule is configured (e.g. UK 49s draws).
+ */
+function computeNextDrawAt(
+  drawTime: string | null | undefined,
+  drawDays: number[] | null | undefined,
+  timezone: string | null | undefined,
+): Date | null {
+  if (!drawTime) return null;
+  const tz = timezone || "UTC";
+  const days: number[] = Array.isArray(drawDays) ? (drawDays as number[]) : [];
+  const [hStr, mStr] = drawTime.split(":");
+  const h = parseInt(hStr ?? "0", 10);
+  const m = parseInt(mStr ?? "0", 10);
+  if (isNaN(h) || isNaN(m)) return null;
+
+  const now = new Date();
+  const DOW: Record<string, number> = {
+    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+  };
+
+  for (let offset = 0; offset <= 7; offset++) {
+    const trial = new Date(now.getTime() + offset * 86_400_000);
+
+    // Calendar date in target timezone ("YYYY-MM-DD" via en-CA locale)
+    const localDate = new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
+    }).format(trial);
+
+    // Day-of-week in target timezone
+    const dowStr = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz, weekday: "short",
+    }).format(trial);
+    const dow = DOW[dowStr] ?? -1;
+    if (days.length > 0 && !days.includes(dow)) continue;
+
+    // Convert local draw time → UTC via the "offset trick":
+    // 1. Parse as if the local time were UTC (naive).
+    // 2. Format that naive UTC moment in the target TZ to see what local time it actually is.
+    // 3. Difference = TZ offset; apply it to get the true UTC instant.
+    const naive = new Date(
+      `${localDate}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00Z`,
+    );
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+      hour12: false,
+    }).formatToParts(naive);
+    const pv = (type: string) =>
+      parseInt(parts.find((p) => p.type === type)?.value ?? "0", 10);
+    const localAsUtc = new Date(
+      Date.UTC(pv("year"), pv("month") - 1, pv("day"), pv("hour") % 24, pv("minute"), pv("second")),
+    );
+    const drawUtc = new Date(naive.getTime() + (naive.getTime() - localAsUtc.getTime()));
+
+    if (drawUtc > now) return drawUtc;
+  }
+  return null;
+}
+
 function fmtGame(g: typeof lotteryGamesTable.$inferSelect) {
+  // Fall back to schedule-computed timestamp when nextDrawAt is not persisted
+  const nextDrawAt =
+    g.nextDrawAt ?? computeNextDrawAt(g.drawTime, g.drawDays, g.timezone);
   return {
     ...g,
+    nextDrawAt,
     ticketPrice: parseFloat(g.ticketPrice),
     jackpot: parseFloat(g.jackpot),
     minStake: parseFloat(g.minStake),
