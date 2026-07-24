@@ -22,13 +22,18 @@ After any API server source change, the workflow must be restarted (it runs the 
 
 Connection is via `DATABASE_URL` environment variable (PostgreSQL).
 
-To reset/reimport the database from scratch:
+To import the database from the included dump:
 ```bash
-psql $DATABASE_URL -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
-psql $DATABASE_URL -f btk.sql
+sed '5d' database.sql | psql $DATABASE_URL
 ```
 
-`btk.sql` (repo root) is the canonical full pg_dump — use it instead of `scripts/schema.sql` (which is stale).
+The `database.sql` file at the repo root is the canonical pg_dump (the 5th line contains a non-standard `\restrict` directive that must be stripped before import). `scripts/schema.sql` is stale — do not use it.
+
+To reset and re-import from scratch:
+```bash
+psql $DATABASE_URL -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+sed '5d' database.sql | psql $DATABASE_URL
+```
 
 ## Key features
 
