@@ -153,6 +153,7 @@ const SEED_GAMES = [
     },
     scraperClass: "GosLoto645Scraper",
     website: "https://iss.stoloto.ru/gosloto645/draws?count=1",
+    logoUrl: "https://flagcdn.com/40x30/ru.png",
   },
   {
     name: "Gosloto 6/45 Plus",
@@ -177,6 +178,7 @@ const SEED_GAMES = [
     },
     scraperClass: "GosLoto645PlusScraper",
     website: "https://iss.stoloto.ru/gosloto645plus/draws?count=1",
+    logoUrl: "https://flagcdn.com/40x30/ru.png",
   },
   {
     name: "Gosloto 7/49",
@@ -201,6 +203,7 @@ const SEED_GAMES = [
     },
     scraperClass: "GosLoto749Scraper",
     website: "https://iss.stoloto.ru/gosloto749/draws?count=1",
+    logoUrl: "https://flagcdn.com/40x30/ru.png",
   },
   {
     name: "Gosloto 4/20 Field 1",
@@ -226,6 +229,7 @@ const SEED_GAMES = [
     },
     scraperClass: "GosLoto420Field1Scraper",
     website: "https://iss.stoloto.ru/rapido/draws?count=1",
+    logoUrl: "https://flagcdn.com/40x30/ru.png",
   },
   {
     name: "Gosloto 4/20 Field 2",
@@ -251,6 +255,7 @@ const SEED_GAMES = [
     },
     scraperClass: "GosLoto420Field2Scraper",
     website: "https://iss.stoloto.ru/rapido2/draws?count=1",
+    logoUrl: "https://flagcdn.com/40x30/ru.png",
   },
   {
     name: "Gosloto 5/50",
@@ -275,6 +280,7 @@ const SEED_GAMES = [
     },
     scraperClass: "GosLoto550Scraper",
     website: "https://iss.stoloto.ru/gosloto550/draws?count=1",
+    logoUrl: "https://flagcdn.com/40x30/ru.png",
   },
 ] as const;
 
