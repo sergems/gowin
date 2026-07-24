@@ -30,6 +30,7 @@ export const COUNTRY_ISO2: Record<string, string> = {
   "uzbekistan":"uz","venezuela":"ve","vietnam":"vn","wales":"gb-wls",
   "yemen":"ye","zambia":"zm","zimbabwe":"zw",
   "congo dr":"cd","democratic republic of congo":"cd","dr congo":"cd",
+  "united kingdom":"gb","uk":"gb","great britain":"gb",
 };
 
 // AllSportsAPI's `country_logo` for the four UK home nations is the Union Jack,
