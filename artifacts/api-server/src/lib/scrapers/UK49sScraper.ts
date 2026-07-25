@@ -233,8 +233,19 @@ async function fetchUK49sDraw(
 
   if (mainNumbers.length < 5) return null;
 
+  // Include the precise draw timestamp so ScraperManager uses a narrow window
+  // instead of the full-day window, and so the settled draw_date is accurate.
+  let drawDatetime: string | undefined;
+  const timeSource = event.drawn_time ?? event.scheduled_time;
+  try {
+    drawDatetime = new Date(timeSource).toISOString();
+  } catch {
+    // Leave undefined — ScraperManager will fall back to schedule-computed time
+  }
+
   return {
     drawDate,
+    drawDatetime,
     numbers: mainNumbers.slice(0, 6),
     bonus: bonusNumbers.slice(0, 1),
     jackpot: 0,

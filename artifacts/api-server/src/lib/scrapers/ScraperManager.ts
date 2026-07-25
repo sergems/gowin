@@ -28,6 +28,7 @@ import { eq, and, isNotNull, lte, gte, sql } from "drizzle-orm";
 import { logger } from "../logger";
 import { settleLotteryDraw } from "../lotterySettle";
 import { getScraperByClass } from "./ScraperRegistry";
+import { computeNextLotteryDraw } from "../lotterySchedule";
 import type { DrawResult, ScraperStatus } from "./types";
 
 export interface ScraperRunResult {
@@ -148,7 +149,7 @@ export async function runScraper(gameId: number): Promise<ScraperRunResult> {
   let duplicateCount = 0;
 
   for (const result of drawResults) {
-    const outcome = await processDrawResult(gameId, result);
+    const outcome = await processDrawResult(gameId, result, game.drawTime, game.timezone);
     if (outcome === "settled") {
       settledCount++;
     } else if (outcome === "duplicate") {
@@ -226,7 +227,9 @@ export async function runScraper(gameId: number): Promise<ScraperRunResult> {
  */
 async function processDrawResult(
   gameId: number,
-  result: DrawResult
+  result: DrawResult,
+  gameDrawTime?: string | null,
+  gameTimezone?: string | null,
 ): Promise<"settled" | "duplicate" | Error> {
   // Determine time window for duplicate check and pending-draw lookup.
   //
@@ -294,10 +297,27 @@ async function processDrawResult(
         .where(eq(lotteryDrawsTable.id, drawId));
     }
   } else {
-    // No matching pending draw — create a settled-placeholder at the draw time
-    const drawTimestamp = result.drawDatetime
-      ? new Date(result.drawDatetime)
-      : new Date(result.drawDate + "T20:00:00Z");
+    // No matching pending draw — create a settled-placeholder at the draw time.
+    // Prefer drawDatetime (precise), then compute from the game's draw schedule,
+    // and only fall back to noon UTC if no schedule is available.
+    let drawTimestamp: Date;
+    if (result.drawDatetime) {
+      drawTimestamp = new Date(result.drawDatetime);
+    } else if (gameDrawTime) {
+      // computeNextLotteryDraw returns the *next* upcoming draw, but we need the
+      // draw time on the result's specific date.  Re-use the schedule logic by
+      // computing from just before midnight of that date so the first matching
+      // slot on that calendar day is returned.
+      const dayStart = new Date(result.drawDate + "T00:00:00Z");
+      const scheduled = computeNextLotteryDraw(gameDrawTime, null, gameTimezone ?? "UTC", dayStart);
+      // Only use the computed time if it falls on the same calendar date
+      drawTimestamp =
+        scheduled && scheduled.toISOString().slice(0, 10) === result.drawDate
+          ? scheduled
+          : new Date(result.drawDate + "T12:00:00Z");
+    } else {
+      drawTimestamp = new Date(result.drawDate + "T12:00:00Z");
+    }
 
     const jackpot = (result.jackpot ?? 0).toFixed(2);
     const [newDraw] = await db
