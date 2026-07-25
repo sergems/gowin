@@ -25,6 +25,7 @@ import {
 import { syncLotteryDraws } from "./lib/lotterySync";
 import { runAllScrapers } from "./lib/scrapers/ScraperManager";
 import { advanceLotteryNextDrawAt } from "./routes/lotteryScrapers";
+import { generateScheduledDraws } from "./lib/lotteryDrawScheduler";
 
 const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
@@ -103,6 +104,18 @@ server.listen(port, async () => {
   setInterval(() => {
     advanceLotteryNextDrawAt().catch(() => {});
   }, 10 * 60 * 1000);
+
+  // Generate scheduled draws for the next 8 days on startup, then repeat
+  // every 7 days so there is always at least a week of draws ahead.
+  generateScheduledDraws(8)
+    .then((r) => logger.info(r, "Lottery draw schedule: initial generation complete"))
+    .catch((err) => logger.error({ err }, "Lottery draw schedule: initial generation failed"));
+
+  setInterval(() => {
+    generateScheduledDraws(8)
+      .then((r) => logger.info(r, "Lottery draw schedule: weekly refresh complete"))
+      .catch((err) => logger.error({ err }, "Lottery draw schedule: weekly refresh failed"));
+  }, 7 * 24 * 60 * 60 * 1000);
 });
 
 // ── Result sync helper ────────────────────────────────────────────────────────
