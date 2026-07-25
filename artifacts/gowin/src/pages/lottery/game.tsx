@@ -257,7 +257,7 @@ function BonusModeSelector({
                   {active && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
                 </div>
                 <span className={`text-sm font-semibold shrink-0 ${active ? "text-primary" : "text-foreground"}`}>{label}</span>
-                <span className="text-xs text-muted-foreground truncate">— {desc}</span>
+                <span className="text-xs text-muted-foreground">— {desc}</span>
               </div>
             </button>
           );
@@ -623,7 +623,7 @@ export default function LotteryGame() {
             )}
           </div>
           {game.description && (
-            <p className="text-xs text-muted-foreground/60 truncate mt-0.5 max-w-xs">{game.description}</p>
+            <p className="text-xs text-muted-foreground/60 mt-0.5">{game.description}</p>
           )}
         </div>
 
