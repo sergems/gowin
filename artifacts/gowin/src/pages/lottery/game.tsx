@@ -573,75 +573,81 @@ export default function LotteryGame() {
         </button>
       </Link>
 
-      {/* Hero Banner */}
+      {/* Compact Hero Strip */}
       <div
-        className="relative rounded-2xl overflow-hidden border p-6 md:p-8"
-        style={{ background: `linear-gradient(135deg, ${game.color}20 0%, ${game.color}08 100%)`, borderColor: `${game.color}30` }}
+        className="rounded-xl border px-4 py-3 flex items-center gap-3"
+        style={{
+          background: `linear-gradient(120deg, ${game.color}18 0%, ${game.color}06 100%)`,
+          borderColor: `${game.color}30`,
+        }}
       >
-        <div className="flex flex-col md:flex-row md:items-center gap-6">
-          <div className="flex items-center gap-4">
-            <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shrink-0 overflow-hidden"
-              style={{ background: `${game.color}25`, border: `1px solid ${game.color}40` }}
-            >
-              {game.logoUrl ? (
-                <img
-                  src={game.logoUrl}
-                  alt={game.name}
-                  className="w-full h-full object-contain p-1"
-                  onError={(e) => {
-                    const img = e.currentTarget;
-                    img.style.display = "none";
-                    const fallback = img.nextSibling as HTMLElement | null;
-                    if (fallback) fallback.style.display = "flex";
-                  }}
-                />
-              ) : null}
-              <span style={{ display: game.logoUrl ? "none" : "flex" }}>{game.emoji}</span>
-            </div>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-black text-foreground">{game.name}</h1>
-              <p className="text-muted-foreground text-sm">{game.country}</p>
-              {game.description && <p className="text-sm text-muted-foreground/70 mt-1 max-w-sm">{game.description}</p>}
-            </div>
-          </div>
+        {/* Logo */}
+        <div
+          className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 overflow-hidden"
+          style={{ background: `${game.color}22`, border: `1.5px solid ${game.color}45` }}
+        >
+          {game.logoUrl ? (
+            <img
+              src={game.logoUrl}
+              alt={game.name}
+              className="w-full h-full object-contain p-0.5"
+              onError={(e) => {
+                const img = e.currentTarget;
+                img.style.display = "none";
+                const fallback = img.nextSibling as HTMLElement | null;
+                if (fallback) fallback.style.display = "";
+              }}
+            />
+          ) : null}
+          <span style={{ display: game.logoUrl ? "none" : "" }}>{game.emoji}</span>
         </div>
 
-        {/* Countdown */}
-        {game.nextDrawAt && (
-          <div className="mt-6 pt-6 border-t border-border/30 space-y-4">
-            <div className="text-xs text-muted-foreground mb-3 text-center flex items-center justify-center gap-1.5">
-              <Clock className="w-3 h-3" />
-              <span>Next draw: {format(new Date(game.nextDrawAt), "PPP 'at' p")}</span>
-            </div>
-            <div className="flex items-center justify-center gap-3">
-              <CountdownUnit value={countdown.days} label="Days" />
-              <span className="text-xl font-black text-muted-foreground/50 pb-5">:</span>
-              <CountdownUnit value={countdown.hours} label="Hrs" />
-              <span className="text-xl font-black text-muted-foreground/50 pb-5">:</span>
-              <CountdownUnit value={countdown.mins} label="Min" />
-              <span className="text-xl font-black text-muted-foreground/50 pb-5">:</span>
-              <CountdownUnit value={countdown.secs} label="Sec" />
-            </div>
-
-            {/* Betting cutoff warning — shown in the last 30 min before cutoff */}
-            {showCutoffWarning && (
-              <div className="flex items-center justify-center gap-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30 px-4 py-2.5 text-yellow-500 text-sm font-semibold">
-                <AlertTriangle className="w-4 h-4 shrink-0" />
-                <span>
-                  Betting closes in{" "}
-                  {cutoffCountdown.hours > 0 && `${cutoffCountdown.hours}h `}
-                  {cutoffCountdown.mins}m {String(cutoffCountdown.secs).padStart(2, "0")}s
-                </span>
-              </div>
-            )}
-
-            {/* Betting closed notice in hero */}
+        {/* Name + meta */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="font-black text-base text-foreground leading-tight">{game.name}</h1>
+            <span className="text-xs text-muted-foreground hidden sm:inline">{game.country}</span>
             {isBettingClosed && (
-              <div className="flex items-center justify-center gap-2 rounded-lg bg-destructive/10 border border-destructive/30 px-4 py-2.5 text-destructive text-sm font-semibold">
-                <Lock className="w-4 h-4 shrink-0" />
-                <span>Betting is closed — draw in progress</span>
+              <span className="text-[10px] font-bold bg-destructive/15 text-destructive border border-destructive/30 px-1.5 py-0.5 rounded-full">
+                CLOSED
+              </span>
+            )}
+            {showCutoffWarning && !isBettingClosed && (
+              <span className="text-[10px] font-bold bg-yellow-500/15 text-yellow-500 border border-yellow-500/30 px-1.5 py-0.5 rounded-full animate-pulse">
+                CLOSING SOON
+              </span>
+            )}
+          </div>
+          {game.description && (
+            <p className="text-xs text-muted-foreground/60 truncate mt-0.5 max-w-xs">{game.description}</p>
+          )}
+        </div>
+
+        {/* Compact countdown */}
+        {game.nextDrawAt && (
+          <div className="shrink-0 text-right">
+            <div className="text-[10px] text-muted-foreground flex items-center justify-end gap-1 mb-1">
+              <Clock className="w-3 h-3" />
+              <span className="hidden sm:inline">{format(new Date(game.nextDrawAt), "EEE d MMM · p")}</span>
+              <span className="sm:hidden">Next draw</span>
+            </div>
+            {countdown.total > 0 ? (
+              <div className="flex items-center justify-end gap-0.5 tabular-nums">
+                {countdown.days > 0 && (
+                  <>
+                    <span className="text-sm font-black" style={{ color: game.color }}>{countdown.days}</span>
+                    <span className="text-[10px] text-muted-foreground mr-1">d</span>
+                  </>
+                )}
+                <span className="text-sm font-black" style={{ color: game.color }}>{String(countdown.hours).padStart(2, "0")}</span>
+                <span className="text-[10px] text-muted-foreground">h</span>
+                <span className="text-sm font-black ml-0.5" style={{ color: game.color }}>{String(countdown.mins).padStart(2, "0")}</span>
+                <span className="text-[10px] text-muted-foreground">m</span>
+                <span className="text-sm font-black ml-0.5 text-muted-foreground/70">{String(countdown.secs).padStart(2, "0")}</span>
+                <span className="text-[10px] text-muted-foreground">s</span>
               </div>
+            ) : (
+              <span className="text-xs font-bold text-green-400 animate-pulse">Drawing now</span>
             )}
           </div>
         )}
@@ -858,12 +864,12 @@ export default function LotteryGame() {
         </div>
         )}
 
-        {/* Buy Button */}
+        {/* Bet Now Button */}
         {!user ? (
           <Link href="/login">
             <Button className="w-full h-12 text-base font-bold gap-2">
-              <Ticket className="w-5 h-5" />
-              Login to Buy Ticket
+              <Zap className="w-5 h-5" />
+              Login to Bet Now
             </Button>
           </Link>
         ) : (
@@ -877,9 +883,9 @@ export default function LotteryGame() {
               <>Processing…</>
             ) : (
               <>
-                <Ticket className="w-5 h-5" />
+                <Zap className="w-5 h-5" />
                 {isReady
-                  ? `Buy Ticket — $${stakeAmount.toFixed(2)}`
+                  ? `Bet Now — $${stakeAmount.toFixed(2)}`
                   : "Complete your selection"}
               </>
             )}

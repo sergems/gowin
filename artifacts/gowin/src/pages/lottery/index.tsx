@@ -202,11 +202,11 @@ function LotteryGameRow({ game }: { game: LotteryGame }) {
 
   return (
     <Link href={`/lottery/${game.slug}`}>
-      <div className="flex items-center gap-3 px-4 py-3 hover:bg-accent/20 transition-colors cursor-pointer border-t border-border/40 first:border-t-0">
+      <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.03] transition-colors cursor-pointer border-t border-border/30 first:border-t-0 group">
         {/* Logo / emoji */}
         <div
-          className="w-9 h-9 rounded-lg flex items-center justify-center text-lg shrink-0 overflow-hidden"
-          style={{ background: `${game.color}20`, border: `1px solid ${game.color}30` }}
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-base shrink-0 overflow-hidden"
+          style={{ background: `${game.color}22`, border: `1px solid ${game.color}35` }}
         >
           {game.logoUrl ? (
             <img
@@ -217,61 +217,60 @@ function LotteryGameRow({ game }: { game: LotteryGame }) {
                 const img = e.currentTarget;
                 img.style.display = "none";
                 const fallback = img.nextSibling as HTMLElement | null;
-                if (fallback) fallback.style.display = "flex";
+                if (fallback) fallback.style.display = "";
               }}
             />
           ) : null}
-          <span className="text-lg" style={{ display: game.logoUrl ? "none" : "flex" }}>
-            {game.emoji}
-          </span>
+          <span style={{ display: game.logoUrl ? "none" : "" }}>{game.emoji}</span>
         </div>
 
         {/* Name + pick info */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-sm text-foreground truncate">{game.name}</span>
+          <div className="flex items-center gap-1.5">
+            <span className="font-semibold text-sm text-foreground truncate leading-tight">{game.name}</span>
             {tier === "closing" && (
-              <Badge className="text-[10px] bg-rose-500/20 text-rose-400 border-rose-500/40 shrink-0 animate-pulse py-0 px-1.5">
+              <span className="text-[9px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 px-1.5 py-0.5 rounded-full shrink-0 animate-pulse">
                 CLOSING
-              </Badge>
+              </span>
+            )}
+            {tier === "soon" && (
+              <span className="text-[9px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/25 px-1.5 py-0.5 rounded-full shrink-0">
+                SOON
+              </span>
             )}
           </div>
-          <span className="text-xs text-muted-foreground">
-            Pick {game.mainNumbersCount} from 1–{game.mainNumbersMax}
+          <span className="text-[11px] text-muted-foreground/70 leading-tight">
+            Pick {game.mainNumbersCount} of {game.mainNumbersMax}
             {game.bonusNumbersCount > 0 && ` + ${game.bonusNumbersCount} bonus`}
           </span>
         </div>
 
-        {/* Next draw */}
-        <div className="shrink-0 text-right hidden sm:block">
+        {/* Next draw timer */}
+        <div className="shrink-0 text-right hidden sm:block min-w-[72px]">
           <div
-            className={`text-[10px] flex items-center justify-end gap-1 mb-0.5 ${
-              tier === "closing"
-                ? "text-rose-400"
-                : tier === "soon"
-                ? "text-amber-400"
-                : "text-muted-foreground"
+            className={`text-[10px] flex items-center justify-end gap-0.5 mb-0.5 ${
+              tier === "closing" ? "text-rose-400" : tier === "soon" ? "text-amber-400" : "text-muted-foreground/60"
             }`}
           >
-            {tier === "closing" ? <Timer className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-            <span>{tier === "closing" ? "Closing in" : "Next draw"}</span>
+            {tier === "closing" ? <Timer className="w-2.5 h-2.5" /> : <Clock className="w-2.5 h-2.5" />}
+            <span className="text-[10px]">{tier === "closing" ? "Closing" : "Draw"}</span>
           </div>
-          <div className="text-xs font-semibold">
+          <div className={`text-xs font-bold tabular-nums ${tier === "closing" ? "text-rose-400" : tier === "soon" ? "text-amber-400" : "text-foreground/80"}`}>
             <DrawTimer drawDate={drawDate} />
           </div>
         </div>
 
-        {/* Play button */}
+        {/* Bet Now button */}
         <div
-          className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 transition-all"
+          className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold flex items-center gap-1 transition-all group-hover:brightness-110"
           style={{
-            background: `${game.color}20`,
-            color: game.color,
-            border: `1px solid ${game.color}40`,
+            background: game.color,
+            color: "white",
+            boxShadow: `0 2px 8px ${game.color}40`,
           }}
         >
           <Zap className="w-3 h-3" />
-          Play
+          Bet Now
         </div>
       </div>
     </Link>
