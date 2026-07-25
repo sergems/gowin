@@ -489,7 +489,7 @@ const UK_NATIONAL_GAMES = [
     description: "The UK National Lottery Lotto. Pick 1–6 numbers from 1–59. Draws every Wednesday and Saturday at 20:00 UK time.",
     drawDays: [3, 6], drawHour: 20, drawMinute: 0, drawTime: "20:00",
     scraperClass: "UKNationalLottoScraper",
-    website: "https://www.lottery.co.uk/lotto/results",
+    website: "https://www.national-lottery.co.uk/results/lotto/draw-history/xml",
   },
   {
     slug: "uk-euromillions",
@@ -501,7 +501,7 @@ const UK_NATIONAL_GAMES = [
     description: "Europe's biggest lottery, drawn in the UK. Pick 1–5 numbers from 1–50 plus optional Lucky Stars. Draws Tuesdays and Fridays at 20:45 UK time.",
     drawDays: [2, 5], drawHour: 20, drawMinute: 45, drawTime: "20:45",
     scraperClass: "UKEuroMillionsScraper",
-    website: "https://www.lottery.co.uk/euromillions/results",
+    website: "https://www.national-lottery.co.uk/results/euromillions/draw-history/xml",
   },
   {
     slug: "uk-thunderball",
@@ -513,7 +513,7 @@ const UK_NATIONAL_GAMES = [
     description: "UK National Lottery Thunderball. Pick 1–5 numbers from 1–39 plus an optional Thunderball from 1–14. Draws Tuesdays, Wednesdays, Fridays, and Saturdays at 20:00 UK time.",
     drawDays: [2, 3, 5, 6], drawHour: 20, drawMinute: 0, drawTime: "20:00",
     scraperClass: "UKThunderballScraper",
-    website: "https://www.lottery.co.uk/thunderball/results",
+    website: "https://www.national-lottery.co.uk/results/thunderball/draw-history/xml",
   },
   {
     slug: "uk-set-for-life",
@@ -525,7 +525,7 @@ const UK_NATIONAL_GAMES = [
     description: "UK National Lottery Set For Life. Pick 1–5 numbers from 1–47 plus an optional Life Ball from 1–10. Draws Mondays and Thursdays at 20:00 UK time.",
     drawDays: [1, 4], drawHour: 20, drawMinute: 0, drawTime: "20:00",
     scraperClass: "UKSetForLifeScraper",
-    website: "https://www.lottery.co.uk/set-for-life/results",
+    website: "https://www.national-lottery.co.uk/results/set-for-life/draw-history/xml",
   },
 ] as const;
 
