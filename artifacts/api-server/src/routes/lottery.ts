@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, lotteryGamesTable, lotteryDrawsTable, lotteryTicketsTable, walletsTable, transactionsTable } from "@workspace/db";
+import { db, lotteryGamesTable, lotteryDrawsTable, lotteryTicketsTable, walletsTable, transactionsTable, usersTable } from "@workspace/db";
 import { DEFAULT_PAYOUT_CONFIG, DEFAULT_ENABLED_PLAY_TYPES } from "@workspace/db";
 import { eq, desc, and, count, sql } from "drizzle-orm";
 import { requireAuth, requireAdmin, type AuthRequest } from "../middlewares/auth";
@@ -354,6 +354,8 @@ router.post("/lottery/tickets", requireAuth, async (req: AuthRequest, res): Prom
     description: `Lottery — ${game.name} [${playType} | ${effectiveBonusMode}] (${numsDesc})`,
   });
 
+  const ticketCode = await uniqueLotteryCode();
+
   const [ticket] = await db
     .insert(lotteryTicketsTable)
     .values({
@@ -368,6 +370,7 @@ router.post("/lottery/tickets", requireAuth, async (req: AuthRequest, res): Prom
       playType: String(playType),
       odds: oddsStr,
       potentialWin: potentialWin.toFixed(2),
+      code: ticketCode,
     })
     .returning();
 
@@ -379,6 +382,20 @@ router.post("/lottery/tickets", requireAuth, async (req: AuthRequest, res): Prom
     newBalance: parseFloat(newBalance),
   });
 });
+
+// ── Lottery ticket code generation ──────────────────────────────────────────
+const LOTTERY_CODE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+function generateLotteryCode(): string {
+  return Array.from({ length: 6 }, () => LOTTERY_CODE_CHARS[Math.floor(Math.random() * LOTTERY_CODE_CHARS.length)]).join("");
+}
+async function uniqueLotteryCode(): Promise<string> {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const code = generateLotteryCode();
+    const [existing] = await db.select({ id: lotteryTicketsTable.id }).from(lotteryTicketsTable).where(eq(lotteryTicketsTable.code, code)).limit(1);
+    if (!existing) return code;
+  }
+  throw new Error("Failed to generate unique lottery ticket code");
+}
 
 // GET /lottery/tickets/my — user's own tickets
 router.get("/lottery/tickets/my", requireAuth, async (req: AuthRequest, res): Promise<void> => {

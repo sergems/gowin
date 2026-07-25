@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useConfirm } from "@/contexts/ConfirmContext";
 import { format } from "date-fns";
-import { Search, CheckCircle2, XCircle, Clock, HelpCircle, Hash } from "lucide-react";
+import { Search, CheckCircle2, XCircle, Clock, HelpCircle, Hash, Ticket } from "lucide-react";
 
 // ── Outcome helper ─────────────────────────────────────────────────────────────
 function selectionOutcome(sel: any): "won" | "lost" | "pending" | "unknown" {
@@ -115,7 +115,102 @@ function BetVerifier() {
             <XCircle className="w-4 h-4 shrink-0" />
             {t("admin.bets.not_found")} <span className="font-mono font-bold ml-1">{submitted}</span> {t("admin.bets.at_branch")}.
           </div>
+        ) : result?.ticketType === "lottery" ? (
+          /* ── Lottery ticket result ──────────────────────────────────── */
+          <div className="border border-violet-500/30 rounded-xl overflow-hidden">
+            <div className="h-0.5 w-full" style={{ background: "linear-gradient(90deg,#8b5cf6,#a78bfa)" }} />
+            <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 bg-accent/20 border-b border-border/60">
+              <div className="flex items-center gap-3">
+                <Ticket className="w-4 h-4 text-violet-400 shrink-0" />
+                <span className="font-mono text-lg font-black tracking-widest text-violet-400">{result.code}</span>
+                <span className="text-muted-foreground text-sm">{result.game?.emoji} {result.game?.name ?? "Lottery"}</span>
+                <Badge variant={STATUS_VARIANT[result.status] ?? "outline"} className="uppercase text-xs">{result.status}</Badge>
+                <span className="text-[10px] font-bold bg-violet-500/20 text-violet-400 border border-violet-500/30 px-2 py-0.5 rounded">LOTTO</span>
+              </div>
+              <div className="flex gap-4 text-sm">
+                <div>
+                  <div className="text-xs text-muted-foreground">{t("admin.bets.col_user")}</div>
+                  <div className="font-semibold">{result.username ?? "—"}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">{t("admin.bets.col_stake")}</div>
+                  <div className="font-bold">{formatCurrency(Number(result.stake))}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">{result.status === "won" ? "Prize" : t("admin.bets.to_win")}</div>
+                  <div className={`font-black ${result.status === "won" ? "text-violet-400" : ""}`}>
+                    {result.status === "won" && result.prizeAmount != null
+                      ? formatCurrency(Number(result.prizeAmount))
+                      : formatCurrency(Number(result.potentialWin))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">{t("admin.bets.placed")}</div>
+                  <div className="text-sm">{format(new Date(result.createdAt), "dd MMM yyyy, HH:mm")}</div>
+                </div>
+              </div>
+            </div>
+            <div className="px-5 py-4 space-y-3">
+              <div>
+                <div className="text-xs text-muted-foreground/70 uppercase tracking-wider mb-2">Numbers picked</div>
+                <div className="flex flex-wrap gap-1.5 items-center">
+                  {(result.numbers ?? []).map((n: number) => {
+                    const winSet = new Set<number>(result.draw?.winningNumbers ?? []);
+                    const settled = result.draw?.status === "settled";
+                    const matched = settled && winSet.has(n);
+                    const color = result.game?.color ?? "#8b5cf6";
+                    return (
+                      <div key={n} className="w-7 h-7 rounded-full text-[11px] font-bold flex items-center justify-center border-2 shrink-0"
+                        style={matched ? { backgroundColor: color, borderColor: color, color: "#fff" } : { background: "transparent", borderColor: "hsl(var(--border))", color: "hsl(var(--muted-foreground))" }}>
+                        {n}
+                      </div>
+                    );
+                  })}
+                  {(result.bonusNumbers ?? []).length > 0 && (
+                    <>
+                      <span className="text-muted-foreground text-xs mx-0.5">+</span>
+                      {(result.bonusNumbers ?? []).map((n: number) => {
+                        const bonusSet = new Set<number>(result.draw?.bonusNumbers ?? []);
+                        const settled = result.draw?.status === "settled";
+                        const matched = settled && bonusSet.has(n);
+                        return (
+                          <div key={`b${n}`} className="w-7 h-7 rounded-full text-[11px] font-bold flex items-center justify-center border-2 shrink-0"
+                            style={matched ? { backgroundColor: "#f59e0b", borderColor: "#f59e0b", color: "#fff" } : { background: "transparent", borderColor: "hsl(var(--border))", color: "hsl(var(--muted-foreground))" }}>
+                            {n}
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+              </div>
+              {result.draw?.status === "settled" && (result.draw?.winningNumbers ?? []).length > 0 && (
+                <div>
+                  <div className="text-xs text-muted-foreground/70 uppercase tracking-wider mb-2">Winning numbers</div>
+                  <div className="flex flex-wrap gap-1.5 items-center">
+                    {(result.draw.winningNumbers ?? []).map((n: number) => {
+                      const matched = (result.numbers ?? []).includes(n);
+                      const color = result.game?.color ?? "#8b5cf6";
+                      return (
+                        <div key={n} className="w-7 h-7 rounded-full text-[11px] font-bold flex items-center justify-center border-2 shrink-0"
+                          style={matched ? { backgroundColor: color, borderColor: color, color: "#fff" } : { background: "transparent", borderColor: "hsl(var(--border))", color: "hsl(var(--muted-foreground))" }}>
+                          {n}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {result.odds && (
+                <div className="text-xs text-muted-foreground">
+                  Odds: <span className="font-mono font-bold text-foreground">{result.odds}</span>
+                  {result.playType && <span className="ml-3">Play type: <span className="font-semibold">{result.playType}</span></span>}
+                </div>
+              )}
+            </div>
+          </div>
         ) : result && (
+          /* ── Sports bet result ─────────────────────────────────────── */
           <div className="border border-border rounded-xl overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 bg-accent/20 border-b border-border/60">
               <div className="flex items-center gap-3">

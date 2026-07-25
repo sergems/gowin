@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, betsTable, betSelectionsTable, walletsTable, transactionsTable, fixturesTable, usersTable, teamsTable, leaguesTable, oddsTable, marketsTable, settingsTable, betBookingsTable } from "@workspace/db";
+import { db, betsTable, betSelectionsTable, walletsTable, transactionsTable, fixturesTable, usersTable, teamsTable, leaguesTable, oddsTable, marketsTable, settingsTable, betBookingsTable, lotteryTicketsTable, lotteryGamesTable, lotteryDrawsTable } from "@workspace/db";
 import { eq, desc, and, count, inArray, ne } from "drizzle-orm";
 import { requireAuth, requireAdmin, requireAdminOrManager, type AuthRequest } from "../middlewares/auth";
 import {
@@ -300,46 +300,84 @@ router.get("/bets/my", requireAuth, async (req: AuthRequest, res): Promise<void>
 router.get("/admin/bets/lookup/:code", requireAdminOrManager, async (req: AuthRequest, res): Promise<void> => {
   const code = (req.params.code as string).toUpperCase().trim();
 
+  // ── 1. Try sports bet ────────────────────────────────────────────────────
   const [bet] = await db.select().from(betsTable).where(eq(betsTable.code, code)).limit(1);
-  if (!bet) {
-    res.status(404).json({ error: "No bet found with that code" });
+  if (bet) {
+    const selections = await db.select().from(betSelectionsTable).where(eq(betSelectionsTable.betId, bet.id));
+    const fixtureIds = [...new Set(selections.map((s) => s.fixtureId))];
+    const fixtures = fixtureIds.length > 0
+      ? await db.select().from(fixturesTable).where(inArray(fixturesTable.id, fixtureIds))
+      : [];
+    const teamIds = [...new Set([...fixtures.map((f) => f.homeTeamId), ...fixtures.map((f) => f.awayTeamId)])];
+    const teams = teamIds.length > 0
+      ? await db.select().from(teamsTable).where(inArray(teamsTable.id, teamIds))
+      : [];
+    const leagueIdsLookup = [...new Set(fixtures.map((f) => f.leagueId))];
+    const leaguesLookup = leagueIdsLookup.length > 0
+      ? await db.select().from(leaguesTable).where(inArray(leaguesTable.id, leagueIdsLookup))
+      : [];
+    const teamMapL = Object.fromEntries(teams.map((t) => [t.id, t]));
+    const leagueMapL = Object.fromEntries(leaguesLookup.map((l) => [l.id, l]));
+    const fixtureMap = Object.fromEntries(fixtures.map((f) => [f.id, {
+      ...f,
+      displayTime: new Date(f.startTime.getTime() + 2 * 60 * 60 * 1000),
+      homeTeam: teamMapL[f.homeTeamId] || null,
+      awayTeam: teamMapL[f.awayTeamId] || null,
+      league: leagueMapL[f.leagueId] || null,
+    }]));
+    const [user] = await db.select({ id: usersTable.id, username: usersTable.username, email: usersTable.email, role: usersTable.role, createdAt: usersTable.createdAt })
+      .from(usersTable).where(eq(usersTable.id, bet.userId)).limit(1);
+    res.json({
+      ticketType: "sports",
+      ...formatBet(bet, user),
+      selections: selections.map((s) => ({
+        id: s.id, betId: s.betId, fixtureId: s.fixtureId,
+        market: s.market, selection: s.selection, odds: parseFloat(s.odds),
+        upWon: s.upWon,
+        fixture: fixtureMap[s.fixtureId] || null,
+      })),
+    });
     return;
   }
 
-  const selections = await db.select().from(betSelectionsTable).where(eq(betSelectionsTable.betId, bet.id));
-  const fixtureIds = [...new Set(selections.map((s) => s.fixtureId))];
-  const fixtures = fixtureIds.length > 0
-    ? await db.select().from(fixturesTable).where(inArray(fixturesTable.id, fixtureIds))
-    : [];
-  const teamIds = [...new Set([...fixtures.map((f) => f.homeTeamId), ...fixtures.map((f) => f.awayTeamId)])];
-  const teams = teamIds.length > 0
-    ? await db.select().from(teamsTable).where(inArray(teamsTable.id, teamIds))
-    : [];
-  const leagueIdsLookup = [...new Set(fixtures.map((f) => f.leagueId))];
-  const leaguesLookup = leagueIdsLookup.length > 0
-    ? await db.select().from(leaguesTable).where(inArray(leaguesTable.id, leagueIdsLookup))
-    : [];
-  const teamMapL = Object.fromEntries(teams.map((t) => [t.id, t]));
-  const leagueMapL = Object.fromEntries(leaguesLookup.map((l) => [l.id, l]));
-  const fixtureMap = Object.fromEntries(fixtures.map((f) => [f.id, {
-    ...f,
-    displayTime: new Date(f.startTime.getTime() + 2 * 60 * 60 * 1000),
-    homeTeam: teamMapL[f.homeTeamId] || null,
-    awayTeam: teamMapL[f.awayTeamId] || null,
-    league: leagueMapL[f.leagueId] || null,
-  }]));
+  // ── 2. Try lottery ticket ─────────────────────────────────────────────────
+  const [ticketRow] = await db
+    .select({
+      ticket: lotteryTicketsTable,
+      game: lotteryGamesTable,
+      draw: lotteryDrawsTable,
+      username: usersTable.username,
+    })
+    .from(lotteryTicketsTable)
+    .leftJoin(lotteryGamesTable, eq(lotteryGamesTable.id, lotteryTicketsTable.gameId))
+    .leftJoin(lotteryDrawsTable, eq(lotteryDrawsTable.id, lotteryTicketsTable.drawId))
+    .leftJoin(usersTable, eq(usersTable.id, lotteryTicketsTable.userId))
+    .where(eq(lotteryTicketsTable.code, code))
+    .limit(1);
 
-  const [user] = await db.select({ id: usersTable.id, username: usersTable.username, email: usersTable.email, role: usersTable.role, createdAt: usersTable.createdAt })
-    .from(usersTable).where(eq(usersTable.id, bet.userId)).limit(1);
+  if (!ticketRow) {
+    res.status(404).json({ error: "No ticket found with that code" });
+    return;
+  }
 
+  const { ticket, game, draw } = ticketRow;
   res.json({
-    ...formatBet(bet, user),
-    selections: selections.map((s) => ({
-      id: s.id, betId: s.betId, fixtureId: s.fixtureId,
-      market: s.market, selection: s.selection, odds: parseFloat(s.odds),
-      upWon: s.upWon,
-      fixture: fixtureMap[s.fixtureId] || null,
-    })),
+    ticketType: "lottery",
+    id: ticket.id,
+    code: ticket.code,
+    status: ticket.status,
+    stake: parseFloat(ticket.stake as any),
+    potentialWin: ticket.potentialWin ? parseFloat(ticket.potentialWin as any) : null,
+    prizeAmount: ticket.prizeAmount ? parseFloat(ticket.prizeAmount as any) : null,
+    numbers: ticket.numbers,
+    bonusNumbers: ticket.bonusNumbers,
+    odds: ticket.odds,
+    playType: ticket.playType,
+    bonusMode: ticket.bonusMode,
+    createdAt: ticket.createdAt,
+    user: { username: ticketRow.username },
+    game: game ? { name: game.name, emoji: game.emoji, color: game.color, slug: game.slug } : null,
+    draw: draw ? { drawDate: draw.drawDate, winningNumbers: draw.winningNumbers ?? [], bonusNumbers: draw.bonusNumbers ?? [], status: draw.status } : null,
   });
 });
 

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { db, usersTable, walletsTable, betsTable, vouchersTable, transactionsTable, branchesTable } from "@workspace/db";
+import { db, usersTable, walletsTable, betsTable, vouchersTable, transactionsTable, branchesTable, lotteryTicketsTable, lotteryGamesTable, lotteryDrawsTable } from "@workspace/db";
 import { eq, count, sum, desc, and, gte, lte, sql, or, inArray, asc } from "drizzle-orm";
 import { betSelectionsTable } from "@workspace/db";
 import { requireBranchAdmin, requireAdmin, type AuthRequest } from "../middlewares/auth";
@@ -303,45 +303,85 @@ router.get("/branch/bets/lookup/:code", requireBranchAdmin, async (req: AuthRequ
   const branchId = getBranchId(req);
   if (!branchId) { res.status(403).json({ error: "No branch assigned" }); return; }
 
-  const code = req.params.code as string;
+  const code = (req.params.code as string).toUpperCase().trim();
 
+  // ── 1. Try sports bet (branch-scoped) ─────────────────────────────────────
   const [bet] = await db
     .select()
     .from(betsTable)
-    .where(and(eq(betsTable.code, code.toUpperCase()), eq(betsTable.branchId, branchId)))
+    .where(and(eq(betsTable.code, code), eq(betsTable.branchId, branchId)))
     .limit(1);
 
-  if (!bet) { res.status(404).json({ error: "Bet not found" }); return; }
+  if (bet) {
+    const selections = await db
+      .select({
+        id: betSelectionsTable.id,
+        betId: betSelectionsTable.betId,
+        fixtureId: betSelectionsTable.fixtureId,
+        market: betSelectionsTable.market,
+        selection: betSelectionsTable.selection,
+        odds: betSelectionsTable.odds,
+        fixture: {
+          id: sql`f.id`,
+          status: sql`f.status`,
+          scoreHome: sql`f.score_home`,
+          scoreAway: sql`f.score_away`,
+          homeTeam: sql`jsonb_build_object('name', ht.name)`,
+          awayTeam: sql`jsonb_build_object('name', at.name)`,
+        },
+      })
+      .from(betSelectionsTable)
+      .leftJoin(sql`fixtures f`, sql`f.id = ${betSelectionsTable.fixtureId}`)
+      .leftJoin(sql`teams ht`, sql`ht.id = f.home_team_id`)
+      .leftJoin(sql`teams at`, sql`at.id = f.away_team_id`)
+      .where(eq(betSelectionsTable.betId, bet.id));
 
-  const selections = await db
+    res.json({
+      ticketType: "sports",
+      ...bet,
+      stake: parseFloat(bet.stake as any),
+      totalOdds: parseFloat(bet.totalOdds as any),
+      potentialWin: parseFloat(bet.potentialWin as any),
+      selections,
+    });
+    return;
+  }
+
+  // ── 2. Try lottery ticket (global — lottery tickets have no branchId) ─────
+  const [ticketRow] = await db
     .select({
-      id: betSelectionsTable.id,
-      betId: betSelectionsTable.betId,
-      fixtureId: betSelectionsTable.fixtureId,
-      market: betSelectionsTable.market,
-      selection: betSelectionsTable.selection,
-      odds: betSelectionsTable.odds,
-      fixture: {
-        id: sql`f.id`,
-        status: sql`f.status`,
-        scoreHome: sql`f.score_home`,
-        scoreAway: sql`f.score_away`,
-        homeTeam: sql`jsonb_build_object('name', ht.name)`,
-        awayTeam: sql`jsonb_build_object('name', at.name)`,
-      },
+      ticket: lotteryTicketsTable,
+      game: lotteryGamesTable,
+      draw: lotteryDrawsTable,
+      username: usersTable.username,
     })
-    .from(betSelectionsTable)
-    .leftJoin(sql`fixtures f`, sql`f.id = ${betSelectionsTable.fixtureId}`)
-    .leftJoin(sql`teams ht`, sql`ht.id = f.home_team_id`)
-    .leftJoin(sql`teams at`, sql`at.id = f.away_team_id`)
-    .where(eq(betSelectionsTable.betId, bet.id));
+    .from(lotteryTicketsTable)
+    .leftJoin(lotteryGamesTable, eq(lotteryGamesTable.id, lotteryTicketsTable.gameId))
+    .leftJoin(lotteryDrawsTable, eq(lotteryDrawsTable.id, lotteryTicketsTable.drawId))
+    .leftJoin(usersTable, eq(usersTable.id, lotteryTicketsTable.userId))
+    .where(eq(lotteryTicketsTable.code, code))
+    .limit(1);
 
+  if (!ticketRow) { res.status(404).json({ error: "Ticket not found" }); return; }
+
+  const { ticket, game, draw } = ticketRow;
   res.json({
-    ...bet,
-    stake: parseFloat(bet.stake as any),
-    totalOdds: parseFloat(bet.totalOdds as any),
-    potentialWin: parseFloat(bet.potentialWin as any),
-    selections,
+    ticketType: "lottery",
+    id: ticket.id,
+    code: ticket.code,
+    status: ticket.status,
+    stake: parseFloat(ticket.stake as any),
+    potentialWin: ticket.potentialWin ? parseFloat(ticket.potentialWin as any) : null,
+    prizeAmount: ticket.prizeAmount ? parseFloat(ticket.prizeAmount as any) : null,
+    numbers: ticket.numbers,
+    bonusNumbers: ticket.bonusNumbers,
+    odds: ticket.odds,
+    playType: ticket.playType,
+    bonusMode: ticket.bonusMode,
+    createdAt: ticket.createdAt,
+    username: ticketRow.username,
+    game: game ? { name: game.name, emoji: game.emoji, color: game.color, slug: game.slug } : null,
+    draw: draw ? { drawDate: draw.drawDate, winningNumbers: draw.winningNumbers ?? [], bonusNumbers: draw.bonusNumbers ?? [], status: draw.status } : null,
   });
 });
 

@@ -135,6 +135,11 @@ function LotteryTicketCard({ ticket, isOpen, onToggle, formatCurrencyFn }: {
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border bg-violet-500/20 text-violet-400 border-violet-500/30">
               LOTTO
             </span>
+            {ticket.code && (
+              <span className="font-mono text-[10px] font-bold tracking-widest bg-violet-500/10 text-violet-400 border border-violet-500/20 rounded px-1.5 py-0.5">
+                {ticket.code}
+              </span>
+            )}
             {ticket.odds && (
               <span className="text-[10px] text-muted-foreground font-mono">@ {ticket.odds}</span>
             )}

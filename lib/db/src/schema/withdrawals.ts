@@ -20,6 +20,7 @@ export const withdrawalsTable = pgTable("withdrawals", {
   status: withdrawalStatusEnum("status").notNull().default("pending"),
   adminNote: text("admin_note"),
   betId: integer("bet_id"),
+  lotteryTicketId: integer("lottery_ticket_id"),
   branchId: integer("branch_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

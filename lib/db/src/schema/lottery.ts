@@ -85,6 +85,8 @@ export const lotteryTicketsTable = pgTable("lottery_tickets", {
   playType: text("play_type"),      // '1'|'2'|'3'|'4'|'5'|'6'|'bonus_only'
   odds: text("odds"),               // e.g. "420/1"
   potentialWin: numeric("potential_win", { precision: 20, scale: 2 }),
+  // Verification code — unique 6-char alphanumeric, generated at purchase
+  code: text("code").unique(),
 });
 
 /** Tracks each scraper execution (one row per game per run). */
