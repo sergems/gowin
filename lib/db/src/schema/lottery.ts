@@ -48,6 +48,8 @@ export const lotteryGamesTable = pgTable("lottery_games", {
   timezone: text("timezone").default("UTC"),
   // Logo image (served from /images/lottery/<slug>.<ext> or external URL)
   logoUrl: text("logo_url"),
+  // Minutes before draw time that betting closes (default 15, 70 for Gosloto games)
+  bettingCutoffMinutes: integer("betting_cutoff_minutes").notNull().default(15),
 });
 
 export const lotteryDrawsTable = pgTable("lottery_draws", {

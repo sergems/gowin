@@ -306,14 +306,15 @@ router.post("/lottery/tickets", requireAuth, async (req: AuthRequest, res): Prom
     return;
   }
 
-  // ── 15-minute betting cutoff ─────────────────────────────────────────────────
-  // Bets must be placed at least 15 minutes before the draw closes.
-  const CUTOFF_MS = 15 * 60 * 1000;
+  // ── Per-game betting cutoff ──────────────────────────────────────────────────
+  // Gosloto games close 70 min early; others default to 15 min.
+  const cutoffMinutes: number = (game as any).bettingCutoffMinutes ?? 15;
+  const CUTOFF_MS = cutoffMinutes * 60 * 1000;
   const msToDrawDate = nextDraw.drawDate.getTime() - Date.now();
   if (msToDrawDate < CUTOFF_MS) {
     const cutoffAt = new Date(nextDraw.drawDate.getTime() - CUTOFF_MS);
     res.status(400).json({
-      error: `Betting is closed for this draw. Bets must be placed at least 15 minutes before the draw.`,
+      error: `Betting is closed for this draw. Bets must be placed at least ${cutoffMinutes} minutes before the draw.`,
       bettingCutoff: cutoffAt.toISOString(),
       drawDate: nextDraw.drawDate.toISOString(),
       code: "BETTING_CLOSED",

@@ -5,7 +5,7 @@
  */
 import { db, lotteryGamesTable, lotteryDrawsTable } from "@workspace/db";
 import { DEFAULT_PAYOUT_CONFIG } from "@workspace/db";
-import { and, count, eq } from "drizzle-orm";
+import { and, count, eq, sql } from "drizzle-orm";
 import { logger } from "./logger";
 
 const UK_49S_LOGO_URL = "/images/lottery/uk-49s.webp";
@@ -210,7 +210,7 @@ const SEED_GAMES = [
     description: "Russia's popular lottery. Pick 1–5 numbers from 1 to 45. No bonus ball.",
     enabledPlayTypes: ["1", "2", "3", "4", "5"],
     payoutConfig: {
-      excludedBonus: { "1": "4.7/1", "2": "54/1", "3": "549/1", "4": "5999/1", "5": "81999/1" },
+      excludedBonus: { "1": "6/1", "2": "55/1", "3": "550/1", "4": "6000/1", "5": "80000/1" },
       includedBonus: {},
       bonusOnly: "",
       withBonus: {},
@@ -235,7 +235,7 @@ const SEED_GAMES = [
     description: "Gosloto 6/45 Plus — same draw as 6/45 with enhanced prizes. Pick 1–5 numbers from 1 to 45.",
     enabledPlayTypes: ["1", "2", "3", "4", "5"],
     payoutConfig: {
-      excludedBonus: { "1": "4.7/1", "2": "54/1", "3": "549/1", "4": "5999/1", "5": "81999/1" },
+      excludedBonus: { "1": "6/1", "2": "55/1", "3": "550/1", "4": "6000/1", "5": "80000/1" },
       includedBonus: {},
       bonusOnly: "",
       withBonus: {},
@@ -260,7 +260,7 @@ const SEED_GAMES = [
     description: "Russia's Gosloto 7/49. Pick 1–5 numbers from 1 to 49. No bonus ball.",
     enabledPlayTypes: ["1", "2", "3", "4", "5"],
     payoutConfig: {
-      excludedBonus: { "1": "4.4/1", "2": "47/1", "3": "399/1", "4": "3999/1", "5": "4999/1" },
+      excludedBonus: { "1": "11/2", "2": "52/1", "3": "400/1", "4": "4000/1", "5": "50000/1" },
       includedBonus: {},
       bonusOnly: "",
       withBonus: {},
@@ -286,13 +286,13 @@ const SEED_GAMES = [
     description: "Gosloto 4/20 Field 1 (morning draw). Pick 1–4 numbers from 1 to 20. No bonus ball.",
     enabledPlayTypes: ["1", "2", "3", "4"],
     payoutConfig: {
-      excludedBonus: { "1": "2.4/1", "2": "24/1", "3": "219/1", "4": "2999/1" },
+      excludedBonus: { "1": "7/2", "2": "25/1", "3": "220/1", "4": "3500/1" },
       includedBonus: {},
       bonusOnly: "",
       withBonus: {},
     },
     scraperClass: "GosLoto420Field1Scraper",
-    website: "https://iss.stoloto.ru/rapido/draws?count=1",
+    website: "https://iss.stoloto.ru/gosloto420/draws?count=1",
     logoUrl: "https://flagcdn.com/40x30/ru.png",
   },
   {
@@ -312,13 +312,13 @@ const SEED_GAMES = [
     description: "Gosloto 4/20 Field 2 (evening draw). Pick 1–4 numbers from 1 to 20. No bonus ball.",
     enabledPlayTypes: ["1", "2", "3", "4"],
     payoutConfig: {
-      excludedBonus: { "1": "2.4/1", "2": "24/1", "3": "219/1", "4": "2999/1" },
+      excludedBonus: { "1": "7/2", "2": "25/1", "3": "220/1", "4": "3500/1" },
       includedBonus: {},
       bonusOnly: "",
       withBonus: {},
     },
     scraperClass: "GosLoto420Field2Scraper",
-    website: "https://iss.stoloto.ru/rapido2/draws?count=1",
+    website: "https://iss.stoloto.ru/gosloto420/draws?count=1",
     logoUrl: "https://flagcdn.com/40x30/ru.png",
   },
   {
@@ -344,6 +344,31 @@ const SEED_GAMES = [
     },
     scraperClass: "GosLoto550Scraper",
     website: "https://iss.stoloto.ru/gosloto550/draws?count=1",
+    logoUrl: "https://flagcdn.com/40x30/ru.png",
+  },
+  {
+    name: "Gosloto 6/36",
+    slug: "gosloto-636",
+    country: "Russia",
+    mainNumbersCount: 6,
+    mainNumbersMax: 36,
+    bonusNumbersCount: 0,
+    bonusNumbersMax: 0,
+    ticketPrice: "2.00",
+    jackpot: "0.00",
+    drawOffsetDays: 7,
+    color: "#7c3aed",
+    emoji: "🇷🇺",
+    description: "Gosloto 6/36. Weekly draw — pick 1–4 numbers from 1 to 36. No bonus ball.",
+    enabledPlayTypes: ["1", "2", "3", "4"],
+    payoutConfig: {
+      excludedBonus: { "1": "9/2", "2": "35/1", "3": "275/1", "4": "2750/1" },
+      includedBonus: {},
+      bonusOnly: "",
+      withBonus: {},
+    },
+    scraperClass: "GosLoto636Scraper",
+    website: "https://iss.stoloto.ru/gosloto636/draws?count=1",
     logoUrl: "https://flagcdn.com/40x30/ru.png",
   },
 ] as const;
@@ -682,6 +707,324 @@ export async function ensureSouthAfricanLotteryGames(): Promise<void> {
         bonusNumbers: [],
         status: "pending",
       });
+    }
+  }
+}
+
+// ── Russian Gosloto ensure (runs on every startup) ───────────────────────────
+
+/** SAST = UTC+2, no daylight saving. All Gosloto draw times are SA time. */
+const GOSLOTO_TZ = "Africa/Johannesburg";
+const GOSLOTO_SA_OFFSET = 2; // hours ahead of UTC
+
+interface GoslotoTime { hour: number; minute: number; }
+
+interface GoslotoGameDef {
+  slug: string;
+  name: string;
+  mainNumbersCount: number;
+  mainNumbersMax: number;
+  enabledPlayTypes: string[];
+  payoutConfig: { excludedBonus: Record<string, string>; includedBonus: Record<string, string>; bonusOnly: string; withBonus: Record<string, string> };
+  scraperClass: string;
+  website: string;
+  /** Daily draw times in SA local time */
+  drawSchedule: GoslotoTime[];
+  /** If set, draws only happen on these ISO weekdays (0=Sun…6=Sat) */
+  drawWeekdays?: number[];
+  /** Minutes before draw that betting closes */
+  bettingCutoffMinutes: number;
+  color: string;
+  emoji: string;
+  ticketPrice: string;
+  description: string;
+}
+
+const GOSLOTO_GAMES: GoslotoGameDef[] = [
+  {
+    slug: "gosloto-645",
+    name: "Gosloto 6/45",
+    mainNumbersCount: 6,
+    mainNumbersMax: 45,
+    enabledPlayTypes: ["1", "2", "3", "4", "5"],
+    payoutConfig: {
+      excludedBonus: { "1": "6/1", "2": "55/1", "3": "550/1", "4": "6000/1", "5": "80000/1" },
+      includedBonus: {}, bonusOnly: "", withBonus: {},
+    },
+    scraperClass: "GosLoto645Scraper",
+    website: "https://iss.stoloto.ru/gosloto645/draws?count=1",
+    drawSchedule: [{ hour: 11, minute: 0 }, { hour: 23, minute: 0 }],
+    bettingCutoffMinutes: 70,
+    color: "#ef4444",
+    emoji: "🇷🇺",
+    ticketPrice: "2.00",
+    description: "Russia's Gosloto 6/45. Pick 1–5 numbers from 1 to 45. No bonus ball. Draws at 11:00 and 23:00 SA time.",
+  },
+  {
+    slug: "gosloto-645-plus",
+    name: "Gosloto 6/45 Plus",
+    mainNumbersCount: 6,
+    mainNumbersMax: 45,
+    enabledPlayTypes: ["1", "2", "3", "4", "5"],
+    payoutConfig: {
+      excludedBonus: { "1": "6/1", "2": "55/1", "3": "550/1", "4": "6000/1", "5": "80000/1" },
+      includedBonus: {}, bonusOnly: "", withBonus: {},
+    },
+    scraperClass: "GosLoto645PlusScraper",
+    website: "https://iss.stoloto.ru/gosloto645plus/draws?count=1",
+    drawSchedule: [{ hour: 11, minute: 0 }, { hour: 23, minute: 0 }],
+    bettingCutoffMinutes: 70,
+    color: "#dc2626",
+    emoji: "🇷🇺",
+    ticketPrice: "2.00",
+    description: "Gosloto 6/45 Plus. Pick 1–5 numbers from 1 to 45. Draws at 11:00 and 23:00 SA time.",
+  },
+  {
+    slug: "gosloto-749",
+    name: "Gosloto 7/49",
+    mainNumbersCount: 7,
+    mainNumbersMax: 49,
+    enabledPlayTypes: ["1", "2", "3", "4", "5"],
+    payoutConfig: {
+      excludedBonus: { "1": "11/2", "2": "52/1", "3": "400/1", "4": "4000/1", "5": "50000/1" },
+      includedBonus: {}, bonusOnly: "", withBonus: {},
+    },
+    scraperClass: "GosLoto749Scraper",
+    website: "https://iss.stoloto.ru/gosloto749/draws?count=1",
+    drawSchedule: [
+      { hour: 10, minute: 30 }, { hour: 13, minute: 30 },
+      { hour: 15, minute: 30 }, { hour: 19, minute: 0 }, { hour: 22, minute: 30 },
+    ],
+    bettingCutoffMinutes: 62,
+    color: "#b91c1c",
+    emoji: "🇷🇺",
+    ticketPrice: "2.00",
+    description: "Russia's Gosloto 7/49. Pick 1–5 numbers from 1 to 49. No bonus ball. Five draws daily.",
+  },
+  {
+    slug: "gosloto-420-field1",
+    name: "Gosloto 4/20 Field 1",
+    mainNumbersCount: 4,
+    mainNumbersMax: 20,
+    enabledPlayTypes: ["1", "2", "3", "4"],
+    payoutConfig: {
+      excludedBonus: { "1": "7/2", "2": "25/1", "3": "220/1", "4": "3500/1" },
+      includedBonus: {}, bonusOnly: "", withBonus: {},
+    },
+    scraperClass: "GosLoto420Field1Scraper",
+    website: "https://iss.stoloto.ru/gosloto420/draws?count=1",
+    drawSchedule: [
+      { hour: 10, minute: 0 }, { hour: 13, minute: 0 },
+      { hour: 16, minute: 0 }, { hour: 22, minute: 0 },
+    ],
+    bettingCutoffMinutes: 70,
+    color: "#f97316",
+    emoji: "🇷🇺",
+    ticketPrice: "1.00",
+    description: "Gosloto 4/20 Field 1. Pick 1–4 numbers from 1 to 20. No bonus ball. Four draws daily at 10:00, 13:00, 16:00, 22:00 SA time.",
+  },
+  {
+    slug: "gosloto-420-field2",
+    name: "Gosloto 4/20 Field 2",
+    mainNumbersCount: 4,
+    mainNumbersMax: 20,
+    enabledPlayTypes: ["1", "2", "3", "4"],
+    payoutConfig: {
+      excludedBonus: { "1": "7/2", "2": "25/1", "3": "220/1", "4": "3500/1" },
+      includedBonus: {}, bonusOnly: "", withBonus: {},
+    },
+    scraperClass: "GosLoto420Field2Scraper",
+    website: "https://iss.stoloto.ru/gosloto420/draws?count=1",
+    drawSchedule: [
+      { hour: 10, minute: 0 }, { hour: 13, minute: 0 },
+      { hour: 16, minute: 0 }, { hour: 22, minute: 0 },
+    ],
+    bettingCutoffMinutes: 70,
+    color: "#ea580c",
+    emoji: "🇷🇺",
+    ticketPrice: "1.00",
+    description: "Gosloto 4/20 Field 2. Pick 1–4 numbers from 1 to 20. No bonus ball. Four draws daily at 10:00, 13:00, 16:00, 22:00 SA time.",
+  },
+  {
+    slug: "gosloto-636",
+    name: "Gosloto 6/36",
+    mainNumbersCount: 6,
+    mainNumbersMax: 36,
+    enabledPlayTypes: ["1", "2", "3", "4"],
+    payoutConfig: {
+      excludedBonus: { "1": "9/2", "2": "35/1", "3": "275/1", "4": "2750/1" },
+      includedBonus: {}, bonusOnly: "", withBonus: {},
+    },
+    scraperClass: "GosLoto636Scraper",
+    website: "https://iss.stoloto.ru/gosloto636/draws?count=1",
+    drawSchedule: [{ hour: 22, minute: 0 }],
+    drawWeekdays: [0], // Sunday only
+    bettingCutoffMinutes: 70,
+    color: "#7c3aed",
+    emoji: "🇷🇺",
+    ticketPrice: "2.00",
+    description: "Gosloto 6/36. Weekly Sunday draw — pick 1–4 numbers from 1 to 36. No bonus ball.",
+  },
+];
+
+/**
+ * Convert an SA-time slot to UTC for a given reference date.
+ * SAST = UTC+2, no DST — the offset is constant.
+ */
+function goslotoDrawUtc(saHour: number, saMinute: number, refDate: Date): Date {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: GOSLOTO_TZ,
+    year: "numeric", month: "numeric", day: "numeric",
+  }).formatToParts(refDate);
+  const y = Number(parts.find((p) => p.type === "year")?.value ?? 0);
+  const m = Number(parts.find((p) => p.type === "month")?.value ?? 1) - 1;
+  const d = Number(parts.find((p) => p.type === "day")?.value ?? 1);
+  return new Date(Date.UTC(y, m, d, saHour - GOSLOTO_SA_OFFSET, saMinute, 0));
+}
+
+/**
+ * Return all draw times (UTC) within the next `horizonHours` hours for the game.
+ */
+function upcomingGoslotoDraws(
+  drawSchedule: GoslotoTime[],
+  drawWeekdays: number[] | undefined,
+  horizonHours = 48,
+): Date[] {
+  const now = new Date();
+  const horizon = now.getTime() + horizonHours * 3_600_000;
+  const results: Date[] = [];
+
+  for (let dayOffset = 0; dayOffset <= Math.ceil(horizonHours / 24) + 1; dayOffset++) {
+    const refDate = new Date(now.getTime() + dayOffset * 86_400_000);
+
+    if (drawWeekdays && drawWeekdays.length > 0) {
+      const dayParts = new Intl.DateTimeFormat("en-US", {
+        timeZone: GOSLOTO_TZ,
+        year: "numeric", month: "numeric", day: "numeric",
+      }).formatToParts(refDate);
+      const y = Number(dayParts.find((p) => p.type === "year")?.value ?? 0);
+      const m = Number(dayParts.find((p) => p.type === "month")?.value ?? 1) - 1;
+      const d = Number(dayParts.find((p) => p.type === "day")?.value ?? 1);
+      const saWeekday = new Date(Date.UTC(y, m, d)).getUTCDay();
+      if (!drawWeekdays.includes(saWeekday)) continue;
+    }
+
+    for (const { hour, minute } of drawSchedule) {
+      const drawTime = goslotoDrawUtc(hour, minute, refDate);
+      if (drawTime.getTime() > now.getTime() && drawTime.getTime() <= horizon) {
+        results.push(drawTime);
+      }
+    }
+  }
+  return results;
+}
+
+/**
+ * Upsert all Russian Gosloto game records with correct odds, draw schedules,
+ * and per-game betting cutoffs. Safe to run on both fresh and imported databases.
+ */
+export async function ensureRussianGoslotoGames(): Promise<void> {
+  // Add the betting_cutoff_minutes column if it doesn't exist yet (idempotent).
+  await db.execute(
+    sql`ALTER TABLE lottery_games ADD COLUMN IF NOT EXISTS betting_cutoff_minutes INTEGER NOT NULL DEFAULT 15`,
+  );
+
+  for (const cfg of GOSLOTO_GAMES) {
+    const [existing] = await db
+      .select({ id: lotteryGamesTable.id })
+      .from(lotteryGamesTable)
+      .where(eq(lotteryGamesTable.slug, cfg.slug))
+      .limit(1);
+
+    let gameId: number;
+
+    if (existing) {
+      gameId = existing.id;
+      // Update odds, cutoff, draw schedule and description on every startup.
+      await db
+        .update(lotteryGamesTable)
+        .set({
+          name: cfg.name,
+          country: "Russia",
+          mainNumbersCount: cfg.mainNumbersCount,
+          mainNumbersMax: cfg.mainNumbersMax,
+          bonusNumbersCount: 0,
+          bonusNumbersMax: 0,
+          payoutConfig: cfg.payoutConfig,
+          enabledPlayTypes: cfg.enabledPlayTypes,
+          scraperClass: cfg.scraperClass,
+          website: cfg.website,
+          description: cfg.description,
+          color: cfg.color,
+          emoji: cfg.emoji,
+          timezone: GOSLOTO_TZ,
+          logoUrl: "https://flagcdn.com/40x30/ru.png",
+          bettingCutoffMinutes: cfg.bettingCutoffMinutes,
+        })
+        .where(eq(lotteryGamesTable.id, gameId));
+    } else {
+      const firstDraw = upcomingGoslotoDraws(cfg.drawSchedule, cfg.drawWeekdays, 48)[0]
+        ?? new Date(Date.now() + 24 * 3_600_000);
+
+      const [inserted] = await db
+        .insert(lotteryGamesTable)
+        .values({
+          name: cfg.name,
+          slug: cfg.slug,
+          country: "Russia",
+          mainNumbersCount: cfg.mainNumbersCount,
+          mainNumbersMax: cfg.mainNumbersMax,
+          bonusNumbersCount: 0,
+          bonusNumbersMax: 0,
+          ticketPrice: cfg.ticketPrice,
+          jackpot: "0.00",
+          nextDrawAt: firstDraw,
+          isActive: true,
+          color: cfg.color,
+          emoji: cfg.emoji,
+          description: cfg.description,
+          payoutConfig: cfg.payoutConfig,
+          enabledPlayTypes: cfg.enabledPlayTypes,
+          scraperClass: cfg.scraperClass,
+          website: cfg.website,
+          timezone: GOSLOTO_TZ,
+          logoUrl: "https://flagcdn.com/40x30/ru.png",
+          bettingCutoffMinutes: cfg.bettingCutoffMinutes,
+        })
+        .returning({ id: lotteryGamesTable.id });
+
+      if (!inserted) continue;
+      gameId = inserted.id;
+    }
+
+    // Ensure pending draws exist for every upcoming slot in the next 48 hours.
+    const slots = upcomingGoslotoDraws(cfg.drawSchedule, cfg.drawWeekdays, 48);
+    for (const drawTime of slots) {
+      // Check whether a pending draw already exists within ±5 minutes of this slot.
+      const windowStart = new Date(drawTime.getTime() - 5 * 60_000);
+      const windowEnd   = new Date(drawTime.getTime() + 5 * 60_000);
+      const [existing] = await db
+        .select({ id: lotteryDrawsTable.id })
+        .from(lotteryDrawsTable)
+        .where(
+          and(
+            eq(lotteryDrawsTable.gameId, gameId),
+            eq(lotteryDrawsTable.status, "pending"),
+            sql`${lotteryDrawsTable.drawDate} >= ${windowStart} AND ${lotteryDrawsTable.drawDate} <= ${windowEnd}`,
+          ),
+        )
+        .limit(1);
+
+      if (!existing) {
+        await db.insert(lotteryDrawsTable).values({
+          gameId,
+          drawDate: drawTime,
+          jackpot: "0.00",
+          winningNumbers: [],
+          bonusNumbers: [],
+          status: "pending",
+        });
+      }
     }
   }
 }

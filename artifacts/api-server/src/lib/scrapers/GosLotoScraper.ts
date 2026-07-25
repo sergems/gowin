@@ -191,3 +191,10 @@ export class GosLoto550Scraper extends GosLotoBaseScraper {
   readonly expectedCount = 5;
   readonly maxNumber = 50;
 }
+
+/** Gosloto 6/36 — 6 numbers drawn from 1–36, weekly draw */
+export class GosLoto636Scraper extends GosLotoBaseScraper {
+  readonly name = "GosLoto636Scraper";
+  readonly expectedCount = 6;
+  readonly maxNumber = 36;
+}

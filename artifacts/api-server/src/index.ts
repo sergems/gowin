@@ -19,6 +19,7 @@ import {
   ensureUK49sLotteryLogos,
   ensureSouthAfricanLotteryLogos,
   ensureUKNationalLotteryGames,
+  ensureRussianGoslotoGames,
 } from "./lib/lotterySeed";
 import { syncLotteryDraws } from "./lib/lotterySync";
 import { runAllScrapers } from "./lib/scrapers/ScraperManager";
@@ -76,6 +77,7 @@ server.listen(port, async () => {
   await ensureSouthAfricanLotteryLogos();
   await ensureSouthAfricanLotteryGames();
   await ensureUKNationalLotteryGames();
+  await ensureRussianGoslotoGames();
 
   // Start live betting sync workers after server is ready
   startLiveSyncWorkers();
