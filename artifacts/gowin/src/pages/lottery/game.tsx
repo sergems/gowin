@@ -845,22 +845,6 @@ export default function LotteryGame() {
             )}
           </div>
 
-          {/* Quick stake presets */}
-          <div className="flex gap-2 flex-wrap">
-            {[game.minStake, 5, 10, 20, 50].filter((v, i, a) => a.indexOf(v) === i && v <= game.maxStake).map((v) => (
-              <button
-                key={v}
-                onClick={() => setStake(v.toFixed(2))}
-                className={`px-2.5 py-1 rounded text-xs font-semibold border transition-all ${
-                  stakeAmount === v
-                    ? "border-primary/50 bg-primary/10 text-primary"
-                    : "border-border/50 bg-muted/20 text-muted-foreground hover:bg-muted/40"
-                }`}
-              >
-                ${v}
-              </button>
-            ))}
-          </div>
         </div>
         )}
 
