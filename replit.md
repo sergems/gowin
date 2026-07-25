@@ -5,7 +5,7 @@ A full-stack sports betting platform targeting the DRC (Democratic Republic of C
 ## Stack
 
 - **Frontend**: React + Vite (`artifacts/gowin`) — served on port 5000
-- **API Server**: Node.js/Fastify + Drizzle ORM (`artifacts/api-server`) — served on port 8080
+- **API Server**: Node.js/Express + Drizzle ORM (`artifacts/api-server`) — served on port 8080
 - **Database**: PostgreSQL (Replit-managed, `DATABASE_URL` env var)
 - **Monorepo**: pnpm workspaces
 
@@ -24,15 +24,15 @@ Connection is via `DATABASE_URL` environment variable (PostgreSQL).
 
 To import the database from the included dump:
 ```bash
-sed '5d' database.sql | psql $DATABASE_URL
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database.sql
 ```
 
-The `database.sql` file at the repo root is the canonical pg_dump (the 5th line contains a non-standard `\restrict` directive that must be stripped before import). `scripts/schema.sql` is stale — do not use it.
+The `database.sql` file at the repo root is the canonical pg_dump. `scripts/schema.sql` is stale — do not use it.
 
 To reset and re-import from scratch:
 ```bash
 psql $DATABASE_URL -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
-sed '5d' database.sql | psql $DATABASE_URL
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database.sql
 ```
 
 ## Key features
@@ -57,7 +57,7 @@ On a fresh clone/import, run these steps before starting the workflows:
 
 2. **Import the database** (`DATABASE_URL` is provided automatically by Replit)
    ```bash
-   sed '5d' database.sql | psql $DATABASE_URL
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database.sql
    ```
 
 3. **Start both workflows** — they will start automatically, or restart them from the Replit UI.
