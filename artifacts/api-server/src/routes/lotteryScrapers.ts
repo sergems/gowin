@@ -255,7 +255,10 @@ async function advanceLotteryNextDrawAt(gameId?: number): Promise<void> {
       .orderBy(lotteryDrawsTable.drawDate)
       .limit(1);
 
-    if (nextPending && (!game.nextDrawAt || nextPending.drawDate > game.nextDrawAt)) {
+    // Always sync next_draw_at to the nearest future pending draw, regardless of
+    // whether it moves forward or backward.  This ensures a corrected pending
+    // draw date (e.g. after a timezone fix) is reflected immediately.
+    if (nextPending) {
       await db
         .update(lotteryGamesTable)
         .set({ nextDrawAt: nextPending.drawDate })

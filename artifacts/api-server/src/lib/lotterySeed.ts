@@ -7,6 +7,7 @@ import { db, lotteryGamesTable, lotteryDrawsTable } from "@workspace/db";
 import { DEFAULT_PAYOUT_CONFIG } from "@workspace/db";
 import { and, count, eq, sql } from "drizzle-orm";
 import { logger } from "./logger";
+import { computeNextLotteryDraw } from "./lotterySchedule";
 
 const UK_49S_LOGO_URL = "/images/lottery/uk-49s.webp";
 const UK_49S_SLUGS = [
@@ -426,6 +427,65 @@ export async function ensureUK49sLotteryLogos(): Promise<void> {
       .update(lotteryGamesTable)
       .set({ logoUrl: UK_49S_LOGO_URL })
       .where(eq(lotteryGamesTable.slug, slug));
+  }
+}
+
+const UK_49S_DRAW_CONFIGS = [
+  { slug: "uk-49s-brunchtime", drawTime: "12:49" },
+  { slug: "uk-49s-lunchtime",  drawTime: "13:49" },
+  { slug: "uk-49s-drivetime",  drawTime: "17:49" },
+  { slug: "uk-49s-teatime",    drawTime: "18:49" },
+] as const;
+
+/**
+ * Reconcile UK 49s timezone, next_draw_at, and pending draw dates on every startup.
+ * Imported databases may have Africa/Lubumbashi (DRC timezone) instead of
+ * Europe/London, which causes computeNextLotteryDraw to push draws 6+ days out.
+ * Also repairs any pending lottery_draws rows that have stale far-future dates.
+ */
+export async function ensureUK49sDrawTimes(): Promise<void> {
+  for (const cfg of UK_49S_DRAW_CONFIGS) {
+    // All UK 49s draws happen every day; draw_days = [] means no day restriction.
+    const nextDrawAt = computeNextLotteryDraw(cfg.drawTime, [], "Europe/London");
+    if (!nextDrawAt) continue;
+
+    const [game] = await db
+      .select({ id: lotteryGamesTable.id })
+      .from(lotteryGamesTable)
+      .where(eq(lotteryGamesTable.slug, cfg.slug))
+      .limit(1);
+    if (!game) continue;
+
+    // Fix timezone and next_draw_at on the game row
+    await db
+      .update(lotteryGamesTable)
+      .set({ timezone: "Europe/London", nextDrawAt })
+      .where(eq(lotteryGamesTable.id, game.id));
+
+    // Fix the nearest pending draw: update its draw_date to the correct time,
+    // or create it if none exists.
+    const [pendingDraw] = await db
+      .select({ id: lotteryDrawsTable.id })
+      .from(lotteryDrawsTable)
+      .where(and(eq(lotteryDrawsTable.gameId, game.id), eq(lotteryDrawsTable.status, "pending")))
+      .orderBy(lotteryDrawsTable.drawDate)
+      .limit(1);
+
+    if (pendingDraw) {
+      await db
+        .update(lotteryDrawsTable)
+        .set({ drawDate: nextDrawAt })
+        .where(eq(lotteryDrawsTable.id, pendingDraw.id));
+    } else {
+      await db.insert(lotteryDrawsTable).values({
+        gameId: game.id,
+        drawDate: nextDrawAt,
+        jackpot: "0.00",
+        winningNumbers: [],
+        bonusNumbers: [],
+        status: "pending",
+      });
+    }
   }
 }
 

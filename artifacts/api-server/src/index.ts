@@ -17,6 +17,7 @@ import {
   seedLotteryGames,
   ensureSouthAfricanLotteryGames,
   ensureUK49sLotteryLogos,
+  ensureUK49sDrawTimes,
   ensureSouthAfricanLotteryLogos,
   ensureUKNationalLotteryGames,
   ensureRussianGoslotoGames,
@@ -75,6 +76,7 @@ server.listen(port, async () => {
   // Seed default lottery games (no-op if already seeded)
   await seedLotteryGames();
   await ensureUK49sLotteryLogos();
+  await ensureUK49sDrawTimes();
   await ensureSouthAfricanLotteryLogos();
   await ensureSouthAfricanLotteryGames();
   await ensureUKNationalLotteryGames();
