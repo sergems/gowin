@@ -107,20 +107,27 @@ function TicketCard({ ticket }: { ticket: LotteryTicket }) {
                 </span>
               );
             })}
-            {ticket.bonusNumbers.map((n) => {
-              const isWin = bonusWinSet.has(n);
-              return (
-                <span
-                  key={`b${n}`}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all border ${
-                    isWin ? "text-white scale-110" : "text-muted-foreground bg-muted/20 border-border/40"
-                  }`}
-                  style={isWin ? { background: "#f59e0b", boxShadow: "0 0 8px #f59e0b60" } : {}}
-                >
-                  {n}
-                </span>
-              );
-            })}
+            {ticket.bonusNumbers.length > 0 && (
+              <>
+                <span className="text-muted-foreground/60 text-xs font-bold px-0.5 select-none">✦</span>
+                {ticket.bonusNumbers.map((n) => {
+                  const isWin = bonusWinSet.has(n);
+                  return (
+                    <span
+                      key={`b${n}`}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ring-2 ring-amber-400/50 ${
+                        isWin ? "text-white scale-110" : "text-white/90"
+                      }`}
+                      style={isWin
+                        ? { background: "#f59e0b", boxShadow: "0 0 10px #f59e0b80" }
+                        : { background: "#f59e0b90" }}
+                    >
+                      {n}
+                    </span>
+                  );
+                })}
+              </>
+            )}
           </div>
         </div>
 
@@ -134,11 +141,16 @@ function TicketCard({ ticket }: { ticket: LotteryTicket }) {
                   {n}
                 </span>
               ))}
-              {draw.bonusNumbers.map((n) => (
-                <span key={`b${n}`} className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: "#f59e0b" }}>
-                  {n}
-                </span>
-              ))}
+              {draw.bonusNumbers.length > 0 && (
+                <>
+                  <span className="text-muted-foreground/60 text-xs font-bold px-0.5 select-none">✦</span>
+                  {draw.bonusNumbers.map((n) => (
+                    <span key={`b${n}`} className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ring-2 ring-amber-400/50" style={{ background: "#f59e0b" }}>
+                      {n}
+                    </span>
+                  ))}
+                </>
+              )}
             </div>
           </div>
         )}

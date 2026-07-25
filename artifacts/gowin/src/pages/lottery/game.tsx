@@ -120,6 +120,9 @@ function CountdownUnit({ value, label }: { value: number; label: string }) {
   );
 }
 
+// ── Bonus ball colour (amber) — used everywhere for consistency ───────────────
+const BONUS_COLOR = "#f59e0b";
+
 // ── Number Ball ───────────────────────────────────────────────────────────────
 
 function NumberBall({
@@ -128,8 +131,7 @@ function NumberBall({
   num: number; selected: boolean; onClick: () => void; disabled: boolean;
   color: string; isBonus?: boolean; isWinning?: boolean;
 }) {
-  const bonusColor = "#e11d48";
-  const activeColor = isBonus ? bonusColor : color;
+  const activeColor = isBonus ? BONUS_COLOR : color;
   return (
     <button
       onClick={onClick}
