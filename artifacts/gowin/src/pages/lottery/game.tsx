@@ -234,27 +234,27 @@ function BonusModeSelector({
 
   return (
     <div>
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Bonus Mode</p>
-      <div className="flex flex-col gap-2">
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Bonus Mode</p>
+      <div className="flex flex-col gap-1.5">
         {BONUS_MODE_OPTIONS.map(({ mode, label, desc }) => {
           const active = value === mode;
           return (
             <button
               key={mode}
               onClick={() => onChange(mode)}
-              className={`rounded-lg border p-3 text-left transition-all duration-150 ${
+              className={`rounded-lg border px-3 py-2 text-left transition-all duration-150 ${
                 active
                   ? "border-primary/50 bg-primary/10"
                   : "border-border/50 bg-muted/20 hover:bg-muted/40"
               }`}
             >
-              <div className={`flex items-center gap-2 mb-0.5 ${active ? "text-primary" : "text-foreground"}`}>
-                <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${active ? "border-primary" : "border-muted-foreground/50"}`}>
+              <div className="flex items-center gap-2 min-w-0">
+                <div className={`w-3 h-3 rounded-full border-2 flex items-center justify-center shrink-0 ${active ? "border-primary" : "border-muted-foreground/50"}`}>
                   {active && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
                 </div>
-                <span className="text-sm font-semibold">{label}</span>
+                <span className={`text-sm font-semibold shrink-0 ${active ? "text-primary" : "text-foreground"}`}>{label}</span>
+                <span className="text-xs text-muted-foreground truncate">— {desc}</span>
               </div>
-              <p className="text-[11px] text-muted-foreground ml-5">{desc}</p>
             </button>
           );
         })}
