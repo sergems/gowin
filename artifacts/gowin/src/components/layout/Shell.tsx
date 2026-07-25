@@ -563,14 +563,6 @@ export function Shell({ children }: { children: ReactNode }) {
               </Link>
             ))}
 
-            <Link href="/results" title={!open ? t("nav.results") : undefined} onClick={onNav}
-              className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
-                ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
-                ${location.startsWith("/results") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
-              {open && <span className="flex-1">{t("nav.results")}</span>}
-            </Link>
-
             {!isStaffRole && (
               <Link href="/lottery" title={!open ? t("nav.lottery") : undefined} onClick={onNav}
                 className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
@@ -580,6 +572,14 @@ export function Shell({ children }: { children: ReactNode }) {
                 {open && <span className="flex-1">{t("nav.lottery")}</span>}
               </Link>
             )}
+
+            <Link href="/results" title={!open ? t("nav.results") : undefined} onClick={onNav}
+              className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
+                ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
+                ${location.startsWith("/results") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              {open && <span className="flex-1">{t("nav.results")}</span>}
+            </Link>
 
             {!isStaffRole && (
               <a
