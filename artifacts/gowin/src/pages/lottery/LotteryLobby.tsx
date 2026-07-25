@@ -146,7 +146,7 @@ function GameCard({ game }: { game: LotteryGame }) {
 
         {/* Description */}
         {game.description && (
-          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{game.description}</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">{game.description}</p>
         )}
 
         {/* Footer */}
