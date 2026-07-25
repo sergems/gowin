@@ -654,7 +654,7 @@ export default function LotteryGame() {
       </div>
 
       {/* Betting Panel */}
-      <div className="rounded-xl border border-border/50 bg-card p-5 space-y-6">
+      <div className="rounded-xl border border-border/50 bg-card p-5">
         {/* ── Betting closed state ─────────────────────────────────────────── */}
         {isBettingClosed ? (
           <div className="flex flex-col items-center gap-4 py-6 text-center">
@@ -675,225 +675,205 @@ export default function LotteryGame() {
             )}
           </div>
         ) : (
-        <>
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h2 className="font-bold text-foreground">Place Your Bet</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Choose your play type, numbers, and stake
-            </p>
-          </div>
-          <Button onClick={quickPick} variant="outline" size="sm" className="gap-2">
-            <Shuffle className="w-3.5 h-3.5" />
-            Quick Pick
-          </Button>
-        </div>
+        <div className="flex gap-4">
 
-        {/* Step 1: Play Type */}
-        <PlayTypeSelector
-          value={playType}
-          onChange={(v) => setPlayType(v)}
-          enabled={game.enabledPlayTypes}
-          color={game.color}
-        />
-
-        {/* Step 2: Bonus Mode (not shown for bonus_only) */}
-        {!isBonusOnly && (
-          <BonusModeSelector value={bonusMode} onChange={setBonusMode} hasBonus={hasBonus} />
-        )}
-
-        {/* Step 3: Main Number Grid */}
-        {!isBonusOnly && (
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Pick {requiredMain} Number{requiredMain !== 1 ? "s" : ""}
-              </p>
-              <Badge
-                variant="outline"
-                className="text-[10px]"
-                style={selectedMain.length === requiredMain ? { borderColor: `${game.color}60`, color: game.color } : {}}
-              >
-                {selectedMain.length} / {requiredMain}
-              </Badge>
+          {/* ── LEFT: selections ─────────────────────────────────────────── */}
+          <div className="flex-1 min-w-0 space-y-4">
+            {/* Header */}
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="font-bold text-foreground text-sm">Place Your Bet</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Choose play type, numbers and stake</p>
+              </div>
+              <Button onClick={quickPick} variant="outline" size="sm" className="gap-1.5 shrink-0">
+                <Shuffle className="w-3.5 h-3.5" />
+                Quick Pick
+              </Button>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {Array.from({ length: game.mainNumbersMax }, (_, i) => i + 1).map((num) => (
-                <NumberBall
-                  key={num}
-                  num={num}
-                  selected={selectedMain.includes(num)}
-                  onClick={() => toggleMain(num)}
-                  disabled={selectedMain.length >= requiredMain}
-                  color={game.color}
-                />
-              ))}
-            </div>
-          </div>
-        )}
 
-        {/* Bonus Ball Picker (include mode or bonus_only) */}
-        {hasBonus && (needsBonusPick) && (
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <p className="text-xs font-semibold text-yellow-500 uppercase tracking-wider">
-                Bonus Ball
-              </p>
-              <Badge
-                variant="outline"
-                className="text-[10px]"
-                style={selectedBonus !== null ? { borderColor: "#f59e0b60", color: "#f59e0b" } : {}}
-              >
-                {selectedBonus !== null ? "1 / 1" : "0 / 1"}
-              </Badge>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {Array.from({ length: game.bonusNumbersMax }, (_, i) => i + 1).map((num) => (
-                <NumberBall
-                  key={num}
-                  num={num}
-                  selected={selectedBonus === num}
-                  onClick={() => toggleBonus(num)}
-                  disabled={false}
-                  color={game.color}
-                  isBonus
-                />
-              ))}
-            </div>
-          </div>
-        )}
+            {/* Play Type */}
+            <PlayTypeSelector
+              value={playType}
+              onChange={(v) => setPlayType(v)}
+              enabled={game.enabledPlayTypes}
+              color={game.color}
+            />
 
-        {/* Selected display */}
-        {(selectedMain.length > 0 || selectedBonus !== null) && (
-          <div className="rounded-lg bg-muted/30 border border-border/40 p-3 flex flex-wrap gap-2 items-center">
-            <span className="text-xs text-muted-foreground">Your pick:</span>
-            {selectedMain.map((n) => (
-              <span
-                key={n}
-                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white"
-                style={{ background: game.color }}
-              >{n}</span>
-            ))}
-            {selectedBonus !== null && (
-              <span
-                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white"
-                style={{ background: "#f59e0b" }}
-              >{selectedBonus}</span>
+            {/* Bonus Mode */}
+            {!isBonusOnly && (
+              <BonusModeSelector value={bonusMode} onChange={setBonusMode} hasBonus={hasBonus} />
+            )}
+
+            {/* Main Number Grid */}
+            {!isBonusOnly && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Pick {requiredMain} Number{requiredMain !== 1 ? "s" : ""}
+                  </p>
+                  <Badge
+                    variant="outline"
+                    className="text-[10px]"
+                    style={selectedMain.length === requiredMain ? { borderColor: `${game.color}60`, color: game.color } : {}}
+                  >
+                    {selectedMain.length} / {requiredMain}
+                  </Badge>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {Array.from({ length: game.mainNumbersMax }, (_, i) => i + 1).map((num) => (
+                    <NumberBall
+                      key={num}
+                      num={num}
+                      selected={selectedMain.includes(num)}
+                      onClick={() => toggleMain(num)}
+                      disabled={selectedMain.length >= requiredMain}
+                      color={game.color}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Bonus Ball Picker */}
+            {hasBonus && needsBonusPick && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <p className="text-xs font-semibold text-yellow-500 uppercase tracking-wider">Bonus Ball</p>
+                  <Badge
+                    variant="outline"
+                    className="text-[10px]"
+                    style={selectedBonus !== null ? { borderColor: "#f59e0b60", color: "#f59e0b" } : {}}
+                  >
+                    {selectedBonus !== null ? "1 / 1" : "0 / 1"}
+                  </Badge>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {Array.from({ length: game.bonusNumbersMax }, (_, i) => i + 1).map((num) => (
+                    <NumberBall
+                      key={num}
+                      num={num}
+                      selected={selectedBonus === num}
+                      onClick={() => toggleBonus(num)}
+                      disabled={false}
+                      color={game.color}
+                      isBonus
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Bonus ball required hint */}
+            {needsBonusPick && hasBonus && selectedBonus === null && (
+              <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-3 py-2 text-xs text-yellow-500 font-medium">
+                ⭐ Select your Bonus Ball above to continue
+              </div>
             )}
           </div>
-        )}
 
-        {/* Bonus ball required hint */}
-        {needsBonusPick && hasBonus && selectedBonus === null && (
-          <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-4 py-3 text-sm text-yellow-500 font-medium">
-            ⭐ Select your Bonus Ball above to continue
-          </div>
-        )}
+          {/* ── RIGHT: stake + bet ───────────────────────────────────────── */}
+          <div className="w-44 shrink-0 flex flex-col gap-3 justify-start pt-8">
 
-        {/* Step 4: Stake + Payout Preview — hidden until bonus ball is picked (when required) */}
-        {(!needsBonusPick || !hasBonus || selectedBonus !== null) && (
-        <div className="rounded-lg border border-border/40 bg-muted/20 p-4 space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <div className="flex-1 space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Stake
-              </label>
+            {/* Selected numbers summary */}
+            {(selectedMain.length > 0 || selectedBonus !== null) && (
+              <div className="rounded-lg bg-muted/30 border border-border/40 p-2 flex flex-wrap gap-1 items-center">
+                {selectedMain.map((n) => (
+                  <span
+                    key={n}
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+                    style={{ background: game.color }}
+                  >{n}</span>
+                ))}
+                {selectedBonus !== null && (
+                  <span
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+                    style={{ background: "#f59e0b" }}
+                  >{selectedBonus}</span>
+                )}
+              </div>
+            )}
+
+            {/* Stake input */}
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Stake</label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">$</span>
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">$</span>
                 <Input
                   type="number"
                   min={game.minStake}
                   max={game.maxStake}
                   step="0.01"
-                  placeholder={`${game.minStake.toFixed(2)} – ${game.maxStake.toFixed(2)}`}
+                  placeholder={`${game.minStake.toFixed(2)}`}
                   value={stake}
                   onChange={(e) => setStake(e.target.value)}
-                  className="pl-7"
+                  className="pl-6 h-9 text-sm"
                 />
               </div>
-              <p className="text-[10px] text-muted-foreground">
-                Min: ${game.minStake.toFixed(2)} · Max: ${game.maxStake.toFixed(2)}
-              </p>
+              <p className="text-[10px] text-muted-foreground">Min ${game.minStake} · Max ${game.maxStake}</p>
             </div>
 
+            {/* Odds / potential win preview */}
             {oddsStr && stakeAmount > 0 && (
-              <div className="sm:w-52 rounded-lg border border-border/50 bg-card p-3 space-y-1.5">
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Play Type</span>
-                  <span className="font-medium text-foreground">{PLAY_TYPE_LABELS[playType]}</span>
-                </div>
-                {!isBonusOnly && (
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Bonus Mode</span>
-                    <span className="font-medium text-foreground capitalize">{bonusMode}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-xs">
+              <div className="rounded-lg border border-border/40 bg-muted/20 p-2.5 space-y-1">
+                <div className="flex justify-between text-[11px]">
                   <span className="text-muted-foreground">Odds</span>
                   <span className="font-semibold text-primary">{fmtOdds(oddsStr)}</span>
                 </div>
-                <div className="flex justify-between text-xs border-t border-border/30 pt-1.5">
-                  <span className="text-muted-foreground">Potential Win</span>
-                  <span
-                    className="font-black text-base"
-                    style={{ color: game.color }}
-                  >
+                <div className="flex justify-between text-[11px] border-t border-border/30 pt-1">
+                  <span className="text-muted-foreground">Win</span>
+                  <span className="font-black" style={{ color: game.color }}>
                     {isJackpot ? "Jackpot" : `$${potentialWin.toFixed(2)}`}
                   </span>
                 </div>
               </div>
             )}
+
+            {/* Bet Now / Login */}
+            {!user ? (
+              <Link href="/login">
+                <Button className="w-full h-10 text-sm font-bold gap-1.5">
+                  <Zap className="w-4 h-4" />
+                  Login
+                </Button>
+              </Link>
+            ) : (
+              <Button
+                className="w-full h-10 text-sm font-bold gap-1.5"
+                disabled={!isReady || buyMutation.isPending}
+                onClick={() => buyMutation.mutate()}
+                style={isReady ? { background: game.color, color: "white" } : {}}
+              >
+                {buyMutation.isPending ? (
+                  <>Processing…</>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4" />
+                    {isReady ? `Bet Now` : "Select numbers"}
+                  </>
+                )}
+              </Button>
+            )}
+
+            {/* Validation hint */}
+            {!isReady && user && (
+              <p className="text-[10px] text-muted-foreground text-center leading-snug">
+                {selectedMain.length < requiredMain
+                  ? `Pick ${requiredMain - selectedMain.length} more`
+                  : needsBonusPick && hasBonus && selectedBonus === null
+                  ? "Pick your bonus ball"
+                  : stakeAmount <= 0
+                  ? "Enter a stake"
+                  : stakeAmount < game.minStake
+                  ? `Min $${game.minStake.toFixed(2)}`
+                  : stakeAmount > game.maxStake
+                  ? `Max $${game.maxStake.toFixed(2)}`
+                  : ""}
+              </p>
+            )}
           </div>
 
         </div>
         )}
-
-        {/* Bet Now Button */}
-        {!user ? (
-          <Link href="/login">
-            <Button className="w-full h-12 text-base font-bold gap-2">
-              <Zap className="w-5 h-5" />
-              Login to Bet Now
-            </Button>
-          </Link>
-        ) : (
-          <Button
-            className="w-full h-12 text-base font-bold gap-2"
-            disabled={!isReady || buyMutation.isPending}
-            onClick={() => buyMutation.mutate()}
-            style={isReady ? { background: game.color, color: "white" } : {}}
-          >
-            {buyMutation.isPending ? (
-              <>Processing…</>
-            ) : (
-              <>
-                <Zap className="w-5 h-5" />
-                {isReady
-                  ? `Bet Now — $${stakeAmount.toFixed(2)}`
-                  : "Complete your selection"}
-              </>
-            )}
-          </Button>
-        )}
-
-        {/* Validation hint */}
-        {!isReady && user && (
-          <p className="text-xs text-muted-foreground text-center">
-            {selectedMain.length < requiredMain
-              ? `Select ${requiredMain - selectedMain.length} more number${requiredMain - selectedMain.length !== 1 ? "s" : ""}`
-              : needsBonusPick && hasBonus && selectedBonus === null
-              ? "Select your bonus ball number"
-              : stakeAmount <= 0
-              ? "Enter your stake amount"
-              : stakeAmount < game.minStake
-              ? `Minimum stake is $${game.minStake.toFixed(2)}`
-              : stakeAmount > game.maxStake
-              ? `Maximum stake is $${game.maxStake.toFixed(2)}`
-              : ""}
-          </p>
-        )}
-      </>
-      )}
 
       {/* Payout Table */}
       <PayoutTable game={game} />
