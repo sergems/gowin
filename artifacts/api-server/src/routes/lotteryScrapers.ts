@@ -127,6 +127,145 @@ router.patch("/admin/lottery/scrapers/:gameId", requireAdmin, async (req, res): 
   });
 });
 
+// ── POST /admin/lottery/games/:gameId/manual-result ──────────────────────────
+// Allows admin to manually enter a draw result when scraper cannot reach the source.
+// Body: { numbers: number[], bonus?: number[], drawDate?: string }
+
+router.post("/admin/lottery/games/:gameId/manual-result", requireAdmin, async (req, res): Promise<void> => {
+  const gameId = parseInt(req.params.gameId, 10);
+  if (isNaN(gameId)) {
+    res.status(400).json({ error: "Invalid gameId" });
+    return;
+  }
+
+  const { numbers, bonus = [], drawDate } = req.body;
+
+  if (!Array.isArray(numbers) || numbers.length === 0) {
+    res.status(400).json({ error: "numbers is required and must be a non-empty array" });
+    return;
+  }
+
+  const winningNumbers = numbers.map(Number).filter((n) => !isNaN(n) && n > 0);
+  const bonusNumbers = (bonus as unknown[]).map(Number).filter((n) => !isNaN(n) && n > 0);
+
+  if (winningNumbers.length === 0) {
+    res.status(400).json({ error: "No valid numbers provided" });
+    return;
+  }
+
+  // Resolve the draw to settle: nearest pending draw for this game (on given date or now)
+  const { settleLotteryDraw } = await import("../lib/lotterySettle");
+  const { gte, lte, asc } = await import("drizzle-orm");
+
+  const targetDate = drawDate ? drawDate : new Date().toISOString().slice(0, 10);
+  const dayStart = new Date(targetDate + "T00:00:00Z");
+  const dayEnd   = new Date(targetDate + "T23:59:59Z");
+
+  // Try same-day pending draw first, then the very next pending draw
+  let [draw] = await db
+    .select()
+    .from(lotteryDrawsTable)
+    .where(
+      and(
+        eq(lotteryDrawsTable.gameId, gameId),
+        eq(lotteryDrawsTable.status, "pending"),
+        gte(lotteryDrawsTable.drawDate, dayStart),
+        lte(lotteryDrawsTable.drawDate, dayEnd),
+      ),
+    )
+    .orderBy(asc(lotteryDrawsTable.drawDate))
+    .limit(1);
+
+  if (!draw) {
+    // Fall back to the oldest pending draw for this game
+    [draw] = await db
+      .select()
+      .from(lotteryDrawsTable)
+      .where(and(eq(lotteryDrawsTable.gameId, gameId), eq(lotteryDrawsTable.status, "pending")))
+      .orderBy(asc(lotteryDrawsTable.drawDate))
+      .limit(1);
+  }
+
+  if (!draw) {
+    res.status(404).json({ error: "No pending draw found for this game" });
+    return;
+  }
+
+  try {
+    const result = await settleLotteryDraw(draw.id, winningNumbers, bonusNumbers);
+
+    // Ensure a future pending draw exists
+    const [stillPending] = await db
+      .select({ id: lotteryDrawsTable.id })
+      .from(lotteryDrawsTable)
+      .where(and(eq(lotteryDrawsTable.gameId, gameId), eq(lotteryDrawsTable.status, "pending")))
+      .limit(1);
+
+    if (!stillPending) {
+      const nextDate = new Date();
+      nextDate.setUTCDate(nextDate.getUTCDate() + 7);
+      const [game] = await db.select().from(lotteryGamesTable).where(eq(lotteryGamesTable.id, gameId)).limit(1);
+      await db.insert(lotteryDrawsTable).values({
+        gameId,
+        drawDate: nextDate,
+        jackpot: game?.jackpot ?? "0.00",
+        winningNumbers: [],
+        bonusNumbers: [],
+        status: "pending",
+      });
+    }
+
+    // Advance next_draw_at on the game to the new nearest pending draw
+    await advanceLotteryNextDrawAt(gameId);
+
+    res.json({
+      drawId: draw.id,
+      drawDate: draw.drawDate,
+      winningNumbers,
+      bonusNumbers,
+      settled: result.settled,
+      winners: result.winners,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
+  }
+});
+
+// ── Helper: advance next_draw_at for a single game (or all gosloto games) ────
+
+async function advanceLotteryNextDrawAt(gameId?: number): Promise<void> {
+  const { gte: gteOp } = await import("drizzle-orm");
+
+  const games = gameId
+    ? await db.select().from(lotteryGamesTable).where(eq(lotteryGamesTable.id, gameId)).limit(1)
+    : await db.select().from(lotteryGamesTable).where(eq(lotteryGamesTable.isActive, true));
+
+  for (const game of games) {
+    const [nextPending] = await db
+      .select({ drawDate: lotteryDrawsTable.drawDate })
+      .from(lotteryDrawsTable)
+      .where(
+        and(
+          eq(lotteryDrawsTable.gameId, game.id),
+          eq(lotteryDrawsTable.status, "pending"),
+          gteOp(lotteryDrawsTable.drawDate, new Date()),
+        ),
+      )
+      .orderBy(lotteryDrawsTable.drawDate)
+      .limit(1);
+
+    if (nextPending && (!game.nextDrawAt || nextPending.drawDate > game.nextDrawAt)) {
+      await db
+        .update(lotteryGamesTable)
+        .set({ nextDrawAt: nextPending.drawDate })
+        .where(eq(lotteryGamesTable.id, game.id));
+    }
+  }
+}
+
+export { advanceLotteryNextDrawAt };
+
 // ── GET /admin/lottery/scraper-logs ──────────────────────────────────────────
 
 router.get("/admin/lottery/scraper-logs", requireAdmin, async (req, res): Promise<void> => {

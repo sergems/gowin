@@ -145,6 +145,8 @@ function NumberBall({
           ? "ring-2 text-white"
           : disabled
           ? "text-muted-foreground/40 cursor-not-allowed bg-muted/20"
+          : isBonus
+          ? "text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 ring-1 ring-amber-500/40"
           : "text-muted-foreground hover:text-foreground hover:bg-muted/50 bg-muted/20"
         }
       `}
@@ -901,13 +903,18 @@ export default function LotteryGame() {
                       style={{ background: game.color }}
                     >{n}</span>
                   ))}
-                  {(draw.bonusNumbers as number[]).map((n) => (
-                    <span
-                      key={`b${n}`}
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white"
-                      style={{ background: "#f59e0b" }}
-                    >{n}</span>
-                  ))}
+                  {(draw.bonusNumbers as number[]).length > 0 && (
+                    <>
+                      <span className="text-amber-400/70 text-xs font-bold px-0.5 select-none">✦</span>
+                      {(draw.bonusNumbers as number[]).map((n) => (
+                        <span
+                          key={`b${n}`}
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                          style={{ background: "#f59e0b", border: "2px solid #f59e0b" }}
+                        >{n}</span>
+                      ))}
+                    </>
+                  )}
                 </div>
               </div>
             ))}

@@ -23,6 +23,7 @@ import {
 } from "./lib/lotterySeed";
 import { syncLotteryDraws } from "./lib/lotterySync";
 import { runAllScrapers } from "./lib/scrapers/ScraperManager";
+import { advanceLotteryNextDrawAt } from "./routes/lotteryScrapers";
 
 const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
@@ -93,6 +94,13 @@ server.listen(port, async () => {
       runAllScrapers().catch((err) => logger.error({ err }, "Lottery scraper run failed"));
     }, 5 * 60 * 1000);
   }, 2 * 60 * 1000);
+
+  // Keep lottery next_draw_at current — advance stale dates to the nearest
+  // future pending draw every 10 minutes so games never show "Drawing now" indefinitely.
+  advanceLotteryNextDrawAt().catch(() => {});
+  setInterval(() => {
+    advanceLotteryNextDrawAt().catch(() => {});
+  }, 10 * 60 * 1000);
 });
 
 // ── Result sync helper ────────────────────────────────────────────────────────
