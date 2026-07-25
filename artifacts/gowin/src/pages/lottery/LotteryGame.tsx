@@ -518,7 +518,7 @@ export default function LotteryGame() {
                 {recentDraws.slice(0, 7).map((draw) => (
                   <div key={draw.id} className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">{format(new Date(draw.drawDate), "MMM d, yyyy")}</span>
+                      <span className="text-xs text-muted-foreground">{format(new Date(draw.drawDate), "MMM d, yyyy 'at' HH:mm")}</span>
                       <Badge variant="outline" className="text-[10px] px-1 py-0">{draw.status}</Badge>
                     </div>
                     <div className="flex flex-wrap gap-1.5 items-center">

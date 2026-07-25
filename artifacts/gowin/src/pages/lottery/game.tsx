@@ -893,7 +893,7 @@ export default function LotteryGame() {
             {game.recentDraws.slice(0, 7).map((draw) => (
               <div key={draw.id} className="rounded-lg bg-muted/20 p-3">
                 <div className="text-xs text-muted-foreground mb-2">
-                  {format(new Date(draw.drawDate), "PPP")}
+                  {format(new Date(draw.drawDate), "PPP 'at' HH:mm")}
                 </div>
                 <div className="flex flex-wrap gap-1.5 items-center">
                   {(draw.winningNumbers as number[]).map((n) => (
