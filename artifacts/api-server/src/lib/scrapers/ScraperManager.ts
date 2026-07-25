@@ -4,11 +4,16 @@
  * Flow for each active game with a configured scraper:
  *   1. Load game from DB
  *   2. Instantiate the scraper class from the registry
- *   3. Call scraper.scrape(website) → DrawResult | null
- *   4. Duplicate check: if a settled draw already exists for this (game, drawDate) → log DUPLICATE
- *   5. If new result: settle the nearest pending draw (or create a settled record)
- *   6. Write to settlement_logs
- *   7. Write to scraper_logs
+ *   3. Call scraper.scrapeMany(website) → DrawResult[]  (oldest-first)
+ *      - GosLoto scrapers return ALL draws from the last 24 h from game-specific
+ *        pages, enabling catch-up after downtime gaps.
+ *      - Other scrapers fall back to a single result via scrape().
+ *   4. For each DrawResult:
+ *        a. Duplicate check using ±90-min window when drawDatetime is set,
+ *           or full calendar day otherwise.
+ *        b. If not a duplicate: settle the nearest pending draw (or create one).
+ *   5. After all results processed: ensure at least one future pending draw exists.
+ *   6. Write to scraper_logs and settlement_logs.
  *
  * A mutex flag prevents concurrent runs (cron overlap protection).
  */
@@ -23,7 +28,7 @@ import { eq, and, isNotNull, lte, gte } from "drizzle-orm";
 import { logger } from "../logger";
 import { settleLotteryDraw } from "../lotterySettle";
 import { getScraperByClass } from "./ScraperRegistry";
-import type { ScraperStatus } from "./types";
+import type { DrawResult, ScraperStatus } from "./types";
 
 export interface ScraperRunResult {
   gameId: number;
@@ -121,10 +126,10 @@ export async function runScraper(gameId: number): Promise<ScraperRunResult> {
     return makeResult(gameId, game.name, scraperClass, "FAILED", msg, Date.now() - start);
   }
 
-  // Run the scraper
-  let result;
+  // Run the scraper — get ALL recent draws (oldest first)
+  let drawResults: DrawResult[];
   try {
-    result = await scraper.scrape(website);
+    drawResults = await scraper.scrapeMany(website);
   } catch (err) {
     const msg = `Scraper threw: ${err instanceof Error ? err.message : String(err)}`;
     logger.error({ err, gameId, scraperClass }, "Scraper threw unexpectedly");
@@ -132,18 +137,103 @@ export async function runScraper(gameId: number): Promise<ScraperRunResult> {
     return makeResult(gameId, game.name, scraperClass, "FAILED", msg, Date.now() - start);
   }
 
-  if (!result) {
+  if (drawResults.length === 0) {
     const msg = "No result available yet (site returned no data)";
     await writeScraperLog(gameId, website, "NO_RESULT", msg, Date.now() - start);
     return makeResult(gameId, game.name, scraperClass, "NO_RESULT", msg, Date.now() - start);
   }
 
+  // Process each draw result independently (oldest-first order)
+  let settledCount = 0;
+  let duplicateCount = 0;
+
+  for (const result of drawResults) {
+    const outcome = await processDrawResult(gameId, result);
+    if (outcome === "settled") {
+      settledCount++;
+    } else if (outcome === "duplicate") {
+      duplicateCount++;
+    } else {
+      // outcome is an Error — log and continue to next draw
+      logger.warn(
+        { gameId, drawDatetime: result.drawDatetime, err: outcome.message },
+        "Settlement failed for one draw; continuing"
+      );
+    }
+  }
+
+  // Ensure at least one future pending draw exists (run once after all settlements)
+  const [stillPending] = await db
+    .select({ id: lotteryDrawsTable.id })
+    .from(lotteryDrawsTable)
+    .where(and(eq(lotteryDrawsTable.gameId, gameId), eq(lotteryDrawsTable.status, "pending")))
+    .limit(1);
+
+  if (!stillPending) {
+    const nextDate = new Date();
+    nextDate.setUTCDate(nextDate.getUTCDate() + 7);
+    await db.insert(lotteryDrawsTable).values({
+      gameId,
+      drawDate: nextDate,
+      jackpot: game.jackpot,
+      winningNumbers: [],
+      bonusNumbers: [],
+      status: "pending",
+    });
+  }
+
+  const execMs = Date.now() - start;
+
+  // Build summary message and determine overall status
+  let status: ScraperStatus;
+  let msg: string;
+
+  if (settledCount > 0) {
+    const lastResult = drawResults[drawResults.length - 1]!;
+    const numsStr = lastResult.numbers.join(",");
+    const bonusStr = lastResult.bonus.length ? `+[${lastResult.bonus.join(",")}]` : "";
+    msg = `Settled ${settledCount} draw(s) ${numsStr}${bonusStr}`;
+    if (duplicateCount > 0) msg += ` (${duplicateCount} duplicate(s) skipped)`;
+    if (drawResults.length > 1) msg += ` — ${drawResults.length} draws checked`;
+    status = "SUCCESS";
+    logger.info({ gameId, gameName: game.name, settledCount, duplicateCount }, "Scraper settled draws");
+  } else if (duplicateCount > 0) {
+    const result = drawResults[drawResults.length - 1]!;
+    const windowDesc = result.drawDatetime
+      ? `±90 min around ${result.drawDatetime}`
+      : `calendar day ${result.drawDate}`;
+    msg = `All ${duplicateCount} draw(s) already settled (${windowDesc})`;
+    status = "DUPLICATE";
+  } else {
+    msg = "No draws could be settled";
+    status = "FAILED";
+  }
+
+  await writeScraperLog(gameId, website, status, msg, execMs);
+
+  const lastResult = drawResults[drawResults.length - 1]!;
+  return makeResult(
+    gameId, game.name, scraperClass, status, msg, execMs,
+    lastResult.drawDate, lastResult.numbers, lastResult.bonus
+  );
+}
+
+// ── Per-draw settlement ────────────────────────────────────────────────────────
+
+/**
+ * Process a single DrawResult for a game.
+ * Returns "settled", "duplicate", or an Error.
+ */
+async function processDrawResult(
+  gameId: number,
+  result: DrawResult
+): Promise<"settled" | "duplicate" | Error> {
   // Determine time window for duplicate check and pending-draw lookup.
   //
   // When drawDatetime is set (full UTC timestamp), use a ±90-minute window so
-  // games that draw multiple times per day (4/20 draws 5×/day, 6/45 draws 7×/day)
-  // can settle each draw independently.  Without a precise time we fall back to
-  // the full calendar-day window so existing single-draw-per-day scrapers are
+  // games that draw multiple times per day (4/20 draws many times/day, 6/45 draws
+  // 7×/day) can settle each draw independently. Without a precise time we fall
+  // back to the full calendar-day window so single-draw-per-day scrapers are
   // unaffected.
   let drawDateStart: Date;
   let drawDateEnd: Date;
@@ -158,6 +248,7 @@ export async function runScraper(gameId: number): Promise<ScraperRunResult> {
     drawDateEnd   = new Date(result.drawDate + "T23:59:59Z");
   }
 
+  // Duplicate check
   const [existing] = await db
     .select({ id: lotteryDrawsTable.id })
     .from(lotteryDrawsTable)
@@ -172,18 +263,10 @@ export async function runScraper(gameId: number): Promise<ScraperRunResult> {
     .limit(1);
 
   if (existing) {
-    const windowDesc = result.drawDatetime
-      ? `±90 min around ${result.drawDatetime}`
-      : `calendar day ${result.drawDate}`;
-    const msg = `Duplicate: settled draw #${existing.id} already exists within ${windowDesc}`;
-    await writeScraperLog(gameId, website, "DUPLICATE", msg, Date.now() - start);
-    return makeResult(
-      gameId, game.name, scraperClass, "DUPLICATE", msg, Date.now() - start,
-      result.drawDate, result.numbers, result.bonus
-    );
+    return "duplicate";
   }
 
-  // Find a pending draw within the same time window.
+  // Find a pending draw within the same time window
   const [pendingDraw] = await db
     .select()
     .from(lotteryDrawsTable)
@@ -203,13 +286,17 @@ export async function runScraper(gameId: number): Promise<ScraperRunResult> {
   if (pendingDraw) {
     drawId = pendingDraw.id;
   } else {
-    // No pending draw — create a settled record to store the result
+    // No matching pending draw — create a settled-placeholder at the draw time
+    const drawTimestamp = result.drawDatetime
+      ? new Date(result.drawDatetime)
+      : new Date(result.drawDate + "T20:00:00Z");
+
     const jackpot = (result.jackpot ?? 0).toFixed(2);
     const [newDraw] = await db
       .insert(lotteryDrawsTable)
       .values({
         gameId,
-        drawDate: new Date(result.drawDate + "T20:00:00Z"),
+        drawDate: drawTimestamp,
         jackpot,
         winningNumbers: result.numbers,
         bonusNumbers: result.bonus,
@@ -225,60 +312,21 @@ export async function runScraper(gameId: number): Promise<ScraperRunResult> {
   try {
     settleResult = await settleLotteryDraw(drawId, result.numbers, result.bonus);
   } catch (err) {
-    const msg = `Settlement failed: ${err instanceof Error ? err.message : String(err)}`;
-    logger.error({ err, drawId, gameId }, "Settlement failed during scraper run");
-    await writeScraperLog(gameId, website, "FAILED", msg, Date.now() - start);
-    return makeResult(gameId, game.name, scraperClass, "FAILED", msg, Date.now() - start,
-      result.drawDate, result.numbers, result.bonus);
+    return err instanceof Error ? err : new Error(String(err));
   }
   const settleMs = Date.now() - settleStart;
 
   // Write settlement log
-  const totalPaid = 0; // settleLotteryDraw credits individually; we track count only
   await db.insert(settlementLogsTable).values({
     drawId,
     gameId,
     ticketsChecked: settleResult.settled,
     winningTickets: settleResult.winners,
-    totalPaid: totalPaid.toFixed(2),
+    totalPaid: "0.00",
     executionTime: settleMs,
   });
 
-  // Ensure next pending draw exists for this game
-  const [stillPending] = await db
-    .select({ id: lotteryDrawsTable.id })
-    .from(lotteryDrawsTable)
-    .where(and(eq(lotteryDrawsTable.gameId, gameId), eq(lotteryDrawsTable.status, "pending")))
-    .limit(1);
-
-  if (!stillPending) {
-    // Create a placeholder pending draw 7 days out so users can keep placing tickets
-    const nextDate = new Date();
-    nextDate.setUTCDate(nextDate.getUTCDate() + 7);
-    await db.insert(lotteryDrawsTable).values({
-      gameId,
-      drawDate: nextDate,
-      jackpot: game.jackpot,
-      winningNumbers: [],
-      bonusNumbers: [],
-      status: "pending",
-    });
-  }
-
-  const execMs = Date.now() - start;
-  const msg =
-    `Settled draw #${drawId}: ${result.numbers.join(",")}` +
-    (result.bonus.length ? `+[${result.bonus.join(",")}]` : "") +
-    ` — ${settleResult.settled} tickets checked, ${settleResult.winners} winners`;
-
-  await writeScraperLog(gameId, website, "SUCCESS", msg, execMs);
-
-  logger.info({ gameId, gameName: game.name, drawId, ...settleResult }, "Scraper settled draw");
-
-  return makeResult(
-    gameId, game.name, scraperClass, "SUCCESS", msg, execMs,
-    result.drawDate, result.numbers, result.bonus
-  );
+  return "settled";
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────

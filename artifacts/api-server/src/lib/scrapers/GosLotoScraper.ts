@@ -2,11 +2,13 @@
  * GosLoto scrapers for Russian Stoloto lottery games.
  *
  * Primary source:  gosloto.app  (accessible from Replit and most environments)
- *   - Plain HTML page, results embedded as badge-pill spans by game type
- *   - Times shown in Moscow Standard Time (MSK = UTC+3)
+ *   - Game-specific pages  /results/{gamePath}  show the full day's draw history.
+ *   - scrapeMany() returns ALL draws from the last 24 h (oldest first) so the
+ *     ScraperManager can settle missed draws after a downtime gap.
+ *   - Times shown in Moscow Standard Time (MSK = UTC+3).
  *
  * Fallback source: Stoloto ISS API  https://iss.stoloto.ru/{game}/draws?count=1
- *   - Blocked from Replit dev networks; may work in production
+ *   - Blocked from Replit dev networks; may work in production.
  *
  * Russian lotteries have NO bonus ball — bonus is always returned as [].
  *
@@ -87,6 +89,16 @@ function parseGoslotoSubtitle(
   return { utc, drawNumber: drawNum };
 }
 
+// ── Shared fetch headers ───────────────────────────────────────────────────────
+
+const GOSLOTO_APP_HEADERS = {
+  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+  "Accept-Language": "en-US,en;q=0.9",
+  "Cache-Control": "no-cache",
+};
+
 // ── Shared logic ───────────────────────────────────────────────────────────────
 
 abstract class GosLotoBaseScraper extends BaseScraper {
@@ -105,14 +117,38 @@ abstract class GosLotoBaseScraper extends BaseScraper {
    */
   readonly goslotoAppFieldOffset: number = 0;
   /**
+   * gosloto.app game path used in game-specific pages, e.g. "4x20", "6x45".
+   * Set to "" for games not on gosloto.app.
+   */
+  readonly goslotoAppGamePath: string = "";
+  /**
    * Stoloto "game key" used in fallback URLs, e.g. "gosloto645".
    */
   readonly gameKey: string = "";
 
+  // ── scrapeMany: fetch ALL recent draws via game-specific page ─────────────
+
+  /**
+   * Returns all draws from the last 24 h found on the gosloto.app game page,
+   * in chronological order (oldest first). Falls back to a single scrape if
+   * the game page is unavailable or the game is not on gosloto.app.
+   */
+  override async scrapeMany(website: string): Promise<DrawResult[]> {
+    if (this.goslotoAppGamePath && this.goslotoAppBadgeClass) {
+      const many = await this.tryGoslotoAppGamePage();
+      if (many.length > 0) return many;
+    }
+    // Fall back to single result from homepage / ISS API
+    const single = await this.scrape(website);
+    return single ? [single] : [];
+  }
+
+  // ── scrape: single latest result (homepage → ISS API) ────────────────────
+
   async scrape(website: string): Promise<DrawResult | null> {
-    // ── Strategy 1: gosloto.app HTML scraper (accessible from Replit) ─────────
+    // ── Strategy 1: gosloto.app homepage (accessible from Replit) ────────────
     if (this.goslotoAppBadgeClass) {
-      const appResult = await this.tryGoslotoApp();
+      const appResult = await this.tryGoslotoAppHomepage();
       if (appResult) return appResult;
     }
 
@@ -130,45 +166,38 @@ abstract class GosLotoBaseScraper extends BaseScraper {
     return null;
   }
 
-  // ── gosloto.app HTML scraper ────────────────────────────────────────────────
+  // ── gosloto.app game-specific page (full history) ─────────────────────────
 
-  private async tryGoslotoApp(): Promise<DrawResult | null> {
-    const html = await this.fetchPage("https://gosloto.app/", {
+  private async tryGoslotoAppGamePage(): Promise<DrawResult[]> {
+    const url = `https://gosloto.app/results/${this.goslotoAppGamePath}`;
+    const html = await this.fetchPage(url, {
       timeoutMs: 20_000,
       retries: 2,
-      headers: {
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Cache-Control": "no-cache",
-      },
+      headers: GOSLOTO_APP_HEADERS,
     });
-    if (!html) return null;
-
+    if (!html) return [];
     try {
-      return this.parseGoslotoAppHtml(html);
-    } catch (err) {
-      // Parsing failed — don't crash the scraper
-      return null;
+      return this.parseAllDrawsFromHtml(html);
+    } catch {
+      return [];
     }
   }
 
-  private parseGoslotoAppHtml(html: string): DrawResult | null {
+  /**
+   * Parse ALL draw cards from a gosloto.app game page (or homepage).
+   * Returns draws from the last 24 h in chronological order (oldest first).
+   */
+  private parseAllDrawsFromHtml(html: string): DrawResult[] {
     const $ = cheerio.load(html);
-    const badgeClass = this.goslotoAppBadgeClass;
-    const fieldOffset = this.goslotoAppFieldOffset;
+    const badgeClass    = this.goslotoAppBadgeClass;
+    const fieldOffset   = this.goslotoAppFieldOffset;
+    const cutoffMs      = Date.now() - 24 * 60 * 60 * 1_000; // last 24 h only
+    const results: DrawResult[] = [];
 
-    let found: DrawResult | null = null;
-
-    // Walk every .card-body; take the FIRST one containing our badge class
     $(".card-body").each((_i, el) => {
-      if (found) return false; // stop iteration
-
       const badges = $(el).find(`span.badge-pill.${badgeClass}`);
-      if (badges.length === 0) return; // not our game
+      if (badges.length === 0) return;
 
-      // Collect all valid numbers from the card
       const allNums: number[] = [];
       badges.each((_j, span) => {
         const n = parseInt($(span).text().trim(), 10);
@@ -180,27 +209,44 @@ abstract class GosLotoBaseScraper extends BaseScraper {
       const numbers = allNums.slice(fieldOffset, fieldOffset + this.expectedCount);
       if (numbers.length !== this.expectedCount) return;
 
-      // Parse subtitle for draw time + number
       const subtitleText = $(el).find(".card-subtitle").text();
       const parsed = parseGoslotoSubtitle(subtitleText);
+      if (!parsed) return; // skip cards without a parseable timestamp
 
-      const drawDatetime = parsed?.utc.toISOString();
-      const drawDate = parsed
-        ? parsed.utc.toISOString().slice(0, 10)
-        : this.todayUTC();
-      const drawNumber = parsed?.drawNumber;
+      // Only include draws from the last 24 h
+      if (parsed.utc.getTime() < cutoffMs) return;
 
-      found = {
-        drawDate,
-        drawDatetime,
-        drawNumber,
+      results.push({
+        drawDate:     parsed.utc.toISOString().slice(0, 10),
+        drawDatetime: parsed.utc.toISOString(),
+        drawNumber:   parsed.drawNumber,
         numbers,
-        bonus: [],
+        bonus:   [],
         jackpot: 0,
-      };
+      });
     });
 
-    return found;
+    // gosloto.app lists newest first — reverse for chronological settlement order
+    return results.reverse();
+  }
+
+  // ── gosloto.app homepage scraper (single latest result) ──────────────────
+
+  private async tryGoslotoAppHomepage(): Promise<DrawResult | null> {
+    const html = await this.fetchPage("https://gosloto.app/", {
+      timeoutMs: 20_000,
+      retries: 2,
+      headers: GOSLOTO_APP_HEADERS,
+    });
+    if (!html) return null;
+
+    try {
+      const all = this.parseAllDrawsFromHtml(html);
+      // Homepage shows newest first; after reverse the LAST item is the newest
+      return all.length > 0 ? all[all.length - 1]! : null;
+    } catch {
+      return null;
+    }
   }
 
   // ── Stoloto ISS API ─────────────────────────────────────────────────────────
@@ -252,39 +298,45 @@ abstract class GosLotoBaseScraper extends BaseScraper {
 
   private extractIssNumbers(item: StolotoItem): number[] {
     if (Array.isArray(item.winning_numbers)) {
-      return this.filterNums(item.winning_numbers.map(Number));
+      return this.filterIssNums(item.winning_numbers.map(Number));
     }
     if (typeof item.winning_numbers === "string") {
       const nums = this.parseNumbers(item.winning_numbers);
-      if (nums.length > 0) return this.filterNums(nums);
+      if (nums.length > 0) return this.filterIssNums(nums);
     }
     if (Array.isArray(item.draws)) {
       for (const d of item.draws) {
         const common = d?.draws?.common;
         if (typeof common === "string" && common.trim()) {
           const nums = this.parseNumbers(common);
-          if (nums.length > 0) return this.filterNums(nums);
+          if (nums.length > 0) return this.filterIssNums(nums);
         }
         if (d?.draws) {
           for (const val of Object.values(d.draws)) {
             if (typeof val === "string" && val.trim()) {
               const nums = this.parseNumbers(val);
-              if (nums.length >= this.expectedCount) return this.filterNums(nums);
+              if (nums.length >= this.expectedCount) return this.filterIssNums(nums);
             }
           }
         }
         if (Array.isArray((d as any).winning_numbers)) {
-          return this.filterNums((d as any).winning_numbers.map(Number));
+          return this.filterIssNums((d as any).winning_numbers.map(Number));
         }
       }
     }
     return [];
   }
 
-  private filterNums(nums: number[]): number[] {
+  /**
+   * Filter ISS numbers: valid range only, then take the first expectedCount.
+   * NOTE: ISS API already returns the correct numbers for each field separately,
+   * so we do NOT apply goslotoAppFieldOffset here — that offset only applies
+   * to gosloto.app cards where both 4/20 fields appear in the same card.
+   */
+  private filterIssNums(nums: number[]): number[] {
     return nums
       .filter((n) => !isNaN(n) && n >= 1 && n <= this.maxNumber)
-      .slice(this.goslotoAppFieldOffset, this.goslotoAppFieldOffset + this.expectedCount);
+      .slice(0, this.expectedCount);
   }
 }
 
@@ -297,6 +349,7 @@ export class GosLoto645Scraper extends GosLotoBaseScraper {
   readonly maxNumber = 45;
   readonly gameKey = "gosloto645";
   readonly goslotoAppBadgeClass = "b6outof45";
+  readonly goslotoAppGamePath = "6x45";
 }
 
 /** Gosloto 6/45 Plus — same draw as 6/45 */
@@ -306,6 +359,7 @@ export class GosLoto645PlusScraper extends GosLotoBaseScraper {
   readonly maxNumber = 45;
   readonly gameKey = "gosloto645plus";
   readonly goslotoAppBadgeClass = "b6outof45";
+  readonly goslotoAppGamePath = "6x45"; // same results page as 6/45
 }
 
 /** Gosloto 7/49 — 7 numbers from 1–49, multiple draws daily */
@@ -315,6 +369,7 @@ export class GosLoto749Scraper extends GosLotoBaseScraper {
   readonly maxNumber = 49;
   readonly gameKey = "gosloto749";
   readonly goslotoAppBadgeClass = "b7outof49";
+  readonly goslotoAppGamePath = "7x49";
 }
 
 /**
@@ -328,6 +383,7 @@ export class GosLoto420Field1Scraper extends GosLotoBaseScraper {
   readonly gameKey = "gosloto420";
   readonly goslotoAppBadgeClass = "b4outof20";
   readonly goslotoAppFieldOffset = 0;
+  readonly goslotoAppGamePath = "4x20";
 }
 
 /**
@@ -341,6 +397,7 @@ export class GosLoto420Field2Scraper extends GosLotoBaseScraper {
   readonly gameKey = "gosloto420";
   readonly goslotoAppBadgeClass = "b4outof20";
   readonly goslotoAppFieldOffset = 4;
+  readonly goslotoAppGamePath = "4x20";
 }
 
 /**
@@ -353,16 +410,18 @@ export class GosLoto550Scraper extends GosLotoBaseScraper {
   readonly maxNumber = 50;
   readonly gameKey = "gosloto550";
   readonly goslotoAppBadgeClass = "b5outof50";
+  readonly goslotoAppGamePath = "5x50";
 }
 
 /**
  * Gosloto 6/36 — 6 numbers from 1–36, weekly Sunday draw.
- * Not available on gosloto.app; ISS API only.
+ * Not available on gosloto.app (which shows the unrelated 5/36 game).
+ * ISS API is blocked from Replit; works in some production environments.
  */
 export class GosLoto636Scraper extends GosLotoBaseScraper {
   readonly name = "GosLoto636Scraper";
   readonly expectedCount = 6;
   readonly maxNumber = 36;
   readonly gameKey = "gosloto636";
-  // goslotoAppBadgeClass intentionally left "" — no gosloto.app source
+  // goslotoAppBadgeClass / goslotoAppGamePath intentionally left "" — not on gosloto.app
 }

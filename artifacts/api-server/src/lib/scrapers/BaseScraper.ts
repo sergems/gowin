@@ -17,6 +17,17 @@ export abstract class BaseScraper {
    */
   abstract scrape(website: string): Promise<DrawResult | null>;
 
+  /**
+   * Fetch ALL recent draws for this game (for catch-up when scraper was offline).
+   * Default implementation wraps scrape() — override in scrapers that support
+   * fetching a full draw history (e.g. GosLotoBaseScraper using game-specific pages).
+   * Results should be in chronological order (oldest first).
+   */
+  async scrapeMany(website: string): Promise<DrawResult[]> {
+    const single = await this.scrape(website);
+    return single ? [single] : [];
+  }
+
   // ── Shared helpers ─────────────────────────────────────────────────────────
 
   /**
