@@ -138,9 +138,25 @@ export async function runScraper(gameId: number): Promise<ScraperRunResult> {
     return makeResult(gameId, game.name, scraperClass, "NO_RESULT", msg, Date.now() - start);
   }
 
-  // Duplicate check: is there already a settled draw for this game on this date?
-  const drawDateStart = new Date(result.drawDate + "T00:00:00Z");
-  const drawDateEnd = new Date(result.drawDate + "T23:59:59Z");
+  // Determine time window for duplicate check and pending-draw lookup.
+  //
+  // When drawDatetime is set (full UTC timestamp), use a ±90-minute window so
+  // games that draw multiple times per day (4/20 draws 5×/day, 6/45 draws 7×/day)
+  // can settle each draw independently.  Without a precise time we fall back to
+  // the full calendar-day window so existing single-draw-per-day scrapers are
+  // unaffected.
+  let drawDateStart: Date;
+  let drawDateEnd: Date;
+  const NARROW_WINDOW_MS = 90 * 60_000; // ±90 minutes
+
+  if (result.drawDatetime) {
+    const dt = new Date(result.drawDatetime);
+    drawDateStart = new Date(dt.getTime() - NARROW_WINDOW_MS);
+    drawDateEnd   = new Date(dt.getTime() + NARROW_WINDOW_MS);
+  } else {
+    drawDateStart = new Date(result.drawDate + "T00:00:00Z");
+    drawDateEnd   = new Date(result.drawDate + "T23:59:59Z");
+  }
 
   const [existing] = await db
     .select({ id: lotteryDrawsTable.id })
@@ -156,7 +172,10 @@ export async function runScraper(gameId: number): Promise<ScraperRunResult> {
     .limit(1);
 
   if (existing) {
-    const msg = `Duplicate: draw for ${result.drawDate} already settled (draw #${existing.id})`;
+    const windowDesc = result.drawDatetime
+      ? `±90 min around ${result.drawDatetime}`
+      : `calendar day ${result.drawDate}`;
+    const msg = `Duplicate: settled draw #${existing.id} already exists within ${windowDesc}`;
     await writeScraperLog(gameId, website, "DUPLICATE", msg, Date.now() - start);
     return makeResult(
       gameId, game.name, scraperClass, "DUPLICATE", msg, Date.now() - start,
@@ -164,10 +183,7 @@ export async function runScraper(gameId: number): Promise<ScraperRunResult> {
     );
   }
 
-  // Only reuse a pending draw for the same calendar date. The old
-  // nearest-pending behavior could attach a missed historical result to a
-  // placeholder draw several days in the future, which made settlement and
-  // ticket history appear under the wrong date.
+  // Find a pending draw within the same time window.
   const [pendingDraw] = await db
     .select()
     .from(lotteryDrawsTable)
