@@ -24,7 +24,7 @@ import {
   scraperLogsTable,
   settlementLogsTable,
 } from "@workspace/db";
-import { eq, and, isNotNull, lte, gte } from "drizzle-orm";
+import { eq, and, isNotNull, lte, gte, sql } from "drizzle-orm";
 import { logger } from "../logger";
 import { settleLotteryDraw } from "../lotterySettle";
 import { getScraperByClass } from "./ScraperRegistry";
@@ -285,6 +285,14 @@ async function processDrawResult(
 
   if (pendingDraw) {
     drawId = pendingDraw.id;
+    // Stamp the actual draw time onto the pending draw so it shows correctly
+    // in the UI instead of the pre-scheduled placeholder time.
+    if (result.drawDatetime) {
+      await db
+        .update(lotteryDrawsTable)
+        .set({ drawDate: new Date(result.drawDatetime) })
+        .where(eq(lotteryDrawsTable.id, drawId));
+    }
   } else {
     // No matching pending draw — create a settled-placeholder at the draw time
     const drawTimestamp = result.drawDatetime
