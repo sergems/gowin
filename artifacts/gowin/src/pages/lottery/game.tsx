@@ -567,7 +567,7 @@ export default function LotteryGame() {
     <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
       {/* Back */}
       <Link href="/lottery">
-        <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-2">
           <ArrowLeft className="w-4 h-4" />
           Back to Lucky Numbers
         </button>
