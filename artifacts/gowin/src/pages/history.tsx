@@ -1,15 +1,17 @@
 import { useState, useEffect, useRef } from "react";
 import { useGetMyBets } from "@workspace/api-client-react";
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { fmtUTCDateTimeShort } from "@/lib/formatUTC";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, Trophy, Clock, CheckCircle2, XCircle, HelpCircle, Printer, Share2, RotateCcw, Copy, Check, BookMarked } from "lucide-react";
+import { ChevronDown, ChevronUp, Trophy, Clock, CheckCircle2, XCircle, HelpCircle, Printer, Share2, RotateCcw, Copy, Check, BookMarked, Ticket } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { printBetSlip, historyBetToPrintData } from "@/lib/printBetSlip";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { useBetSlip } from "@/contexts/BetSlipContext";
 import { CashOutButton } from "@/components/CashOutButton";
+import { useAuth } from "@/contexts/AuthContext";
 
 const STATUS_STYLES: Record<string, string> = {
   pending:    "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
@@ -18,6 +20,227 @@ const STATUS_STYLES: Record<string, string> = {
   void:       "bg-muted/40 text-muted-foreground border-border",
   cashed_out: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
 };
+
+// ── Lottery ticket types ──────────────────────────────────────────────────────
+interface LotteryTicketItem {
+  id: number;
+  gameId: number;
+  drawId: number | null;
+  numbers: number[];
+  bonusNumbers: number[];
+  stake: number;
+  status: string;
+  prizeAmount: number | null;
+  potentialWin: string | null;
+  odds: string | null;
+  playType: string | null;
+  bonusMode: string | null;
+  createdAt: string;
+  game: {
+    name: string;
+    slug: string;
+    color: string;
+    emoji: string;
+    mainNumbersMax: number;
+  } | null;
+  draw: {
+    id: number;
+    drawDate: string;
+    winningNumbers: number[];
+    bonusNumbers: number[];
+    status: string;
+  } | null;
+  _type: "lottery";
+}
+
+interface SportsBetItem {
+  _type: "sports";
+  [key: string]: any;
+}
+
+type HistoryItem = LotteryTicketItem | SportsBetItem;
+
+function LotteryNumberBall({ n, matched, color }: { n: number; matched?: boolean; color: string }) {
+  return (
+    <div
+      className="w-7 h-7 rounded-full text-[11px] font-bold flex items-center justify-center border-2 shrink-0"
+      style={
+        matched
+          ? { backgroundColor: color, borderColor: color, color: "#fff", boxShadow: `0 0 6px ${color}55` }
+          : { backgroundColor: "transparent", borderColor: "hsl(var(--border))", color: "hsl(var(--muted-foreground))" }
+      }
+    >
+      {n}
+    </div>
+  );
+}
+
+function LotteryTicketCard({ ticket, isOpen, onToggle, formatCurrencyFn }: {
+  ticket: LotteryTicketItem;
+  isOpen: boolean;
+  onToggle: () => void;
+  formatCurrencyFn: (amount: number) => string;
+}) {
+  const color = ticket.game?.color ?? "#8b5cf6";
+  const winSet = new Set(ticket.draw?.winningNumbers ?? []);
+  const bonusWinSet = new Set(ticket.draw?.bonusNumbers ?? []);
+  const drawSettled = ticket.draw?.status === "settled";
+  const potentialWin = ticket.potentialWin ? parseFloat(ticket.potentialWin) : null;
+
+  const borderColor =
+    ticket.status === "won"  ? "border-violet-500/40" :
+    ticket.status === "lost" ? "border-destructive/30" :
+                               "border-violet-500/20";
+
+  return (
+    <div className={`rounded-xl border bg-card overflow-hidden transition-colors ${borderColor}`}>
+      {/* Violet top accent strip */}
+      <div className="h-0.5 w-full" style={{ background: `linear-gradient(90deg, #8b5cf6, #a78bfa)` }} />
+
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onToggle}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(); } }}
+        className="w-full p-3.5 hover:bg-accent/20 transition-colors text-left cursor-pointer"
+      >
+        {/* Row 1: title + amount */}
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <span className="font-semibold text-sm leading-snug flex items-center gap-1.5">
+            <Ticket className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+            {ticket.game?.emoji && <span>{ticket.game.emoji}</span>}
+            {ticket.game?.name ?? "Lottery"}
+            <span className="text-muted-foreground font-normal">· #{ticket.id}</span>
+          </span>
+          <div className="text-right shrink-0">
+            <div className="text-[10px] text-muted-foreground leading-none mb-0.5">
+              {ticket.status === "won" ? "Won" : ticket.status === "lost" ? "Payout" : "To Win"}
+            </div>
+            <div className={`font-black text-sm leading-none ${ticket.status === "won" ? "text-violet-400" : ""}`}>
+              {ticket.status === "won" && ticket.prizeAmount != null
+                ? formatCurrencyFn(ticket.prizeAmount)
+                : potentialWin != null
+                ? formatCurrencyFn(potentialWin)
+                : "—"}
+            </div>
+          </div>
+        </div>
+
+        {/* Row 2: status badge + numbers preview */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${STATUS_STYLES[ticket.status] ?? STATUS_STYLES.pending}`}>
+              {ticket.status.toUpperCase()}
+            </span>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border bg-violet-500/20 text-violet-400 border-violet-500/30">
+              LOTTO
+            </span>
+            {ticket.odds && (
+              <span className="text-[10px] text-muted-foreground font-mono">@ {ticket.odds}</span>
+            )}
+          </div>
+          <div className="text-muted-foreground">
+            {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </div>
+        </div>
+
+        {/* Row 3: date */}
+        <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-1.5">
+          <Clock className="w-3 h-3 shrink-0" />
+          {format(new Date(ticket.createdAt), "PPP 'at' p")}
+        </div>
+      </div>
+
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            key="body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="border-t border-border/60">
+              {/* Numbers */}
+              <div className="px-5 py-4 space-y-3">
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-2">Your Numbers</p>
+                  <div className="flex flex-wrap gap-1.5 items-center">
+                    {ticket.numbers.map((n) => (
+                      <LotteryNumberBall key={n} n={n} matched={drawSettled ? winSet.has(n) : false} color={color} />
+                    ))}
+                    {ticket.bonusNumbers.length > 0 && (
+                      <>
+                        <span className="text-muted-foreground text-xs mx-0.5">+</span>
+                        {ticket.bonusNumbers.map((n) => (
+                          <LotteryNumberBall key={`b${n}`} n={n} matched={drawSettled ? bonusWinSet.has(n) : false} color="#f59e0b" />
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {drawSettled && ticket.draw && (
+                  <div>
+                    <p className="text-[11px] text-muted-foreground mb-2">Winning Numbers</p>
+                    <div className="flex flex-wrap gap-1.5 items-center">
+                      {ticket.draw.winningNumbers.map((n) => (
+                        <LotteryNumberBall key={n} n={n} matched={ticket.numbers.includes(n)} color={color} />
+                      ))}
+                      {ticket.draw.bonusNumbers.length > 0 && (
+                        <>
+                          <span className="text-muted-foreground text-xs mx-0.5">+</span>
+                          {ticket.draw.bonusNumbers.map((n) => (
+                            <LotteryNumberBall key={`b${n}`} n={n} matched={ticket.bonusNumbers.includes(n)} color="#f59e0b" />
+                          ))}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {!drawSettled && ticket.draw?.drawDate && (
+                  <p className="text-xs text-muted-foreground">
+                    Draw: {format(new Date(ticket.draw.drawDate), "PPP 'at' p")}
+                  </p>
+                )}
+              </div>
+
+              {/* Summary footer */}
+              <div className="flex items-center justify-between px-5 py-3.5 bg-accent/10 border-t border-border/60 text-sm">
+                <div className="flex gap-6">
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-0.5">Stake</div>
+                    <div className="font-bold">{formatCurrencyFn(ticket.stake)}</div>
+                  </div>
+                  {ticket.odds && (
+                    <div>
+                      <div className="text-xs text-muted-foreground mb-0.5">Odds</div>
+                      <div className="font-bold font-mono">{ticket.odds}</div>
+                    </div>
+                  )}
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-muted-foreground mb-0.5">
+                    {ticket.status === "won" ? "Prize Won" : "Potential Win"}
+                  </div>
+                  <div className={`font-black text-lg ${ticket.status === "won" ? "text-violet-400" : ""}`}>
+                    {ticket.status === "won" && ticket.prizeAmount != null
+                      ? formatCurrencyFn(ticket.prizeAmount)
+                      : potentialWin != null
+                      ? formatCurrencyFn(potentialWin)
+                      : "—"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 type SelectionOutcome = "won" | "lost" | "pending" | "unknown";
 
@@ -114,8 +337,9 @@ interface LiveFixtureData {
 export default function History() {
   const { formatCurrency, formatCurrencyAt, currency, exchangeRate, t } = useSiteSettings();
   const { shareBet, isSharing, replayBet } = useBetSlip();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"pending" | "won" | "lost" | "cashed_out">("pending");
-  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [liveFixtures, setLiveFixtures] = useState<Map<number, LiveFixtureData>>(new Map());
   // Share feature state
   const [sharingBetId, setSharingBetId] = useState<number | null>(null);
@@ -123,11 +347,43 @@ export default function History() {
   const [sharedCode, setSharedCode] = useState<{ betId: number; code: string } | null>(null);
   const [copiedShareCode, setCopiedShareCode] = useState(false);
 
-  const { data: betsData, isLoading } = useGetMyBets(undefined, {
+  const { data: betsData, isLoading: betsLoading } = useGetMyBets(undefined, {
     query: { queryKey: ["myBets", activeTab] },
   });
 
-  const bets = betsData?.bets?.filter((b) => b.status === activeTab) || [];
+  const { data: lotteryData, isLoading: lotteryLoading } = useQuery<{ tickets: LotteryTicketItem[] }>({
+    queryKey: ["myLotteryTickets"],
+    queryFn: async () => {
+      const token = localStorage.getItem("gowin_token");
+      const r = await fetch("/api/lottery/tickets/my?limit=200", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!r.ok) return { tickets: [] };
+      return r.json();
+    },
+    enabled: !!user,
+    staleTime: 30_000,
+  });
+
+  const isLoading = betsLoading || lotteryLoading;
+
+  const sportsBets: SportsBetItem[] = (betsData?.bets ?? [])
+    .filter((b: any) => b.status === activeTab)
+    .map((b: any) => ({ ...b, _type: "sports" }));
+
+  // lottery tickets: "cashed_out" tab has none
+  const lotteryTickets: LotteryTicketItem[] = activeTab === "cashed_out"
+    ? []
+    : (lotteryData?.tickets ?? [])
+        .filter((t) => t.status === activeTab)
+        .map((t) => ({ ...t, _type: "lottery" as const }));
+
+  // Merge and sort by createdAt descending
+  const allItems: HistoryItem[] = [...sportsBets, ...lotteryTickets].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
+  const bets = sportsBets; // keep for live polling (uses fixture ids)
 
   const pendingFixtureIds = activeTab === "pending"
     ? [...new Set(
@@ -172,10 +428,10 @@ export default function History() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fixtureIdsKey]);
 
-  const toggle = (id: number) =>
+  const toggle = (key: string) =>
     setExpanded((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      next.has(key) ? next.delete(key) : next.add(key);
       return next;
     });
 
@@ -219,14 +475,32 @@ export default function History() {
             [1, 2, 3].map((i) => (
               <div key={i} className="h-20 bg-accent/50 rounded-xl animate-pulse" />
             ))
-          ) : bets.length === 0 ? (
+          ) : allItems.length === 0 ? (
             <div className="py-16 text-center border border-dashed border-border rounded-xl">
               <Trophy className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
               <p className="text-muted-foreground">{t("bets.no_bets")}</p>
             </div>
           ) : (
-            bets.map((bet: any) => {
-              const isOpen = expanded.has(bet.id);
+            allItems.map((item) => {
+              // ── Lottery ticket card ──────────────────────────────────────
+              if (item._type === "lottery") {
+                const ticket = item as LotteryTicketItem;
+                const key = `lottery-${ticket.id}`;
+                return (
+                  <LotteryTicketCard
+                    key={key}
+                    ticket={ticket}
+                    isOpen={expanded.has(key)}
+                    onToggle={() => toggle(key)}
+                    formatCurrencyFn={(amount) => formatCurrency(amount)}
+                  />
+                );
+              }
+
+              // ── Sports bet card ──────────────────────────────────────────
+              const bet = item as SportsBetItem;
+              const key = `sports-${bet.id}`;
+              const isOpen = expanded.has(key);
               const selCount = bet.selections?.length ?? 0;
               const label = selCount === 1 ? t("bets.single") : `${selCount}-Fold Accumulator`;
 
@@ -244,7 +518,7 @@ export default function History() {
 
               return (
                 <div
-                  key={bet.id}
+                  key={key}
                   className={`rounded-xl border bg-card overflow-hidden transition-colors ${
                     hasLiveSelection
                       ? "border-red-500/30"
@@ -256,11 +530,11 @@ export default function History() {
                   <div
                     role="button"
                     tabIndex={0}
-                    onClick={() => toggle(bet.id)}
+                    onClick={() => toggle(key)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        toggle(bet.id);
+                        toggle(key);
                       }
                     }}
                     className="w-full p-3.5 hover:bg-accent/20 transition-colors text-left cursor-pointer"
