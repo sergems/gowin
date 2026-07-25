@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Trophy, ChevronDown, ChevronUp, Check, Loader2, Play, RefreshCw, Globe, Clock, Activity, AlertCircle, CheckCircle, XCircle, MinusCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Trophy, ChevronDown, ChevronUp, Check, Loader2, Play, RefreshCw, Globe, Clock, AlertCircle, CheckCircle, XCircle, MinusCircle, Search, Filter, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -527,6 +527,10 @@ export default function AdminLottery() {
   const [editGame, setEditGame] = useState<LotteryGame | null>(null);
   const [settleDraw, setSettleDraw] = useState<LotteryDraw | null>(null);
   const [showAddDraw, setShowAddDraw] = useState(false);
+  const [drawSearch, setDrawSearch] = useState("");
+  const [drawCountryFilter, setDrawCountryFilter] = useState("All");
+  const [collapsedUpcoming, setCollapsedUpcoming] = useState<Set<string>>(new Set());
+  const [collapsedSettled, setCollapsedSettled] = useState<Set<string>>(new Set());
 
   // ── Games ──
   const { data: games = [], isLoading: gamesLoading } = useQuery<LotteryGame[]>({
@@ -593,6 +597,65 @@ export default function AdminLottery() {
     },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
+
+  const deleteDraw = useMutation({
+    mutationFn: (id: number) => apiFetch(`/api/admin/lottery/draws/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/admin/lottery/draws"] });
+      toast({ title: "Draw removed" });
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  // Build a map of gameId → country for grouping draws
+  const gameCountryMap = useMemo(() => {
+    const m = new Map<number, string>();
+    games.forEach((g) => m.set(g.id, g.country));
+    return m;
+  }, [games]);
+
+  // All unique countries that appear in draws
+  const drawCountries = useMemo(() => {
+    const set = new Set<string>();
+    draws.forEach((d) => {
+      const c = gameCountryMap.get(d.gameId) ?? "Other";
+      set.add(c);
+    });
+    return ["All", ...Array.from(set).sort()];
+  }, [draws, gameCountryMap]);
+
+  // Filtered draws
+  const filteredDraws = useMemo(() => {
+    const q = drawSearch.toLowerCase();
+    return draws.filter((d) => {
+      const name = (d.game?.name ?? "").toLowerCase();
+      const country = (gameCountryMap.get(d.gameId) ?? "").toLowerCase();
+      const matchSearch = !q || name.includes(q) || country.includes(q);
+      const matchCountry = drawCountryFilter === "All" || (gameCountryMap.get(d.gameId) ?? "Other") === drawCountryFilter;
+      return matchSearch && matchCountry;
+    });
+  }, [draws, drawSearch, drawCountryFilter, gameCountryMap]);
+
+  // Split into upcoming (pending) and settled
+  const upcomingDraws = useMemo(() =>
+    filteredDraws.filter((d) => d.status !== "settled").sort((a, b) => new Date(a.drawDate).getTime() - new Date(b.drawDate).getTime()),
+    [filteredDraws]
+  );
+  const settledDraws = useMemo(() =>
+    filteredDraws.filter((d) => d.status === "settled").sort((a, b) => new Date(b.drawDate).getTime() - new Date(a.drawDate).getTime()),
+    [filteredDraws]
+  );
+
+  // Group draws by country
+  function groupByCountry(list: LotteryDraw[]) {
+    const map = new Map<string, LotteryDraw[]>();
+    list.forEach((d) => {
+      const c = gameCountryMap.get(d.gameId) ?? "Other";
+      if (!map.has(c)) map.set(c, []);
+      map.get(c)!.push(d);
+    });
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }
 
   // ── Tickets ──
   const { data: ticketsData, isLoading: ticketsLoading } = useQuery<{ tickets: LotteryTicket[]; total: number }>({
@@ -777,8 +840,35 @@ export default function AdminLottery() {
       {/* ── DRAWS TAB ── */}
       {tab === "draws" && (
         <div className="space-y-4">
-          <div className="flex justify-end">
-            <Button onClick={() => { setShowAddDraw(true); setSettleDraw(null); }} className="gap-2" disabled={games.length === 0}>
+          {/* Toolbar */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative flex-1 min-w-[180px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+              <input
+                type="text"
+                value={drawSearch}
+                onChange={(e) => setDrawSearch(e.target.value)}
+                placeholder="Search by game or country…"
+                className="w-full rounded-lg border border-input bg-background pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Filter className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              {drawCountries.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setDrawCountryFilter(c)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
+                    drawCountryFilter === c
+                      ? "bg-primary/15 border-primary/40 text-primary"
+                      : "bg-muted/20 border-border/50 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+            <Button onClick={() => { setShowAddDraw(true); setSettleDraw(null); }} className="gap-2 ml-auto" disabled={games.length === 0}>
               <Plus className="w-4 h-4" /> Add Draw
             </Button>
           </div>
@@ -799,63 +889,171 @@ export default function AdminLottery() {
             />
           )}
 
-          <div className="rounded-xl border border-border/50 overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Game</TableHead>
-                  <TableHead>Draw Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Winning Numbers</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {drawsLoading ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
-                ) : draws.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No draws yet.</TableCell></TableRow>
+          {drawsLoading ? (
+            <div className="text-center py-12 text-muted-foreground">Loading draws…</div>
+          ) : (
+            <>
+              {/* ── Upcoming Draws ── */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 px-1">
+                  <span className="text-sm font-bold text-foreground">Upcoming Draws</span>
+                  <span className="text-xs bg-yellow-500/15 text-yellow-400 border border-yellow-500/25 px-1.5 py-0.5 rounded-full font-semibold">
+                    {upcomingDraws.length}
+                  </span>
+                </div>
+
+                {upcomingDraws.length === 0 ? (
+                  <div className="rounded-xl border border-border/50 py-8 text-center text-sm text-muted-foreground">No upcoming draws match your filter.</div>
                 ) : (
-                  draws.map((d) => (
-                    <TableRow key={d.id}>
-                      <TableCell><span className="font-medium text-foreground">{d.game?.name ?? `Game #${d.gameId}`}</span></TableCell>
-                      <TableCell className="text-muted-foreground">{format(new Date(d.drawDate), "PPp")}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={
-                          d.status === "settled" ? "text-primary border-primary/30" : "text-yellow-400 border-yellow-500/30"
-                        }>
-                          {d.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {d.winningNumbers.length > 0 ? (
-                          <div className="flex gap-1 flex-wrap">
-                            {d.winningNumbers.map((n) => (
-                              <span key={n} className="w-6 h-6 rounded-full bg-primary/20 text-primary text-[10px] font-bold flex items-center justify-center">{n}</span>
-                            ))}
-                            {d.bonusNumbers.map((n) => (
-                              <span key={`b${n}`} className="w-6 h-6 rounded-full bg-yellow-500/20 text-yellow-500 text-[10px] font-bold flex items-center justify-center">{n}</span>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">Pending</span>
+                  groupByCountry(upcomingDraws).map(([country, countryDraws]) => {
+                    const isOpen = !collapsedUpcoming.has(country);
+                    return (
+                      <div key={country} className="rounded-xl border border-border/50 overflow-hidden">
+                        <button
+                          onClick={() => setCollapsedUpcoming((prev) => {
+                            const next = new Set(prev);
+                            next.has(country) ? next.delete(country) : next.add(country);
+                            return next;
+                          })}
+                          className="w-full flex items-center gap-3 px-4 py-3 bg-card hover:bg-accent/30 transition-colors text-left"
+                        >
+                          <Globe className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                          <span className="flex-1 text-sm font-semibold">{country}</span>
+                          <span className="text-xs text-muted-foreground bg-accent/50 px-1.5 py-0.5 rounded-full">
+                            {countryDraws.length}
+                          </span>
+                          {isOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                        </button>
+                        {isOpen && (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Game</TableHead>
+                                <TableHead>Draw Date</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {countryDraws.map((d) => (
+                                <TableRow key={d.id}>
+                                  <TableCell>
+                                    <span className="font-medium text-foreground text-sm">
+                                      {games.find((g) => g.id === d.gameId)?.emoji ?? "🎰"} {d.game?.name ?? `Game #${d.gameId}`}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell className="text-muted-foreground text-sm">{format(new Date(d.drawDate), "PPp")}</TableCell>
+                                  <TableCell>
+                                    <Badge variant="outline" className="text-yellow-400 border-yellow-500/30">{d.status}</Badge>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center gap-1 justify-end">
+                                      <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => { setSettleDraw(d); setShowAddDraw(false); }}>
+                                        <Trophy className="w-3 h-3" /> Settle
+                                      </Button>
+                                      <Button
+                                        size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive"
+                                        onClick={() => { if (confirm(`Remove draw for ${d.game?.name}?`)) deleteDraw.mutate(d.id); }}
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
                         )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-end">
-                          {d.status === "pending" && (
-                            <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setSettleDraw(d)}>
-                              <Trophy className="w-3 h-3" /> Settle
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                      </div>
+                    );
+                  })
                 )}
-              </TableBody>
-            </Table>
-          </div>
+              </div>
+
+              {/* ── Settled Draws ── */}
+              <div className="space-y-2 pt-2">
+                <div className="flex items-center gap-2 px-1">
+                  <span className="text-sm font-bold text-foreground">Settled Draws</span>
+                  <span className="text-xs bg-primary/15 text-primary border border-primary/25 px-1.5 py-0.5 rounded-full font-semibold">
+                    {settledDraws.length}
+                  </span>
+                </div>
+
+                {settledDraws.length === 0 ? (
+                  <div className="rounded-xl border border-border/50 py-8 text-center text-sm text-muted-foreground">No settled draws match your filter.</div>
+                ) : (
+                  groupByCountry(settledDraws).map(([country, countryDraws]) => {
+                    const isOpen = !collapsedSettled.has(country);
+                    return (
+                      <div key={country} className="rounded-xl border border-border/50 overflow-hidden">
+                        <button
+                          onClick={() => setCollapsedSettled((prev) => {
+                            const next = new Set(prev);
+                            next.has(country) ? next.delete(country) : next.add(country);
+                            return next;
+                          })}
+                          className="w-full flex items-center gap-3 px-4 py-3 bg-card hover:bg-accent/30 transition-colors text-left"
+                        >
+                          <Globe className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                          <span className="flex-1 text-sm font-semibold">{country}</span>
+                          <span className="text-xs text-muted-foreground bg-accent/50 px-1.5 py-0.5 rounded-full">
+                            {countryDraws.length}
+                          </span>
+                          {isOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                        </button>
+                        {isOpen && (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Game</TableHead>
+                                <TableHead>Draw Date</TableHead>
+                                <TableHead>Winning Numbers</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {countryDraws.map((d) => (
+                                <TableRow key={d.id}>
+                                  <TableCell>
+                                    <span className="font-medium text-foreground text-sm">
+                                      {games.find((g) => g.id === d.gameId)?.emoji ?? "🎰"} {d.game?.name ?? `Game #${d.gameId}`}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell className="text-muted-foreground text-sm">{format(new Date(d.drawDate), "PPp")}</TableCell>
+                                  <TableCell>
+                                    {d.winningNumbers.length > 0 ? (
+                                      <div className="flex gap-1 flex-wrap">
+                                        {d.winningNumbers.map((n) => (
+                                          <span key={n} className="w-6 h-6 rounded-full bg-primary/20 text-primary text-[10px] font-bold flex items-center justify-center">{n}</span>
+                                        ))}
+                                        {d.bonusNumbers.map((n) => (
+                                          <span key={`b${n}`} className="w-6 h-6 rounded-full bg-yellow-500/20 text-yellow-500 text-[10px] font-bold flex items-center justify-center">{n}</span>
+                                        ))}
+                                      </div>
+                                    ) : <span className="text-xs text-muted-foreground">—</span>}
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex justify-end">
+                                      <Button
+                                        size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive"
+                                        onClick={() => { if (confirm(`Remove settled draw for ${d.game?.name}?`)) deleteDraw.mutate(d.id); }}
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </>
+          )}
         </div>
       )}
 

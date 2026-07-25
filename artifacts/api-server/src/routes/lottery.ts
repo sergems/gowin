@@ -609,6 +609,15 @@ router.post("/admin/lottery/draws/:id/settle", requireAdmin, async (req, res): P
   }
 });
 
+// DELETE /admin/lottery/draws/:id
+router.delete("/admin/lottery/draws/:id", requireAdmin, async (req, res): Promise<void> => {
+  const drawId = parseInt(req.params.id, 10);
+  if (isNaN(drawId)) { res.status(400).json({ error: "Invalid draw id" }); return; }
+  const deleted = await db.delete(lotteryDrawsTable).where(eq(lotteryDrawsTable.id, drawId)).returning();
+  if (deleted.length === 0) { res.status(404).json({ error: "Draw not found" }); return; }
+  res.json({ ok: true });
+});
+
 // GET /admin/lottery/tickets
 router.get("/admin/lottery/tickets", requireAdmin, async (req, res): Promise<void> => {
   const page = parseInt((req.query.page as string) || "1", 10);
