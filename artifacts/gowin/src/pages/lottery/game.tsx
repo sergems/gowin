@@ -182,14 +182,14 @@ function PlayTypeSelector({
   return (
     <div>
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Play Type</p>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1">
         {available.map((pt) => {
           const active = value === pt;
           return (
             <button
               key={pt}
               onClick={() => onChange(pt)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all duration-150 ${
+              className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all duration-150 ${
                 active
                   ? "text-white border-transparent shadow-sm"
                   : "text-muted-foreground border-border/50 hover:border-border bg-muted/20 hover:bg-muted/40"
@@ -675,104 +675,104 @@ export default function LotteryGame() {
             )}
           </div>
         ) : (
-        <div className="flex gap-4">
-
-          {/* ── LEFT: selections ─────────────────────────────────────────── */}
-          <div className="flex-1 min-w-0 space-y-4">
-            {/* Header */}
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="font-bold text-foreground text-sm">Place Your Bet</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">Choose play type, numbers and stake</p>
-              </div>
-              <Button onClick={quickPick} variant="outline" size="sm" className="gap-1.5 shrink-0">
-                <Shuffle className="w-3.5 h-3.5" />
-                Quick Pick
-              </Button>
+        <div className="space-y-4">
+          {/* Header */}
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-bold text-foreground text-sm">Place Your Bet</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Choose play type, numbers and stake</p>
             </div>
-
-            {/* Play Type */}
-            <PlayTypeSelector
-              value={playType}
-              onChange={(v) => setPlayType(v)}
-              enabled={game.enabledPlayTypes}
-              color={game.color}
-            />
-
-            {/* Bonus Mode */}
-            {!isBonusOnly && (
-              <BonusModeSelector value={bonusMode} onChange={setBonusMode} hasBonus={hasBonus} />
-            )}
-
-            {/* Main Number Grid */}
-            {!isBonusOnly && (
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Pick {requiredMain} Number{requiredMain !== 1 ? "s" : ""}
-                  </p>
-                  <Badge
-                    variant="outline"
-                    className="text-[10px]"
-                    style={selectedMain.length === requiredMain ? { borderColor: `${game.color}60`, color: game.color } : {}}
-                  >
-                    {selectedMain.length} / {requiredMain}
-                  </Badge>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {Array.from({ length: game.mainNumbersMax }, (_, i) => i + 1).map((num) => (
-                    <NumberBall
-                      key={num}
-                      num={num}
-                      selected={selectedMain.includes(num)}
-                      onClick={() => toggleMain(num)}
-                      disabled={selectedMain.length >= requiredMain}
-                      color={game.color}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Bonus Ball Picker */}
-            {hasBonus && needsBonusPick && (
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <p className="text-xs font-semibold text-yellow-500 uppercase tracking-wider">Bonus Ball</p>
-                  <Badge
-                    variant="outline"
-                    className="text-[10px]"
-                    style={selectedBonus !== null ? { borderColor: "#f59e0b60", color: "#f59e0b" } : {}}
-                  >
-                    {selectedBonus !== null ? "1 / 1" : "0 / 1"}
-                  </Badge>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {Array.from({ length: game.bonusNumbersMax }, (_, i) => i + 1).map((num) => (
-                    <NumberBall
-                      key={num}
-                      num={num}
-                      selected={selectedBonus === num}
-                      onClick={() => toggleBonus(num)}
-                      disabled={false}
-                      color={game.color}
-                      isBonus
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Bonus ball required hint */}
-            {needsBonusPick && hasBonus && selectedBonus === null && (
-              <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-3 py-2 text-xs text-yellow-500 font-medium">
-                ⭐ Select your Bonus Ball above to continue
-              </div>
-            )}
+            <Button onClick={quickPick} variant="outline" size="sm" className="gap-1.5 shrink-0">
+              <Shuffle className="w-3.5 h-3.5" />
+              Quick Pick
+            </Button>
           </div>
 
-          {/* ── RIGHT: stake + bet ───────────────────────────────────────── */}
-          <div className="w-44 shrink-0 flex flex-col gap-3 justify-start pt-8">
+          {/* Play Type spans the full card so 1–5 Numbers stay on one line. */}
+          <PlayTypeSelector
+            value={playType}
+            onChange={(v) => setPlayType(v)}
+            enabled={game.enabledPlayTypes}
+            color={game.color}
+          />
+
+          <div className="flex flex-col md:flex-row gap-4 items-stretch">
+            {/* ── LEFT: selections ───────────────────────────────────────── */}
+            <div className="flex-1 min-w-0 space-y-4">
+              {/* Bonus Mode */}
+              {!isBonusOnly && (
+                <BonusModeSelector value={bonusMode} onChange={setBonusMode} hasBonus={hasBonus} />
+              )}
+
+              {/* Main Number Grid */}
+              {!isBonusOnly && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Pick {requiredMain} Number{requiredMain !== 1 ? "s" : ""}
+                    </p>
+                    <Badge
+                      variant="outline"
+                      className="text-[10px]"
+                      style={selectedMain.length === requiredMain ? { borderColor: `${game.color}60`, color: game.color } : {}}
+                    >
+                      {selectedMain.length} / {requiredMain}
+                    </Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Array.from({ length: game.mainNumbersMax }, (_, i) => i + 1).map((num) => (
+                      <NumberBall
+                        key={num}
+                        num={num}
+                        selected={selectedMain.includes(num)}
+                        onClick={() => toggleMain(num)}
+                        disabled={selectedMain.length >= requiredMain}
+                        color={game.color}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Bonus Ball Picker */}
+              {hasBonus && needsBonusPick && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <p className="text-xs font-semibold text-yellow-500 uppercase tracking-wider">Bonus Ball</p>
+                    <Badge
+                      variant="outline"
+                      className="text-[10px]"
+                      style={selectedBonus !== null ? { borderColor: "#f59e0b60", color: "#f59e0b" } : {}}
+                    >
+                      {selectedBonus !== null ? "1 / 1" : "0 / 1"}
+                    </Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Array.from({ length: game.bonusNumbersMax }, (_, i) => i + 1).map((num) => (
+                      <NumberBall
+                        key={num}
+                        num={num}
+                        selected={selectedBonus === num}
+                        onClick={() => toggleBonus(num)}
+                        disabled={false}
+                        color={game.color}
+                        isBonus
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Bonus ball required hint */}
+              {needsBonusPick && hasBonus && selectedBonus === null && (
+                <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-3 py-2 text-xs text-yellow-500 font-medium">
+                  ⭐ Select your Bonus Ball above to continue
+                </div>
+              )}
+            </div>
+
+            {/* ── RIGHT: stake + bet, anchored to the bottom of the number grid ── */}
+            <div className="w-full md:w-44 shrink-0 flex flex-col gap-3 justify-end">
 
             {/* Selected numbers summary */}
             {(selectedMain.length > 0 || selectedBonus !== null) && (
@@ -870,8 +870,8 @@ export default function LotteryGame() {
                   : ""}
               </p>
             )}
+            </div>
           </div>
-
         </div>
         )}
 
