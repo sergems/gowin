@@ -314,10 +314,8 @@ function PopularCard({ game }: { game: LotteryGame }) {
   return (
     <Link href={`/lottery/${game.slug}`}>
       <div
-        className="relative flex flex-col rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.03] hover:-translate-y-1 select-none"
+        className="relative flex flex-col rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.03] hover:-translate-y-1 select-none w-full"
         style={{
-          minWidth: 170,
-          width: 170,
           boxShadow: `0 4px 24px ${game.color}40, 0 1px 4px #0008`,
           border: `1px solid ${game.color}35`,
         }}
@@ -405,7 +403,7 @@ function PopularSection({ games }: { games: LotteryGame[] }) {
         <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
         <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Popular</h2>
       </div>
-      <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {featured.map((game) => <PopularCard key={game.id} game={game} />)}
       </div>
     </div>
