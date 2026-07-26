@@ -107,6 +107,7 @@ const HOUR = 3_600_000;
 const pad = (n: number) => String(n).padStart(2, "0");
 
 function DrawTimer({ drawDate }: { drawDate: Date | null }) {
+  const { t } = useSiteSettings();
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -115,12 +116,12 @@ function DrawTimer({ drawDate }: { drawDate: Date | null }) {
     return () => clearInterval(id);
   }, [drawDate]);
 
-  if (!drawDate) return <span className="text-muted-foreground">TBD</span>;
+  if (!drawDate) return <span className="text-muted-foreground">{t("lottery.tbd")}</span>;
 
   const ms = drawDate.getTime() - now;
 
   if (ms <= 0) {
-    return <span className="text-green-400 font-semibold animate-pulse">Drawing now</span>;
+    return <span className="text-green-400 font-semibold animate-pulse">{t("lottery.drawing_now")}</span>;
   }
 
   const hh = Math.floor(ms / HOUR);
@@ -152,8 +153,8 @@ function DrawTimer({ drawDate }: { drawDate: Date | null }) {
     hour12: true,
   });
 
-  if (drawDay === today) return <span>Today at {time}</span>;
-  if (drawDay === tomorrow) return <span>Tomorrow at {time}</span>;
+  if (drawDay === today) return <span>{t("lottery.today_at").replace("{time}", time)}</span>;
+  if (drawDay === tomorrow) return <span>{t("lottery.tomorrow_at").replace("{time}", time)}</span>;
   return <span>{formatDistanceToNow(drawDate, { addSuffix: true })}</span>;
 }
 
@@ -190,6 +191,7 @@ function CountryFlag({ country }: { country: string }) {
 // ── Game row (compact, inside an open country panel) ─────────────────────────
 
 function LotteryGameRow({ game }: { game: LotteryGame }) {
+  const { t } = useSiteSettings();
   const drawDate = game.nextDrawAt ? new Date(game.nextDrawAt) : null;
   const [, tick] = useState(0);
   useEffect(() => {
@@ -231,18 +233,19 @@ function LotteryGameRow({ game }: { game: LotteryGame }) {
             <span className="font-semibold text-sm text-foreground leading-tight break-words">{game.name}</span>
             {tier === "closing" && (
               <span className="text-[9px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 px-1.5 py-0.5 rounded-full shrink-0 animate-pulse">
-                CLOSING
+                {t("lottery.closing_badge")}
               </span>
             )}
             {tier === "soon" && !isRussianLottery && (
               <span className="text-[9px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/25 px-1.5 py-0.5 rounded-full shrink-0">
-                SOON
+                {t("lottery.soon_badge")}
               </span>
             )}
           </div>
           <span className="hidden sm:block text-[11px] text-muted-foreground/70 leading-tight">
-            Pick {game.mainNumbersCount} of {game.mainNumbersMax}
-            {game.bonusNumbersCount > 0 && ` + ${game.bonusNumbersCount} bonus`}
+            {game.bonusNumbersCount > 0
+              ? t("lottery.pick_n_of_m_bonus").replace("{n}", String(game.mainNumbersCount)).replace("{m}", String(game.mainNumbersMax)).replace("{b}", String(game.bonusNumbersCount))
+              : t("lottery.pick_n_of_m").replace("{n}", String(game.mainNumbersCount)).replace("{m}", String(game.mainNumbersMax))}
           </span>
         </div>
 
@@ -254,7 +257,7 @@ function LotteryGameRow({ game }: { game: LotteryGame }) {
             }`}
           >
             {tier === "closing" ? <Timer className="w-2.5 h-2.5" /> : <Clock className="w-2.5 h-2.5" />}
-            <span className="text-[10px]">{tier === "closing" ? "Closing" : "Draw"}</span>
+            <span className="text-[10px]">{tier === "closing" ? t("lottery.closing_label") : t("lottery.draw_label")}</span>
           </div>
           <div className={`text-xs font-bold tabular-nums ${tier === "closing" ? "text-rose-400" : tier === "soon" ? "text-amber-400" : "text-foreground/80"}`}>
             <DrawTimer drawDate={drawDate} />
@@ -289,6 +292,7 @@ const POPULAR_SLUGS = [
 ] as const;
 
 function PopularCard({ game }: { game: LotteryGame }) {
+  const { t } = useSiteSettings();
   const drawDate = game.nextDrawAt ? new Date(game.nextDrawAt) : null;
   const [, tick] = useState(0);
   useEffect(() => {
@@ -309,7 +313,7 @@ function PopularCard({ game }: { game: LotteryGame }) {
     if (hh > 0) { countdownLabel = `${hh}h ${pad(mm)}m`; mobileCountdownLabel = `${hh}h ${pad(mm)}`; }
     else { countdownLabel = `${pad(mm)}:${pad(ss)}`; mobileCountdownLabel = `${pad(mm)}:${pad(ss)}`; }
   } else if (msLeft !== null && msLeft <= 0) {
-    countdownLabel = "Drawing now"; mobileCountdownLabel = "Now";
+    countdownLabel = t("lottery.drawing_now"); mobileCountdownLabel = t("lottery.drawing_now_short");
   }
 
   const flagUrl = countryFlagUrl(game.country);
@@ -339,7 +343,7 @@ function PopularCard({ game }: { game: LotteryGame }) {
             <span className="text-4xl leading-none drop-shadow-lg relative z-10">{game.emoji}</span>
           )}
           {tier === "closing" && (
-            <span className="absolute top-2 right-2 text-[9px] font-bold bg-rose-500/80 text-white px-1.5 py-0.5 rounded-full animate-pulse z-10">CLOSING</span>
+            <span className="absolute top-2 right-2 text-[9px] font-bold bg-rose-500/80 text-white px-1.5 py-0.5 rounded-full animate-pulse z-10">{t("lottery.closing_badge")}</span>
           )}
         </div>
 
@@ -377,6 +381,7 @@ function PopularCard({ game }: { game: LotteryGame }) {
 }
 
 function PopularSection({ games }: { games: LotteryGame[] }) {
+  const { t } = useSiteSettings();
   const featured = POPULAR_SLUGS
     .map((slug) => games.find((g) => g.slug === slug))
     .filter((g): g is LotteryGame => g !== undefined);
@@ -385,7 +390,7 @@ function PopularSection({ games }: { games: LotteryGame[] }) {
     <div>
       <div className="flex items-center gap-2 mb-3">
         <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-        <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Popular</h2>
+        <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">{t("lottery.popular")}</h2>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {featured.map((game) => <PopularCard key={game.id} game={game} />)}
@@ -512,8 +517,8 @@ export default function LotteryLobby() {
       ) : grouped.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <span className="text-5xl mb-4 block">🎰</span>
-          <p className="text-lg font-medium">No games available yet</p>
-          <p className="text-sm mt-1">Check back soon</p>
+          <p className="text-lg font-medium">{t("lottery.no_games_available")}</p>
+          <p className="text-sm mt-1">{t("lottery.check_back_soon")}</p>
         </div>
       ) : (
         grouped.map(([country, countryGames]) => (

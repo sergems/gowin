@@ -179,7 +179,7 @@ export default function LotteryTickets() {
       <div className="max-w-2xl mx-auto px-4 py-20 text-center space-y-4">
         <Ticket className="w-10 h-10 mx-auto text-muted-foreground/30" />
         <p className="text-muted-foreground">{t("lottery.login_to_view")}</p>
-        <Link href="/login"><Button>Login</Button></Link>
+        <Link href="/login"><Button>{t("lottery.login_btn")}</Button></Link>
       </div>
     );
   }

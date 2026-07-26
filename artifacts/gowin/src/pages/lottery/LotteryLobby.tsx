@@ -117,7 +117,7 @@ function GameCard({ game }: { game: LotteryGame }) {
           <div className="flex items-center justify-between">
             <span className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">{t("lottery.pick_label")}</span>
             <span className="text-sm font-bold text-foreground">
-              1–{game.mainNumbersCount} numbers from 1–{game.mainNumbersMax}
+              {t("lottery.n_from_m_range").replace("{n}", String(game.mainNumbersCount)).replace("{m}", String(game.mainNumbersMax))}
             </span>
           </div>
           <div className="flex items-center justify-between">
@@ -206,7 +206,7 @@ export default function LotteryLobby() {
         <div className="flex-1 space-y-2">
           <div className="flex items-center gap-2">
             <Trophy className="w-5 h-5 text-primary" />
-            <span className="text-xs font-semibold uppercase tracking-widest text-primary">Lottery</span>
+            <span className="text-xs font-semibold uppercase tracking-widest text-primary">{t("lottery.lottery_label")}</span>
           </div>
           <h1 className="text-2xl md:text-3xl font-extrabold">{t("lottery.hero_heading")}</h1>
           <p className="text-muted-foreground text-sm leading-relaxed max-w-lg">
@@ -215,7 +215,7 @@ export default function LotteryLobby() {
         </div>
         <div className="flex flex-col items-center gap-2">
           <div className="text-center">
-            <div className="text-3xl font-black text-primary tabular-nums">Up to 100 000/1</div>
+            <div className="text-3xl font-black text-primary tabular-nums">{t("lottery.up_to_odds")}</div>
             <p className="text-xs text-muted-foreground mt-1">{t("lottery.best_odds")}</p>
           </div>
           {user && (

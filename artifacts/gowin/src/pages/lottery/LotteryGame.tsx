@@ -180,6 +180,7 @@ function BonusPicker({
 function PayoutTable({ config, color, hasBonusBall }: {
   config: PayoutConfig; color: string; hasBonusBall: boolean;
 }) {
+  const { t } = useSiteSettings();
   const excEntries = Object.entries(config.excludedBonus ?? {}).sort(([a], [b]) => +a - +b);
   const incEntries = Object.entries(config.includedBonus ?? {}).sort(([a], [b]) => +a - +b);
   const withBonusEntries = Object.entries(config.withBonus ?? {}).sort(([a], [b]) => +a - +b);
@@ -188,19 +189,19 @@ function PayoutTable({ config, color, hasBonusBall }: {
     <div className="rounded-2xl border bg-card overflow-hidden text-sm">
       <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
         <Trophy className="w-4 h-4 text-primary" />
-        <span className="font-bold">Prize Structure</span>
+        <span className="font-bold">{t("lottery.prize_structure")}</span>
       </div>
 
       {hasBonusBall && incEntries.length > 0 && (
         <>
           <div className="px-4 py-2 bg-primary/5 border-b border-border/30">
             <p className="text-[10px] font-extrabold uppercase tracking-widest italic" style={{ color }}>
-              Included Bonus
+              {t("lottery.included_bonus_section")}
             </p>
           </div>
           {incEntries.map(([count, odds]) => (
             <div key={count} className="flex justify-between px-4 py-2 border-b border-border/20">
-              <span className="text-muted-foreground">{count} Number{count !== "1" ? "s" : ""}</span>
+              <span className="text-muted-foreground">{count} {count !== "1" ? t("lottery.numbers_unit") : t("lottery.number_unit")}</span>
               <span className="font-bold tabular-nums" style={{ color }}>{odds}</span>
             </div>
           ))}
@@ -211,12 +212,12 @@ function PayoutTable({ config, color, hasBonusBall }: {
         <>
           <div className="px-4 py-2 bg-muted/40 border-b border-border/30">
             <p className="text-[10px] font-extrabold uppercase tracking-widest italic text-muted-foreground">
-              {hasBonusBall ? "Excluded Bonus" : "Payouts"}
+              {hasBonusBall ? t("lottery.excluded_bonus_section") : t("lottery.payouts_section")}
             </p>
           </div>
           {excEntries.map(([count, odds]) => (
             <div key={count} className="flex justify-between px-4 py-2 border-b border-border/20">
-              <span className="text-muted-foreground">{count} Number{count !== "1" ? "s" : ""}</span>
+              <span className="text-muted-foreground">{count} {count !== "1" ? t("lottery.numbers_unit") : t("lottery.number_unit")}</span>
               <span className="font-bold tabular-nums">{odds}</span>
             </div>
           ))}
@@ -495,11 +496,11 @@ export default function LotteryGame() {
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-sm font-medium text-muted-foreground">
-                        Bonus Ball (1–{game.bonusNumbersMax})
+                        {t("lottery.bonus_ball_range").replace("{n}", String(game.bonusNumbersMax))}
                       </p>
                       {bonusNumber !== null && (
                         <Badge variant="outline" style={{ borderColor: BONUS_COLOR, color: BONUS_COLOR }}>
-                          {bonusNumber} selected
+                          {bonusNumber} {t("lottery.selected_badge")}
                         </Badge>
                       )}
                     </div>
@@ -571,7 +572,7 @@ export default function LotteryGame() {
                   </div>
                   {bonusNumber !== null && includeBonus && (
                     <div className="flex items-center gap-1.5 pt-1 border-t border-border/30">
-                      <span className="text-[10px] text-yellow-500 font-bold uppercase">Bonus:</span>
+                      <span className="text-[10px] text-yellow-500 font-bold uppercase">{t("lottery.bonus_colon")}</span>
                       <NumberBall n={bonusNumber} selected color={BONUS_COLOR} size="sm" />
                     </div>
                   )}
@@ -587,7 +588,7 @@ export default function LotteryGame() {
               </div>
               {numbers.length > 0 && potentialOdds && (
                 <div className="flex justify-between text-muted-foreground">
-                  <span>{numbers.length} number{numbers.length !== 1 ? "s" : ""} odds</span>
+                  <span>{numbers.length} {numbers.length !== 1 ? t("lottery.numbers_unit") : t("lottery.number_unit")} odds</span>
                   <span className="font-bold" style={{ color }}>{potentialOdds}</span>
                 </div>
               )}

@@ -47,16 +47,17 @@ interface TicketsResponse {
   limit: number;
 }
 
-const STATUS_STYLES: Record<string, { cls: string; icon: typeof Ticket; label: string }> = {
-  pending: { cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30", icon: Clock,   label: "Pending" },
-  won:     { cls: "bg-primary/15 text-primary border-primary/30",          icon: Trophy,  label: "Won" },
-  lost:    { cls: "bg-destructive/15 text-destructive border-destructive/30", icon: XCircle, label: "Lost" },
+const STATUS_STYLES: Record<string, { cls: string; icon: typeof Ticket; labelKey: string }> = {
+  pending: { cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30", icon: Clock,   labelKey: "lottery.status_pending" },
+  won:     { cls: "bg-primary/15 text-primary border-primary/30",          icon: Trophy,  labelKey: "lottery.status_won" },
+  lost:    { cls: "bg-destructive/15 text-destructive border-destructive/30", icon: XCircle, labelKey: "lottery.status_lost" },
 };
 
 function TicketCard({ ticket }: { ticket: LotteryTicket }) {
   const { formatCurrency, t } = useSiteSettings();
   const status = STATUS_STYLES[ticket.status] ?? STATUS_STYLES.pending!;
   const StatusIcon = status.icon;
+  const statusLabel = t(status.labelKey as any);
   const game = ticket.game;
   const draw = ticket.draw;
 
@@ -83,7 +84,7 @@ function TicketCard({ ticket }: { ticket: LotteryTicket }) {
           className={`text-xs flex items-center gap-1 ${status.cls}`}
         >
           <StatusIcon className="w-3 h-3" />
-          {status.label}
+          {statusLabel}
         </Badge>
       </div>
 
@@ -159,7 +160,7 @@ function TicketCard({ ticket }: { ticket: LotteryTicket }) {
         <div className="flex items-center justify-between pt-2 border-t border-border/30">
           <div className="text-xs text-muted-foreground">
             Stake: <span className="text-foreground font-medium">${ticket.stake.toFixed(2)}</span>
-            {draw && <span className="ml-2">· Draw: {format(new Date(draw.drawDate), "PP")}</span>}
+            {draw && <span className="ml-2">· {t("lottery.draw_date_label")} {format(new Date(draw.drawDate), "PP")}</span>}
           </div>
           {ticket.status === "won" && ticket.prizeAmount && (
             <span className="text-sm font-black text-primary">
@@ -231,10 +232,10 @@ export default function LotteryTickets() {
       {/* Tabs */}
       <Tabs value={tab} onValueChange={(v) => { setTab(v as any); setPage(1); }}>
         <TabsList className="grid grid-cols-4 w-full">
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="pending">Pending</TabsTrigger>
-          <TabsTrigger value="won">Won</TabsTrigger>
-          <TabsTrigger value="lost">Lost</TabsTrigger>
+          <TabsTrigger value="all">{t("lottery.tab_all")}</TabsTrigger>
+          <TabsTrigger value="pending">{t("lottery.tab_pending")}</TabsTrigger>
+          <TabsTrigger value="won">{t("lottery.tab_won")}</TabsTrigger>
+          <TabsTrigger value="lost">{t("lottery.tab_lost")}</TabsTrigger>
         </TabsList>
       </Tabs>
 
