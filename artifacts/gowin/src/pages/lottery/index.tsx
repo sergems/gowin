@@ -360,31 +360,20 @@ function PopularCard({ game }: { game: LotteryGame }) {
           )}
         </div>
 
-        {/* Body */}
-        <div className="flex flex-col gap-2 px-3 py-3 bg-card flex-1">
-          <div>
-            <p className="font-bold text-sm leading-tight text-foreground line-clamp-2">{game.name}</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">{game.country}</p>
-          </div>
-
-          {countdownLabel && (
-            <div
-              className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg"
-              style={{
-                background: `${game.color}18`,
-                color: tier === "closing" ? "#f87171" : tier === "soon" ? "#fbbf24" : game.color,
-              }}
-            >
-              {tier === "closing" ? <Timer className="w-3 h-3 shrink-0" /> : <Clock className="w-3 h-3 shrink-0" />}
-              <span className="tabular-nums truncate">{countdownLabel}</span>
-            </div>
-          )}
-
-          <button
-            className="w-full mt-auto rounded-lg py-1.5 text-xs font-bold text-white transition-all hover:brightness-110 active:scale-95"
-            style={{ background: game.color, boxShadow: `0 2px 10px ${game.color}50` }}
+        {/* Footer: timer + Bet on one line */}
+        <div className="flex items-center gap-2 px-3 py-2.5 bg-card">
+          <div
+            className="flex items-center gap-1 text-[11px] font-semibold flex-1 min-w-0"
+            style={{ color: tier === "closing" ? "#f87171" : "var(--muted-foreground)" }}
           >
-            Play Now
+            {tier === "closing" ? <Timer className="w-3 h-3 shrink-0" /> : <Clock className="w-3 h-3 shrink-0" />}
+            <span className="tabular-nums truncate">{countdownLabel || "—"}</span>
+          </div>
+          <button
+            className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold text-white transition-all hover:brightness-110 active:scale-95"
+            style={{ background: game.color, boxShadow: `0 2px 8px ${game.color}50` }}
+          >
+            Bet
           </button>
         </div>
       </div>
