@@ -199,6 +199,7 @@ function LotteryGameRow({ game }: { game: LotteryGame }) {
   }, [drawDate]);
 
   const tier = urgency(drawDate);
+  const isRussianLottery = game.country.trim().toLowerCase() === "russia";
 
   return (
     <Link href={`/lottery/${game.slug}`}>
@@ -233,13 +234,13 @@ function LotteryGameRow({ game }: { game: LotteryGame }) {
                 CLOSING
               </span>
             )}
-            {tier === "soon" && (
+            {tier === "soon" && !isRussianLottery && (
               <span className="text-[9px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/25 px-1.5 py-0.5 rounded-full shrink-0">
                 SOON
               </span>
             )}
           </div>
-          <span className="text-[11px] text-muted-foreground/70 leading-tight">
+          <span className="hidden sm:block text-[11px] text-muted-foreground/70 leading-tight">
             Pick {game.mainNumbersCount} of {game.mainNumbersMax}
             {game.bonusNumbersCount > 0 && ` + ${game.bonusNumbersCount} bonus`}
           </span>
@@ -416,11 +417,7 @@ function CountryGroup({
   games: LotteryGame[];
   defaultOpen: boolean;
 }) {
-  const [open, setOpen] = useState(() =>
-    defaultOpen ||
-    (typeof window !== "undefined" &&
-      window.matchMedia("(max-width: 639px)").matches),
-  );
+  const [open, setOpen] = useState(defaultOpen);
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
