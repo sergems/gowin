@@ -127,7 +127,7 @@ function DrawTimer({ drawDate }: { drawDate: Date | null }) {
   const mm = Math.floor((ms % HOUR) / 60_000);
   const ss = Math.floor((ms % 60_000) / 1_000);
 
-  if (ms <= 3 * HOUR) {
+  if (ms <= 30 * 60_000) {
     return (
       <span className="text-rose-400 font-mono font-bold tabular-nums">
         {hh > 0 ? `${hh}:` : ""}{pad(mm)}:{pad(ss)}
@@ -161,7 +161,7 @@ function urgency(drawDate: Date | null): "closing" | "soon" | null {
   if (!drawDate) return null;
   const ms = drawDate.getTime() - Date.now();
   if (ms <= 0) return null;
-  if (ms <= 3 * HOUR) return "closing";
+  if (ms <= 30 * 60_000) return "closing";
   if (ms <= 18 * HOUR) return "soon";
   return null;
 }
@@ -364,22 +364,29 @@ export default function LotteryLobby() {
     refetchInterval: 60 * 1000,
   });
 
-  // Group by country; within each group sort by nextDrawAt; sort groups by their earliest draw
+  // Fixed priority order: UK → France → Russia → USA → Europe → rest (alphabetical)
+  const COUNTRY_PRIORITY: Record<string, number> = {
+    "united kingdom": 0,
+    "france": 1,
+    "russia": 2,
+    "united states": 3,
+    "europe": 4,
+  };
+  function countryOrder(name: string): number {
+    return COUNTRY_PRIORITY[name.toLowerCase()] ?? 5;
+  }
+
+  // Group by country; within each group sort by nextDrawAt; sort groups by priority then name
   const grouped = (() => {
     const map = new Map<string, LotteryGame[]>();
     for (const g of [...(games ?? [])].sort(compareDrawTime)) {
       if (!map.has(g.country)) map.set(g.country, []);
       map.get(g.country)!.push(g);
     }
-    return [...map.entries()].sort(([a, aGames], [b, bGames]) => {
-      const byTime = earliestDrawMs(aGames) - earliestDrawMs(bGames);
-      if (byTime !== 0) return byTime;
-
-      const intl = new Set(["europe", "international", "world"]);
-      const aIntl = intl.has(a.toLowerCase());
-      const bIntl = intl.has(b.toLowerCase());
-      if (aIntl && !bIntl) return 1;
-      if (!aIntl && bIntl) return -1;
+    return [...map.entries()].sort(([a], [b]) => {
+      const pa = countryOrder(a);
+      const pb = countryOrder(b);
+      if (pa !== pb) return pa - pb;
       return a.localeCompare(b);
     });
   })();
