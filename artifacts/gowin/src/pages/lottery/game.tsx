@@ -10,7 +10,37 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import api from "@/lib/api";
-import { format, differenceInSeconds } from "date-fns";
+import { differenceInSeconds } from "date-fns";
+
+// ── Timezone-aware date formatting (uses Intl, no extra deps) ─────────────────
+function fmtInTz(dateStr: string, tz: string | null | undefined, opts: Intl.DateTimeFormatOptions): string {
+  try {
+    return new Intl.DateTimeFormat("en-GB", { timeZone: tz || "UTC", ...opts }).format(new Date(dateStr));
+  } catch {
+    return new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", ...opts }).format(new Date(dateStr));
+  }
+}
+
+/** "Sun 26 Jul · 1:49 PM" */
+function fmtDrawShort(dateStr: string, tz: string | null | undefined): string {
+  const d = fmtInTz(dateStr, tz, { weekday: "short", day: "numeric", month: "short" });
+  const t = fmtInTz(dateStr, tz, { hour: "numeric", minute: "2-digit", hour12: true });
+  return `${d} · ${t}`;
+}
+
+/** "July 26th, 2026 at 1:49 PM" — 12-hour */
+function fmtDrawLong12(dateStr: string, tz: string | null | undefined): string {
+  const d = fmtInTz(dateStr, tz, { year: "numeric", month: "long", day: "numeric" });
+  const t = fmtInTz(dateStr, tz, { hour: "numeric", minute: "2-digit", hour12: true });
+  return `${d} at ${t}`;
+}
+
+/** "July 26th, 2026 at 13:49" — 24-hour */
+function fmtDrawLong24(dateStr: string, tz: string | null | undefined): string {
+  const d = fmtInTz(dateStr, tz, { year: "numeric", month: "long", day: "numeric" });
+  const t = fmtInTz(dateStr, tz, { hour: "2-digit", minute: "2-digit", hour12: false });
+  return `${d} at ${t}`;
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -54,6 +84,7 @@ interface LotteryGameDetail {
   maxStake: number;
   maxPayout: number;
   recentDraws: LotteryDraw[];
+  timezone: string | null;
   nextDraw: LotteryDraw | null;
 }
 
@@ -120,8 +151,8 @@ function CountdownUnit({ value, label }: { value: number; label: string }) {
   );
 }
 
-// ── Bonus ball colour (amber) — used everywhere for consistency ───────────────
-const BONUS_COLOR = "#f59e0b";
+// ── Bonus ball colour — distinct from main-ball colour for clarity ────────────
+const BONUS_COLOR = "#ef4444";
 
 // ── Number Ball ───────────────────────────────────────────────────────────────
 
@@ -146,7 +177,7 @@ function NumberBall({
           : disabled
           ? "text-muted-foreground/40 cursor-not-allowed bg-muted/20"
           : isBonus
-          ? "text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 ring-1 ring-amber-500/40"
+          ? "text-red-400 bg-red-500/10 hover:bg-red-500/20 ring-1 ring-red-500/40"
           : "text-muted-foreground hover:text-foreground hover:bg-muted/50 bg-muted/20"
         }
       `}
@@ -632,7 +663,7 @@ export default function LotteryGame() {
           <div className="shrink-0 text-right">
             <div className="text-[10px] text-muted-foreground flex items-center justify-end gap-1 mb-1">
               <Clock className="w-3 h-3" />
-              <span className="hidden sm:inline">{format(new Date(game.nextDrawAt), "EEE d MMM · p")}</span>
+              <span className="hidden sm:inline">{fmtDrawShort(game.nextDrawAt, game.timezone)}</span>
               <span className="sm:hidden">Next draw</span>
             </div>
             {countdown.total > 0 ? (
@@ -674,7 +705,7 @@ export default function LotteryGame() {
             {game.nextDraw && (
               <div className="rounded-lg bg-muted/30 border border-border/40 px-5 py-3 text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">Draw time: </span>
-                {format(new Date(game.nextDraw.drawDate), "PPP 'at' p")}
+                {fmtDrawLong12(game.nextDraw.drawDate, game.timezone)}
               </div>
             )}
           </div>
@@ -746,7 +777,7 @@ export default function LotteryGame() {
                     <Badge
                       variant="outline"
                       className="text-[10px]"
-                      style={selectedBonus !== null ? { borderColor: "#f59e0b60", color: "#f59e0b" } : {}}
+                      style={selectedBonus !== null ? { borderColor: "#ef444460", color: "#ef4444" } : {}}
                     >
                       {selectedBonus !== null ? "1 / 1" : "0 / 1"}
                     </Badge>
@@ -791,7 +822,7 @@ export default function LotteryGame() {
                 {selectedBonus !== null && (
                   <span
                     className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
-                    style={{ background: "#f59e0b" }}
+                    style={{ background: "#ef4444" }}
                   >{selectedBonus}</span>
                 )}
               </div>
@@ -893,7 +924,7 @@ export default function LotteryGame() {
             {game.recentDraws.slice(0, 7).map((draw) => (
               <div key={draw.id} className="rounded-lg bg-muted/20 p-3">
                 <div className="text-xs text-muted-foreground mb-2">
-                  {format(new Date(draw.drawDate), "PPP 'at' HH:mm")}
+                  {fmtDrawLong24(draw.drawDate, game.timezone)}
                 </div>
                 <div className="flex flex-wrap gap-1.5 items-center">
                   {(draw.winningNumbers as number[]).map((n) => (
@@ -910,7 +941,7 @@ export default function LotteryGame() {
                         <span
                           key={`b${n}`}
                           className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white"
-                          style={{ background: "#f59e0b", border: "2px solid #f59e0b" }}
+                          style={{ background: "#ef4444", border: "2px solid #ef4444" }}
                         >{n}</span>
                       ))}
                     </>
