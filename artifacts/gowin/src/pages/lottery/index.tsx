@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Clock, Zap, Globe, Timer, ChevronDown, ChevronRight, ChevronLeft } from "lucide-react";
+import { Clock, Zap, Globe, Timer, ChevronDown, ChevronRight, ChevronLeft, Star } from "lucide-react";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -277,6 +277,154 @@ function LotteryGameRow({ game }: { game: LotteryGame }) {
   );
 }
 
+// ── Popular card ─────────────────────────────────────────────────────────────
+
+const POPULAR_SLUGS = [
+  "uk-49s-lunchtime",
+  "uk-49s-teatime",
+  "french-5-49",
+  "mega-millions",
+] as const;
+
+function PopularCard({ game }: { game: LotteryGame }) {
+  const drawDate = game.nextDrawAt ? new Date(game.nextDrawAt) : null;
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!drawDate) return;
+    const id = setInterval(() => tick((n) => n + 1), 1_000);
+    return () => clearInterval(id);
+  }, [drawDate]);
+
+  const tier = urgency(drawDate);
+
+  // Compute ms remaining for the inline badge countdown
+  const msLeft = drawDate ? drawDate.getTime() - Date.now() : null;
+  let countdownLabel = "";
+  if (msLeft !== null && msLeft > 0) {
+    const hh = Math.floor(msLeft / 3_600_000);
+    const mm = Math.floor((msLeft % 3_600_000) / 60_000);
+    const ss = Math.floor((msLeft % 60_000) / 1_000);
+    if (hh > 0) countdownLabel = `${hh}h ${pad(mm)}m`;
+    else countdownLabel = `${pad(mm)}:${pad(ss)}`;
+  } else if (msLeft !== null && msLeft <= 0) {
+    countdownLabel = "Drawing now";
+  }
+
+  return (
+    <Link href={`/lottery/${game.slug}`}>
+      <div
+        className="relative flex flex-col rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.03] hover:-translate-y-1 select-none"
+        style={{
+          minWidth: 170,
+          width: 170,
+          boxShadow: `0 4px 24px ${game.color}40, 0 1px 4px #0008`,
+          border: `1px solid ${game.color}35`,
+        }}
+      >
+        {/* Colour header */}
+        <div
+          className="relative flex flex-col items-center justify-center gap-2 pt-5 pb-4 px-3"
+          style={{
+            background: `linear-gradient(145deg, ${game.color}cc 0%, ${game.color}55 100%)`,
+          }}
+        >
+          {/* Decorative ring */}
+          <div
+            className="absolute inset-0 opacity-10"
+            style={{
+              backgroundImage: `radial-gradient(circle at 80% 20%, white 0%, transparent 60%)`,
+            }}
+          />
+
+          {/* Logo or emoji */}
+          {game.logoUrl ? (
+            <img
+              src={game.logoUrl}
+              alt={game.name}
+              className="w-14 h-10 object-contain drop-shadow-lg relative z-10"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = "none";
+                const fb = e.currentTarget.nextSibling as HTMLElement | null;
+                if (fb) fb.style.display = "";
+              }}
+            />
+          ) : null}
+          <span
+            className="text-4xl leading-none drop-shadow-lg relative z-10"
+            style={{ display: game.logoUrl ? "none" : "" }}
+          >
+            {game.emoji}
+          </span>
+
+          {/* Urgency pill */}
+          {tier === "closing" && (
+            <span className="absolute top-2 right-2 text-[9px] font-bold bg-rose-500/80 text-white px-1.5 py-0.5 rounded-full animate-pulse z-10">
+              CLOSING
+            </span>
+          )}
+          {tier === "soon" && (
+            <span className="absolute top-2 right-2 text-[9px] font-bold bg-amber-500/80 text-white px-1.5 py-0.5 rounded-full z-10">
+              SOON
+            </span>
+          )}
+        </div>
+
+        {/* Body */}
+        <div className="flex flex-col gap-2 px-3 py-3 bg-card flex-1">
+          <div>
+            <p className="font-bold text-sm leading-tight text-foreground line-clamp-2">{game.name}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{game.country}</p>
+          </div>
+
+          {/* Next draw */}
+          {countdownLabel && (
+            <div
+              className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg"
+              style={{
+                background: `${game.color}18`,
+                color: tier === "closing" ? "#f87171" : tier === "soon" ? "#fbbf24" : game.color,
+              }}
+            >
+              {tier === "closing" ? <Timer className="w-3 h-3 shrink-0" /> : <Clock className="w-3 h-3 shrink-0" />}
+              <span className="tabular-nums truncate">{countdownLabel}</span>
+            </div>
+          )}
+
+          {/* CTA */}
+          <button
+            className="w-full mt-auto rounded-lg py-1.5 text-xs font-bold text-white transition-all hover:brightness-110 active:scale-95"
+            style={{ background: game.color, boxShadow: `0 2px 10px ${game.color}50` }}
+          >
+            Play Now
+          </button>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function PopularSection({ games }: { games: LotteryGame[] }) {
+  const featured = POPULAR_SLUGS
+    .map((slug) => games.find((g) => g.slug === slug))
+    .filter((g): g is LotteryGame => g !== undefined);
+
+  if (featured.length === 0) return null;
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+        <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Popular</h2>
+      </div>
+      <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
+        {featured.map((game) => (
+          <PopularCard key={game.id} game={game} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Skeleton ─────────────────────────────────────────────────────────────────
 
 function LotterySkeleton() {
@@ -394,6 +542,7 @@ export default function LotteryLobby() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
       <BannerSlider />
+      {!isLoading && games && games.length > 0 && <PopularSection games={games} />}
       {isLoading ? (
         <LotterySkeleton />
       ) : grouped.length === 0 ? (
@@ -403,12 +552,12 @@ export default function LotteryLobby() {
           <p className="text-sm mt-1">Check back soon</p>
         </div>
       ) : (
-        grouped.map(([country, countryGames], i) => (
+        grouped.map(([country, countryGames]) => (
           <CountryGroup
             key={country}
             country={country}
             games={countryGames}
-            defaultOpen={i === 0}
+            defaultOpen={false}
           />
         ))
       )}
