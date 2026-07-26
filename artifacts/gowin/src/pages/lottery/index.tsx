@@ -320,61 +320,32 @@ function PopularCard({ game }: { game: LotteryGame }) {
           border: `1px solid ${game.color}35`,
         }}
       >
-        {/* Colour header — fixed height keeps all cards uniform */}
-        <div
-          className="relative flex flex-col items-center justify-center gap-2 px-3"
-          style={{ background: `linear-gradient(145deg, ${game.color}cc 0%, ${game.color}55 100%)`, height: 100 }}
-        >
-          <div
-            className="absolute inset-0 opacity-10"
-            style={{ backgroundImage: `radial-gradient(circle at 80% 20%, white 0%, transparent 60%)` }}
-          />
+        {/* Text body */}
+        <div className="flex flex-col gap-2 px-3 pt-3 pb-3 bg-card flex-1">
+          {/* Colour bar at top */}
+          <div className="h-1 rounded-full mb-1" style={{ background: `linear-gradient(to right, ${game.color}, ${game.color}66)` }} />
 
-          {/* Logo → country flag image → emoji */}
-          {game.logoUrl ? (
-            <img
-              src={game.logoUrl}
-              alt={game.name}
-              className="w-14 h-10 object-contain drop-shadow-lg relative z-10"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).style.display = "none";
-                const fb = e.currentTarget.nextSibling as HTMLElement | null;
-                if (fb) fb.style.display = "";
-              }}
-            />
-          ) : flagUrl ? (
-            <img
-              src={flagUrl}
-              alt={game.country}
-              className="object-cover rounded drop-shadow-lg relative z-10"
-              style={{ width: 40, height: 30 }}
-            />
-          ) : (
-            <span className="text-4xl leading-none drop-shadow-lg relative z-10">{game.emoji}</span>
-          )}
-
-          {tier === "closing" && (
-            <span className="absolute top-2 right-2 text-[9px] font-bold bg-rose-500/80 text-white px-1.5 py-0.5 rounded-full animate-pulse z-10">
-              CLOSING
-            </span>
-          )}
-        </div>
-
-        {/* Footer: timer + Bet on one line */}
-        <div className="flex items-center gap-2 px-3 py-2.5 bg-card">
-          <div
-            className="flex items-center gap-1 text-[11px] font-semibold flex-1 min-w-0"
-            style={{ color: tier === "closing" ? "#f87171" : "var(--muted-foreground)" }}
-          >
-            {tier === "closing" ? <Timer className="w-3 h-3 shrink-0" /> : <Clock className="w-3 h-3 shrink-0" />}
-            <span className="tabular-nums truncate">{countdownLabel || "—"}</span>
+          <div>
+            <p className="font-bold text-sm leading-tight text-foreground">{game.name}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{game.country}</p>
           </div>
-          <button
-            className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold text-white transition-all hover:brightness-110 active:scale-95"
-            style={{ background: game.color, boxShadow: `0 2px 8px ${game.color}50` }}
-          >
-            Bet
-          </button>
+
+          {/* Timer + Bet on one line */}
+          <div className="flex items-center gap-2 mt-auto">
+            <div
+              className="flex items-center gap-1 text-[11px] font-semibold flex-1"
+              style={{ color: tier === "closing" ? "#f87171" : "var(--muted-foreground)" }}
+            >
+              {tier === "closing" ? <Timer className="w-3 h-3 shrink-0" /> : <Clock className="w-3 h-3 shrink-0" />}
+              <span className="tabular-nums">{countdownLabel || "—"}</span>
+            </div>
+            <button
+              className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold text-white transition-all hover:brightness-110 active:scale-95"
+              style={{ background: game.color, boxShadow: `0 2px 8px ${game.color}50` }}
+            >
+              Bet
+            </button>
+          </div>
         </div>
       </div>
     </Link>
