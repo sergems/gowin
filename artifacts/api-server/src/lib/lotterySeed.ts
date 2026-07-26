@@ -674,10 +674,14 @@ export async function ensureUK49sDrawTimes(): Promise<void> {
       .limit(1);
     if (!game) continue;
 
-    // Fix timezone and next_draw_at on the game row
+    // Fix timezone, next_draw_at, and withBonus payout odds on the game row
     await db
       .update(lotteryGamesTable)
-      .set({ timezone: "Europe/London", nextDrawAt })
+      .set({
+        timezone: "Europe/London",
+        nextDrawAt,
+        payoutConfig: sql`jsonb_set(payout_config, '{withBonus}', '{"1":"350/1","2":"3000/1","3":"32000/1","4":"250000/1"}')`,
+      })
       .where(eq(lotteryGamesTable.id, game.id));
 
     // Fix the nearest pending draw: update its draw_date to the correct time,
