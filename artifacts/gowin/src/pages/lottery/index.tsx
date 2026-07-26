@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Clock, Zap, Globe, Timer, ChevronDown, ChevronRight, ChevronLeft } from "lucide-react";
+import { Clock, Zap, Globe, Timer, ChevronDown, ChevronRight, ChevronLeft, Star } from "lucide-react";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -127,7 +127,7 @@ function DrawTimer({ drawDate }: { drawDate: Date | null }) {
   const mm = Math.floor((ms % HOUR) / 60_000);
   const ss = Math.floor((ms % 60_000) / 1_000);
 
-  if (ms <= 3 * HOUR) {
+  if (ms <= 30 * 60_000) {
     return (
       <span className="text-rose-400 font-mono font-bold tabular-nums">
         {hh > 0 ? `${hh}:` : ""}{pad(mm)}:{pad(ss)}
@@ -161,7 +161,7 @@ function urgency(drawDate: Date | null): "closing" | "soon" | null {
   if (!drawDate) return null;
   const ms = drawDate.getTime() - Date.now();
   if (ms <= 0) return null;
-  if (ms <= 3 * HOUR) return "closing";
+  if (ms <= 30 * 60_000) return "closing";
   if (ms <= 18 * HOUR) return "soon";
   return null;
 }
@@ -277,6 +277,146 @@ function LotteryGameRow({ game }: { game: LotteryGame }) {
   );
 }
 
+// ── Popular card ─────────────────────────────────────────────────────────────
+
+const POPULAR_SLUGS = [
+  "uk-49s-lunchtime",
+  "uk-49s-teatime",
+  "french-5-49",
+  "mega-millions",
+] as const;
+
+function PopularCard({ game }: { game: LotteryGame }) {
+  const drawDate = game.nextDrawAt ? new Date(game.nextDrawAt) : null;
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!drawDate) return;
+    const id = setInterval(() => tick((n) => n + 1), 1_000);
+    return () => clearInterval(id);
+  }, [drawDate]);
+
+  const tier = urgency(drawDate);
+
+  const msLeft = drawDate ? drawDate.getTime() - Date.now() : null;
+  let countdownLabel = "";
+  if (msLeft !== null && msLeft > 0) {
+    const hh = Math.floor(msLeft / 3_600_000);
+    const mm = Math.floor((msLeft % 3_600_000) / 60_000);
+    const ss = Math.floor((msLeft % 60_000) / 1_000);
+    if (hh > 0) countdownLabel = `${hh}h ${pad(mm)}m`;
+    else countdownLabel = `${pad(mm)}:${pad(ss)}`;
+  } else if (msLeft !== null && msLeft <= 0) {
+    countdownLabel = "Drawing now";
+  }
+
+  const flagUrl = countryFlagUrl(game.country);
+
+  return (
+    <Link href={`/lottery/${game.slug}`}>
+      <div
+        className="relative flex flex-col rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.03] hover:-translate-y-1 select-none"
+        style={{
+          minWidth: 170,
+          width: 170,
+          boxShadow: `0 4px 24px ${game.color}40, 0 1px 4px #0008`,
+          border: `1px solid ${game.color}35`,
+        }}
+      >
+        {/* Colour header */}
+        <div
+          className="relative flex flex-col items-center justify-center gap-2 pt-5 pb-4 px-3"
+          style={{ background: `linear-gradient(145deg, ${game.color}cc 0%, ${game.color}55 100%)` }}
+        >
+          <div
+            className="absolute inset-0 opacity-10"
+            style={{ backgroundImage: `radial-gradient(circle at 80% 20%, white 0%, transparent 60%)` }}
+          />
+
+          {/* Logo → country flag image → emoji */}
+          {game.logoUrl ? (
+            <img
+              src={game.logoUrl}
+              alt={game.name}
+              className="w-14 h-10 object-contain drop-shadow-lg relative z-10"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = "none";
+                const fb = e.currentTarget.nextSibling as HTMLElement | null;
+                if (fb) fb.style.display = "";
+              }}
+            />
+          ) : flagUrl ? (
+            <img
+              src={flagUrl}
+              alt={game.country}
+              className="object-cover rounded drop-shadow-lg relative z-10"
+              style={{ width: 80, height: 60 }}
+            />
+          ) : (
+            <span className="text-4xl leading-none drop-shadow-lg relative z-10">{game.emoji}</span>
+          )}
+
+          {tier === "closing" && (
+            <span className="absolute top-2 right-2 text-[9px] font-bold bg-rose-500/80 text-white px-1.5 py-0.5 rounded-full animate-pulse z-10">
+              CLOSING
+            </span>
+          )}
+          {tier === "soon" && (
+            <span className="absolute top-2 right-2 text-[9px] font-bold bg-amber-500/80 text-white px-1.5 py-0.5 rounded-full z-10">
+              SOON
+            </span>
+          )}
+        </div>
+
+        {/* Body */}
+        <div className="flex flex-col gap-2 px-3 py-3 bg-card flex-1">
+          <div>
+            <p className="font-bold text-sm leading-tight text-foreground line-clamp-2">{game.name}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{game.country}</p>
+          </div>
+
+          {countdownLabel && (
+            <div
+              className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg"
+              style={{
+                background: `${game.color}18`,
+                color: tier === "closing" ? "#f87171" : tier === "soon" ? "#fbbf24" : game.color,
+              }}
+            >
+              {tier === "closing" ? <Timer className="w-3 h-3 shrink-0" /> : <Clock className="w-3 h-3 shrink-0" />}
+              <span className="tabular-nums truncate">{countdownLabel}</span>
+            </div>
+          )}
+
+          <button
+            className="w-full mt-auto rounded-lg py-1.5 text-xs font-bold text-white transition-all hover:brightness-110 active:scale-95"
+            style={{ background: game.color, boxShadow: `0 2px 10px ${game.color}50` }}
+          >
+            Play Now
+          </button>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function PopularSection({ games }: { games: LotteryGame[] }) {
+  const featured = POPULAR_SLUGS
+    .map((slug) => games.find((g) => g.slug === slug))
+    .filter((g): g is LotteryGame => g !== undefined);
+  if (featured.length === 0) return null;
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+        <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Popular</h2>
+      </div>
+      <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
+        {featured.map((game) => <PopularCard key={game.id} game={game} />)}
+      </div>
+    </div>
+  );
+}
+
 // ── Skeleton ─────────────────────────────────────────────────────────────────
 
 function LotterySkeleton() {
@@ -364,22 +504,25 @@ export default function LotteryLobby() {
     refetchInterval: 60 * 1000,
   });
 
-  // Group by country; within each group sort by nextDrawAt; sort groups by their earliest draw
+  // Fixed priority: UK → France → Russia → USA → Europe → rest (alphabetical)
+  const COUNTRY_PRIORITY: Record<string, number> = {
+    "united kingdom": 0,
+    "france": 1,
+    "russia": 2,
+    "united states": 3,
+    "europe": 4,
+  };
+
   const grouped = (() => {
     const map = new Map<string, LotteryGame[]>();
     for (const g of [...(games ?? [])].sort(compareDrawTime)) {
       if (!map.has(g.country)) map.set(g.country, []);
       map.get(g.country)!.push(g);
     }
-    return [...map.entries()].sort(([a, aGames], [b, bGames]) => {
-      const byTime = earliestDrawMs(aGames) - earliestDrawMs(bGames);
-      if (byTime !== 0) return byTime;
-
-      const intl = new Set(["europe", "international", "world"]);
-      const aIntl = intl.has(a.toLowerCase());
-      const bIntl = intl.has(b.toLowerCase());
-      if (aIntl && !bIntl) return 1;
-      if (!aIntl && bIntl) return -1;
+    return [...map.entries()].sort(([a], [b]) => {
+      const pa = COUNTRY_PRIORITY[a.toLowerCase()] ?? 5;
+      const pb = COUNTRY_PRIORITY[b.toLowerCase()] ?? 5;
+      if (pa !== pb) return pa - pb;
       return a.localeCompare(b);
     });
   })();
@@ -387,6 +530,7 @@ export default function LotteryLobby() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
       <BannerSlider />
+      {!isLoading && games && games.length > 0 && <PopularSection games={games} />}
       {isLoading ? (
         <LotterySkeleton />
       ) : grouped.length === 0 ? (
@@ -396,12 +540,12 @@ export default function LotteryLobby() {
           <p className="text-sm mt-1">Check back soon</p>
         </div>
       ) : (
-        grouped.map(([country, countryGames], i) => (
+        grouped.map(([country, countryGames]) => (
           <CountryGroup
             key={country}
             country={country}
             games={countryGames}
-            defaultOpen={i === 0}
+            defaultOpen={false}
           />
         ))
       )}
