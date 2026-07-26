@@ -349,7 +349,7 @@ function PopularCard({ game }: { game: LotteryGame }) {
               src={flagUrl}
               alt={game.country}
               className="object-cover rounded drop-shadow-lg relative z-10"
-              style={{ width: 80, height: 60 }}
+              style={{ width: 40, height: 30 }}
             />
           ) : (
             <span className="text-4xl leading-none drop-shadow-lg relative z-10">{game.emoji}</span>
