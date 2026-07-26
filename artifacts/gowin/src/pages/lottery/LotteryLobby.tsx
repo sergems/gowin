@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,7 +43,6 @@ function topOdds(config: PayoutConfig | null): string {
     ...Object.values(config.withBonus ?? {}),
   ];
   if (all.length === 0) return "—";
-  // Pick the entry whose numerator is largest
   let best = all[0]!;
   for (const o of all) {
     const [an, ad] = o.split("/").map(Number);
@@ -53,17 +53,16 @@ function topOdds(config: PayoutConfig | null): string {
 }
 
 function compareDrawTime(a: LotteryGame, b: LotteryGame): number {
-  // Sort by actual next draw datetime; games with no upcoming draw go last
   const aTime = a.nextDrawAt ? new Date(a.nextDrawAt).getTime() : Infinity;
   const bTime = b.nextDrawAt ? new Date(b.nextDrawAt).getTime() : Infinity;
   if (aTime !== bTime) return aTime - bTime;
-  // Fall back to recurring draw time, then name
   const aDraw = a.drawTime ?? "99:99";
   const bDraw = b.drawTime ?? "99:99";
   return aDraw.localeCompare(bDraw) || a.name.localeCompare(b.name);
 }
 
 function GameCard({ game }: { game: LotteryGame }) {
+  const { t } = useSiteSettings();
   const glowStyle = { boxShadow: `0 0 30px ${game.color}22, 0 0 60px ${game.color}11` };
   const borderStyle = { borderColor: `${game.color}40` };
   const top = topOdds(game.payoutConfig);
@@ -116,14 +115,14 @@ function GameCard({ game }: { game: LotteryGame }) {
         {/* Pick format + top odds */}
         <div className="rounded-xl bg-background/60 border border-border/40 p-3 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Pick</span>
+            <span className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">{t("lottery.pick_label")}</span>
             <span className="text-sm font-bold text-foreground">
               1–{game.mainNumbersCount} numbers from 1–{game.mainNumbersMax}
             </span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium flex items-center gap-1">
-              <Zap className="w-3 h-3" /> Top Prize
+              <Zap className="w-3 h-3" /> {t("lottery.top_prize")}
             </span>
             <span className="text-sm font-extrabold tabular-nums" style={{ color: game.color }}>
               {top}
@@ -136,7 +135,7 @@ function GameCard({ game }: { game: LotteryGame }) {
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Clock className="w-3.5 h-3.5 shrink-0" />
             <span>
-              Next draw:{" "}
+              {t("lottery.next_draw_label")}{" "}
               <span className="text-foreground font-medium">
                 {format(new Date(game.nextDrawAt), "EEE, MMM d 'at' HH:mm")}
               </span>
@@ -154,7 +153,7 @@ function GameCard({ game }: { game: LotteryGame }) {
           <div className="flex items-center gap-1.5 flex-1">
             <Ticket className="w-3.5 h-3.5 text-muted-foreground" />
             <span className="text-sm font-semibold">${game.ticketPrice.toFixed(2)}</span>
-            <span className="text-xs text-muted-foreground">/ ticket</span>
+            <span className="text-xs text-muted-foreground">{t("lottery.per_ticket")}</span>
           </div>
           <Link href={`/lottery/${game.slug}`}>
             <Button
@@ -162,7 +161,7 @@ function GameCard({ game }: { game: LotteryGame }) {
               className="font-semibold transition-all"
               style={{ backgroundColor: game.color, color: "#fff" }}
             >
-              Play Now
+              {t("lottery.play_now")}
             </Button>
           </Link>
         </div>
@@ -190,6 +189,7 @@ function CardSkeleton() {
 
 export default function LotteryLobby() {
   const { user } = useAuth();
+  const { t } = useSiteSettings();
 
   const { data, isLoading } = useQuery<{ games: LotteryGame[] }>({
     queryKey: ["lottery-games"],
@@ -208,20 +208,20 @@ export default function LotteryLobby() {
             <Trophy className="w-5 h-5 text-primary" />
             <span className="text-xs font-semibold uppercase tracking-widest text-primary">Lottery</span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-extrabold">Pick Your Numbers. Win Big.</h1>
+          <h1 className="text-2xl md:text-3xl font-extrabold">{t("lottery.hero_heading")}</h1>
           <p className="text-muted-foreground text-sm leading-relaxed max-w-lg">
-            Play 1 to 6 numbers per ticket — with or without the bonus ball. Prizes paid at fixed odds. The more numbers you match, the bigger your win.
+            {t("lottery.hero_desc")}
           </p>
         </div>
         <div className="flex flex-col items-center gap-2">
           <div className="text-center">
             <div className="text-3xl font-black text-primary tabular-nums">Up to 100 000/1</div>
-            <p className="text-xs text-muted-foreground mt-1">Best available odds</p>
+            <p className="text-xs text-muted-foreground mt-1">{t("lottery.best_odds")}</p>
           </div>
           {user && (
             <Link href="/lottery/tickets">
               <Button variant="outline" size="sm" className="gap-1.5 mt-2">
-                <Ticket className="w-3.5 h-3.5" /> My Tickets
+                <Ticket className="w-3.5 h-3.5" /> {t("lottery.my_tickets_btn")}
               </Button>
             </Link>
           )}
@@ -230,7 +230,7 @@ export default function LotteryLobby() {
 
       {/* Games grid */}
       <div>
-        <h2 className="text-lg font-bold mb-4">Choose Your Lottery</h2>
+        <h2 className="text-lg font-bold mb-4">{t("lottery.choose_lottery")}</h2>
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {Array.from({ length: 8 }).map((_, i) => <CardSkeleton key={i} />)}
@@ -238,7 +238,7 @@ export default function LotteryLobby() {
         ) : games.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
             <Trophy className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p>No lottery games available right now.</p>
+            <p>{t("lottery.no_games")}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

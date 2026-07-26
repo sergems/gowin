@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -68,6 +69,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function TicketCard({ ticket }: { ticket: TicketWithGame }) {
+  const { t } = useSiteSettings();
   const color = ticket.game.color;
   const winSet = new Set(ticket.draw?.winningNumbers ?? []);
   const bonusWinSet = new Set(ticket.draw?.bonusNumbers ?? []);
@@ -95,7 +97,7 @@ function TicketCard({ ticket }: { ticket: TicketWithGame }) {
 
         {/* Your numbers */}
         <div>
-          <p className="text-[11px] text-muted-foreground mb-1.5">Your numbers</p>
+          <p className="text-[11px] text-muted-foreground mb-1.5">{t("lottery.your_numbers")}</p>
           <div className="flex flex-wrap gap-1.5 items-center">
             {ticket.numbers.map((n) => (
               <NumberBall key={n} n={n} matched={ticket.draw ? winSet.has(n) : false} color={color} />
@@ -114,7 +116,7 @@ function TicketCard({ ticket }: { ticket: TicketWithGame }) {
         {/* Winning numbers (if draw settled) */}
         {ticket.draw && ticket.draw.status === "settled" && (
           <div>
-            <p className="text-[11px] text-muted-foreground mb-1.5">Winning numbers</p>
+            <p className="text-[11px] text-muted-foreground mb-1.5">{t("lottery.winning_numbers")}</p>
             <div className="flex flex-wrap gap-1.5 items-center">
               {ticket.draw.winningNumbers.map((n) => (
                 <NumberBall key={n} n={n} matched={ticket.numbers.includes(n)} color={color} />
@@ -148,6 +150,7 @@ function TicketCard({ ticket }: { ticket: TicketWithGame }) {
 
 export default function LotteryTickets() {
   const { user } = useAuth();
+  const { t } = useSiteSettings();
   const [tab, setTab] = useState<"all" | "pending" | "won" | "lost">("all");
 
   const { data, isLoading } = useQuery<{ tickets: TicketWithGame[] }>({
@@ -175,7 +178,7 @@ export default function LotteryTickets() {
     return (
       <div className="max-w-2xl mx-auto px-4 py-20 text-center space-y-4">
         <Ticket className="w-10 h-10 mx-auto text-muted-foreground/30" />
-        <p className="text-muted-foreground">Login to view your lottery tickets.</p>
+        <p className="text-muted-foreground">{t("lottery.login_to_view")}</p>
         <Link href="/login"><Button>Login</Button></Link>
       </div>
     );
@@ -187,14 +190,14 @@ export default function LotteryTickets() {
         <div>
           <Link href="/lottery">
             <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-2 transition-colors">
-              <ArrowLeft className="w-4 h-4" /> All Lotteries
+              <ArrowLeft className="w-4 h-4" /> {t("lottery.all_lotteries")}
             </button>
           </Link>
-          <h1 className="text-xl font-bold">My Lottery Tickets</h1>
+          <h1 className="text-xl font-bold">{t("lottery.my_lottery_tickets")}</h1>
         </div>
         <Link href="/lottery">
           <Button size="sm" className="gap-1.5">
-            <Ticket className="w-3.5 h-3.5" /> Buy Ticket
+            <Ticket className="w-3.5 h-3.5" /> {t("lottery.buy_ticket")}
           </Button>
         </Link>
       </div>
@@ -215,9 +218,9 @@ export default function LotteryTickets() {
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <Ticket className="w-8 h-8 mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No {tab === "all" ? "" : tab} tickets yet.</p>
+          <p className="text-sm">{t("lottery.no_tickets_yet")}</p>
           <Link href="/lottery">
-            <Button variant="outline" size="sm" className="mt-4">Buy a ticket</Button>
+            <Button variant="outline" size="sm" className="mt-4">{t("lottery.buy_a_ticket")}</Button>
           </Link>
         </div>
       ) : (

@@ -3,6 +3,7 @@ import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -111,6 +112,7 @@ function FlexiblePicker({
   maxNum: number; maxCount: number; selected: number[];
   color: string; onToggle: (n: number) => void; label?: string;
 }) {
+  const { t } = useSiteSettings();
   const nums = Array.from({ length: maxNum }, (_, i) => i + 1);
   const full = selected.length >= maxCount;
   return (
@@ -123,7 +125,7 @@ function FlexiblePicker({
             className="transition-colors"
             style={selected.length > 0 ? { borderColor: color, color } : {}}
           >
-            {selected.length} of {maxCount} max
+            {selected.length} {t("lottery.of_count")} {maxCount} max
           </Badge>
         </div>
       )}
@@ -145,7 +147,7 @@ function FlexiblePicker({
       </div>
       {full && (
         <p className="text-xs text-muted-foreground mt-2">
-          Maximum {maxCount} numbers selected. Deselect one to change.
+          {t("lottery.max_selected").replace("{n}", String(maxCount))}
         </p>
       )}
     </div>
@@ -247,6 +249,7 @@ export default function LotteryGame() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useSiteSettings();
   const qc = useQueryClient();
 
   const [numbers, setNumbers] = useState<number[]>([]);
@@ -270,7 +273,6 @@ export default function LotteryGame() {
   const color = game?.color ?? "#4ade80";
   const BONUS_COLOR = "#f59e0b";
 
-  // Reset bonus when game changes or bonus toggled off
   useEffect(() => {
     if (!includeBonus) setBonusNumber(null);
   }, [includeBonus]);
@@ -321,7 +323,7 @@ export default function LotteryGame() {
         }),
       });
       const json = await r.json();
-      if (!r.ok) throw new Error(json.error ?? "Purchase failed");
+      if (!r.ok) throw new Error(json.error ?? t("lottery.purchase_failed"));
       return json;
     },
     onSuccess: (res) => {
@@ -329,19 +331,18 @@ export default function LotteryGame() {
       qc.invalidateQueries({ queryKey: ["wallet-balance"] });
       qc.invalidateQueries({ queryKey: ["lottery-tickets"] });
       toast({
-        title: "Ticket purchased! 🎰",
-        description: `Good luck! New balance: $${res.newBalance?.toFixed(2)}`,
+        title: t("lottery.ticket_purchased"),
+        description: `${t("lottery.good_luck_balance")} $${res.newBalance?.toFixed(2)}`,
         variant: "success",
       });
     },
     onError: (err: any) => {
-      toast({ title: "Purchase failed", description: err.message, variant: "destructive" });
+      toast({ title: t("lottery.purchase_failed"), description: err.message, variant: "destructive" });
     },
   });
 
   const isReady = numbers.length >= 1 && (!includeBonus || bonusNumber !== null);
 
-  // Work out the potential odds for the current selection
   const config = game?.payoutConfig ?? null;
   let potentialOdds: string | null = null;
   if (config && numbers.length > 0) {
@@ -366,10 +367,10 @@ export default function LotteryGame() {
   if (!game) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 text-center text-muted-foreground">
-        <p>Lottery game not found.</p>
+        <p>{t("lottery.game_not_found")}</p>
         <Link href="/lottery">
           <Button variant="outline" className="mt-4 gap-2">
-            <ArrowLeft className="w-4 h-4" /> Back to Lottery
+            <ArrowLeft className="w-4 h-4" /> {t("lottery.back_to_lottery")}
           </Button>
         </Link>
       </div>
@@ -383,7 +384,7 @@ export default function LotteryGame() {
       {/* Back */}
       <Link href="/lottery">
         <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft className="w-4 h-4" /> All Lotteries
+          <ArrowLeft className="w-4 h-4" /> {t("lottery.all_lotteries")}
         </button>
       </Link>
 
@@ -406,7 +407,7 @@ export default function LotteryGame() {
           <div className="md:ml-auto text-center">
             <div className="flex items-center gap-2 justify-center">
               <Zap className="w-4 h-4 text-primary" />
-              <p className="text-xs uppercase tracking-widest text-muted-foreground">Top prize</p>
+              <p className="text-xs uppercase tracking-widest text-muted-foreground">{t("lottery.top_prize_sm")}</p>
             </div>
             <p className="text-3xl font-black tabular-nums mt-1" style={{ color }}>
               {config ? Object.values(config.excludedBonus).at(-1) ?? "—" : "—"}
@@ -418,14 +419,14 @@ export default function LotteryGame() {
         {game.nextDrawAt && (
           <div className="mt-6">
             <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5" /> Next draw: {format(new Date(game.nextDrawAt), "EEEE, MMMM d 'at' HH:mm")}
+              <Clock className="w-3.5 h-3.5" /> {t("lottery.next_draw_label")} {format(new Date(game.nextDrawAt), "EEEE, MMMM d 'at' HH:mm")}
             </p>
             <div className="flex gap-3">
               {([
-                { v: countdown.d, l: "Days" },
-                { v: countdown.h, l: "Hours" },
-                { v: countdown.m, l: "Mins" },
-                { v: countdown.s, l: "Secs" },
+                { v: countdown.d, l: t("lottery.days") },
+                { v: countdown.h, l: t("lottery.hours") },
+                { v: countdown.m, l: t("lottery.mins") },
+                { v: countdown.s, l: t("lottery.secs") },
               ] as const).map(({ v, l }) => (
                 <div key={l} className="text-center bg-background/60 rounded-lg px-3 py-2 min-w-[56px] border border-border/40">
                   <p className="text-xl font-black tabular-nums" style={{ color }}>{String(v).padStart(2, "0")}</p>
@@ -443,17 +444,21 @@ export default function LotteryGame() {
           <div className="rounded-2xl border bg-card p-5 space-y-5">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="font-bold text-base">Pick Your Numbers</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">Choose 1–{game.mainNumbersCount} numbers from 1–{game.mainNumbersMax}</p>
+                <h2 className="font-bold text-base">{t("lottery.pick_numbers")}</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {t("lottery.choose_from")
+                    .replace("{n}", String(game.mainNumbersCount))
+                    .replace("{m}", String(game.mainNumbersMax))}
+                </p>
               </div>
               <div className="flex gap-2">
                 {numbers.length > 0 && (
                   <Button variant="ghost" size="sm" className="text-muted-foreground text-xs" onClick={() => setNumbers([])}>
-                    Clear
+                    {t("lottery.clear")}
                   </Button>
                 )}
                 <Button variant="outline" size="sm" className="gap-1.5" onClick={quickPick}>
-                  <Shuffle className="w-3.5 h-3.5" /> Quick Pick
+                  <Shuffle className="w-3.5 h-3.5" /> {t("lottery.quick_pick")}
                 </Button>
               </div>
             </div>
@@ -463,7 +468,7 @@ export default function LotteryGame() {
               maxCount={game.mainNumbersCount}
               selected={numbers}
               color={color}
-              label={`Main Numbers (1–${game.mainNumbersMax})`}
+              label={`${t("lottery.main_numbers")} (1–${game.mainNumbersMax})`}
               onToggle={toggleNumber}
             />
 
@@ -473,10 +478,10 @@ export default function LotteryGame() {
                 <div className="flex items-center justify-between">
                   <div>
                     <Label htmlFor="include-bonus" className="font-semibold text-sm cursor-pointer">
-                      Include Bonus Ball
+                      {t("lottery.include_bonus")}
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      Better odds with bonus — worse base odds without
+                      {t("lottery.better_odds_hint")}
                     </p>
                   </div>
                   <Switch
@@ -513,7 +518,7 @@ export default function LotteryGame() {
           {/* Recent winning numbers */}
           {recentDraws.slice(0, 7).length > 0 && (
             <div className="rounded-2xl border bg-card p-5">
-              <h3 className="font-semibold text-sm mb-4">Recent Winning Numbers</h3>
+              <h3 className="font-semibold text-sm mb-4">{t("lottery.recent_winning")}</h3>
               <div className="space-y-3">
                 {recentDraws.slice(0, 7).map((draw) => (
                   <div key={draw.id} className="flex flex-col gap-2">
@@ -549,13 +554,13 @@ export default function LotteryGame() {
         {/* ── Right column: ticket summary ── */}
         <div className="space-y-4">
           <div className="rounded-2xl border bg-card p-5 space-y-4 sticky top-4">
-            <h2 className="font-bold text-sm">Your Ticket</h2>
+            <h2 className="font-bold text-sm">{t("lottery.your_ticket")}</h2>
 
             {/* Selected numbers display */}
             <div className="rounded-xl bg-background/60 p-3 border border-border/40 min-h-[80px]">
               {numbers.length === 0 ? (
                 <p className="text-xs text-muted-foreground text-center py-4">
-                  Select at least 1 number above
+                  {t("lottery.select_number_above")}
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -577,7 +582,7 @@ export default function LotteryGame() {
             {/* Summary */}
             <div className="space-y-2 text-sm">
               <div className="flex justify-between text-muted-foreground">
-                <span>Ticket price</span>
+                <span>{t("lottery.ticket_price")}</span>
                 <span className="font-medium text-foreground">${game.ticketPrice.toFixed(2)}</span>
               </div>
               {numbers.length > 0 && potentialOdds && (
@@ -588,13 +593,13 @@ export default function LotteryGame() {
               )}
               {potentialReturn && (
                 <div className="flex justify-between font-semibold border-t border-border/50 pt-2 mt-2">
-                  <span>Potential return</span>
+                  <span>{t("lottery.potential_return")}</span>
                   <span style={{ color }}>${potentialReturn}</span>
                 </div>
               )}
               {walletData && (
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Your balance</span>
+                  <span>{t("lottery.your_balance")}</span>
                   <span className={`font-medium ${walletData.balance < game.ticketPrice ? "text-destructive" : "text-foreground"}`}>
                     ${walletData.balance.toFixed(2)}
                   </span>
@@ -605,11 +610,11 @@ export default function LotteryGame() {
             {purchased ? (
               <div className="flex items-center gap-2 text-sm text-emerald-500 bg-emerald-500/10 rounded-xl p-3 border border-emerald-500/20">
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span>Ticket purchased! Good luck! 🍀</span>
+                <span>{t("lottery.ticket_purchased_success")}</span>
               </div>
             ) : !user ? (
               <Link href="/login">
-                <Button className="w-full">Login to Play</Button>
+                <Button className="w-full">{t("lottery.login_to_play")}</Button>
               </Link>
             ) : (
               <Button
@@ -619,16 +624,16 @@ export default function LotteryGame() {
                 style={isReady ? { backgroundColor: color } : {}}
               >
                 {buyMutation.isPending
-                  ? "Processing…"
+                  ? t("lottery.processing")
                   : isReady
-                  ? `Buy Ticket — $${game.ticketPrice.toFixed(2)}`
-                  : "Select at least 1 number"}
+                  ? `${t("lottery.buy_ticket")} — $${game.ticketPrice.toFixed(2)}`
+                  : t("lottery.select_number_btn")}
               </Button>
             )}
 
             <Link href="/lottery/tickets">
               <Button variant="ghost" size="sm" className="w-full gap-1.5 text-muted-foreground text-xs">
-                <Ticket className="w-3.5 h-3.5" /> View my tickets
+                <Ticket className="w-3.5 h-3.5" /> {t("lottery.view_my_tickets")}
               </Button>
             </Link>
           </div>

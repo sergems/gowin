@@ -48,14 +48,14 @@ interface TicketsResponse {
 }
 
 const STATUS_STYLES: Record<string, { cls: string; icon: typeof Ticket; label: string }> = {
-  pending: { cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30", icon: Clock, label: "Pending" },
-  won:     { cls: "bg-primary/15 text-primary border-primary/30",          icon: Trophy, label: "Won" },
+  pending: { cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30", icon: Clock,   label: "Pending" },
+  won:     { cls: "bg-primary/15 text-primary border-primary/30",          icon: Trophy,  label: "Won" },
   lost:    { cls: "bg-destructive/15 text-destructive border-destructive/30", icon: XCircle, label: "Lost" },
 };
 
 function TicketCard({ ticket }: { ticket: LotteryTicket }) {
-  const { formatCurrency } = useSiteSettings();
-  const status = STATUS_STYLES[ticket.status] ?? STATUS_STYLES.pending;
+  const { formatCurrency, t } = useSiteSettings();
+  const status = STATUS_STYLES[ticket.status] ?? STATUS_STYLES.pending!;
   const StatusIcon = status.icon;
   const game = ticket.game;
   const draw = ticket.draw;
@@ -65,7 +65,7 @@ function TicketCard({ ticket }: { ticket: LotteryTicket }) {
 
   return (
     <div className={`rounded-xl border bg-card overflow-hidden transition-all ${
-      ticket.status === "won" ? "border-primary/30 shadow-md shadow-primary/5" :
+      ticket.status === "won"  ? "border-primary/30 shadow-md shadow-primary/5" :
       ticket.status === "lost" ? "border-border/30 opacity-75" :
       "border-border/50"
     }`}>
@@ -74,7 +74,7 @@ function TicketCard({ ticket }: { ticket: LotteryTicket }) {
         <div className="flex items-center gap-2">
           {game && <span className="text-lg">{game.emoji}</span>}
           <div>
-            <div className="font-semibold text-sm text-foreground">{game?.name ?? "Lucky Numbers Ticket"}</div>
+            <div className="font-semibold text-sm text-foreground">{game?.name ?? t("lottery.lucky_ticket_default")}</div>
             <div className="text-xs text-muted-foreground">#{ticket.id} · {format(new Date(ticket.createdAt), "PP")}</div>
           </div>
         </div>
@@ -91,7 +91,7 @@ function TicketCard({ ticket }: { ticket: LotteryTicket }) {
       <div className="px-4 py-4 space-y-3">
         {/* Numbers */}
         <div>
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Your Numbers</div>
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">{t("lottery.your_numbers")}</div>
           <div className="flex flex-wrap gap-1.5 items-center">
             {ticket.numbers.map((n) => {
               const isWin = winningSet.has(n);
@@ -134,7 +134,7 @@ function TicketCard({ ticket }: { ticket: LotteryTicket }) {
         {/* Winning numbers if draw settled */}
         {draw && draw.status === "settled" && draw.winningNumbers.length > 0 && (
           <div>
-            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Winning Numbers</div>
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">{t("lottery.winning_numbers")}</div>
             <div className="flex flex-wrap gap-1.5 items-center">
               {draw.winningNumbers.map((n) => (
                 <span key={n} className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: game?.color ?? "#4ade80" }}>
@@ -188,6 +188,7 @@ function TicketSkeleton() {
 }
 
 export default function LotteryTickets() {
+  const { t } = useSiteSettings();
   const [tab, setTab] = useState<"all" | "pending" | "won" | "lost">("all");
   const [page, setPage] = useState(1);
   const limit = 20;
@@ -221,9 +222,9 @@ export default function LotteryTickets() {
         <div>
           <h1 className="text-2xl font-black text-foreground flex items-center gap-2">
             <Ticket className="w-6 h-6 text-primary" />
-            My Lucky Numbers Tickets
+            {t("lottery.my_lucky_tickets")}
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{data?.total ?? 0} total tickets</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{data?.total ?? 0} {t("lottery.total_tickets")}</p>
         </div>
       </div>
 
@@ -245,9 +246,9 @@ export default function LotteryTickets() {
       ) : filteredTickets.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <Ticket className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">No {tab !== "all" ? tab : ""} tickets yet</p>
+          <p className="font-medium">{t("lottery.no_tickets_yet")}</p>
           <Link href="/lottery">
-            <Button variant="outline" className="mt-4">Browse Lotteries</Button>
+            <Button variant="outline" className="mt-4">{t("lottery.browse_lotteries")}</Button>
           </Link>
         </div>
       ) : (
@@ -267,16 +268,20 @@ export default function LotteryTickets() {
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
           >
-            Previous
+            {t("lottery.previous")}
           </Button>
-          <span className="text-sm text-muted-foreground">Page {page} of {Math.ceil(data.total / limit)}</span>
+          <span className="text-sm text-muted-foreground">
+            {t("lottery.page_x_of_y")
+              .replace("{page}", String(page))
+              .replace("{total}", String(Math.ceil(data.total / limit)))}
+          </span>
           <Button
             variant="outline"
             size="sm"
             disabled={page >= Math.ceil(data.total / limit)}
             onClick={() => setPage((p) => p + 1)}
           >
-            Next
+            {t("lottery.next_btn")}
           </Button>
         </div>
       )}
