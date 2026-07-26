@@ -217,7 +217,20 @@ function PlayTypeSelector({
   return (
     <div>
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Play Type</p>
-      <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1">
+
+      {/* Mobile: native select dropdown */}
+      <select
+        className="sm:hidden w-full rounded-lg border border-border/50 bg-muted/20 px-3 py-2 text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+        value={value}
+        onChange={(e) => onChange(e.target.value as PlayType)}
+      >
+        {available.map((pt) => (
+          <option key={pt} value={pt}>{PLAY_TYPE_LABELS[pt]}</option>
+        ))}
+      </select>
+
+      {/* Desktop: scrollable pill tabs */}
+      <div className="hidden sm:flex flex-nowrap gap-2 overflow-x-auto pb-1">
         {available.map((pt) => {
           const active = value === pt;
           return (
@@ -277,7 +290,20 @@ function BonusModeSelector({
   return (
     <div>
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Bonus Mode</p>
-      <div className="flex flex-col gap-1.5">
+
+      {/* Mobile: native select dropdown */}
+      <select
+        className="sm:hidden w-full rounded-lg border border-border/50 bg-muted/20 px-3 py-2 text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+        value={value}
+        onChange={(e) => onChange(e.target.value as BonusMode)}
+      >
+        {options.map(({ mode, label }) => (
+          <option key={mode} value={mode}>{label}</option>
+        ))}
+      </select>
+
+      {/* Desktop: radio-style card list */}
+      <div className="hidden sm:flex flex-col gap-1.5">
         {options.map(({ mode, label, desc }) => {
           const active = value === mode;
           return (
