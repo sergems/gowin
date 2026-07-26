@@ -9,8 +9,22 @@
  * No changes to the core engine are needed.
  */
 import type { BaseScraper } from "./BaseScraper";
-import { PowerballScraper } from "./PowerballScraper";
-import { MegaMillionsScraper } from "./MegaMillionsScraper";
+import {
+  TheLotterPowerballScraper,
+  TheLotterMegaMillionsScraper,
+  TheLotterAusOzLottoScraper,
+  TheLotterAusPowerballScraper,
+  TheLotterAusSaturdayLottoScraper,
+  TheLotterAusWeekdayWindfallScraper,
+  TheLotterAustriaLottoScraper,
+  TheLotterEuroDreamsScraper,
+  TheLotterSpainElGordoScraper,
+  TheLotterGermanyLottoScraper,
+  TheLotterItalySuperEnalottoScraper,
+  TheLotterCanadaLotto649Scraper,
+  TheLotterCanadaOntario49Scraper,
+  TheLotterNZPowerballScraper,
+} from "./TheLotterScraper";
 import { EuroMillionsScraper } from "./EuroMillionsScraper";
 import { EuroJackpotScraper } from "./EuroJackpotScraper";
 import { UKLottoScraper } from "./UKLottoScraper";
@@ -33,8 +47,22 @@ import {
 
 /** Map of scraper_class column value → BaseScraper instance */
 const REGISTRY: Record<string, BaseScraper> = {
-  PowerballScraper:         new PowerballScraper(),
-  MegaMillionsScraper:      new MegaMillionsScraper(),
+  // ── TheLotter-backed scrapers ─────────────────────────────────────────────
+  TheLotterPowerballScraper:           new TheLotterPowerballScraper(),
+  TheLotterMegaMillionsScraper:        new TheLotterMegaMillionsScraper(),
+  TheLotterAusOzLottoScraper:          new TheLotterAusOzLottoScraper(),
+  TheLotterAusPowerballScraper:        new TheLotterAusPowerballScraper(),
+  TheLotterAusSaturdayLottoScraper:    new TheLotterAusSaturdayLottoScraper(),
+  TheLotterAusWeekdayWindfallScraper:  new TheLotterAusWeekdayWindfallScraper(),
+  TheLotterAustriaLottoScraper:        new TheLotterAustriaLottoScraper(),
+  TheLotterEuroDreamsScraper:          new TheLotterEuroDreamsScraper(),
+  TheLotterSpainElGordoScraper:        new TheLotterSpainElGordoScraper(),
+  TheLotterGermanyLottoScraper:        new TheLotterGermanyLottoScraper(),
+  TheLotterItalySuperEnalottoScraper:  new TheLotterItalySuperEnalottoScraper(),
+  TheLotterCanadaLotto649Scraper:      new TheLotterCanadaLotto649Scraper(),
+  TheLotterCanadaOntario49Scraper:     new TheLotterCanadaOntario49Scraper(),
+  TheLotterNZPowerballScraper:         new TheLotterNZPowerballScraper(),
+  // ── Other scrapers (own sources) ─────────────────────────────────────────
   EuroMillionsScraper:      new EuroMillionsScraper(),
   EuroJackpotScraper:       new EuroJackpotScraper(),
   UKLottoScraper:           new UKLottoScraper(),

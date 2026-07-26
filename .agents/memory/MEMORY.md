@@ -1,3 +1,4 @@
+- [TheLotter scraper pattern](thelotter-scraper.md) — unified TheLotter scraper base; how to add new games; anti-bot notes; USA slugs block "Including Bonus"
 - [Orval schema name collision](orval-schema-collision.md) — OpenAPI component names must not match `<operationId>Response` or orval generates duplicate exports
 - [No zod in api-server](no-zod-api-server.md) — esbuild can't resolve `zod` in api-server; use plain JS guards for request validation
 - [DB push workaround](db-push-workaround.md) — drizzle-kit push fails on fresh DB; drop public schema + apply bt.sql directly instead (scripts/schema.sql is stale, don't use it)
