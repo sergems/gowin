@@ -202,7 +202,7 @@ function LotteryGameRow({ game }: { game: LotteryGame }) {
 
   return (
     <Link href={`/lottery/${game.slug}`}>
-      <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.03] transition-colors cursor-pointer border-t border-border/30 first:border-t-0 group">
+      <div className="flex items-start sm:items-center gap-3 px-3 sm:px-4 py-3 sm:py-2.5 hover:bg-white/[0.03] transition-colors cursor-pointer border-t border-border/30 first:border-t-0 group">
         {/* Logo / emoji */}
         <div
           className="w-8 h-8 rounded-lg flex items-center justify-center text-base shrink-0 overflow-hidden"
@@ -227,7 +227,7 @@ function LotteryGameRow({ game }: { game: LotteryGame }) {
         {/* Name + pick info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-sm text-foreground truncate leading-tight">{game.name}</span>
+            <span className="font-semibold text-sm text-foreground leading-tight break-words">{game.name}</span>
             {tier === "closing" && (
               <span className="text-[9px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 px-1.5 py-0.5 rounded-full shrink-0 animate-pulse">
                 CLOSING
@@ -246,7 +246,7 @@ function LotteryGameRow({ game }: { game: LotteryGame }) {
         </div>
 
         {/* Next draw timer */}
-        <div className="shrink-0 text-right hidden sm:block min-w-[72px]">
+        <div className="shrink-0 text-right min-w-[58px] sm:min-w-[72px]">
           <div
             className={`text-[10px] flex items-center justify-end gap-0.5 mb-0.5 ${
               tier === "closing" ? "text-rose-400" : tier === "soon" ? "text-amber-400" : "text-muted-foreground/60"
@@ -260,9 +260,9 @@ function LotteryGameRow({ game }: { game: LotteryGame }) {
           </div>
         </div>
 
-        {/* Bet Now button */}
+        {/* Shorter action label on mobile so the full lottery name stays visible */}
         <div
-          className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold flex items-center gap-1 transition-all group-hover:brightness-110"
+          className="shrink-0 rounded-lg px-2.5 sm:px-3 py-1.5 text-xs font-bold flex items-center gap-1 transition-all group-hover:brightness-110"
           style={{
             background: game.color,
             color: "white",
@@ -270,7 +270,8 @@ function LotteryGameRow({ game }: { game: LotteryGame }) {
           }}
         >
           <Zap className="w-3 h-3" />
-          Bet Now
+          <span className="sm:hidden">Bet</span>
+          <span className="hidden sm:inline">Bet Now</span>
         </div>
       </div>
     </Link>
@@ -415,7 +416,11 @@ function CountryGroup({
   games: LotteryGame[];
   defaultOpen: boolean;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [open, setOpen] = useState(() =>
+    defaultOpen ||
+    (typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 639px)").matches),
+  );
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">

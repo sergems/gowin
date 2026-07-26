@@ -897,7 +897,12 @@ export default function LotteryGame() {
                 ) : (
                   <>
                     <Zap className="w-4 h-4" />
-                    {isReady ? `Bet Now` : "Select numbers"}
+                    {isReady ? (
+                      <>
+                        <span className="sm:hidden">Bet</span>
+                        <span className="hidden sm:inline">Bet Now</span>
+                      </>
+                    ) : "Select numbers"}
                   </>
                 )}
               </Button>
