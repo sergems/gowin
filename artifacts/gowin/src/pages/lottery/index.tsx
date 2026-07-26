@@ -320,10 +320,30 @@ function PopularCard({ game }: { game: LotteryGame }) {
           border: `1px solid ${game.color}35`,
         }}
       >
+        {/* Colour header — desktop only */}
+        <div
+          className="relative hidden sm:flex flex-col items-center justify-center gap-2 px-3"
+          style={{ background: `linear-gradient(145deg, ${game.color}cc 0%, ${game.color}55 100%)`, height: 100 }}
+        >
+          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: `radial-gradient(circle at 80% 20%, white 0%, transparent 60%)` }} />
+          {game.logoUrl ? (
+            <img src={game.logoUrl} alt={game.name} className="w-14 h-10 object-contain drop-shadow-lg relative z-10"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; const fb = e.currentTarget.nextSibling as HTMLElement | null; if (fb) fb.style.display = ""; }}
+            />
+          ) : flagUrl ? (
+            <img src={flagUrl} alt={game.country} className="object-cover rounded drop-shadow-lg relative z-10" style={{ width: 40, height: 30 }} />
+          ) : (
+            <span className="text-4xl leading-none drop-shadow-lg relative z-10">{game.emoji}</span>
+          )}
+          {tier === "closing" && (
+            <span className="absolute top-2 right-2 text-[9px] font-bold bg-rose-500/80 text-white px-1.5 py-0.5 rounded-full animate-pulse z-10">CLOSING</span>
+          )}
+        </div>
+
         {/* Text body */}
         <div className="flex flex-col gap-2 px-3 pt-3 pb-3 bg-card flex-1">
-          {/* Colour bar at top */}
-          <div className="h-1 rounded-full mb-1" style={{ background: `linear-gradient(to right, ${game.color}, ${game.color}66)` }} />
+          {/* Colour bar — mobile only */}
+          <div className="h-1 rounded-full mb-1 sm:hidden" style={{ background: `linear-gradient(to right, ${game.color}, ${game.color}66)` }} />
 
           <div>
             <p className="font-bold text-sm leading-tight text-foreground">{game.name}</p>
