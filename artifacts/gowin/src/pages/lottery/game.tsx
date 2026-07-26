@@ -260,18 +260,25 @@ const BONUS_MODE_OPTIONS: { mode: BonusMode; label: string; desc: string }[] = [
   },
 ];
 
+const USA_SLUGS_NO_INCLUDING_BONUS = ["powerball", "mega-millions"];
+
 function BonusModeSelector({
-  value, onChange, hasBonus,
+  value, onChange, hasBonus, slug,
 }: {
-  value: BonusMode; onChange: (v: BonusMode) => void; hasBonus: boolean;
+  value: BonusMode; onChange: (v: BonusMode) => void; hasBonus: boolean; slug?: string;
 }) {
   if (!hasBonus) return null;
+
+  const hideIncludingBonus = slug ? USA_SLUGS_NO_INCLUDING_BONUS.includes(slug) : false;
+  const options = hideIncludingBonus
+    ? BONUS_MODE_OPTIONS.filter((o) => o.mode !== "bonus")
+    : BONUS_MODE_OPTIONS;
 
   return (
     <div>
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Bonus Mode</p>
       <div className="flex flex-col gap-1.5">
-        {BONUS_MODE_OPTIONS.map(({ mode, label, desc }) => {
+        {options.map(({ mode, label, desc }) => {
           const active = value === mode;
           return (
             <button
@@ -473,6 +480,13 @@ export default function LotteryGame() {
   useEffect(() => {
     setSelectedBonus(null);
   }, [bonusMode, playType]);
+
+  // Reset bonusMode to "exclude" when on a game that doesn't allow "Including Bonus"
+  useEffect(() => {
+    if (slug && USA_SLUGS_NO_INCLUDING_BONUS.includes(slug) && bonusMode === "bonus") {
+      setBonusMode("exclude");
+    }
+  }, [slug, bonusMode]);
 
   const isBonusOnly = playType === "bonus_only";
   const requiredMain = isBonusOnly ? 0 : parseInt(playType);
@@ -736,7 +750,7 @@ export default function LotteryGame() {
             <div className="flex-1 min-w-0 space-y-4">
               {/* Bonus Mode */}
               {!isBonusOnly && (
-                <BonusModeSelector value={bonusMode} onChange={setBonusMode} hasBonus={hasBonus} />
+                <BonusModeSelector value={bonusMode} onChange={setBonusMode} hasBonus={hasBonus} slug={slug} />
               )}
 
               {/* Main Number Grid */}
