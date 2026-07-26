@@ -33,6 +33,7 @@ interface LotteryTicketItem {
   prizeAmount: number | null;
   potentialWin: string | null;
   odds: string | null;
+  code: string | null;
   playType: string | null;
   bonusMode: string | null;
   createdAt: string;

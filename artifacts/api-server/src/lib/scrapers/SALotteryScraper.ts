@@ -18,6 +18,7 @@
 import { BaseScraper } from "./BaseScraper";
 import type { DrawResult } from "./types";
 import * as cheerio from "cheerio";
+import type { Element } from "domhandler";
 
 type SALotteryKind =
   | "daily-lotto"
@@ -219,7 +220,7 @@ export class SALotteryScraper extends BaseScraper {
   }
 
   private readNumbers(
-    scope: cheerio.Cheerio<cheerio.Element>,
+    scope: cheerio.Cheerio<Element>,
     selector: string,
     count: number,
     max: number,

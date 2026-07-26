@@ -74,7 +74,7 @@ router.post("/admin/lottery/scrapers/run-all", requireAdmin, async (_req, res): 
 // ── POST /admin/lottery/scrapers/:gameId/run ──────────────────────────────────
 
 router.post("/admin/lottery/scrapers/:gameId/run", requireAdmin, async (req, res): Promise<void> => {
-  const gameId = parseInt(req.params.gameId, 10);
+  const gameId = parseInt(req.params.gameId as string, 10);
   if (isNaN(gameId)) {
     res.status(400).json({ error: "Invalid gameId" });
     return;
@@ -87,7 +87,7 @@ router.post("/admin/lottery/scrapers/:gameId/run", requireAdmin, async (req, res
 // ── PATCH /admin/lottery/scrapers/:gameId — update scraper config ─────────────
 
 router.patch("/admin/lottery/scrapers/:gameId", requireAdmin, async (req, res): Promise<void> => {
-  const gameId = parseInt(req.params.gameId, 10);
+  const gameId = parseInt(req.params.gameId as string, 10);
   if (isNaN(gameId)) {
     res.status(400).json({ error: "Invalid gameId" });
     return;
@@ -132,7 +132,7 @@ router.patch("/admin/lottery/scrapers/:gameId", requireAdmin, async (req, res): 
 // Body: { numbers: number[], bonus?: number[], drawDate?: string }
 
 router.post("/admin/lottery/games/:gameId/manual-result", requireAdmin, async (req, res): Promise<void> => {
-  const gameId = parseInt(req.params.gameId, 10);
+  const gameId = parseInt(req.params.gameId as string, 10);
   if (isNaN(gameId)) {
     res.status(400).json({ error: "Invalid gameId" });
     return;

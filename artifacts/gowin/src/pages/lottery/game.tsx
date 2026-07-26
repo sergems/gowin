@@ -590,7 +590,7 @@ export default function LotteryGame() {
       if (!isBonusOnly) {
         body.bonusMode = bonusMode;
       }
-      if ((needsBonusPick || bonusMode === "with_bonus") && selectedBonus !== null) {
+      if (needsBonusPick && selectedBonus !== null) {
         body.bonusNumber = selectedBonus;
       }
       const { data } = await api.post("/api/lottery/tickets", body);

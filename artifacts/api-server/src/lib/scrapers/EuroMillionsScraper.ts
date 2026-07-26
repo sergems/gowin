@@ -16,6 +16,7 @@
 import { BaseScraper } from "./BaseScraper";
 import type { DrawResult } from "./types";
 import * as cheerio from "cheerio";
+import type { Element } from "domhandler";
 
 const MONTHS: Record<string, string> = {
   january: "01", february: "02", march: "03", april: "04",
@@ -39,7 +40,7 @@ export class EuroMillionsScraper extends BaseScraper {
     // We collect (date, numbers, bonus) pairs and return the first with valid numbers.
 
     // Gather date headers in document order
-    interface DrawSection { date: string | null; $balls: cheerio.Cheerio<cheerio.Element> }
+    interface DrawSection { date: string | null; $balls: cheerio.Cheerio<Element> }
     const sections: DrawSection[] = [];
 
     // The date headers are divs with class "h2" that contain the word "Result"

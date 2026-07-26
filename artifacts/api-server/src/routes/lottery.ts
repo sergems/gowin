@@ -488,7 +488,7 @@ router.post("/admin/lottery/games", requireAdmin, async (req, res): Promise<void
 
 // PATCH /admin/lottery/games/:id
 router.patch("/admin/lottery/games/:id", requireAdmin, async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   const {
     name, country, ticketPrice, nextDrawAt,
     isActive, color, emoji, description,
@@ -536,7 +536,7 @@ router.patch("/admin/lottery/games/:id", requireAdmin, async (req, res): Promise
 
 // DELETE /admin/lottery/games/:id
 router.delete("/admin/lottery/games/:id", requireAdmin, async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   await db.delete(lotteryGamesTable).where(eq(lotteryGamesTable.id, id));
   res.json({ success: true });
 });
@@ -586,7 +586,7 @@ router.post("/admin/lottery/draws", requireAdmin, async (req, res): Promise<void
 
 // POST /admin/lottery/draws/:id/settle — set winning numbers and pay out using payout config odds
 router.post("/admin/lottery/draws/:id/settle", requireAdmin, async (req, res): Promise<void> => {
-  const drawId = parseInt(req.params.id, 10);
+  const drawId = parseInt(req.params.id as string, 10);
   const { winningNumbers, bonusNumbers = [] } = req.body;
 
   if (!Array.isArray(winningNumbers) || winningNumbers.length === 0) {
@@ -611,7 +611,7 @@ router.post("/admin/lottery/draws/:id/settle", requireAdmin, async (req, res): P
 
 // DELETE /admin/lottery/draws/:id
 router.delete("/admin/lottery/draws/:id", requireAdmin, async (req, res): Promise<void> => {
-  const drawId = parseInt(req.params.id, 10);
+  const drawId = parseInt(req.params.id as string, 10);
   if (isNaN(drawId)) { res.status(400).json({ error: "Invalid draw id" }); return; }
   const deleted = await db.delete(lotteryDrawsTable).where(eq(lotteryDrawsTable.id, drawId)).returning();
   if (deleted.length === 0) { res.status(404).json({ error: "Draw not found" }); return; }
