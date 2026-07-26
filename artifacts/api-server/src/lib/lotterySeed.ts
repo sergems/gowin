@@ -197,6 +197,7 @@ const SEED_GAMES = [
     description: "Australia's biggest Tuesday night lottery. Pick up to 7 numbers from 1–47.",
     scraperClass: "TheLotterAusOzLottoScraper",
     website: "https://www.thelotter.com",
+    logoUrl: "https://flagcdn.com/80x60/au.png",
   },
   {
     name: "Australia Powerball",
@@ -214,6 +215,7 @@ const SEED_GAMES = [
     description: "Australia's Thursday night Powerball. Pick up to 7 main numbers plus optional Powerball.",
     scraperClass: "TheLotterAusPowerballScraper",
     website: "https://www.thelotter.com",
+    logoUrl: "https://flagcdn.com/80x60/au.png",
   },
   {
     name: "Saturday Lotto",
@@ -231,6 +233,7 @@ const SEED_GAMES = [
     description: "Australia's iconic Saturday night lottery. Pick up to 6 numbers from 1–45.",
     scraperClass: "TheLotterAusSaturdayLottoScraper",
     website: "https://www.thelotter.com",
+    logoUrl: "https://flagcdn.com/80x60/au.png",
   },
   {
     name: "Weekday Windfall",
@@ -248,6 +251,7 @@ const SEED_GAMES = [
     description: "Australia's midweek lottery drawn on Wednesdays and Saturdays.",
     scraperClass: "TheLotterAusWeekdayWindfallScraper",
     website: "https://www.thelotter.com",
+    logoUrl: "https://flagcdn.com/80x60/au.png",
   },
   // Europe
   {
@@ -266,6 +270,7 @@ const SEED_GAMES = [
     description: "Austria's national lottery drawn on Wednesdays and Sundays. Pick 6 from 1–45.",
     scraperClass: "TheLotterAustriaLottoScraper",
     website: "https://www.thelotter.com",
+    logoUrl: "https://flagcdn.com/80x60/at.png",
   },
   {
     name: "EuroDreams",
@@ -283,6 +288,7 @@ const SEED_GAMES = [
     description: "European lottery with a lifetime prize. Pick 6 from 1–40 plus a Dream Number 1–5.",
     scraperClass: "TheLotterEuroDreamsScraper",
     website: "https://www.thelotter.com",
+    logoUrl: "https://flagcdn.com/80x60/eu.png",
   },
   {
     name: "El Gordo",
@@ -300,6 +306,7 @@ const SEED_GAMES = [
     description: "Spain's popular Sunday lottery — El Gordo de la Primitiva. Pick 5 from 1–54.",
     scraperClass: "TheLotterSpainElGordoScraper",
     website: "https://www.thelotter.com",
+    logoUrl: "https://flagcdn.com/80x60/es.png",
   },
   {
     name: "Germany Lotto",
@@ -317,6 +324,7 @@ const SEED_GAMES = [
     description: "Germany's 6aus49 drawn on Wednesdays and Saturdays. Pick 6 from 1–49.",
     scraperClass: "TheLotterGermanyLottoScraper",
     website: "https://www.thelotter.com",
+    logoUrl: "https://flagcdn.com/80x60/de.png",
   },
   {
     name: "SuperEnalotto",
