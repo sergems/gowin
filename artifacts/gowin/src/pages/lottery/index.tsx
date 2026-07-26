@@ -336,12 +336,13 @@ function PopularCard({ game }: { game: LotteryGame }) {
             }}
           />
 
-          {/* Logo or emoji */}
+          {/* Logo or flag image or emoji */}
           {game.logoUrl ? (
             <img
               src={game.logoUrl}
               alt={game.name}
-              className="w-14 h-10 object-contain drop-shadow-lg relative z-10"
+              className="object-contain drop-shadow-lg relative z-10"
+              style={{ width: 138, height: 96 }}
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).style.display = "none";
                 const fb = e.currentTarget.nextSibling as HTMLElement | null;
@@ -349,12 +350,21 @@ function PopularCard({ game }: { game: LotteryGame }) {
               }}
             />
           ) : null}
-          <span
-            className="text-4xl leading-none drop-shadow-lg relative z-10"
-            style={{ display: game.logoUrl ? "none" : "" }}
-          >
-            {game.emoji}
-          </span>
+          {/* Country flag image when no game logo */}
+          {!game.logoUrl && countryFlagUrl(game.country) ? (
+            <img
+              src={countryFlagUrl(game.country)!}
+              alt={game.country}
+              className="object-cover rounded drop-shadow-lg relative z-10"
+              style={{ width: 80, height: 60 }}
+            />
+          ) : null}
+          {/* Emoji fallback when neither logo nor flag resolves */}
+          {!game.logoUrl && !countryFlagUrl(game.country) ? (
+            <span className="text-4xl leading-none drop-shadow-lg relative z-10">
+              {game.emoji}
+            </span>
+          ) : null}
 
           {/* Urgency pill */}
           {tier === "closing" && (
