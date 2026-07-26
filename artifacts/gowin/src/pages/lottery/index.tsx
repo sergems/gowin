@@ -299,14 +299,15 @@ function PopularCard({ game }: { game: LotteryGame }) {
 
   const msLeft = drawDate ? drawDate.getTime() - Date.now() : null;
   let countdownLabel = "";
+  let mobileCountdownLabel = "";
   if (msLeft !== null && msLeft > 0) {
     const hh = Math.floor(msLeft / 3_600_000);
     const mm = Math.floor((msLeft % 3_600_000) / 60_000);
     const ss = Math.floor((msLeft % 60_000) / 1_000);
-    if (hh > 0) countdownLabel = `${hh}h ${pad(mm)}m`;
-    else countdownLabel = `${pad(mm)}:${pad(ss)}`;
+    if (hh > 0) { countdownLabel = `${hh}h ${pad(mm)}m`; mobileCountdownLabel = `${hh}h ${pad(mm)}`; }
+    else { countdownLabel = `${pad(mm)}:${pad(ss)}`; mobileCountdownLabel = `${pad(mm)}:${pad(ss)}`; }
   } else if (msLeft !== null && msLeft <= 0) {
-    countdownLabel = "Drawing now";
+    countdownLabel = "Drawing now"; mobileCountdownLabel = "Now";
   }
 
   const flagUrl = countryFlagUrl(game.country);
@@ -357,7 +358,8 @@ function PopularCard({ game }: { game: LotteryGame }) {
               style={{ color: tier === "closing" ? "#f87171" : "var(--muted-foreground)" }}
             >
               {tier === "closing" ? <Timer className="w-3 h-3 shrink-0" /> : <Clock className="w-3 h-3 shrink-0" />}
-              <span className="tabular-nums">{countdownLabel || "—"}</span>
+              <span className="tabular-nums sm:hidden">{mobileCountdownLabel || "—"}</span>
+              <span className="tabular-nums hidden sm:inline">{countdownLabel || "—"}</span>
             </div>
             <button
               className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold text-white transition-all hover:brightness-110 active:scale-95"
