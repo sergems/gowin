@@ -322,10 +322,10 @@ function PopularCard({ game }: { game: LotteryGame }) {
           border: `1px solid ${game.color}35`,
         }}
       >
-        {/* Colour header */}
+        {/* Colour header — fixed height keeps all cards uniform */}
         <div
-          className="relative flex flex-col items-center justify-center gap-2 pt-5 pb-4 px-3"
-          style={{ background: `linear-gradient(145deg, ${game.color}cc 0%, ${game.color}55 100%)` }}
+          className="relative flex flex-col items-center justify-center gap-2 px-3"
+          style={{ background: `linear-gradient(145deg, ${game.color}cc 0%, ${game.color}55 100%)`, height: 100 }}
         >
           <div
             className="absolute inset-0 opacity-10"
@@ -358,11 +358,6 @@ function PopularCard({ game }: { game: LotteryGame }) {
           {tier === "closing" && (
             <span className="absolute top-2 right-2 text-[9px] font-bold bg-rose-500/80 text-white px-1.5 py-0.5 rounded-full animate-pulse z-10">
               CLOSING
-            </span>
-          )}
-          {tier === "soon" && (
-            <span className="absolute top-2 right-2 text-[9px] font-bold bg-amber-500/80 text-white px-1.5 py-0.5 rounded-full z-10">
-              SOON
             </span>
           )}
         </div>
@@ -529,7 +524,6 @@ export default function LotteryLobby() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
-      <BannerSlider />
       {!isLoading && games && games.length > 0 && <PopularSection games={games} />}
       {isLoading ? (
         <LotterySkeleton />
