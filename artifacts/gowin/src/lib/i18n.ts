@@ -831,6 +831,7 @@ const translations = {
     "shell.up_markets": "1UP / 2UP Markets",
     "shell.referral_program": "Referral Program",
     "nav.lottery": "Lucky Numbers",
+    "nav.lotto": "Lotto",
 
     "admin.dashboard.title": "Admin Dashboard",
     "admin.dashboard.desc": "Platform overview and statistics",
@@ -1864,6 +1865,7 @@ const translations = {
     "shell.up_markets": "Marchés 1UP / 2UP",
     "shell.referral_program": "Programme de parrainage",
     "nav.lottery": "Lucky Numbers",
+    "nav.lotto": "Loto",
 
     "admin.dashboard.title": "Tableau de bord Admin",
     "admin.dashboard.desc": "Vue d'ensemble et statistiques de la plateforme",

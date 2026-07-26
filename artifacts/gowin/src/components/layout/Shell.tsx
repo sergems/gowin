@@ -19,7 +19,7 @@ import {
   Activity, LayoutDashboard, History, Wallet, Trophy, LogOut, Users, Settings, X,
   ArrowLeftRight, Ticket, UserCircle, AlertTriangle, Banknote, SlidersHorizontal,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, ChevronDown, ChevronRight, Globe, Shield, CheckCircle2,
-  Home, Menu, Images, Printer, Clock, Building2, Target, BarChart3, FileText, DollarSign, Zap, Bell, Sparkles, Share2, TrendingUp, CalendarDays,
+  Home, Menu, Images, Printer, Clock, Building2, Target, BarChart3, FileText, DollarSign, Zap, Bell, Sparkles, Share2, TrendingUp, CalendarDays, CircleDot,
 } from "lucide-react";
 import type { PlacedBetDetails } from "@/contexts/BetSlipContext";
 import { printBetSlip } from "@/lib/printBetSlip";
@@ -223,7 +223,6 @@ export function Shell({ children }: { children: ReactNode }) {
   const [openCountries, setOpenCountries] = useState<Set<string>>(new Set());
   const [intlOpen, setIntlOpen] = useState(false);
   const [popularOpen, setPopularOpen] = useState(true);
-  const [mobileBetSlipOpen, setMobileBetSlipOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
@@ -990,22 +989,14 @@ export function Shell({ children }: { children: ReactNode }) {
           </>
         )}
 
-        {/* Bet Slip FAB — hidden on lottery pages */}
-        {!location.startsWith("/lottery") && (
-        <button onClick={() => setMobileBetSlipOpen(true)}
-          className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-md transition-colors relative
-            ${mobileBetSlipOpen ? "text-primary" : "text-muted-foreground"}`}>
-          <div className="relative">
-            <Ticket className="w-5 h-5" />
-            {selections.length > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center leading-none">
-                {selections.length > 9 ? "9+" : selections.length}
-              </span>
-            )}
-          </div>
-          <span className="text-[10px] font-medium">{t("betslip.title")}</span>
-        </button>
-        )}
+        <Link
+          href="/lottery"
+          className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-md transition-colors
+            ${location.startsWith("/lottery") ? "text-primary" : "text-muted-foreground"}`}
+        >
+          <CircleDot className="w-5 h-5" />
+          <span className="text-[10px] font-medium">{t("nav.lotto")}</span>
+        </Link>
 
         {/* Logout (logged-in only) */}
         {user && (
@@ -1037,16 +1028,6 @@ export function Shell({ children }: { children: ReactNode }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* ── Mobile Bet Slip Drawer ───────────────────────────────────────────── */}
-      {mobileBetSlipOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileBetSlipOpen(false)} />
-          <div className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl flex flex-col overflow-hidden shadow-2xl" style={{ maxHeight: '93dvh', height: '93dvh' }}>
-            <BetSlipBody onClose={() => setMobileBetSlipOpen(false)} />
-          </div>
-        </div>
-      )}
 
       {/* ── Print / Save Bet Slip dialog ─────────────────────────────────────── */}
       {lastPlacedBet && (
