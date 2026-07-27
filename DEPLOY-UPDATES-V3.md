@@ -9,6 +9,11 @@ database. Always take a backup first. The repository contains `database.sql`
 as a full database dump for a fresh install or an intentional full restore;
 it is not an automatic, idempotent migration script.
 
+If you see a command containing `< migrations/v3.sql` while following an older
+copy of this guide, stop. That file is not included in this repository and the
+command must not be run. Pull the latest guide from GitHub, then use the schema
+check in Path A, Step 9.
+
 ## Deployment model
 
 ```text
@@ -258,22 +263,75 @@ The current V3 application expects, among other objects:
 If those objects already exist, do not run `database.sql`. The API startup
 seeds missing lottery game rows without deleting existing data.
 
-If the existing database is missing objects, stop the app and apply a reviewed
-migration file—not the full dump:
+Run the following single check to identify any missing V3 objects or columns:
 
 ```bash
-docker compose stop app
+docker compose exec -T db psql -U gowin -d gowindb <<'SQL'
+WITH required_objects(object_name) AS (
+  VALUES
+    ('lottery_games'),
+    ('lottery_draws'),
+    ('lottery_tickets'),
+    ('scraper_logs'),
+    ('settlement_logs'),
+    ('cash_out_audit_log'),
+    ('notifications'),
+    ('referral_rewards')
+)
+SELECT r.object_name AS missing_table
+FROM required_objects r
+LEFT JOIN information_schema.tables t
+  ON t.table_schema = 'public'
+ AND t.table_name = r.object_name
+WHERE t.table_name IS NULL
+ORDER BY r.object_name;
 
-# Example only: replace with the reviewed migration file.
-docker compose exec -T db psql -v ON_ERROR_STOP=1 -U gowin -d gowindb \
-  < migrations/v3.sql
+SELECT 'bets.bonus_percentage' AS missing_column
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM information_schema.columns
+  WHERE table_schema = 'public'
+    AND table_name = 'bets'
+    AND column_name = 'bonus_percentage'
+);
 
-docker compose start app
+SELECT 'bets.bonus_amount' AS missing_column
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM information_schema.columns
+  WHERE table_schema = 'public'
+    AND table_name = 'bets'
+    AND column_name = 'bonus_amount'
+);
+
+SELECT 'bet_selections.up_won' AS missing_column
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM information_schema.columns
+  WHERE table_schema = 'public'
+    AND table_name = 'bet_selections'
+    AND column_name = 'up_won'
+);
+SQL
 ```
 
-Do not create `migrations/v3.sql` by copying `database.sql`; a full dump can
-attempt to recreate types, tables, data, and constraints and can damage an
-existing database.
+If the command prints no rows in any result set, no V3 schema migration is
+needed. Start or restart the app:
+
+```bash
+docker compose up -d app
+docker compose logs --tail=200 app
+```
+
+This repository does **not** currently contain a `migrations/v3.sql` file.
+Therefore, there is no migration-file command to run at this step.
+
+If the check reports missing tables or columns, stop here and preserve the
+database backup. Do not invent an empty migration file and do not copy
+`database.sql` into `migrations/v3.sql`. `database.sql` is a full PostgreSQL
+dump and is intended only for a fresh database or an intentional full restore.
+The missing-object output should be used to prepare and review a dedicated
+idempotent migration before applying it to production.
 
 ### Step 10 — Verify the deployment
 
