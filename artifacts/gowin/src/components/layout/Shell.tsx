@@ -994,7 +994,7 @@ export function Shell({ children }: { children: ReactNode }) {
           className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-md transition-colors
             ${location.startsWith("/lottery") ? "text-primary" : "text-muted-foreground"}`}
         >
-          <CircleDot className="w-5 h-5" />
+          <img src="/assets/lotto-ball.png" alt="Lotto" className="w-6 h-6 object-contain" />
           <span className="text-[10px] font-medium">{t("nav.lotto")}</span>
         </Link>
 

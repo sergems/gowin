@@ -196,27 +196,26 @@ function NumberBall({
 
 // ── Play Type Selector ────────────────────────────────────────────────────────
 
-const PLAY_TYPE_LABELS: Record<string, string> = {
-  "1": "1 Number",
-  "2": "2 Numbers",
-  "3": "3 Numbers",
-  "4": "4 Numbers",
-  "5": "5 Numbers",
-  "6": "6 Numbers",
-  "bonus_only": "Bonus Ball",
-};
+function getPlayTypeLabel(pt: string, t: (key: any) => string): string {
+  if (pt === "bonus_only") return t("lottery.bonus_ball_label");
+  const n = parseInt(pt);
+  return n === 1
+    ? t("lottery.n_number_tab").replace("{n}", "1")
+    : t("lottery.n_numbers_tab").replace("{n}", String(n));
+}
 
 function PlayTypeSelector({
   value, onChange, enabled, color,
 }: {
   value: PlayType; onChange: (v: PlayType) => void; enabled: string[]; color: string;
 }) {
+  const { t } = useSiteSettings();
   const types: PlayType[] = ["1", "2", "3", "4", "5", "6", "bonus_only"];
-  const available = types.filter((t) => enabled.includes(t));
+  const available = types.filter((pt) => enabled.includes(pt));
 
   return (
     <div>
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Play Type</p>
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t("lottery.play_type")}</p>
 
       {/* Mobile: native select dropdown */}
       <select
@@ -225,7 +224,7 @@ function PlayTypeSelector({
         onChange={(e) => onChange(e.target.value as PlayType)}
       >
         {available.map((pt) => (
-          <option key={pt} value={pt}>{PLAY_TYPE_LABELS[pt]}</option>
+          <option key={pt} value={pt}>{getPlayTypeLabel(pt, t)}</option>
         ))}
       </select>
 
@@ -244,7 +243,7 @@ function PlayTypeSelector({
               }`}
               style={active ? { background: color, borderColor: color } : {}}
             >
-              {PLAY_TYPE_LABELS[pt]}
+              {getPlayTypeLabel(pt, t)}
             </button>
           );
         })}
@@ -255,24 +254,6 @@ function PlayTypeSelector({
 
 // ── Bonus Mode Selector ───────────────────────────────────────────────────────
 
-const BONUS_MODE_OPTIONS: { mode: BonusMode; label: string; desc: string }[] = [
-  {
-    mode: "exclude",
-    label: "Excluding Bonus",
-    desc: "Bonus ball not counted — all picks must be in the main draw",
-  },
-  {
-    mode: "bonus",
-    label: "Including Bonus",
-    desc: "Bonus ball counts as part of the draw — your numbers can match it",
-  },
-  {
-    mode: "with_bonus",
-    label: "With Bonus Ball",
-    desc: "All main numbers must match AND your picked bonus ball must match the drawn bonus ball",
-  },
-];
-
 const USA_SLUGS_NO_INCLUDING_BONUS = ["powerball", "mega-millions"];
 
 function BonusModeSelector({
@@ -280,16 +261,23 @@ function BonusModeSelector({
 }: {
   value: BonusMode; onChange: (v: BonusMode) => void; hasBonus: boolean; slug?: string;
 }) {
+  const { t } = useSiteSettings();
   if (!hasBonus) return null;
+
+  const allOptions: { mode: BonusMode; label: string; desc: string }[] = [
+    { mode: "exclude",    label: t("lottery.excluding_bonus"),   desc: t("lottery.excluding_bonus_desc") },
+    { mode: "bonus",      label: t("lottery.including_bonus"),   desc: t("lottery.including_bonus_desc") },
+    { mode: "with_bonus", label: t("lottery.with_bonus_ball"),   desc: t("lottery.with_bonus_ball_desc") },
+  ];
 
   const hideIncludingBonus = slug ? USA_SLUGS_NO_INCLUDING_BONUS.includes(slug) : false;
   const options = hideIncludingBonus
-    ? BONUS_MODE_OPTIONS.filter((o) => o.mode !== "bonus")
-    : BONUS_MODE_OPTIONS;
+    ? allOptions.filter((o) => o.mode !== "bonus")
+    : allOptions;
 
   return (
     <div>
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Bonus Mode</p>
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("lottery.bonus_mode")}</p>
 
       {/* Mobile: native select dropdown */}
       <select
@@ -334,6 +322,7 @@ function BonusModeSelector({
 // ── Payout Table ──────────────────────────────────────────────────────────────
 
 function PayoutTable({ game }: { game: LotteryGameDetail }) {
+  const { t } = useSiteSettings();
   const [open, setOpen] = useState(false);
   const cfg = game.payoutConfig;
   const mainKeys = ["1", "2", "3", "4", "5", "6"].filter(
@@ -349,7 +338,7 @@ function PayoutTable({ game }: { game: LotteryGameDetail }) {
       >
         <div className="flex items-center gap-2 font-semibold text-foreground">
           <Info className="w-4 h-4 text-primary" />
-          Payout Table
+          {t("lottery.payout_table")}
         </div>
         {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
       </button>
@@ -359,7 +348,7 @@ function PayoutTable({ game }: { game: LotteryGameDetail }) {
           {/* Excluding Bonus */}
           {mainKeys.length > 0 && (
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Excluding Bonus</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">{t("lottery.excluding_bonus")}</p>
               <table className="w-full text-sm">
                 <tbody className="divide-y divide-border/20">
                   {mainKeys.map((k) => {
@@ -367,7 +356,7 @@ function PayoutTable({ game }: { game: LotteryGameDetail }) {
                     if (!odds) return null;
                     return (
                       <tr key={k}>
-                        <td className="py-1.5 text-muted-foreground">{k} {k === "1" ? "Number" : "Numbers"}</td>
+                        <td className="py-1.5 text-muted-foreground">{k} {k === "1" ? t("lottery.number_unit") : t("lottery.numbers_unit")}</td>
                         <td className="py-1.5 text-right font-semibold" style={{ color: game.color }}>{fmtOdds(odds)}</td>
                       </tr>
                     );
@@ -380,7 +369,7 @@ function PayoutTable({ game }: { game: LotteryGameDetail }) {
           {/* Including Bonus (bonus ball counts as part of drawn set) */}
           {game.bonusNumbersCount > 0 && mainKeys.length > 0 && (
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Including Bonus</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">{t("lottery.including_bonus")}</p>
               <table className="w-full text-sm">
                 <tbody className="divide-y divide-border/20">
                   {mainKeys.map((k) => {
@@ -388,7 +377,7 @@ function PayoutTable({ game }: { game: LotteryGameDetail }) {
                     if (!odds) return null;
                     return (
                       <tr key={k}>
-                        <td className="py-1.5 text-muted-foreground">{k} {k === "1" ? "Number" : "Numbers"}</td>
+                        <td className="py-1.5 text-muted-foreground">{k} {k === "1" ? t("lottery.number_unit") : t("lottery.numbers_unit")}</td>
                         <td className="py-1.5 text-right font-semibold text-yellow-500">{fmtOdds(odds)}</td>
                       </tr>
                     );
@@ -401,7 +390,7 @@ function PayoutTable({ game }: { game: LotteryGameDetail }) {
           {/* Including Bonus Ball (all main must match + drawn bonus must be among picks) */}
           {game.bonusNumbersCount > 0 && bonusKeys.length > 0 && (
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Lotto With Bonus Ball</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">{t("lottery.lotto_with_bonus_ball")}</p>
               <table className="w-full text-sm">
                 <tbody className="divide-y divide-border/20">
                   {bonusKeys.map((k) => {
@@ -409,7 +398,7 @@ function PayoutTable({ game }: { game: LotteryGameDetail }) {
                     if (!odds) return null;
                     return (
                       <tr key={k}>
-                        <td className="py-1.5 text-muted-foreground">{k} {k === "1" ? "Number" : "Numbers"} + Bonus Ball</td>
+                        <td className="py-1.5 text-muted-foreground">{k} {k === "1" ? t("lottery.number_unit") : t("lottery.numbers_unit")} + Bonus Ball</td>
                         <td className="py-1.5 text-right font-semibold text-yellow-400">{fmtOdds(odds)}</td>
                       </tr>
                     );
@@ -422,11 +411,11 @@ function PayoutTable({ game }: { game: LotteryGameDetail }) {
           {/* Bonus Ball */}
           {game.bonusNumbersCount > 0 && game.enabledPlayTypes.includes("bonus_only") && (
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Bonus Ball</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">{t("lottery.bonus_ball_label")}</p>
               <table className="w-full text-sm">
                 <tbody className="divide-y divide-border/20">
                   <tr>
-                    <td className="py-1.5 text-muted-foreground">Bonus Ball Only</td>
+                    <td className="py-1.5 text-muted-foreground">{t("lottery.bonus_ball_only")}</td>
                     <td className="py-1.5 text-right font-semibold text-yellow-400">{fmtOdds(cfg.bonusOnly)}</td>
                   </tr>
                 </tbody>
@@ -434,7 +423,7 @@ function PayoutTable({ game }: { game: LotteryGameDetail }) {
             </div>
           )}
 
-          <p className="text-[11px] text-muted-foreground/60">All payouts include stake. Jackpot is the current prize pool.</p>
+          <p className="text-[11px] text-muted-foreground/60">{t("lottery.payouts_footnote")}</p>
         </div>
       )}
     </div>
@@ -446,7 +435,7 @@ function PayoutTable({ game }: { game: LotteryGameDetail }) {
 export default function LotteryGame() {
   const { gameId: slug } = useParams<{ gameId: string }>();
   const { user } = useAuth();
-  const { formatCurrency } = useSiteSettings();
+  const { formatCurrency, t } = useSiteSettings();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -601,8 +590,8 @@ export default function LotteryGame() {
         ? ` • Potential win: ${formatCurrency ? formatCurrency(potentialWin) : `$${potentialWin.toFixed(2)}`}`
         : "";
       toast({
-        title: "🎰 Ticket purchased!",
-        description: `${PLAY_TYPE_LABELS[playType]} @ ${fmtOdds(oddsStr)} — Stake: $${stakeAmount.toFixed(2)}${win}`,
+        title: t("lottery.ticket_purchased"),
+        description: `${getPlayTypeLabel(playType, t)} @ ${fmtOdds(oddsStr)} — Stake: $${stakeAmount.toFixed(2)}${win}`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/lottery/tickets/my"] });
       queryClient.invalidateQueries({ queryKey: ["/api/wallet"] });
@@ -611,7 +600,7 @@ export default function LotteryGame() {
       setStake("");
     },
     onError: (err: Error) => {
-      toast({ title: "Purchase failed", description: err.message, variant: "destructive" });
+      toast({ title: t("lottery.purchase_failed"), description: err.message, variant: "destructive" });
     },
   });
 
@@ -630,9 +619,9 @@ export default function LotteryGame() {
   if (!game) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-16 text-center">
-        <p className="text-lg font-medium text-muted-foreground">Game not found</p>
+        <p className="text-lg font-medium text-muted-foreground">{t("lottery.game_not_found_short")}</p>
         <Link href="/lottery">
-          <Button variant="outline" className="mt-4">← Back to Lucky Numbers</Button>
+          <Button variant="outline" className="mt-4">← {t("lottery.back_to_lucky")}</Button>
         </Link>
       </div>
     );
@@ -644,7 +633,7 @@ export default function LotteryGame() {
       <Link href="/lottery">
         <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-2">
           <ArrowLeft className="w-4 h-4" />
-          Back to Lucky Numbers
+          {t("lottery.back_to_lucky")}
         </button>
       </Link>
 
@@ -684,12 +673,12 @@ export default function LotteryGame() {
             <span className="text-xs text-muted-foreground hidden sm:inline">{game.country}</span>
             {isBettingClosed && (
               <span className="text-[10px] font-bold bg-destructive/15 text-destructive border border-destructive/30 px-1.5 py-0.5 rounded-full">
-                CLOSED
+                {t("lottery.closed_badge")}
               </span>
             )}
             {showCutoffWarning && !isBettingClosed && (
               <span className="text-[10px] font-bold bg-yellow-500/15 text-yellow-500 border border-yellow-500/30 px-1.5 py-0.5 rounded-full animate-pulse">
-                CLOSING SOON
+                {t("lottery.closing_soon")}
               </span>
             )}
           </div>
@@ -704,7 +693,7 @@ export default function LotteryGame() {
             <div className="text-[10px] text-muted-foreground flex items-center justify-end gap-1 mb-1">
               <Clock className="w-3 h-3" />
               <span className="hidden sm:inline">{fmtDrawShort(game.nextDrawAt, game.timezone)}</span>
-              <span className="sm:hidden">Next draw</span>
+              <span className="sm:hidden">{t("lottery.next_draw_compact")}</span>
             </div>
             {countdown.total > 0 ? (
               <div className="flex items-center justify-end gap-0.5 tabular-nums">
@@ -722,7 +711,7 @@ export default function LotteryGame() {
                 <span className="text-[10px] text-muted-foreground">s</span>
               </div>
             ) : (
-              <span className="text-xs font-bold text-green-400 animate-pulse">Drawing now</span>
+              <span className="text-xs font-bold text-green-400 animate-pulse">{t("lottery.drawing_now")}</span>
             )}
           </div>
         )}
@@ -737,14 +726,14 @@ export default function LotteryGame() {
               <Lock className="w-7 h-7 text-muted-foreground" />
             </div>
             <div>
-              <h2 className="font-bold text-foreground text-lg">Betting Closed</h2>
+              <h2 className="font-bold text-foreground text-lg">{t("lottery.betting_closed")}</h2>
               <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-                Bets must be placed at least 15 minutes before the draw. Betting will reopen once the draw result is published.
+                {t("lottery.betting_closed_desc")}
               </p>
             </div>
             {game.nextDraw && (
               <div className="rounded-lg bg-muted/30 border border-border/40 px-5 py-3 text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">Draw time: </span>
+                <span className="font-medium text-foreground">{t("lottery.draw_time_label")} </span>
                 {fmtDrawLong12(game.nextDraw.drawDate, game.timezone)}
               </div>
             )}
@@ -754,8 +743,8 @@ export default function LotteryGame() {
           {/* Header */}
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 className="font-bold text-foreground text-sm">Place Your Bet</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">Choose play type, numbers and stake</p>
+              <h2 className="font-bold text-foreground text-sm">{t("lottery.place_your_bet")}</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("lottery.choose_play_type_desc")}</p>
             </div>
             <Button onClick={quickPick} variant="outline" size="sm" className="gap-1.5 shrink-0">
               <Shuffle className="w-3.5 h-3.5" />
@@ -784,7 +773,9 @@ export default function LotteryGame() {
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Pick {requiredMain} Number{requiredMain !== 1 ? "s" : ""}
+                      {requiredMain === 1
+                        ? t("lottery.pick_n_number_heading").replace("{n}", "1")
+                        : t("lottery.pick_n_numbers_heading").replace("{n}", String(requiredMain))}
                     </p>
                     <Badge
                       variant="outline"
@@ -813,7 +804,7 @@ export default function LotteryGame() {
               {hasBonus && needsBonusPick && (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <p className="text-xs font-semibold text-yellow-500 uppercase tracking-wider">Bonus Ball</p>
+                    <p className="text-xs font-semibold text-yellow-500 uppercase tracking-wider">{t("lottery.bonus_ball_label")}</p>
                     <Badge
                       variant="outline"
                       className="text-[10px]"
@@ -841,7 +832,7 @@ export default function LotteryGame() {
               {/* Bonus ball required hint */}
               {needsBonusPick && hasBonus && selectedBonus === null && (
                 <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-3 py-2 text-xs text-yellow-500 font-medium">
-                  ⭐ Select your Bonus Ball above to continue
+                  {t("lottery.select_bonus_hint")}
                 </div>
               )}
             </div>
@@ -908,7 +899,7 @@ export default function LotteryGame() {
               <Link href="/login">
                 <Button className="w-full h-10 text-sm font-bold gap-1.5">
                   <Zap className="w-4 h-4" />
-                  Login
+                  {t("lottery.login_btn")}
                 </Button>
               </Link>
             ) : (
@@ -919,7 +910,7 @@ export default function LotteryGame() {
                 style={isReady ? { background: game.color, color: "white" } : {}}
               >
                 {buyMutation.isPending ? (
-                  <>Processing…</>
+                  <>{t("lottery.processing")}</>
                 ) : (
                   <>
                     <Zap className="w-4 h-4" />
@@ -928,7 +919,7 @@ export default function LotteryGame() {
                         <span className="sm:hidden">Bet</span>
                         <span className="hidden sm:inline">Bet Now</span>
                       </>
-                    ) : "Select numbers"}
+                    ) : t("lottery.select_numbers_btn")}
                   </>
                 )}
               </Button>
@@ -938,11 +929,11 @@ export default function LotteryGame() {
             {!isReady && user && (
               <p className="text-[10px] text-muted-foreground text-center leading-snug">
                 {selectedMain.length < requiredMain
-                  ? `Pick ${requiredMain - selectedMain.length} more`
+                  ? t("lottery.pick_n_more").replace("{n}", String(requiredMain - selectedMain.length))
                   : needsBonusPick && hasBonus && selectedBonus === null
-                  ? "Pick your bonus ball"
+                  ? t("lottery.pick_bonus_ball_hint")
                   : stakeAmount <= 0
-                  ? "Enter a stake"
+                  ? t("lottery.enter_stake_hint")
                   : stakeAmount < game.minStake
                   ? `Min $${game.minStake.toFixed(2)}`
                   : stakeAmount > game.maxStake
@@ -963,7 +954,7 @@ export default function LotteryGame() {
         <div className="rounded-xl border border-border/50 bg-card p-5 space-y-4">
           <h3 className="font-bold text-foreground flex items-center gap-2">
             <Trophy className="w-4 h-4 text-primary" />
-            Recent Winning Numbers
+            {t("lottery.recent_winning")}
           </h3>
           <div className="space-y-3">
             {game.recentDraws.slice(0, 7).map((draw) => (
