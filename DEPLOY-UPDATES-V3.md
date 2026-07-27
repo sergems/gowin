@@ -323,15 +323,44 @@ docker compose up -d app
 docker compose logs --tail=200 app
 ```
 
-This repository does **not** currently contain a `migrations/v3.sql` file.
-Therefore, there is no migration-file command to run at this step.
+If the check reports the five lottery/scraper tables above, the repository now
+contains the reviewed idempotent migration `migrations/v3.sql`. Apply it after
+confirming that your backup exists:
 
-If the check reports missing tables or columns, stop here and preserve the
-database backup. Do not invent an empty migration file and do not copy
-`database.sql` into `migrations/v3.sql`. `database.sql` is a full PostgreSQL
-dump and is intended only for a fresh database or an intentional full restore.
-The missing-object output should be used to prepare and review a dedicated
-idempotent migration before applying it to production.
+```bash
+LATEST_BACKUP=$(ls -t backups/backup_before_v3_*.sql 2>/dev/null | head -n 1)
+test -n "$LATEST_BACKUP" && test -s "$LATEST_BACKUP"
+
+docker compose stop app
+
+docker compose exec -T db psql -v ON_ERROR_STOP=1 -U gowin -d gowindb \
+  < migrations/v3.sql
+
+docker compose start app
+docker compose logs --tail=200 app
+```
+
+The migration creates only missing tables, sequences, constraints, and foreign
+keys. It does not import lottery seed data; the API seeds missing lottery game
+rows at startup.
+
+Verify the migration:
+
+```bash
+docker compose exec -T db psql -U gowin -d gowindb -c \
+  "SELECT table_name
+   FROM information_schema.tables
+   WHERE table_schema = 'public'
+     AND table_name IN (
+       'lottery_games', 'lottery_draws', 'lottery_tickets',
+       'scraper_logs', 'settlement_logs'
+     )
+   ORDER BY table_name;"
+```
+
+Do not copy the full `database.sql` dump into `migrations/v3.sql`.
+`database.sql` is intended only for a fresh database or an intentional full
+restore.
 
 ### Step 10 — Verify the deployment
 
