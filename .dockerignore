@@ -16,9 +16,10 @@ node_modules
 .env.*
 *.local
 
-# ── Database dumps (not needed in image) ─────────────────────────────────────
+# ── Database dumps (never copy production backups into the build context) ────
 backup.sql
 backup2.sql
+database.sql
 *.sql.gz
 *.dump
 

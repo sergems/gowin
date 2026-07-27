@@ -14,7 +14,6 @@ COPY lib/db/package.json                    ./lib/db/
 COPY lib/api-spec/package.json              ./lib/api-spec/
 COPY lib/api-client-react/package.json      ./lib/api-client-react/
 COPY lib/api-zod/package.json               ./lib/api-zod/
-COPY scripts/package.json                   ./scripts/
 
 RUN pnpm install --no-frozen-lockfile --ignore-scripts && \
     pnpm rebuild esbuild
@@ -27,9 +26,6 @@ RUN pnpm --filter @workspace/api-server run build
 
 # ── Stage 2: production runtime ──────────────────────────────────────────────
 FROM node:24-slim AS runner
-
-# Install postgresql-client so the entrypoint can run psql + pg_isready
-RUN apt-get update && apt-get install -y --no-install-recommends postgresql-client && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -66,16 +62,12 @@ COPY --from=builder /app/artifacts/api-server/node_modules ./artifacts/api-serve
 # Frontend static files (served by Express in production)
 COPY --from=builder /app/artifacts/gowin/dist/public ./artifacts/gowin/dist/public
 
-# Schema migration script + entrypoint
-COPY scripts/schema.sql          ./scripts/schema.sql
-COPY scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
-RUN chmod +x /app/scripts/docker-entrypoint.sh
-
 # Slide images are uploaded at runtime and must be persisted via a Docker volume.
 # Mount a named volume at /app/uploads/slides in docker-compose.yml.
 VOLUME ["/app/uploads/slides"]
 
 EXPOSE 8080
 
-# Entrypoint: waits for Postgres, applies schema (idempotent), then starts the server
-ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]
+# Database readiness is handled by docker-compose depends_on and the database
+# healthcheck. Schema changes must be applied explicitly after a backup.
+CMD ["node", "--enable-source-maps", "/app/artifacts/api-server/dist/index.mjs"]

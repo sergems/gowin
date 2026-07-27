@@ -21,3 +21,4 @@
 - [UK 49s timezone fix](uk49s-timezone-fix.md) — imported DB had Africa/Lubumbashi instead of Europe/London; ensureUK49sDrawTimes() fixes tz + pending draws on startup; advanceLotteryNextDrawAt always syncs to nearest pending
 - [UK49s scraper — live API](uk49s-scraper-api.md) — use api.49s.co.uk/results/latest with specific browser headers; event_number 1-4 = Brunchtime/Lunchtime/Drivetime/Teatime; JSON-LD on 49s.co.uk is stale CDN cache, never use it
 - [National Lottery asset CDN](national-lottery-asset-cdn.md) — nationallottery.co.za blocks Replit-side image downloads with CDN 403s; use user-uploaded assets or an accessible mirror instead
+- [Production deployment bundle](production-deployment-bundle.md) — production Docker starts the built API without implicit DDL; full database.sql restores are separate and destructive
