@@ -86,6 +86,9 @@ interface LotteryGameDetail {
   recentDraws: LotteryDraw[];
   timezone: string | null;
   nextDraw: LotteryDraw | null;
+  /** UTC timestamp from the server at the moment the response was generated.
+   *  Used to calibrate the client clock so cutoff checks are tamper-resistant. */
+  serverTime: string | null;
 }
 
 type PlayType = "1" | "2" | "3" | "4" | "5" | "6" | "bonus_only";
@@ -123,16 +126,25 @@ function computePotentialWin(oddsStr: string | undefined, stake: number, jackpot
 }
 
 // ── Countdown ─────────────────────────────────────────────────────────────────
+//
+// clockOffset = serverTime - clientTime (ms). Positive means the server clock
+// is ahead; negative means it's behind. All time comparisons add this offset
+// to Date.now() so a tampered or drifted browser clock doesn't affect cutoffs.
 
-function useCountdown(targetDate: string | null) {
-  const [timeLeft, setTimeLeft] = useState(0);
+function useCountdown(targetDate: string | null, clockOffset = 0) {
+  // Lazy initialiser avoids the "starts at 0 → isBettingClosed flash" bug.
+  const [timeLeft, setTimeLeft] = useState(() => {
+    if (!targetDate) return 0;
+    return Math.max(0, differenceInSeconds(new Date(targetDate), new Date(Date.now() + clockOffset)));
+  });
   useEffect(() => {
     if (!targetDate) return;
-    const calc = () => Math.max(0, differenceInSeconds(new Date(targetDate), new Date()));
+    const calc = () =>
+      Math.max(0, differenceInSeconds(new Date(targetDate), new Date(Date.now() + clockOffset)));
     setTimeLeft(calc());
     const interval = setInterval(() => setTimeLeft(calc()), 1000);
     return () => clearInterval(interval);
-  }, [targetDate]);
+  }, [targetDate, clockOffset]);
   const days = Math.floor(timeLeft / 86400);
   const hours = Math.floor((timeLeft % 86400) / 3600);
   const mins = Math.floor((timeLeft % 3600) / 60);
@@ -463,22 +475,48 @@ export default function LotteryGame() {
         enabledPlayTypes: g.enabledPlayTypes ?? ["1","2","3","4","5","6","bonus_only"],
         recentDraws: data.recentDraws ?? [],
         nextDraw: data.nextDraw ?? null,
+        serverTime: data.serverTime ?? null,
       };
     },
     enabled: !!slug,
   });
 
-  const countdown = useCountdown(game?.nextDrawAt ?? null);
+  // ── Server-calibrated clock ───────────────────────────────────────────────
+  // Compute the difference between the server's clock and the browser's clock
+  // once, when the game data arrives. All cutoff checks use serverNow() so
+  // a tampered or drifted browser clock cannot manipulate betting availability.
+  const [clockOffset, setClockOffset] = useState(0);
+  useEffect(() => {
+    if (game?.serverTime) {
+      // Positive offset → server is ahead of browser; negative → behind.
+      setClockOffset(new Date(game.serverTime).getTime() - Date.now());
+    }
+  }, [game?.serverTime]);
+
+  // Server-calibrated "now" — use this everywhere instead of Date.now()
+  const serverNow = () => Date.now() + clockOffset;
+
+  const countdown = useCountdown(game?.nextDrawAt ?? null, clockOffset);
 
   // ── Betting cutoff — 15 minutes before draw ───────────────────────────────
+  const CUTOFF_MS = 15 * 60 * 1000;
   const cutoffIso = game?.nextDraw
-    ? new Date(new Date(game.nextDraw.drawDate).getTime() - 15 * 60 * 1000).toISOString()
+    ? new Date(new Date(game.nextDraw.drawDate).getTime() - CUTOFF_MS).toISOString()
     : null;
-  const cutoffCountdown = useCountdown(cutoffIso);
-  // Betting is closed once the cutoff countdown expires (total hits 0)
-  const isBettingClosed = cutoffIso !== null && cutoffCountdown.total === 0;
+  const cutoffCountdown = useCountdown(cutoffIso, clockOffset);
+
+  // Use a direct server-time comparison as the source of truth for CLOSED.
+  // This avoids the `useState(0)` race where `total === 0` briefly on first
+  // render before the effect fires, and is immune to browser clock tampering.
+  const isBettingClosed =
+    cutoffIso !== null && new Date(cutoffIso).getTime() <= serverNow();
+
   // Show warning banner in the last 30 minutes before cutoff
-  const showCutoffWarning = cutoffIso !== null && cutoffCountdown.total > 0 && cutoffCountdown.total <= 30 * 60;
+  const showCutoffWarning =
+    cutoffIso !== null &&
+    !isBettingClosed &&
+    cutoffCountdown.total > 0 &&
+    cutoffCountdown.total <= 30 * 60;
 
   // When play type changes, trim selected numbers to new required count
   useEffect(() => {

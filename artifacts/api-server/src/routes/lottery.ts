@@ -143,6 +143,9 @@ router.get("/lottery/games/:slug", async (req, res): Promise<void> => {
     game: fmtGame(game),
     recentDraws: recentDraws.map((d) => ({ ...d, jackpot: parseFloat(d.jackpot) })),
     nextDraw: nextDraw ? { ...nextDraw, jackpot: parseFloat(nextDraw.jackpot) } : null,
+    // Server's current UTC time — lets the client detect and correct a wrong
+    // local clock so betting-cutoff logic isn't vulnerable to clock tampering.
+    serverTime: new Date().toISOString(),
   });
 });
 
