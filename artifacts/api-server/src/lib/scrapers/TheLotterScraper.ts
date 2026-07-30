@@ -211,3 +211,13 @@ export class TheLotterNZPowerballScraper extends TheLotterBaseScraper {
   readonly expectedMain = 6;
   readonly expectedBonus = 1;
 }
+
+// ── Europe (TheLotter-backed) ─────────────────────────────────────────────────
+
+/** EuroMillions — 5 main (1–50) + 2 Lucky Stars (1–12). Draws Tue/Fri. */
+export class TheLotterEuroMillionsScraper extends TheLotterBaseScraper {
+  readonly name = "TheLotterEuroMillionsScraper";
+  readonly thelotterSlug = "euromillions";
+  readonly expectedMain = 5;
+  readonly expectedBonus = 2;
+}

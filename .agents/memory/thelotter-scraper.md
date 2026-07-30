@@ -37,8 +37,8 @@ export class TheLotterMyLottoScraper extends TheLotterBaseScraper {
 
 ## Current TheLotter-backed scrapers (as of July 2026)
 USA: Powerball, Mega Millions
+Europe: EuroMillions (slug: euromillions, 5+2), Austria Lotto, EuroDreams, El Gordo (Spain), Germany Lotto, SuperEnalotto (Italy)
 Australia: OZ Lotto, Powerball, Saturday Lotto, Weekday Windfall
-Europe: Austria Lotto, EuroDreams, El Gordo (Spain), Germany Lotto, SuperEnalotto (Italy)
 Canada: Lotto 6/49, Ontario 49
 NZ: NZ Powerball
 

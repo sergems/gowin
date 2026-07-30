@@ -24,6 +24,7 @@ import {
   TheLotterCanadaLotto649Scraper,
   TheLotterCanadaOntario49Scraper,
   TheLotterNZPowerballScraper,
+  TheLotterEuroMillionsScraper,
 } from "./TheLotterScraper";
 import { EuroMillionsScraper } from "./EuroMillionsScraper";
 import { EuroJackpotScraper } from "./EuroJackpotScraper";
@@ -62,6 +63,7 @@ const REGISTRY: Record<string, BaseScraper> = {
   TheLotterCanadaLotto649Scraper:      new TheLotterCanadaLotto649Scraper(),
   TheLotterCanadaOntario49Scraper:     new TheLotterCanadaOntario49Scraper(),
   TheLotterNZPowerballScraper:         new TheLotterNZPowerballScraper(),
+  TheLotterEuroMillionsScraper:        new TheLotterEuroMillionsScraper(),
   // ── Other scrapers (own sources) ─────────────────────────────────────────
   EuroMillionsScraper:      new EuroMillionsScraper(),
   EuroJackpotScraper:       new EuroJackpotScraper(),

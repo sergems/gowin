@@ -22,7 +22,6 @@ import {
   ensureUKNationalLotteryGames,
   ensureRussianGoslotoGames,
 } from "./lib/lotterySeed";
-import { syncLotteryDraws } from "./lib/lotterySync";
 import { runAllScrapers } from "./lib/scrapers/ScraperManager";
 import { advanceLotteryNextDrawAt } from "./routes/lotteryScrapers";
 import { generateScheduledDraws } from "./lib/lotteryDrawScheduler";
@@ -85,10 +84,6 @@ server.listen(port, async () => {
 
   // Start live betting sync workers after server is ready
   startLiveSyncWorkers();
-
-  // Lottery API sync — run immediately then every hour
-  syncLotteryDraws();
-  setInterval(syncLotteryDraws, 60 * 60 * 1000);
 
   // Lottery web scraper — run every 5 minutes (with 2-min delay on first run)
   setTimeout(() => {
