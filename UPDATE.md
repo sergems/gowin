@@ -59,39 +59,34 @@ Confirm the backup file is **non-zero in size** before continuing.
 
 The production container does **not** auto-migrate on startup — schema changes must be applied manually.
 
-### How to know if there are schema changes
+### Versioned migration files
 
-Check the git diff for any changes inside `lib/db/src/schema/`:
+Migration files live in `migrations/` in the repo root:
 
-```bash
-git diff HEAD~1 HEAD -- lib/db/src/schema/
-```
+| File | What it does |
+|---|---|
+| `migrations/v3.sql` | Adds all lottery/scraper tables (run once on initial lottery deploy) |
+| `migrations/v4.sql` | Renames 9 constraints to match Drizzle naming (2 unique + 7 foreign keys) |
 
-If the output is empty, skip to Step 6.
+### How to know which migrations are needed
 
-### Applying the migration
-
-Write the required SQL as `ALTER TABLE` / `CREATE TABLE` / `CREATE INDEX` statements. Do **not** use `DROP` unless you are intentionally removing data.
-
-Example — adding a new column:
+Check which migration files are new in this update:
 
 ```bash
-docker compose exec db psql -U gowin -d gowindb -c \
-  "ALTER TABLE some_table ADD COLUMN IF NOT EXISTS new_column TEXT;"
+git diff HEAD~1 HEAD --name-only | grep ^migrations/
 ```
 
-Example — running a multi-statement migration file:
+If that shows nothing, skip to Step 6.
+
+### Running a migration file
 
 ```bash
-# Copy the file to the server first, then:
-docker compose exec -T db psql -U gowin -d gowindb < migration.sql
+docker compose exec -T db psql -U gowin -d gowindb < migrations/v4.sql
 ```
 
-Verify the change was applied:
+Replace `v4.sql` with whichever file(s) are new. Each file is **idempotent** — running it twice is safe and will not duplicate or lose data.
 
-```bash
-docker compose exec db psql -U gowin -d gowindb -c "\d some_table"
-```
+Verify the migration applied without errors — you should see `DO` printed once per change block, and `COMMIT` at the end. No `ERROR:` lines.
 
 ---
 
