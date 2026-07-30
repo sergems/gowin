@@ -38,7 +38,7 @@ If the database is empty (e.g. after a new import or DB reset), apply the schema
 
 ```bash
 psql $DATABASE_URL -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
-psql $DATABASE_URL -f database.sql
+psql $DATABASE_URL -f btk.sql
 ```
 
 Then restart both workflows. The API server will seed lottery games on startup.
