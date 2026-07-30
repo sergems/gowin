@@ -567,7 +567,7 @@ export function Shell({ children }: { children: ReactNode }) {
                 className={`flex items-center gap-3 rounded-md text-sm font-medium transition-colors
                   ${open ? "px-3 py-2" : "px-0 py-2 justify-center"}
                   ${location.startsWith("/lottery") ? "bg-primary/10 text-primary" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"}`}>
-                <span className="w-4 h-4 shrink-0 text-base leading-none flex items-center justify-center">🎰</span>
+                <img src="/assets/lotto-ball.png" alt="" className="w-4 h-4 object-contain shrink-0" />
                 {open && <span className="flex-1">{t("nav.lottery")}</span>}
               </Link>
             )}

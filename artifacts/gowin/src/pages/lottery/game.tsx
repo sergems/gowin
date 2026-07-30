@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
-import { ArrowLeft, Clock, Shuffle, Trophy, Ticket, Info, ChevronDown, ChevronUp, Zap, Lock, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Clock, Shuffle, Ticket, Info, ChevronDown, ChevronUp, Zap, Lock, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,12 +12,14 @@ import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import api from "@/lib/api";
 import { differenceInSeconds } from "date-fns";
 
-// ── Timezone-aware date formatting (uses Intl, no extra deps) ─────────────────
-function fmtInTz(dateStr: string, tz: string | null | undefined, opts: Intl.DateTimeFormatOptions): string {
+// ── Local-time date formatting ────────────────────────────────────────────────
+// All draw times are shown in the user's browser local timezone (e.g. DRC UTC+2)
+// so they match what the player sees on their device clock.
+function fmtInTz(dateStr: string, _tz: string | null | undefined, opts: Intl.DateTimeFormatOptions): string {
   try {
-    return new Intl.DateTimeFormat("en-GB", { timeZone: tz || "UTC", ...opts }).format(new Date(dateStr));
+    return new Intl.DateTimeFormat("en-GB", opts).format(new Date(dateStr));
   } catch {
-    return new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", ...opts }).format(new Date(dateStr));
+    return new Date(dateStr).toLocaleString();
   }
 }
 
@@ -991,7 +993,7 @@ export default function LotteryGame() {
       {game.recentDraws.slice(0, 7).length > 0 && (
         <div className="rounded-xl border border-border/50 bg-card p-5 space-y-4">
           <h3 className="font-bold text-foreground flex items-center gap-2">
-            <Trophy className="w-4 h-4 text-primary" />
+            <img src="/assets/lotto-ball.png" alt="" className="w-4 h-4 object-contain" />
             {t("lottery.recent_winning")}
           </h3>
           <div className="space-y-3">

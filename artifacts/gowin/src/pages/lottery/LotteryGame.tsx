@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Clock, Shuffle, Trophy, Ticket, CheckCircle2, Star, Zap } from "lucide-react";
+import { ArrowLeft, Clock, Shuffle, Ticket, CheckCircle2, Star, Zap } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
 
@@ -188,7 +188,7 @@ function PayoutTable({ config, color, hasBonusBall }: {
   return (
     <div className="rounded-2xl border bg-card overflow-hidden text-sm">
       <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
-        <Trophy className="w-4 h-4 text-primary" />
+        <img src="/assets/lotto-ball.png" alt="" className="w-4 h-4 object-contain" />
         <span className="font-bold">{t("lottery.prize_structure")}</span>
       </div>
 
