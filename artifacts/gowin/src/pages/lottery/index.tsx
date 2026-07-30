@@ -147,10 +147,10 @@ function DrawTimer({ drawDate }: { drawDate: Date | null }) {
   const drawDay = drawDate.toDateString();
   const today = new Date().toDateString();
   const tomorrow = new Date(Date.now() + 86_400_000).toDateString();
-  const time = drawDate.toLocaleTimeString("en-US", {
-    hour: "numeric",
+  const time = drawDate.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
     minute: "2-digit",
-    hour12: true,
+    hour12: false,
   });
 
   if (drawDay === today) return <span>{t("lottery.today_at").replace("{time}", time)}</span>;

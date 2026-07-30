@@ -649,10 +649,10 @@ export async function ensureUK49sLotteryLogos(): Promise<void> {
 }
 
 const UK_49S_DRAW_CONFIGS = [
-  { slug: "uk-49s-brunchtime", drawTime: "11:49" },
-  { slug: "uk-49s-lunchtime",  drawTime: "12:49" },
-  { slug: "uk-49s-drivetime",  drawTime: "16:49" },
-  { slug: "uk-49s-teatime",    drawTime: "17:49" },
+  { slug: "uk-49s-brunchtime", drawTime: "12:49" },
+  { slug: "uk-49s-lunchtime",  drawTime: "13:49" },
+  { slug: "uk-49s-drivetime",  drawTime: "17:49" },
+  { slug: "uk-49s-teatime",    drawTime: "18:49" },
 ] as const;
 
 /**

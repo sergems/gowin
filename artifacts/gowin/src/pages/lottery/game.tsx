@@ -23,10 +23,10 @@ function fmtInTz(dateStr: string, _tz: string | null | undefined, opts: Intl.Dat
   }
 }
 
-/** "Sun 26 Jul · 1:49 PM" */
+/** "Sun 26 Jul · 13:49" */
 function fmtDrawShort(dateStr: string, tz: string | null | undefined): string {
   const d = fmtInTz(dateStr, tz, { weekday: "short", day: "numeric", month: "short" });
-  const t = fmtInTz(dateStr, tz, { hour: "numeric", minute: "2-digit", hour12: true });
+  const t = fmtInTz(dateStr, tz, { hour: "2-digit", minute: "2-digit", hour12: false });
   return `${d} · ${t}`;
 }
 
@@ -774,7 +774,7 @@ export default function LotteryGame() {
             {game.nextDraw && (
               <div className="rounded-lg bg-muted/30 border border-border/40 px-5 py-3 text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">{t("lottery.draw_time_label")} </span>
-                {fmtDrawLong12(game.nextDraw.drawDate, game.timezone)}
+                {fmtDrawLong24(game.nextDraw.drawDate, game.timezone)}
               </div>
             )}
           </div>
