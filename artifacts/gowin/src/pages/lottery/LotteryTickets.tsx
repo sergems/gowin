@@ -1,14 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Ticket, Trophy, Clock, XCircle, ArrowLeft } from "lucide-react";
+import { Ticket, Clock, ArrowLeft, ChevronDown, ChevronUp } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+
+const STATUS_STYLES: Record<string, string> = {
+  pending: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+  won:     "bg-primary/20 text-primary border-primary/30",
+  lost:    "bg-destructive/20 text-destructive border-destructive/30",
+};
 
 interface TicketWithGame {
   id: number;
@@ -20,6 +26,9 @@ interface TicketWithGame {
   stake: number;
   status: string;
   prizeAmount: number | null;
+  potentialWin: string | number | null;
+  odds: string | null;
+  code: string | null;
   createdAt: string;
   game: {
     name: string;
@@ -37,127 +46,194 @@ interface TicketWithGame {
   } | null;
 }
 
-function NumberBall({ n, matched, color, size = "sm" }: { n: number; matched?: boolean; color: string; size?: "sm" | "xs" }) {
-  const base = size === "xs" ? "w-6 h-6 text-[10px]" : "w-8 h-8 text-xs";
+function LotteryNumberBall({ n, matched, color }: { n: number; matched?: boolean; color: string }) {
   return (
     <div
-      className={`${base} rounded-full font-bold flex items-center justify-center border-2 shrink-0 transition-all
-        ${matched ? "text-white" : "bg-background text-muted-foreground border-border"}`}
-      style={matched ? { backgroundColor: color, borderColor: color, boxShadow: `0 0 8px ${color}55` } : {}}
+      className="w-7 h-7 rounded-full text-[11px] font-bold flex items-center justify-center border-2 shrink-0"
+      style={
+        matched
+          ? { backgroundColor: color, borderColor: color, color: "#fff", boxShadow: `0 0 6px ${color}55` }
+          : { backgroundColor: "transparent", borderColor: "hsl(var(--border))", color: "hsl(var(--muted-foreground))" }
+      }
     >
       {n}
     </div>
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
-  if (status === "won") return (
-    <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 gap-1">
-      <Trophy className="w-3 h-3" /> Won
-    </Badge>
-  );
-  if (status === "lost") return (
-    <Badge className="bg-destructive/20 text-destructive border-destructive/30 gap-1">
-      <XCircle className="w-3 h-3" /> Lost
-    </Badge>
-  );
-  return (
-    <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 gap-1">
-      <Clock className="w-3 h-3" /> Pending draw
-    </Badge>
-  );
-}
-
-function TicketCard({ ticket }: { ticket: TicketWithGame }) {
+function TicketCard({ ticket, formatCurrencyFn }: { ticket: TicketWithGame; formatCurrencyFn: (n: number) => string }) {
   const { t } = useSiteSettings();
+  const [isOpen, setIsOpen] = useState(false);
   const color = ticket.game.color;
   const winSet = new Set(ticket.draw?.winningNumbers ?? []);
   const bonusWinSet = new Set(ticket.draw?.bonusNumbers ?? []);
+  const drawSettled = ticket.draw?.status === "settled";
+  const potentialWin = ticket.potentialWin != null ? parseFloat(String(ticket.potentialWin)) : null;
+
+  const borderColor =
+    ticket.status === "won"  ? "border-violet-500/40" :
+    ticket.status === "lost" ? "border-destructive/30" :
+                               "border-violet-500/20";
 
   return (
-    <div
-      className="rounded-2xl border bg-card overflow-hidden"
-      style={{ borderColor: ticket.status === "won" ? "#22c55e40" : ticket.status === "lost" ? "#ef444440" : "hsl(var(--border))" }}
-    >
+    <div className={`rounded-xl border bg-card overflow-hidden transition-colors ${borderColor}`}>
+      <div className="h-0.5 w-full" style={{ background: "linear-gradient(90deg, #8b5cf6, #a78bfa)" }} />
+
       <div
-        className="h-1 w-full"
-        style={{ background: ticket.status === "won" ? "#22c55e" : ticket.status === "lost" ? "#ef4444" : color }}
-      />
-      <div className="p-4 space-y-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="text-xl leading-none">{ticket.game.emoji}</span>
-            <div>
-              <p className="font-semibold text-sm">{ticket.game.name}</p>
-              <p className="text-xs text-muted-foreground">{format(new Date(ticket.createdAt), "MMM d, yyyy 'at' HH:mm")}</p>
+        role="button"
+        tabIndex={0}
+        onClick={() => setIsOpen(v => !v)}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setIsOpen(v => !v); } }}
+        className="w-full p-3.5 hover:bg-accent/20 transition-colors text-left cursor-pointer"
+      >
+        {/* Row 1: title + payout */}
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <span className="font-semibold text-sm leading-snug flex items-center gap-1.5">
+            <Ticket className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+            {ticket.game.emoji && <span>{ticket.game.emoji}</span>}
+            {ticket.game.name}
+            <span className="text-muted-foreground font-normal">· #{ticket.id}</span>
+          </span>
+          <div className="text-right shrink-0">
+            <div className="text-[10px] text-muted-foreground leading-none mb-0.5">Payout</div>
+            <div className={`font-black text-sm leading-none ${ticket.status === "won" ? "text-violet-400" : ""}`}>
+              {ticket.status === "lost"
+                ? formatCurrencyFn(0)
+                : ticket.status === "won" && ticket.prizeAmount != null
+                ? formatCurrencyFn(ticket.prizeAmount)
+                : potentialWin != null
+                ? formatCurrencyFn(potentialWin)
+                : "—"}
             </div>
           </div>
-          <StatusBadge status={ticket.status} />
         </div>
 
-        {/* Your numbers */}
-        <div>
-          <p className="text-[11px] text-muted-foreground mb-1.5">{t("lottery.your_numbers")}</p>
-          <div className="flex flex-wrap gap-1.5 items-center">
-            {ticket.numbers.map((n) => (
-              <NumberBall key={n} n={n} matched={ticket.draw ? winSet.has(n) : false} color={color} />
-            ))}
-            {ticket.bonusNumbers.length > 0 && (
-              <>
-                <span className="text-muted-foreground text-xs">+</span>
-                {ticket.bonusNumbers.map((n) => (
-                  <NumberBall key={`b${n}`} n={n} matched={ticket.draw ? bonusWinSet.has(n) : false} color="#f59e0b" />
-                ))}
-              </>
+        {/* Row 2: badges + chevron */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${STATUS_STYLES[ticket.status] ?? STATUS_STYLES.pending}`}>
+              {ticket.status.toUpperCase()}
+            </span>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border bg-violet-500/20 text-violet-400 border-violet-500/30">
+              LOTTO
+            </span>
+            {ticket.code && (
+              <span className="font-mono text-[10px] font-bold tracking-widest bg-violet-500/10 text-violet-400 border border-violet-500/20 rounded px-1.5 py-0.5">
+                {ticket.code}
+              </span>
+            )}
+            {ticket.odds && (
+              <span className="text-[10px] text-muted-foreground font-mono">@ {ticket.odds}</span>
             )}
           </div>
+          <div className="text-muted-foreground">
+            {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </div>
         </div>
 
-        {/* Winning numbers (if draw settled) */}
-        {ticket.draw && ticket.draw.status === "settled" && (
-          <div>
-            <p className="text-[11px] text-muted-foreground mb-1.5">{t("lottery.winning_numbers")}</p>
-            <div className="flex flex-wrap gap-1.5 items-center">
-              {ticket.draw.winningNumbers.map((n) => (
-                <NumberBall key={n} n={n} matched={ticket.numbers.includes(n)} color={color} />
-              ))}
-              {ticket.draw.bonusNumbers.length > 0 && (
-                <>
-                  <span className="text-muted-foreground text-xs">+</span>
-                  {ticket.draw.bonusNumbers.map((n) => (
-                    <NumberBall key={`b${n}`} n={n} matched={ticket.bonusNumbers.includes(n)} color="#f59e0b" />
-                  ))}
-                </>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Prize / draw info */}
-        <div className="flex items-center justify-between text-sm pt-1 border-t border-border/30">
-          <span className="text-muted-foreground text-xs">Stake: ${ticket.stake.toFixed(2)}</span>
-          {ticket.status === "won" && ticket.prizeAmount != null && (
-            <span className="font-bold text-emerald-400 text-sm">+ ${ticket.prizeAmount.toFixed(2)}</span>
-          )}
-          {ticket.draw?.drawDate && (
-            <span className="text-xs text-muted-foreground">Draw: {format(new Date(ticket.draw.drawDate), "MMM d")}</span>
-          )}
+        {/* Row 3: date */}
+        <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-1.5">
+          <Clock className="w-3 h-3 shrink-0" />
+          {format(new Date(ticket.createdAt), "PPP 'at' p")}
         </div>
       </div>
+
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            key="body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="border-t border-border/60">
+              <div className="px-5 py-4 space-y-3">
+                {/* Your numbers */}
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-2">{t("lottery.your_numbers")}</p>
+                  <div className="flex flex-wrap gap-1.5 items-center">
+                    {ticket.numbers.map((n) => (
+                      <LotteryNumberBall key={n} n={n} matched={drawSettled ? winSet.has(n) : false} color={color} />
+                    ))}
+                    {ticket.bonusNumbers.length > 0 && (
+                      <>
+                        <span className="text-muted-foreground text-xs mx-0.5">+</span>
+                        {ticket.bonusNumbers.map((n) => (
+                          <LotteryNumberBall key={`b${n}`} n={n} matched={drawSettled ? bonusWinSet.has(n) : false} color="#f59e0b" />
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Winning numbers (if draw settled) */}
+                {drawSettled && ticket.draw && (
+                  <div>
+                    <p className="text-[11px] text-muted-foreground mb-2">{t("lottery.winning_numbers")}</p>
+                    <div className="flex flex-wrap gap-1.5 items-center">
+                      {ticket.draw.winningNumbers.map((n) => (
+                        <LotteryNumberBall key={n} n={n} matched={ticket.numbers.includes(n)} color={color} />
+                      ))}
+                      {ticket.draw.bonusNumbers.length > 0 && (
+                        <>
+                          <span className="text-muted-foreground text-xs mx-0.5">+</span>
+                          {ticket.draw.bonusNumbers.map((n) => (
+                            <LotteryNumberBall key={`b${n}`} n={n} matched={ticket.bonusNumbers.includes(n)} color="#f59e0b" />
+                          ))}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {!drawSettled && ticket.draw?.drawDate && (
+                  <p className="text-xs text-muted-foreground">
+                    Draw: {format(new Date(ticket.draw.drawDate), "PPP 'at' p")}
+                  </p>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-between px-5 py-3.5 bg-accent/10 border-t border-border/60 text-sm">
+                <div className="flex gap-6">
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-0.5">Stake</div>
+                    <div className="font-bold">{formatCurrencyFn(ticket.stake)}</div>
+                  </div>
+                  {ticket.odds && (
+                    <div>
+                      <div className="text-xs text-muted-foreground mb-0.5">Odds</div>
+                      <div className="font-bold font-mono">{ticket.odds}</div>
+                    </div>
+                  )}
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-muted-foreground mb-0.5">Potential Win</div>
+                  <div className="font-black text-lg">
+                    {potentialWin != null ? formatCurrencyFn(potentialWin) : "—"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
 export default function LotteryTickets() {
   const { user } = useAuth();
-  const { t } = useSiteSettings();
+  const { t, formatCurrency } = useSiteSettings();
   const [tab, setTab] = useState<"all" | "pending" | "won" | "lost">("all");
 
   const { data, isLoading } = useQuery<{ tickets: TicketWithGame[] }>({
     queryKey: ["lottery-tickets"],
     queryFn: async () => {
       const token = localStorage.getItem("gowin_token");
-      const r = await fetch("/api/lottery/tickets", { headers: { Authorization: `Bearer ${token}` } });
+      const r = await fetch("/api/lottery/tickets/my?limit=200", { headers: { Authorization: `Bearer ${token}` } });
       return r.json();
     },
     enabled: !!user,
@@ -225,7 +301,7 @@ export default function LotteryTickets() {
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map((t) => <TicketCard key={t.id} ticket={t} />)}
+          {filtered.map((t) => <TicketCard key={t.id} ticket={t} formatCurrencyFn={formatCurrency} />)}
         </div>
       )}
     </div>

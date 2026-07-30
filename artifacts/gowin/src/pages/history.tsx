@@ -114,11 +114,11 @@ function LotteryTicketCard({ ticket, isOpen, onToggle, formatCurrencyFn }: {
             <span className="text-muted-foreground font-normal">· #{ticket.id}</span>
           </span>
           <div className="text-right shrink-0">
-            <div className="text-[10px] text-muted-foreground leading-none mb-0.5">
-              {ticket.status === "won" ? "Won" : ticket.status === "lost" ? "Payout" : "To Win"}
-            </div>
+            <div className="text-[10px] text-muted-foreground leading-none mb-0.5">Payout</div>
             <div className={`font-black text-sm leading-none ${ticket.status === "won" ? "text-violet-400" : ""}`}>
-              {ticket.status === "won" && ticket.prizeAmount != null
+              {ticket.status === "lost"
+                ? formatCurrencyFn(0)
+                : ticket.status === "won" && ticket.prizeAmount != null
                 ? formatCurrencyFn(ticket.prizeAmount)
                 : potentialWin != null
                 ? formatCurrencyFn(potentialWin)
@@ -228,15 +228,9 @@ function LotteryTicketCard({ ticket, isOpen, onToggle, formatCurrencyFn }: {
                   )}
                 </div>
                 <div className="text-right">
-                  <div className="text-xs text-muted-foreground mb-0.5">
-                    {ticket.status === "won" ? "Prize Won" : "Potential Win"}
-                  </div>
-                  <div className={`font-black text-lg ${ticket.status === "won" ? "text-violet-400" : ""}`}>
-                    {ticket.status === "won" && ticket.prizeAmount != null
-                      ? formatCurrencyFn(ticket.prizeAmount)
-                      : potentialWin != null
-                      ? formatCurrencyFn(potentialWin)
-                      : "—"}
+                  <div className="text-xs text-muted-foreground mb-0.5">Potential Win</div>
+                  <div className="font-black text-lg">
+                    {potentialWin != null ? formatCurrencyFn(potentialWin) : "—"}
                   </div>
                 </div>
               </div>

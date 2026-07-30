@@ -328,8 +328,10 @@ export default function PayoutPage() {
               { label: "Stake", value: `$${lotteryTicket.stake.toFixed(2)}`, color: "text-white" },
               { label: "Odds", value: lotteryTicket.odds ?? "—", color: "text-zinc-300" },
               {
-                label: lotteryTicket.status === "won" ? "Prize" : "To Win",
-                value: lotteryTicket.status === "won" && lotteryTicket.prizeAmount != null
+                label: "Payout",
+                value: lotteryTicket.status === "lost"
+                  ? `$0.00`
+                  : lotteryTicket.status === "won" && lotteryTicket.prizeAmount != null
                   ? `$${lotteryTicket.prizeAmount.toFixed(2)}`
                   : lotteryTicket.potentialWin != null
                   ? `$${lotteryTicket.potentialWin.toFixed(2)}`
