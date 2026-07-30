@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, lotteryGamesTable, lotteryDrawsTable, lotteryTicketsTable, walletsTable, transactionsTable, usersTable } from "@workspace/db";
 import { DEFAULT_PAYOUT_CONFIG, DEFAULT_ENABLED_PLAY_TYPES } from "@workspace/db";
-import { eq, desc, and, count, sql } from "drizzle-orm";
+import { eq, desc, and, count, sql, gt } from "drizzle-orm";
 import { requireAuth, requireAdmin, type AuthRequest } from "../middlewares/auth";
 import type { PayoutConfig } from "@workspace/db";
 import { settleLotteryDraw } from "../lib/lotterySettle";
@@ -132,10 +132,19 @@ router.get("/lottery/games/:slug", async (req, res): Promise<void> => {
     .orderBy(desc(lotteryDrawsTable.drawDate))
     .limit(7);
 
+  // Only return a FUTURE pending draw. Past pending rows are stale (scraper missed
+  // them) and must not be used — their cutoff is already past, which would make
+  // the betting panel show CLOSED even though the real next draw is days away.
   const [nextDraw] = await db
     .select()
     .from(lotteryDrawsTable)
-    .where(and(eq(lotteryDrawsTable.gameId, game.id), eq(lotteryDrawsTable.status, "pending")))
+    .where(
+      and(
+        eq(lotteryDrawsTable.gameId, game.id),
+        eq(lotteryDrawsTable.status, "pending"),
+        gt(lotteryDrawsTable.drawDate, new Date())
+      )
+    )
     .orderBy(lotteryDrawsTable.drawDate)
     .limit(1);
 
