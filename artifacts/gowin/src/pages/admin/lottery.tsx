@@ -88,8 +88,27 @@ interface SettlementLog {
   totalPaid: number;
   executionTime: number | null;
   createdAt: string;
-  game: { id: number; name: string; emoji: string } | null;
+  game: { id: number; name: string; emoji: string; country: string | null; logoUrl: string | null } | null;
   draw: { id: number; drawDate: string; winningNumbers: number[]; bonusNumbers: number[] } | null;
+}
+
+const COUNTRY_FLAG: Record<string, string> = {
+  "Australia": "au", "Austria": "at", "Belgium": "be", "Brazil": "br",
+  "Canada": "ca", "China": "cn", "Croatia": "hr", "Czech Republic": "cz",
+  "Denmark": "dk", "Europe": "eu", "Finland": "fi", "France": "fr",
+  "Germany": "de", "Greece": "gr", "Hungary": "hu", "Ireland": "ie",
+  "Israel": "il", "Italy": "it", "Japan": "jp", "Mexico": "mx",
+  "Netherlands": "nl", "New Zealand": "nz", "Norway": "no", "Peru": "pe",
+  "Poland": "pl", "Portugal": "pt", "Romania": "ro", "Russia": "ru",
+  "Slovakia": "sk", "Slovenia": "si", "South Africa": "za", "Spain": "es",
+  "Sweden": "se", "Switzerland": "ch", "Ukraine": "ua", "United Kingdom": "gb",
+  "United States": "us",
+};
+
+function countryFlagUrl(country: string | null | undefined): string | null {
+  if (!country) return null;
+  const code = COUNTRY_FLAG[country];
+  return code ? `https://flagcdn.com/20x15/${code}.png` : null;
 }
 
 interface ScraperInfo {
@@ -512,6 +531,218 @@ function SettleDrawPanel({ draw, onSettle, onCancel }: {
           {settling ? "Settling…" : "Settle & Pay Winners"}
         </Button>
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
+      </div>
+    </div>
+  );
+}
+
+// ── Settlement Logs Panel ─────────────────────────────────────────────────────
+
+function SettlementLogsPanel({
+  logs, total, loading,
+}: { logs: SettlementLog[]; total: number; loading: boolean }) {
+  const [countryFilter, setCountryFilter] = useState<string | null>(null);
+
+  if (loading) {
+    return (
+      <div className="rounded-xl border border-border/50 overflow-hidden">
+        <Table><TableBody>
+          <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
+        </TableBody></Table>
+      </div>
+    );
+  }
+
+  if (logs.length === 0) {
+    return (
+      <div className="rounded-xl border border-border/50 overflow-hidden">
+        <Table><TableBody>
+          <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No settlements yet. Settlement logs appear after the scraper finds and settles a draw.</TableCell></TableRow>
+        </TableBody></Table>
+      </div>
+    );
+  }
+
+  // All distinct countries (for the filter bar)
+  const allCountries = Array.from(
+    new Set(logs.map((l) => l.game?.country ?? "Unknown").filter(Boolean))
+  ).sort();
+
+  // Apply optional country filter
+  const visible = countryFilter ? logs.filter((l) => (l.game?.country ?? "Unknown") === countryFilter) : logs;
+
+  // Group by date → country
+  type CountryGroup = { country: string; logoUrl: string | null; logs: SettlementLog[] };
+  type DateGroup   = { dateKey: string; countries: CountryGroup[] };
+
+  const dateMap: Record<string, Record<string, SettlementLog[]>> = {};
+  for (const log of visible) {
+    const dateKey = format(new Date(log.createdAt), "yyyy-MM-dd");
+    const country = log.game?.country ?? "Unknown";
+    if (!dateMap[dateKey]) dateMap[dateKey] = {};
+    if (!dateMap[dateKey][country]) dateMap[dateKey][country] = [];
+    dateMap[dateKey][country].push(log);
+  }
+
+  const dateGroups: DateGroup[] = Object.keys(dateMap)
+    .sort((a, b) => b.localeCompare(a))
+    .map((dateKey) => ({
+      dateKey,
+      countries: Object.entries(dateMap[dateKey]).map(([country, clogs]) => ({
+        country,
+        logoUrl: clogs[0]?.game?.logoUrl ?? null,
+        logs: clogs,
+      })).sort((a, b) => a.country.localeCompare(b.country)),
+    }));
+
+  return (
+    <div className="space-y-4">
+      {/* Header + country filter chips */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <p className="text-sm text-muted-foreground">{total} settlement operations recorded</p>
+        <div className="flex gap-2 flex-wrap ml-auto">
+          <button
+            onClick={() => setCountryFilter(null)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+              !countryFilter
+                ? "bg-primary text-primary-foreground border-primary"
+                : "border-border/60 text-muted-foreground hover:border-primary/50 hover:text-foreground"
+            }`}
+          >
+            All
+          </button>
+          {allCountries.map((country) => {
+            const flagUrl = countryFlagUrl(country);
+            const active = countryFilter === country;
+            return (
+              <button
+                key={country}
+                onClick={() => setCountryFilter(active ? null : country)}
+                title={country}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                  active
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-border/60 text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                }`}
+              >
+                {flagUrl
+                  ? <img src={flagUrl} alt={country} className="w-4 h-3 object-cover rounded-sm" />
+                  : <span className="text-[10px]">🌍</span>
+                }
+                {country}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Date → Country groups */}
+      <div className="space-y-8">
+        {dateGroups.map(({ dateKey, countries }) => {
+          const dayTotal   = countries.reduce((s, c) => s + c.logs.reduce((ss, l) => ss + l.totalPaid, 0), 0);
+          const dayWinners = countries.reduce((s, c) => s + c.logs.reduce((ss, l) => ss + l.winningTickets, 0), 0);
+          return (
+            <div key={dateKey} className="space-y-3">
+              {/* ── Date header ── */}
+              <div className="flex items-center justify-between px-1 pb-1 border-b border-border/40">
+                <span className="text-sm font-semibold text-foreground">
+                  {format(new Date(dateKey + "T12:00:00"), "EEEE, MMMM d, yyyy")}
+                </span>
+                <div className="flex gap-4 text-xs text-muted-foreground">
+                  <span>{countries.reduce((s, c) => s + c.logs.length, 0)} settlement{countries.reduce((s, c) => s + c.logs.length, 0) !== 1 ? "s" : ""}</span>
+                  {dayWinners > 0 && <span className="text-primary font-semibold">{dayWinners} winner{dayWinners !== 1 ? "s" : ""}</span>}
+                  {dayTotal > 0 && <span className="text-primary font-semibold">${dayTotal.toFixed(2)} paid</span>}
+                </div>
+              </div>
+
+              {/* ── Per-country tables ── */}
+              <div className="space-y-3 pl-2">
+                {countries.map(({ country, logoUrl, logs: cLogs }) => {
+                  const flagUrl = countryFlagUrl(country);
+                  const cTotal   = cLogs.reduce((s, l) => s + l.totalPaid, 0);
+                  const cWinners = cLogs.reduce((s, l) => s + l.winningTickets, 0);
+                  return (
+                    <div key={country} className="space-y-1">
+                      {/* Country header — clicking sets filter */}
+                      <button
+                        onClick={() => setCountryFilter(countryFilter === country ? null : country)}
+                        className="flex items-center gap-2 group"
+                      >
+                        {flagUrl ? (
+                          <img src={flagUrl} alt={country} className="w-5 h-4 object-cover rounded-sm shadow-sm" />
+                        ) : logoUrl ? (
+                          <img src={logoUrl} alt={country} className="w-5 h-4 object-contain" />
+                        ) : (
+                          <span className="text-sm">🌍</span>
+                        )}
+                        <span className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">
+                          {country}
+                        </span>
+                        <span className="text-xs text-muted-foreground">{cLogs.length} settlement{cLogs.length !== 1 ? "s" : ""}</span>
+                        {cWinners > 0 && <span className="text-xs text-primary font-semibold">{cWinners} winner{cWinners !== 1 ? "s" : ""}</span>}
+                        {cTotal > 0 && <span className="text-xs text-primary font-semibold">${cTotal.toFixed(2)}</span>}
+                      </button>
+
+                      <div className="rounded-xl border border-border/50 overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Time</TableHead>
+                              <TableHead>Lottery</TableHead>
+                              <TableHead>Winning Numbers</TableHead>
+                              <TableHead>Tickets Checked</TableHead>
+                              <TableHead>Winners</TableHead>
+                              <TableHead>Total Paid</TableHead>
+                              <TableHead>Time (ms)</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {cLogs.map((log) => (
+                              <TableRow key={log.id}>
+                                <TableCell className="text-xs text-muted-foreground whitespace-nowrap font-mono">
+                                  {format(new Date(log.createdAt), "p")}
+                                </TableCell>
+                                <TableCell>
+                                  {log.game
+                                    ? <span className="text-sm font-medium">{log.game.emoji} {log.game.name}</span>
+                                    : <span className="text-xs text-muted-foreground">Unknown</span>}
+                                </TableCell>
+                                <TableCell>
+                                  {log.draw && log.draw.winningNumbers.length > 0 ? (
+                                    <div className="flex gap-1 flex-wrap">
+                                      {log.draw.winningNumbers.map((n) => (
+                                        <span key={n} className="w-6 h-6 rounded-full bg-primary/20 text-primary text-[10px] font-bold flex items-center justify-center">{n}</span>
+                                      ))}
+                                      {log.draw.bonusNumbers.map((n) => (
+                                        <span key={`b${n}`} className="w-6 h-6 rounded-full bg-yellow-500/20 text-yellow-500 text-[10px] font-bold flex items-center justify-center">{n}</span>
+                                      ))}
+                                    </div>
+                                  ) : <span className="text-xs text-muted-foreground">—</span>}
+                                </TableCell>
+                                <TableCell className="text-sm text-center">{log.ticketsChecked}</TableCell>
+                                <TableCell>
+                                  <span className={`text-sm font-semibold ${log.winningTickets > 0 ? "text-primary" : "text-muted-foreground"}`}>
+                                    {log.winningTickets}
+                                  </span>
+                                </TableCell>
+                                <TableCell className={`text-sm font-semibold ${log.totalPaid > 0 ? "text-primary" : "text-muted-foreground"}`}>
+                                  ${log.totalPaid.toFixed(2)}
+                                </TableCell>
+                                <TableCell className="text-xs text-muted-foreground font-mono">
+                                  {log.executionTime != null ? `${log.executionTime}ms` : "—"}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -1266,108 +1497,11 @@ export default function AdminLottery() {
 
       {/* ── SETTLEMENT LOGS TAB ── */}
       {tab === "settlement-logs" && (
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">{settlementLogsData?.total ?? 0} settlement operations recorded</p>
-          {settlementLogsLoading ? (
-            <div className="rounded-xl border border-border/50 overflow-hidden">
-              <Table><TableBody>
-                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
-              </TableBody></Table>
-            </div>
-          ) : (settlementLogsData?.logs ?? []).length === 0 ? (
-            <div className="rounded-xl border border-border/50 overflow-hidden">
-              <Table><TableBody>
-                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No settlements yet. Settlement logs appear after the scraper finds and settles a draw.</TableCell></TableRow>
-              </TableBody></Table>
-            </div>
-          ) : (() => {
-            // Group logs by calendar date (YYYY-MM-DD in local time)
-            const grouped: Record<string, SettlementLog[]> = {};
-            for (const log of (settlementLogsData?.logs ?? [])) {
-              const key = format(new Date(log.createdAt), "yyyy-MM-dd");
-              if (!grouped[key]) grouped[key] = [];
-              grouped[key].push(log);
-            }
-            const dateKeys = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
-            return (
-              <div className="space-y-6">
-                {dateKeys.map((dateKey) => {
-                  const dayLogs = grouped[dateKey]!;
-                  const dayTotal = dayLogs.reduce((s, l) => s + l.totalPaid, 0);
-                  const dayWinners = dayLogs.reduce((s, l) => s + l.winningTickets, 0);
-                  return (
-                    <div key={dateKey} className="space-y-1">
-                      {/* Date header */}
-                      <div className="flex items-center justify-between px-1 pb-1 border-b border-border/40">
-                        <span className="text-sm font-semibold text-foreground">
-                          📅 {format(new Date(dateKey + "T12:00:00"), "EEEE, MMMM d, yyyy")}
-                        </span>
-                        <div className="flex gap-4 text-xs text-muted-foreground">
-                          <span>{dayLogs.length} settlement{dayLogs.length !== 1 ? "s" : ""}</span>
-                          {dayWinners > 0 && <span className="text-primary font-semibold">{dayWinners} winner{dayWinners !== 1 ? "s" : ""}</span>}
-                          {dayTotal > 0 && <span className="text-primary font-semibold">${dayTotal.toFixed(2)} paid</span>}
-                        </div>
-                      </div>
-                      <div className="rounded-xl border border-border/50 overflow-hidden">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Time</TableHead>
-                              <TableHead>Lottery</TableHead>
-                              <TableHead>Winning Numbers</TableHead>
-                              <TableHead>Tickets Checked</TableHead>
-                              <TableHead>Winners</TableHead>
-                              <TableHead>Total Paid</TableHead>
-                              <TableHead>Time (ms)</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {dayLogs.map((log) => (
-                              <TableRow key={log.id}>
-                                <TableCell className="text-xs text-muted-foreground whitespace-nowrap font-mono">
-                                  {format(new Date(log.createdAt), "p")}
-                                </TableCell>
-                                <TableCell>
-                                  {log.game ? (
-                                    <span className="text-sm font-medium">{log.game.emoji} {log.game.name}</span>
-                                  ) : <span className="text-xs text-muted-foreground">Unknown</span>}
-                                </TableCell>
-                                <TableCell>
-                                  {log.draw && log.draw.winningNumbers.length > 0 ? (
-                                    <div className="flex gap-1 flex-wrap">
-                                      {log.draw.winningNumbers.map((n) => (
-                                        <span key={n} className="w-6 h-6 rounded-full bg-primary/20 text-primary text-[10px] font-bold flex items-center justify-center">{n}</span>
-                                      ))}
-                                      {log.draw.bonusNumbers.map((n) => (
-                                        <span key={`b${n}`} className="w-6 h-6 rounded-full bg-yellow-500/20 text-yellow-500 text-[10px] font-bold flex items-center justify-center">{n}</span>
-                                      ))}
-                                    </div>
-                                  ) : <span className="text-xs text-muted-foreground">—</span>}
-                                </TableCell>
-                                <TableCell className="text-sm text-center">{log.ticketsChecked}</TableCell>
-                                <TableCell>
-                                  <span className={`text-sm font-semibold ${log.winningTickets > 0 ? "text-primary" : "text-muted-foreground"}`}>
-                                    {log.winningTickets}
-                                  </span>
-                                </TableCell>
-                                <TableCell className={`text-sm font-semibold ${log.totalPaid > 0 ? "text-primary" : "text-muted-foreground"}`}>
-                                  ${log.totalPaid.toFixed(2)}
-                                </TableCell>
-                                <TableCell className="text-xs text-muted-foreground font-mono">
-                                  {log.executionTime != null ? `${log.executionTime}ms` : "—"}
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })()}
-        </div>
+        <SettlementLogsPanel
+          logs={settlementLogsData?.logs ?? []}
+          total={settlementLogsData?.total ?? 0}
+          loading={settlementLogsLoading}
+        />
       )}
 
       {/* ── TICKETS TAB ── */}

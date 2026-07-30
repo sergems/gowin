@@ -332,6 +332,8 @@ router.get("/admin/lottery/settlement-logs", requireAdmin, async (req, res): Pro
         id: lotteryGamesTable.id,
         name: lotteryGamesTable.name,
         emoji: lotteryGamesTable.emoji,
+        country: lotteryGamesTable.country,
+        logoUrl: lotteryGamesTable.logoUrl,
       },
       draw: {
         id: lotteryDrawsTable.id,
