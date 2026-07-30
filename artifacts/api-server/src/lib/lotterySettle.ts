@@ -59,6 +59,13 @@ export async function settleLotteryDraw(
   if (!row) throw new Error(`Draw #${drawId} not found`);
   if (row.draw.status === "settled") throw new Error(`Draw #${drawId} already settled`);
 
+  // Refuse to settle a draw whose scheduled time is still in the future
+  if (row.draw.drawDate && new Date(row.draw.drawDate) > new Date()) {
+    throw new Error(
+      `Draw #${drawId} is scheduled for ${row.draw.drawDate.toISOString()} — cannot settle before the draw has taken place`
+    );
+  }
+
   const payoutConfig: PayoutConfig =
     (row.game?.payoutConfig as PayoutConfig | null) ?? DEFAULT_PAYOUT_CONFIG;
 
