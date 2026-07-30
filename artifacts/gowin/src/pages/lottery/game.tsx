@@ -13,11 +13,12 @@ import api from "@/lib/api";
 import { differenceInSeconds } from "date-fns";
 
 // ── Local-time date formatting ────────────────────────────────────────────────
-// All draw times are shown in the user's browser local timezone (e.g. DRC UTC+2)
-// so they match what the player sees on their device clock.
-function fmtInTz(dateStr: string, _tz: string | null | undefined, opts: Intl.DateTimeFormatOptions): string {
+// Draw times are shown in the game's home timezone (e.g. Europe/London for UK 49s).
+// Falls back to browser local time when no timezone is supplied.
+function fmtInTz(dateStr: string, tz: string | null | undefined, opts: Intl.DateTimeFormatOptions): string {
   try {
-    return new Intl.DateTimeFormat("en-GB", opts).format(new Date(dateStr));
+    const resolvedTz = tz ?? undefined;
+    return new Intl.DateTimeFormat("en-GB", { ...opts, timeZone: resolvedTz }).format(new Date(dateStr));
   } catch {
     return new Date(dateStr).toLocaleString();
   }
