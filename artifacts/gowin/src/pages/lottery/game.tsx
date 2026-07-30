@@ -30,7 +30,7 @@ function fmtInTz(dateStr: string, tz: string | null | undefined, opts: Intl.Date
  * home timezone so the correct local draw time is shown.
  */
 function resolveDisplayTimezone(slug: string, gameTz: string | null | undefined): string | null {
-  if (slug.startsWith("uk-49s")) return "Africa/Lubumbashi";
+  if (slug.startsWith("uk-")) return "Africa/Lubumbashi";
   return gameTz ?? null;
 }
 
