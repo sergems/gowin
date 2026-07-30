@@ -1335,6 +1335,259 @@ export async function ensureRussianGoslotoGames(): Promise<void> {
   }
 }
 
+// ── New TheLotter-backed international games (added on every startup) ─────────
+
+const THELOTTER_INTL_GAMES = [
+  // ── Hungary ──────────────────────────────────────────────────────────────
+  {
+    slug: "hungary-hatoslotto", name: "Hatoslottó", country: "Hungary",
+    mainNumbersCount: 6, mainNumbersMax: 45, bonusNumbersCount: 1, bonusNumbersMax: 45,
+    ticketPrice: "2.00", color: "#16a34a", emoji: "🇭🇺",
+    description: "Hungary's Hatoslottó — 6 from 45 plus a bonus. Draws Wednesdays and Saturdays.",
+    scraperClass: "TheLotterHungaryHatoslottoScraper",
+    drawDays: [3, 6], drawTime: "18:45", timezone: "Europe/Budapest",
+    logoUrl: "https://flagcdn.com/80x60/hu.png",
+  },
+  {
+    slug: "hungary-otoslotto", name: "Ötöslottó", country: "Hungary",
+    mainNumbersCount: 5, mainNumbersMax: 90, bonusNumbersCount: 0, bonusNumbersMax: 0,
+    ticketPrice: "2.00", color: "#dc2626", emoji: "🇭🇺",
+    description: "Hungary's Ötöslottó — 5 from 90, no bonus ball. Draws Saturdays.",
+    scraperClass: "TheLotterHungaryOtoslottoScraper",
+    drawDays: [6], drawTime: "18:45", timezone: "Europe/Budapest",
+    logoUrl: "https://flagcdn.com/80x60/hu.png",
+    enabledPlayTypes: ["1", "2", "3", "4", "5"],
+  },
+  // ── Italy ─────────────────────────────────────────────────────────────────
+  {
+    slug: "italy-lotto", name: "Italy Lotto", country: "Italy",
+    mainNumbersCount: 5, mainNumbersMax: 90, bonusNumbersCount: 0, bonusNumbersMax: 0,
+    ticketPrice: "2.00", color: "#16a34a", emoji: "🇮🇹",
+    description: "Italy's classic Lotto — 5 numbers drawn from 90 across 11 city wheels. Draws Tue/Thu/Sat.",
+    scraperClass: "TheLotterItalyLottoScraper",
+    drawDays: [2, 4, 6], drawTime: "20:00", timezone: "Europe/Rome",
+    logoUrl: "https://flagcdn.com/80x60/it.png",
+    enabledPlayTypes: ["1", "2", "3", "4", "5"],
+  },
+  {
+    slug: "italy-millionday", name: "MillionDay", country: "Italy",
+    mainNumbersCount: 5, mainNumbersMax: 55, bonusNumbersCount: 0, bonusNumbersMax: 0,
+    ticketPrice: "1.00", color: "#f59e0b", emoji: "🇮🇹",
+    description: "Italy's daily MillionDay — pick 5 from 1–55. Draws every day at 19:00.",
+    scraperClass: "TheLotterItalyMillionDayScraper",
+    drawDays: [], drawTime: "19:00", timezone: "Europe/Rome",
+    logoUrl: "https://flagcdn.com/80x60/it.png",
+    enabledPlayTypes: ["1", "2", "3", "4", "5"],
+  },
+  // ── Japan ─────────────────────────────────────────────────────────────────
+  {
+    slug: "japan-loto-6", name: "Japan Loto 6", country: "Japan",
+    mainNumbersCount: 6, mainNumbersMax: 43, bonusNumbersCount: 1, bonusNumbersMax: 43,
+    ticketPrice: "2.00", color: "#ef4444", emoji: "🇯🇵",
+    description: "Japan's Loto 6 — pick 6 from 1–43 plus optional bonus. Draws Mondays and Thursdays.",
+    scraperClass: "TheLotterJapanLoto6Scraper",
+    drawDays: [1, 4], drawTime: "18:45", timezone: "Asia/Tokyo",
+    logoUrl: "https://flagcdn.com/80x60/jp.png",
+  },
+  {
+    slug: "japan-loto-7", name: "Japan Loto 7", country: "Japan",
+    mainNumbersCount: 7, mainNumbersMax: 37, bonusNumbersCount: 2, bonusNumbersMax: 37,
+    ticketPrice: "2.00", color: "#3b82f6", emoji: "🇯🇵",
+    description: "Japan's Loto 7 — pick 7 from 1–37 plus 2 bonus numbers. Draws Fridays.",
+    scraperClass: "TheLotterJapanLoto7Scraper",
+    drawDays: [5], drawTime: "18:45", timezone: "Asia/Tokyo",
+    logoUrl: "https://flagcdn.com/80x60/jp.png",
+  },
+  {
+    slug: "japan-mini-loto", name: "Japan Mini Loto", country: "Japan",
+    mainNumbersCount: 5, mainNumbersMax: 31, bonusNumbersCount: 1, bonusNumbersMax: 31,
+    ticketPrice: "1.00", color: "#8b5cf6", emoji: "🇯🇵",
+    description: "Japan's Mini Loto — pick 5 from 1–31 plus optional bonus. Draws Tuesdays.",
+    scraperClass: "TheLotterJapanMiniLotoScraper",
+    drawDays: [2], drawTime: "18:45", timezone: "Asia/Tokyo",
+    logoUrl: "https://flagcdn.com/80x60/jp.png",
+  },
+  // ── Mexico ────────────────────────────────────────────────────────────────
+  {
+    slug: "mexico-melate", name: "Melate", country: "Mexico",
+    mainNumbersCount: 6, mainNumbersMax: 56, bonusNumbersCount: 1, bonusNumbersMax: 56,
+    ticketPrice: "2.00", color: "#16a34a", emoji: "🇲🇽",
+    description: "Mexico's Melate — pick 6 from 1–56 plus optional revancha. Draws Wed/Fri/Sun.",
+    scraperClass: "TheLotterMexicoMelateScraper",
+    drawDays: [0, 3, 5], drawTime: "21:00", timezone: "America/Mexico_City",
+    logoUrl: "https://flagcdn.com/80x60/mx.png",
+  },
+  {
+    slug: "mexico-melate-retro", name: "Melate Retro", country: "Mexico",
+    mainNumbersCount: 6, mainNumbersMax: 39, bonusNumbersCount: 1, bonusNumbersMax: 39,
+    ticketPrice: "1.50", color: "#f97316", emoji: "🇲🇽",
+    description: "Mexico's Melate Retro — pick 6 from 1–39. Draws Tue/Thu/Sat.",
+    scraperClass: "TheLotterMexicoMelateRetroScraper",
+    drawDays: [2, 4, 6], drawTime: "21:00", timezone: "America/Mexico_City",
+    logoUrl: "https://flagcdn.com/80x60/mx.png",
+  },
+  {
+    slug: "mexico-chispazo", name: "Chispazo", country: "Mexico",
+    mainNumbersCount: 5, mainNumbersMax: 28, bonusNumbersCount: 1, bonusNumbersMax: 28,
+    ticketPrice: "1.00", color: "#fbbf24", emoji: "🇲🇽",
+    description: "Mexico's Chispazo — pick 5 from 1–28 plus bonus. Draws Mon/Wed/Fri.",
+    scraperClass: "TheLotterMexicoChispazScraper",
+    drawDays: [1, 3, 5], drawTime: "21:00", timezone: "America/Mexico_City",
+    logoUrl: "https://flagcdn.com/80x60/mx.png",
+  },
+  // ── Peru ──────────────────────────────────────────────────────────────────
+  {
+    slug: "peru-tinka", name: "Tinka", country: "Peru",
+    mainNumbersCount: 6, mainNumbersMax: 45, bonusNumbersCount: 1, bonusNumbersMax: 45,
+    ticketPrice: "2.00", color: "#ef4444", emoji: "🇵🇪",
+    description: "Peru's Tinka — pick 6 from 1–45 plus optional bonus. Draws Sundays.",
+    scraperClass: "TheLotterPeruTinkaScraper",
+    drawDays: [0], drawTime: "20:00", timezone: "America/Lima",
+    logoUrl: "https://flagcdn.com/80x60/pe.png",
+  },
+  // ── Poland ────────────────────────────────────────────────────────────────
+  {
+    slug: "poland-lotto", name: "Poland Lotto", country: "Poland",
+    mainNumbersCount: 6, mainNumbersMax: 49, bonusNumbersCount: 0, bonusNumbersMax: 0,
+    ticketPrice: "2.00", color: "#dc2626", emoji: "🇵🇱",
+    description: "Poland's Lotto — pick 6 from 1–49, no bonus. Draws Tue/Thu/Sat.",
+    scraperClass: "TheLotterPolandLottoScraper",
+    drawDays: [2, 4, 6], drawTime: "21:40", timezone: "Europe/Warsaw",
+    logoUrl: "https://flagcdn.com/80x60/pl.png",
+    enabledPlayTypes: ["1", "2", "3", "4", "5", "6"],
+  },
+  {
+    slug: "poland-mini-lotto", name: "Mini Lotto", country: "Poland",
+    mainNumbersCount: 5, mainNumbersMax: 42, bonusNumbersCount: 0, bonusNumbersMax: 0,
+    ticketPrice: "1.00", color: "#f97316", emoji: "🇵🇱",
+    description: "Poland's Mini Lotto — pick 5 from 1–42, no bonus. Draws Mon/Wed/Fri.",
+    scraperClass: "TheLotterPolandMiniLottoScraper",
+    drawDays: [1, 3, 5], drawTime: "21:40", timezone: "Europe/Warsaw",
+    logoUrl: "https://flagcdn.com/80x60/pl.png",
+    enabledPlayTypes: ["1", "2", "3", "4", "5"],
+  },
+  // ── Portugal ──────────────────────────────────────────────────────────────
+  {
+    slug: "portugal-totoloto", name: "Totoloto", country: "Portugal",
+    mainNumbersCount: 6, mainNumbersMax: 49, bonusNumbersCount: 1, bonusNumbersMax: 49,
+    ticketPrice: "2.00", color: "#16a34a", emoji: "🇵🇹",
+    description: "Portugal's Totoloto — pick 6 from 1–49 plus bonus. Draws Wednesdays and Saturdays.",
+    scraperClass: "TheLotterPortugalTotolotoScraper",
+    drawDays: [3, 6], drawTime: "20:00", timezone: "Europe/Lisbon",
+    logoUrl: "https://flagcdn.com/80x60/pt.png",
+  },
+  // ── Romania ───────────────────────────────────────────────────────────────
+  {
+    slug: "romania-joker", name: "Romania Joker", country: "Romania",
+    mainNumbersCount: 5, mainNumbersMax: 45, bonusNumbersCount: 1, bonusNumbersMax: 20,
+    ticketPrice: "2.00", color: "#fbbf24", emoji: "🇷🇴",
+    description: "Romania's Joker — 5 from 1–45 plus a Joker (1–20). Draws Mondays and Thursdays.",
+    scraperClass: "TheLotterRomaniaJokerScraper",
+    drawDays: [1, 4], drawTime: "18:30", timezone: "Europe/Bucharest",
+    logoUrl: "https://flagcdn.com/80x60/ro.png",
+  },
+  {
+    slug: "romania-loto-649", name: "Romania Loto 6/49", country: "Romania",
+    mainNumbersCount: 6, mainNumbersMax: 49, bonusNumbersCount: 1, bonusNumbersMax: 49,
+    ticketPrice: "2.00", color: "#3b82f6", emoji: "🇷🇴",
+    description: "Romania's Loto 6/49 — pick 6 from 1–49 plus bonus. Draws Sundays and Wednesdays.",
+    scraperClass: "TheLotterRomaniaLoto649Scraper",
+    drawDays: [0, 3], drawTime: "18:30", timezone: "Europe/Bucharest",
+    logoUrl: "https://flagcdn.com/80x60/ro.png",
+  },
+  // ── Spain ─────────────────────────────────────────────────────────────────
+  {
+    slug: "spain-bonoloto", name: "Bonoloto", country: "Spain",
+    mainNumbersCount: 6, mainNumbersMax: 49, bonusNumbersCount: 1, bonusNumbersMax: 49,
+    ticketPrice: "1.00", color: "#ef4444", emoji: "🇪🇸",
+    description: "Spain's Bonoloto — pick 6 from 1–49 plus bonus. Draws Mon–Sat.",
+    scraperClass: "TheLotterSpainBonolotoScraper",
+    drawDays: [1, 2, 3, 4, 5, 6], drawTime: "21:30", timezone: "Europe/Madrid",
+    logoUrl: "https://flagcdn.com/80x60/es.png",
+  },
+  {
+    slug: "spain-la-primitiva", name: "La Primitiva", country: "Spain",
+    mainNumbersCount: 6, mainNumbersMax: 49, bonusNumbersCount: 1, bonusNumbersMax: 49,
+    ticketPrice: "1.50", color: "#f97316", emoji: "🇪🇸",
+    description: "Spain's La Primitiva — pick 6 from 1–49 plus complementario. Draws Thu/Sat.",
+    scraperClass: "TheLotterSpainLaPrimitivaScraper",
+    drawDays: [4, 6], drawTime: "21:30", timezone: "Europe/Madrid",
+    logoUrl: "https://flagcdn.com/80x60/es.png",
+  },
+] as const;
+
+/**
+ * Upsert all new TheLotter-backed international games on every startup.
+ * This is intentionally separate from seedLotteryGames() so that imported
+ * databases (which already have games and skip the normal seed) receive the
+ * new games too.
+ */
+export async function ensureTheLotterInternationalGames(): Promise<void> {
+  for (const cfg of THELOTTER_INTL_GAMES) {
+    const [existing] = await db
+      .select({ id: lotteryGamesTable.id })
+      .from(lotteryGamesTable)
+      .where(eq(lotteryGamesTable.slug, cfg.slug))
+      .limit(1);
+
+    const enabledPlayTypes = (cfg as any).enabledPlayTypes ?? ["1", "2", "3", "4", "5", "6", "bonus_only"];
+
+    if (existing) {
+      // Keep scraper_class and number config current on every boot.
+      await db.update(lotteryGamesTable).set({
+        scraperClass: cfg.scraperClass,
+        website: "https://www.thelotter.com",
+        logoUrl: (cfg as any).logoUrl,
+        drawDays: [...cfg.drawDays],
+        drawTime: cfg.drawTime,
+        timezone: cfg.timezone,
+        enabledPlayTypes,
+      }).where(eq(lotteryGamesTable.id, existing.id));
+      continue;
+    }
+
+    // Compute a rough first draw time from drawDays/drawTime.
+    const nextDrawAt = computeNextLotteryDraw(cfg.drawTime, [...cfg.drawDays], cfg.timezone)
+      ?? new Date(Date.now() + 3 * 86_400_000);
+
+    const [game] = await db.insert(lotteryGamesTable).values({
+      name: cfg.name,
+      slug: cfg.slug,
+      country: cfg.country,
+      mainNumbersCount: cfg.mainNumbersCount,
+      mainNumbersMax: cfg.mainNumbersMax,
+      bonusNumbersCount: cfg.bonusNumbersCount,
+      bonusNumbersMax: cfg.bonusNumbersMax,
+      ticketPrice: cfg.ticketPrice,
+      jackpot: "0.00",
+      nextDrawAt,
+      isActive: true,
+      color: cfg.color,
+      emoji: cfg.emoji,
+      description: cfg.description,
+      payoutConfig: DEFAULT_PAYOUT_CONFIG,
+      enabledPlayTypes,
+      scraperClass: cfg.scraperClass,
+      website: "https://www.thelotter.com",
+      drawDays: [...cfg.drawDays],
+      drawTime: cfg.drawTime,
+      timezone: cfg.timezone,
+      logoUrl: (cfg as any).logoUrl,
+    }).returning({ id: lotteryGamesTable.id });
+
+    if (game) {
+      await db.insert(lotteryDrawsTable).values({
+        gameId: game.id,
+        drawDate: nextDrawAt,
+        jackpot: "0.00",
+        winningNumbers: [],
+        bonusNumbers: [],
+        status: "pending",
+      });
+    }
+  }
+}
+
 export async function seedLotteryGames(): Promise<void> {
   try {
     const [{ total }] = await db.select({ total: count() }).from(lotteryGamesTable);

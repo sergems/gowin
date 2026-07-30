@@ -221,3 +221,147 @@ export class TheLotterEuroMillionsScraper extends TheLotterBaseScraper {
   readonly expectedMain = 5;
   readonly expectedBonus = 2;
 }
+
+/** Hungary Hatoslottó — 6 main (1–45) + 1 bonus. Draws Wed/Sat. */
+export class TheLotterHungaryHatoslottoScraper extends TheLotterBaseScraper {
+  readonly name = "TheLotterHungaryHatoslottoScraper";
+  readonly thelotterSlug = "hungary-hatoslotto";
+  readonly expectedMain = 6;
+  readonly expectedBonus = 1;
+}
+
+/** Hungary Ötöslottó — 5 main (1–90), no bonus. Draws Saturdays. */
+export class TheLotterHungaryOtoslottoScraper extends TheLotterBaseScraper {
+  readonly name = "TheLotterHungaryOtoslottoScraper";
+  readonly thelotterSlug = "hungary-otoslotto";
+  readonly expectedMain = 5;
+  readonly expectedBonus = 0;
+}
+
+/** Italy Lotto — 5 main (1–90), no bonus. Draws Tue/Thu/Sat. */
+export class TheLotterItalyLottoScraper extends TheLotterBaseScraper {
+  readonly name = "TheLotterItalyLottoScraper";
+  readonly thelotterSlug = "italy-lotto";
+  readonly expectedMain = 5;
+  readonly expectedBonus = 0;
+}
+
+/** Italy MillionDay — 5 main (1–55), no bonus. Draws daily. */
+export class TheLotterItalyMillionDayScraper extends TheLotterBaseScraper {
+  readonly name = "TheLotterItalyMillionDayScraper";
+  readonly thelotterSlug = "italy-millionday";
+  readonly expectedMain = 5;
+  readonly expectedBonus = 0;
+}
+
+/** Japan Loto 6 — 6 main (1–43) + 1 bonus. Draws Mon/Thu. */
+export class TheLotterJapanLoto6Scraper extends TheLotterBaseScraper {
+  readonly name = "TheLotterJapanLoto6Scraper";
+  readonly thelotterSlug = "japan-loto-6";
+  readonly expectedMain = 6;
+  readonly expectedBonus = 1;
+}
+
+/** Japan Loto 7 — 7 main (1–37) + 2 bonus. Draws Fridays. */
+export class TheLotterJapanLoto7Scraper extends TheLotterBaseScraper {
+  readonly name = "TheLotterJapanLoto7Scraper";
+  readonly thelotterSlug = "japan-loto-7";
+  readonly expectedMain = 7;
+  readonly expectedBonus = 2;
+}
+
+/** Japan Mini Loto — 5 main (1–31) + 1 bonus. Draws Tuesdays. */
+export class TheLotterJapanMiniLotoScraper extends TheLotterBaseScraper {
+  readonly name = "TheLotterJapanMiniLotoScraper";
+  readonly thelotterSlug = "japan-mini-loto";
+  readonly expectedMain = 5;
+  readonly expectedBonus = 1;
+}
+
+/** Mexico Melate — 6 main (1–56) + 1 bonus. Draws Wed/Fri/Sun. */
+export class TheLotterMexicoMelateScraper extends TheLotterBaseScraper {
+  readonly name = "TheLotterMexicoMelateScraper";
+  readonly thelotterSlug = "mexico-melate";
+  readonly expectedMain = 6;
+  readonly expectedBonus = 1;
+}
+
+/** Mexico Melate Retro — 6 main (1–39) + 1 bonus. Draws Tue/Thu/Sat. */
+export class TheLotterMexicoMelateRetroScraper extends TheLotterBaseScraper {
+  readonly name = "TheLotterMexicoMelateRetroScraper";
+  readonly thelotterSlug = "mexico-melate-retro";
+  readonly expectedMain = 6;
+  readonly expectedBonus = 1;
+}
+
+/** Mexico Chispazo — 5 main (1–28) + 1 bonus. Draws Mon/Wed/Fri. */
+export class TheLotterMexicoChispazScraper extends TheLotterBaseScraper {
+  readonly name = "TheLotterMexicoChispazScraper";
+  readonly thelotterSlug = "mexico-chispazo";
+  readonly expectedMain = 5;
+  readonly expectedBonus = 1;
+}
+
+/** Peru Tinka — 6 main (1–45) + 1 bonus. Draws Sundays. */
+export class TheLotterPeruTinkaScraper extends TheLotterBaseScraper {
+  readonly name = "TheLotterPeruTinkaScraper";
+  readonly thelotterSlug = "peru-tinka";
+  readonly expectedMain = 6;
+  readonly expectedBonus = 1;
+}
+
+/** Poland Lotto — 6 main (1–49), no bonus. Draws Tue/Thu/Sat. */
+export class TheLotterPolandLottoScraper extends TheLotterBaseScraper {
+  readonly name = "TheLotterPolandLottoScraper";
+  readonly thelotterSlug = "poland-lotto";
+  readonly expectedMain = 6;
+  readonly expectedBonus = 0;
+}
+
+/** Poland Mini Lotto — 5 main (1–42), no bonus. Draws Mon/Wed/Fri. */
+export class TheLotterPolandMiniLottoScraper extends TheLotterBaseScraper {
+  readonly name = "TheLotterPolandMiniLottoScraper";
+  readonly thelotterSlug = "poland-mini-lotto";
+  readonly expectedMain = 5;
+  readonly expectedBonus = 0;
+}
+
+/** Portugal Totoloto — 6 main (1–49) + 1 bonus. Draws Wed/Sat. */
+export class TheLotterPortugalTotolotoScraper extends TheLotterBaseScraper {
+  readonly name = "TheLotterPortugalTotolotoScraper";
+  readonly thelotterSlug = "portugal-totoloto";
+  readonly expectedMain = 6;
+  readonly expectedBonus = 1;
+}
+
+/** Romania Joker — 5 main (1–45) + 1 Joker (1–20). Draws Mon/Thu. */
+export class TheLotterRomaniaJokerScraper extends TheLotterBaseScraper {
+  readonly name = "TheLotterRomaniaJokerScraper";
+  readonly thelotterSlug = "romania-joker";
+  readonly expectedMain = 5;
+  readonly expectedBonus = 1;
+}
+
+/** Romania Loto 6/49 — 6 main (1–49) + 1 bonus. Draws Sun/Wed. */
+export class TheLotterRomaniaLoto649Scraper extends TheLotterBaseScraper {
+  readonly name = "TheLotterRomaniaLoto649Scraper";
+  readonly thelotterSlug = "romania-lotto-649";
+  readonly expectedMain = 6;
+  readonly expectedBonus = 1;
+}
+
+/** Spain Bonoloto — 6 main (1–49) + 1 bonus. Draws Mon–Sat. */
+export class TheLotterSpainBonolotoScraper extends TheLotterBaseScraper {
+  readonly name = "TheLotterSpainBonolotoScraper";
+  readonly thelotterSlug = "spain-bonoloto";
+  readonly expectedMain = 6;
+  readonly expectedBonus = 1;
+}
+
+/** Spain La Primitiva — 6 main (1–49) + 1 bonus. Draws Thu/Sat. */
+export class TheLotterSpainLaPrimitivaScraper extends TheLotterBaseScraper {
+  readonly name = "TheLotterSpainLaPrimitivaScraper";
+  readonly thelotterSlug = "spain-la-primitiva";
+  readonly expectedMain = 6;
+  readonly expectedBonus = 1;
+}

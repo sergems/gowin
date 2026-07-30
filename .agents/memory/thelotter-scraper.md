@@ -37,9 +37,16 @@ export class TheLotterMyLottoScraper extends TheLotterBaseScraper {
 
 ## Current TheLotter-backed scrapers (as of July 2026)
 USA: Powerball, Mega Millions
-Europe: EuroMillions (slug: euromillions, 5+2), Austria Lotto, EuroDreams, El Gordo (Spain), Germany Lotto, SuperEnalotto (Italy)
+Europe: EuroMillions (5+2), Austria Lotto, EuroDreams, El Gordo, Germany Lotto, SuperEnalotto, Bonoloto, La Primitiva (Spain), Hatoslottó, Ötöslottó (Hungary), Totoloto (Portugal), Joker, Loto 6/49 (Romania)
+Italy: Italy Lotto (5+0), MillionDay (5+0), SuperEnalotto (6+1)
+Japan: Loto 6 (6+1), Loto 7 (7+2), Mini Loto (5+1)
+Mexico: Melate (6+1), Melate Retro (6+1), Chispazo (5+1)
+Peru: Tinka (6+1)
+Poland: Lotto (6+0), Mini Lotto (5+0)
 Australia: OZ Lotto, Powerball, Saturday Lotto, Weekday Windfall
 Canada: Lotto 6/49, Ontario 49
 NZ: NZ Powerball
+
+New games use ensureTheLotterInternationalGames() in lotterySeed.ts — upserts on every startup so imported DBs get them automatically.
 
 **Why:** User replaced the official powerball.com/megamillions.com scrapers (which were unreliable) with TheLotter as a unified source. The "Including Bonus" bonus mode was also removed for Powerball and Mega Millions (slugs: `powerball`, `mega-millions`) — see `USA_SLUGS_NO_INCLUDING_BONUS` in `game.tsx`.
