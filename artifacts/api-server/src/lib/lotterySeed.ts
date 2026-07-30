@@ -704,7 +704,7 @@ export async function ensureUK49sDrawTimes(): Promise<void> {
         drawTime: cfg.drawTime,
         description: cfg.description,
         nextDrawAt,
-        payoutConfig: sql`jsonb_set(payout_config, '{withBonus}', '{"1":"350/1","2":"3000/1","3":"32000/1","4":"250000/1"}')`,
+        payoutConfig: sql`jsonb_set(jsonb_set(jsonb_set(payout_config, '{includedBonus}', '{"1":"5.4/1","2":"49/1","3":"400/1","4":"4000/1","5":"50000/1","6":"jackpot"}'), '{excludedBonus}', '{"1":"13/2","2":"65/1","3":"650/1","4":"10000/1","5":"100000/1","6":"jackpot"}'), '{withBonus}', '{"1":"349/1","2":"3100/1","3":"32200/1","4":"250000/1"}')`,
       })
       .where(eq(lotteryGamesTable.id, game.id));
 
