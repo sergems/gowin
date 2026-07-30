@@ -24,6 +24,16 @@ function fmtInTz(dateStr: string, tz: string | null | undefined, opts: Intl.Date
   }
 }
 
+/**
+ * UK 49s draws are scheduled in Europe/London time but displayed to DRC users
+ * in CAT (Africa/Kinshasa = UTC+2, no DST).  All other games use their own
+ * home timezone so the correct local draw time is shown.
+ */
+function resolveDisplayTimezone(slug: string, gameTz: string | null | undefined): string | null {
+  if (slug.startsWith("uk-49s")) return "Africa/Lubumbashi";
+  return gameTz ?? null;
+}
+
 /** "Sun 26 Jul · 13:49" */
 function fmtDrawShort(dateStr: string, tz: string | null | undefined): string {
   const d = fmtInTz(dateStr, tz, { weekday: "short", day: "numeric", month: "short" });
@@ -501,6 +511,10 @@ export default function LotteryGame() {
 
   const countdown = useCountdown(game?.nextDrawAt ?? null, clockOffset);
 
+  // Display timezone: UK 49s are scheduled in Europe/London but shown in CAT
+  // (Africa/Kinshasa, UTC+2) to match DRC users' local time.
+  const displayTimezone = resolveDisplayTimezone(game?.slug ?? "", game?.timezone);
+
   // ── Betting cutoff — 15 minutes before draw ───────────────────────────────
   const CUTOFF_MS = 15 * 60 * 1000;
   const cutoffIso = game?.nextDraw
@@ -733,7 +747,7 @@ export default function LotteryGame() {
           <div className="shrink-0 text-right">
             <div className="text-[10px] text-muted-foreground flex items-center justify-end gap-1 mb-1">
               <Clock className="w-3 h-3" />
-              <span className="hidden sm:inline">{fmtDrawShort(game.nextDrawAt, game.timezone)}</span>
+              <span className="hidden sm:inline">{fmtDrawShort(game.nextDrawAt, displayTimezone)}</span>
               <span className="sm:hidden">{t("lottery.next_draw_compact")}</span>
             </div>
             {countdown.total > 0 ? (
@@ -775,7 +789,7 @@ export default function LotteryGame() {
             {game.nextDraw && (
               <div className="rounded-lg bg-muted/30 border border-border/40 px-5 py-3 text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">{t("lottery.draw_time_label")} </span>
-                {fmtDrawLong24(game.nextDraw.drawDate, game.timezone)}
+                {fmtDrawLong24(game.nextDraw.drawDate, displayTimezone)}
               </div>
             )}
           </div>
@@ -1001,7 +1015,7 @@ export default function LotteryGame() {
             {game.recentDraws.slice(0, 7).map((draw) => (
               <div key={draw.id} className="rounded-lg bg-muted/20 p-3">
                 <div className="text-xs text-muted-foreground mb-2">
-                  {fmtDrawLong24(draw.drawDate, game.timezone)}
+                  {fmtDrawLong24(draw.drawDate, displayTimezone)}
                 </div>
                 <div className="flex flex-wrap gap-1.5 items-center">
                   {(draw.winningNumbers as number[]).map((n) => (

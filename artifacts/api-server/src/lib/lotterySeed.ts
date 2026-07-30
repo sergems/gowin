@@ -649,10 +649,32 @@ export async function ensureUK49sLotteryLogos(): Promise<void> {
 }
 
 const UK_49S_DRAW_CONFIGS = [
-  { slug: "uk-49s-brunchtime", drawTime: "12:49" },
-  { slug: "uk-49s-lunchtime",  drawTime: "13:49" },
-  { slug: "uk-49s-drivetime",  drawTime: "17:49" },
-  { slug: "uk-49s-teatime",    drawTime: "18:49" },
+  // Draw times are in UK local time (Europe/London).
+  // Displayed to DRC users in CAT (Africa/Lubumbashi = UTC+2):
+  //   Brunchtime: 11:49 UK → 12:49 CAT (BST) / 13:49 CAT (GMT)  closes 12:45 / 13:45 CAT
+  //   Lunchtime:  12:49 UK → 13:49 CAT (BST) / 14:45 CAT (GMT)  closes 13:45 / 14:45 CAT
+  //   Drivetime:  16:49 UK → 17:49 CAT (BST) / 18:49 CAT (GMT)  closes 17:45 / 18:45 CAT
+  //   Teatime:    17:49 UK → 18:49 CAT (BST) / 19:49 CAT (GMT)  closes 18:45 / 19:45 CAT
+  {
+    slug: "uk-49s-brunchtime",
+    drawTime: "11:49",
+    description: "Pick 1–6 numbers from 1–49 plus an optional Booster ball. Draws four times daily — this is the Brunchtime draw at 11:49 UK time (12:49 CAT during BST / 13:49 CAT during GMT).",
+  },
+  {
+    slug: "uk-49s-lunchtime",
+    drawTime: "12:49",
+    description: "Pick 1–6 numbers from 1–49 plus an optional Booster ball. Draws four times daily — this is the Lunchtime draw at 12:49 UK time (13:49 CAT during BST / 14:49 CAT during GMT).",
+  },
+  {
+    slug: "uk-49s-drivetime",
+    drawTime: "16:49",
+    description: "Pick 1–6 numbers from 1–49 plus an optional Booster ball. Draws four times daily — this is the Drivetime draw at 16:49 UK time (17:49 CAT during BST / 18:49 CAT during GMT).",
+  },
+  {
+    slug: "uk-49s-teatime",
+    drawTime: "17:49",
+    description: "Pick 1–6 numbers from 1–49 plus an optional Booster ball. Draws four times daily — this is the Teatime draw at 17:49 UK time (18:49 CAT during BST / 19:49 CAT during GMT).",
+  },
 ] as const;
 
 /**
@@ -674,12 +696,13 @@ export async function ensureUK49sDrawTimes(): Promise<void> {
       .limit(1);
     if (!game) continue;
 
-    // Fix timezone, draw_time, next_draw_at, and withBonus payout odds on the game row
+    // Fix timezone, draw_time, description, next_draw_at, and withBonus payout odds on the game row
     await db
       .update(lotteryGamesTable)
       .set({
         timezone: "Europe/London",
         drawTime: cfg.drawTime,
+        description: cfg.description,
         nextDrawAt,
         payoutConfig: sql`jsonb_set(payout_config, '{withBonus}', '{"1":"350/1","2":"3000/1","3":"32000/1","4":"250000/1"}')`,
       })

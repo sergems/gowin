@@ -1,19 +1,30 @@
 ---
 name: UK 49s timezone fix
-description: Root cause and fix for UK 49s draws showing "in 6 days" instead of today/tomorrow
+description: Root cause and fix for UK 49s draws showing wrong times; display timezone override for DRC users
 ---
 
-# UK 49s timezone root cause
+# UK 49s draw time root cause
 
-The imported DB had `timezone = 'Africa/Lubumbashi'` (DRC, UTC+2) on all four UK 49s games instead of `Europe/London` (BST, UTC+1). This caused `computeNextLotteryDraw` to compute draw times as if the draws happened at 12:49/13:49/17:49/18:49 DRC time, pushing them ~6 days into the future.
+The imported DB had `timezone = 'Africa/Lubumbashi'` (DRC, UTC+2) on all four UK 49s games instead of `Europe/London`. This caused `computeNextLotteryDraw` to push draws far into the future.
 
-**Why:** The DB dump was created when the app was running in DRC and the timezone was never corrected.
+**Second bug:** The draw times stored were also 1 hour too late in UK local time (12:49/13:49/17:49/18:49 instead of 11:49/12:49/16:49/17:49). The correct UK local draw times and their CAT equivalents:
+- Brunchtime: 11:49 UK → 12:49 CAT (BST) / 13:49 CAT (GMT) — closes 12:45 / 13:45 CAT
+- Lunchtime:  12:49 UK → 13:49 CAT (BST) / 14:49 CAT (GMT) — closes 13:45 / 14:45 CAT
+- Drivetime:  16:49 UK → 17:49 CAT (BST) / 18:49 CAT (GMT) — closes 17:45 / 18:45 CAT
+- Teatime:    17:49 UK → 18:49 CAT (BST) / 19:49 CAT (GMT) — closes 18:45 / 19:45 CAT
+
+**Why:** Draw schedule uses `Europe/London` for correct UTC computation (UK has DST). But users are in eastern DRC (UTC+2, Africa/Lubumbashi, no DST), so display timezone differs from schedule timezone.
 
 ## What was fixed
 
-1. `ensureUK49sDrawTimes()` in `lotterySeed.ts` — runs on every startup. Fixes `timezone`, `nextDrawAt` on the game rows, and the nearest `pending` row in `lottery_draws`.
-2. `advanceLotteryNextDrawAt()` in `lotteryScrapers.ts` — changed condition from "only update when pending date is later" to "always sync to nearest future pending". The old condition prevented a corrected (earlier) pending date from propagating back to the game row.
+1. `UK_49S_DRAW_CONFIGS` in `lotterySeed.ts` — corrected draw times and descriptions.
+2. `ensureUK49sDrawTimes()` — now also updates `description` on each startup; runs on every server start.
+3. `resolveDisplayTimezone()` in `artifacts/gowin/src/pages/lottery/game.tsx` — returns `Africa/Lubumbashi` for `uk-49s-*` slugs. Used in all three `fmtDraw*` calls (header, betting-closed panel, results list).
+
+## Key constraint
+
+`timezone` on the game row stays `Europe/London` — this is required for `computeNextLotteryDraw` to produce correct UTC timestamps. Only the frontend display overrides to `Africa/Lubumbashi`.
 
 ## Ongoing concern
 
-When there are no pending draws left (all settled and scraper hasn't run yet), `ScraperManager` creates a fallback pending draw 7 days out. `ensureUK49sDrawTimes` corrects this on the next restart but not in real-time. The 10-minute `advanceLotteryNextDrawAt` cron will also correct it once a correct pending draw is inserted by the scraper or a restart.
+When there are no pending draws left, `ScraperManager` creates a fallback draw 7 days out. `ensureUK49sDrawTimes` corrects this on next restart. The 10-minute `advanceLotteryNextDrawAt` cron also self-heals once a correct pending draw exists.

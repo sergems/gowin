@@ -26,10 +26,10 @@
  *   }
  *
  * event_number mapping:
- *   1 = Brunchtime (~12:49 BST)
- *   2 = Lunchtime  (~13:49 BST)
- *   3 = Drivetime  (~16:49 BST)
- *   4 = Teatime    (~17:49 BST)
+ *   1 = Brunchtime (11:49 UK / 12:49 CAT during BST / 13:49 CAT during GMT)
+ *   2 = Lunchtime  (12:49 UK / 13:49 CAT during BST / 14:49 CAT during GMT)
+ *   3 = Drivetime  (16:49 UK / 17:49 CAT during BST / 18:49 CAT during GMT)
+ *   4 = Teatime    (17:49 UK / 18:49 CAT during BST / 19:49 CAT during GMT)
  */
 
 import { BaseScraper } from "./BaseScraper";
