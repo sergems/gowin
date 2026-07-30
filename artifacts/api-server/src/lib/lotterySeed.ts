@@ -5,7 +5,7 @@
  */
 import { db, lotteryGamesTable, lotteryDrawsTable } from "@workspace/db";
 import { DEFAULT_PAYOUT_CONFIG } from "@workspace/db";
-import { and, count, eq, sql } from "drizzle-orm";
+import { and, count, eq, gt, sql } from "drizzle-orm";
 import { logger } from "./logger";
 import { computeNextLotteryDraw } from "./lotterySchedule";
 
@@ -867,6 +867,31 @@ export async function ensureUKNationalLotteryGames(): Promise<void> {
         website: cfg.website,
         nextDrawAt,
       }).where(eq(lotteryGamesTable.id, existing.id));
+
+      // Purge any future pending draws that fall on a wrong weekday (can arrive via
+      // btk.sql imports or scraper artefacts). advanceLotteryNextDrawAt picks the
+      // minimum pending draw for next_draw_at, so a stale wrong-day row would
+      // override the correctly computed nextDrawAt above.
+      const futurePending = await db
+        .select({ id: lotteryDrawsTable.id, drawDate: lotteryDrawsTable.drawDate })
+        .from(lotteryDrawsTable)
+        .where(and(
+          eq(lotteryDrawsTable.gameId, existing.id),
+          eq(lotteryDrawsTable.status, "pending"),
+          gt(lotteryDrawsTable.drawDate, new Date()),
+        ));
+
+      for (const draw of futurePending) {
+        const parts = new Intl.DateTimeFormat("en-US", {
+          timeZone: UK_TIMEZONE,
+          year: "numeric", month: "2-digit", day: "2-digit",
+        }).formatToParts(draw.drawDate);
+        const get = (t: string) => Number(parts.find(p => p.type === t)?.value ?? 0);
+        const londonWeekday = new Date(Date.UTC(get("year"), get("month") - 1, get("day"))).getUTCDay();
+        if (!(cfg.drawDays as readonly number[]).includes(londonWeekday)) {
+          await db.delete(lotteryDrawsTable).where(eq(lotteryDrawsTable.id, draw.id));
+        }
+      }
 
       const [pending] = await db
         .select({ id: lotteryDrawsTable.id })
