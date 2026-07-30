@@ -149,6 +149,147 @@ export function printBetSlip(bet: PrintBetData, currency = "USD", exchangeRate =
   win.document.close();
 }
 
+export interface PrintLotteryTicketData {
+  id: number;
+  code?: string | null;
+  placedAt: string | Date;
+  status: string;
+  gameName: string;
+  gameEmoji?: string;
+  gameColor?: string;
+  numbers: number[];
+  bonusNumbers: number[];
+  drawDate?: string | null;
+  winningNumbers?: number[];
+  winningBonusNumbers?: number[];
+  drawSettled?: boolean;
+  stake: number;
+  odds?: string | null;
+  potentialWin?: number | null;
+  prizeAmount?: number | null;
+}
+
+export function printLotteryTicket(ticket: PrintLotteryTicketData, currency = "USD", exchangeRate = 1) {
+  const win = window.open("", "_blank", "width=360,height=680");
+  if (!win) return;
+
+  const validRate = Number.isFinite(exchangeRate) && exchangeRate > 0 ? exchangeRate : 1;
+  const fmtMoney = (v: number) => {
+    const displayAmount = currency === "CDF" ? v * validRate : v;
+    if (currency === "CDF") {
+      return `CDF ${new Intl.NumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(displayAmount)}`;
+    }
+    try {
+      return new Intl.NumberFormat("en-US", { style: "currency", currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(displayAmount);
+    } catch {
+      return `${displayAmount.toFixed(2)} ${currency}`;
+    }
+  };
+  const fmtDate = (s: string | Date) => { try { return new Date(s).toLocaleString(); } catch { return String(s); } };
+
+  const winSet = new Set(ticket.winningNumbers ?? []);
+  const bonusWinSet = new Set(ticket.winningBonusNumbers ?? []);
+
+  const renderBall = (n: number, matched: boolean, color: string, isBonus = false) => {
+    const bg = matched ? color : (isBonus ? "rgba(245,158,11,0.18)" : "#e5e5e5");
+    const fg = matched ? "#fff" : (isBonus ? "#f59e0b" : "#333");
+    const border = isBonus && !matched ? "2px solid rgba(245,158,11,0.55)" : "none";
+    return `<span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:${bg};color:${fg};font-weight:bold;font-size:11px;margin:2px;border:${border}">${n}</span>`;
+  };
+
+  const yourNumbers = ticket.numbers.map((n) =>
+    renderBall(n, ticket.drawSettled ? winSet.has(n) : false, ticket.gameColor ?? "#8b5cf6")
+  ).join("");
+  const yourBonus = ticket.bonusNumbers.map((n) =>
+    renderBall(n, ticket.drawSettled ? bonusWinSet.has(n) : false, "#f59e0b", true)
+  ).join("");
+  const bonusSep = ticket.bonusNumbers.length > 0
+    ? `<span style="font-size:12px;color:#999;margin:0 2px;">+</span>${yourBonus}` : "";
+
+  const winningSection = ticket.drawSettled && (ticket.winningNumbers?.length ?? 0) > 0 ? (() => {
+    const wBalls = (ticket.winningNumbers ?? []).map((n) =>
+      renderBall(n, ticket.numbers.includes(n), ticket.gameColor ?? "#8b5cf6")
+    ).join("");
+    const wBonus = (ticket.winningBonusNumbers ?? []).map((n) =>
+      renderBall(n, ticket.bonusNumbers.includes(n), "#f59e0b", true)
+    ).join("");
+    const wBonusSep = (ticket.winningBonusNumbers?.length ?? 0) > 0
+      ? `<span style="font-size:12px;color:#999;margin:0 2px;">+</span>${wBonus}` : "";
+    return `
+      <hr style="border:none;border-top:1px dashed #999;margin:6px 0"/>
+      <div style="font-size:9px;color:#777;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Winning Numbers</div>
+      <div style="display:flex;flex-wrap:wrap;align-items:center">${wBalls}${wBonusSep}</div>
+    `;
+  })() : "";
+
+  const payoutLine = ticket.status === "won" && ticket.prizeAmount != null
+    ? `<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:bold;border-top:1px solid #000;padding-top:4px;margin-top:4px"><span>Prize Won</span><span>${fmtMoney(ticket.prizeAmount)}</span></div>`
+    : ticket.potentialWin != null
+    ? `<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:bold;border-top:1px solid #000;padding-top:4px;margin-top:4px"><span>Potential Win</span><span>${fmtMoney(ticket.potentialWin)}</span></div>`
+    : "";
+
+  win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>GoWin — Lottery #${ticket.id}</title>
+  <style>
+    @page { margin: 4mm; size: 80mm auto; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Courier New',Courier,monospace; color:#000; background:#fff; width:302px; font-size:11px; padding:8px 10px; }
+    .center { text-align:center; }
+    .row { display:flex; justify-content:space-between; font-size:11px; margin-bottom:3px; }
+    @media print { @page { margin:4mm; size:80mm auto; } body { width:100%; } }
+  </style>
+</head>
+<body>
+  <div class="center">
+    <div style="font-size:18px;font-weight:900;letter-spacing:3px">★ GoWin ★</div>
+    <div style="font-size:9px;color:#555;margin-top:1px">Lottery — Official Receipt</div>
+  </div>
+  <hr style="border:none;border-top:1px solid #000;margin:8px 0"/>
+
+  ${ticket.code ? `
+  <div style="font-size:9px;color:#777;text-transform:uppercase;letter-spacing:.5px;text-align:center;margin-bottom:2px">Ticket Code</div>
+  <div style="text-align:center;border:1px dashed #000;border-radius:3px;padding:5px 8px;margin:5px 0">
+    <div style="font-size:18px;font-weight:bold;letter-spacing:5px">${ticket.code}</div>
+  </div>
+  ` : ""}
+
+  <div class="row"><span style="font-size:9px;color:#777;text-transform:uppercase">Date</span><span>${fmtDate(ticket.placedAt)}</span></div>
+  <div class="row"><span style="font-size:9px;color:#777;text-transform:uppercase">Status</span><span style="font-weight:bold;text-transform:uppercase">${ticket.status}</span></div>
+
+  <hr style="border:none;border-top:1px dashed #999;margin:6px 0"/>
+
+  <div style="font-size:9px;color:#777;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Game</div>
+  <div style="font-weight:bold;margin-bottom:4px">${ticket.gameEmoji ? ticket.gameEmoji + " " : ""}${ticket.gameName}</div>
+
+  <hr style="border:none;border-top:1px dashed #999;margin:6px 0"/>
+
+  <div style="font-size:9px;color:#777;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Your Numbers</div>
+  <div style="display:flex;flex-wrap:wrap;align-items:center">${yourNumbers}${bonusSep}</div>
+
+  ${winningSection}
+
+  ${ticket.drawDate ? `<div style="font-size:9px;color:#777;margin-top:4px">Draw: ${fmtDate(ticket.drawDate)}</div>` : ""}
+
+  <hr style="border:none;border-top:1px solid #000;margin:6px 0"/>
+
+  <div class="row"><span>Stake</span><span>${fmtMoney(ticket.stake)}</span></div>
+  ${ticket.odds ? `<div class="row"><span>Odds</span><span>${ticket.odds}</span></div>` : ""}
+  ${payoutLine}
+
+  <hr style="border:none;border-top:1px dashed #999;margin:8px 0"/>
+  <div style="font-size:8px;color:#999;text-align:center;margin-top:8px">
+    Please gamble responsibly. 18+ only.<br/>GoWin
+  </div>
+
+  <script>window.onload = function(){ window.print(); };<\/script>
+</body>
+</html>`);
+  win.document.close();
+}
+
 export function historyBetToPrintData(bet: any): PrintBetData {
   return {
     code: bet.code ?? null,

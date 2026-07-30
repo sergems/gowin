@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Ticket, Trophy, XCircle, Clock, ArrowLeft } from "lucide-react";
+import { Ticket, Trophy, XCircle, Clock, ArrowLeft, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
+import { printLotteryTicket } from "@/lib/printBetSlip";
 import api from "@/lib/api";
 import { format } from "date-fns";
 
@@ -54,7 +55,7 @@ const STATUS_STYLES: Record<string, { cls: string; icon: typeof Ticket; labelKey
 };
 
 function TicketCard({ ticket }: { ticket: LotteryTicket }) {
-  const { formatCurrency, t } = useSiteSettings();
+  const { formatCurrency, currency, exchangeRate, t } = useSiteSettings();
   const status = STATUS_STYLES[ticket.status] ?? STATUS_STYLES.pending!;
   const StatusIcon = status.icon;
   const statusLabel = t(status.labelKey as any);
@@ -157,16 +158,43 @@ function TicketCard({ ticket }: { ticket: LotteryTicket }) {
         )}
 
         {/* Footer info */}
-        <div className="flex items-center justify-between pt-2 border-t border-border/30">
-          <div className="text-xs text-muted-foreground">
-            Stake: <span className="text-foreground font-medium">${ticket.stake.toFixed(2)}</span>
-            {draw && <span className="ml-2">· {t("lottery.draw_date_label")} {format(new Date(draw.drawDate), "PP")}</span>}
+        <div className="pt-2 border-t border-border/30 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-muted-foreground">
+              Stake: <span className="text-foreground font-medium">{formatCurrency(ticket.stake)}</span>
+              {draw && <span className="ml-2">· {t("lottery.draw_date_label")} {format(new Date(draw.drawDate), "PP")}</span>}
+            </div>
+            {ticket.status === "won" && ticket.prizeAmount && (
+              <span className="text-sm font-black text-primary">
+                +{formatCurrency(ticket.prizeAmount)}
+              </span>
+            )}
           </div>
-          {ticket.status === "won" && ticket.prizeAmount && (
-            <span className="text-sm font-black text-primary">
-              +${ticket.prizeAmount.toFixed(2)}
-            </span>
-          )}
+          <button
+            onClick={() => {
+              printLotteryTicket({
+                id: ticket.id,
+                placedAt: ticket.createdAt,
+                status: ticket.status,
+                gameName: game?.name ?? "Lottery",
+                gameEmoji: game?.emoji,
+                gameColor: game?.color,
+                numbers: ticket.numbers,
+                bonusNumbers: ticket.bonusNumbers,
+                drawDate: draw?.drawDate ?? null,
+                winningNumbers: draw?.winningNumbers,
+                winningBonusNumbers: draw?.bonusNumbers,
+                drawSettled: draw?.status === "settled",
+                stake: ticket.stake,
+                potentialWin: null,
+                prizeAmount: ticket.prizeAmount ?? null,
+              }, currency, exchangeRate);
+            }}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border/50 rounded-md px-3 py-1.5 hover:bg-accent transition-colors w-full justify-center"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            {t("bets.print")}
+          </button>
         </div>
       </div>
     </div>

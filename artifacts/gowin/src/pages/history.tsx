@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, Trophy, Clock, CheckCircle2, XCircle, HelpCircle, Printer, Share2, RotateCcw, Copy, Check, BookMarked, Ticket } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { printBetSlip, historyBetToPrintData } from "@/lib/printBetSlip";
+import { printBetSlip, historyBetToPrintData, printLotteryTicket } from "@/lib/printBetSlip";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 import { useBetSlip } from "@/contexts/BetSlipContext";
 import { CashOutButton } from "@/components/CashOutButton";
@@ -82,6 +82,7 @@ function LotteryTicketCard({ ticket, isOpen, onToggle, formatCurrencyFn }: {
   onToggle: () => void;
   formatCurrencyFn: (amount: number) => string;
 }) {
+  const { currency, exchangeRate } = useSiteSettings();
   const color = ticket.game?.color ?? "#8b5cf6";
   const winSet = new Set(ticket.draw?.winningNumbers ?? []);
   const bonusWinSet = new Set(ticket.draw?.bonusNumbers ?? []);
@@ -214,25 +215,55 @@ function LotteryTicketCard({ ticket, isOpen, onToggle, formatCurrencyFn }: {
               </div>
 
               {/* Summary footer */}
-              <div className="flex items-center justify-between px-5 py-3.5 bg-accent/10 border-t border-border/60 text-sm">
-                <div className="flex gap-6">
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-0.5">Stake</div>
-                    <div className="font-bold">{formatCurrencyFn(ticket.stake)}</div>
-                  </div>
-                  {ticket.odds && (
+              <div className="px-5 py-3.5 bg-accent/10 border-t border-border/60 text-sm space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex gap-6">
                     <div>
-                      <div className="text-xs text-muted-foreground mb-0.5">Odds</div>
-                      <div className="font-bold font-mono">{ticket.odds}</div>
+                      <div className="text-xs text-muted-foreground mb-0.5">Stake</div>
+                      <div className="font-bold">{formatCurrencyFn(ticket.stake)}</div>
                     </div>
-                  )}
-                </div>
-                <div className="text-right">
-                  <div className="text-xs text-muted-foreground mb-0.5">Potential Win</div>
-                  <div className="font-black text-lg">
-                    {potentialWin != null ? formatCurrencyFn(potentialWin) : "—"}
+                    {ticket.odds && (
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-0.5">Odds</div>
+                        <div className="font-bold font-mono">{ticket.odds}</div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs text-muted-foreground mb-0.5">Potential Win</div>
+                    <div className="font-black text-lg">
+                      {potentialWin != null ? formatCurrencyFn(potentialWin) : "—"}
+                    </div>
                   </div>
                 </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    printLotteryTicket({
+                      id: ticket.id,
+                      code: ticket.code,
+                      placedAt: ticket.createdAt,
+                      status: ticket.status,
+                      gameName: ticket.game?.name ?? "Lottery",
+                      gameEmoji: ticket.game?.emoji,
+                      gameColor: ticket.game?.color,
+                      numbers: ticket.numbers,
+                      bonusNumbers: ticket.bonusNumbers,
+                      drawDate: ticket.draw?.drawDate ?? null,
+                      winningNumbers: ticket.draw?.winningNumbers,
+                      winningBonusNumbers: ticket.draw?.bonusNumbers,
+                      drawSettled: ticket.draw?.status === "settled",
+                      stake: ticket.stake,
+                      odds: ticket.odds,
+                      potentialWin: potentialWin,
+                      prizeAmount: ticket.prizeAmount,
+                    }, currency, exchangeRate);
+                  }}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border rounded-md px-3 py-2 hover:bg-accent transition-colors w-full justify-center"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  Print Ticket
+                </button>
               </div>
             </div>
           </motion.div>
