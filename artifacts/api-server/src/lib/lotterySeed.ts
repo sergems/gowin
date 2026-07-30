@@ -374,7 +374,7 @@ const SEED_GAMES = [
     drawOffsetDays: 1,
     color: "#f59e0b",
     emoji: "🍁",
-    description: "Ontario's daily lottery. Pick 6 from 1–49 for a chance at the jackpot.",
+    description: "Ontario's daily lottery. Pick 1–5 numbers from 1–49 plus optional bonus ball.",
     scraperClass: "TheLotterCanadaOntario49Scraper",
     website: "https://www.thelotter.com",
   },
@@ -1374,6 +1374,23 @@ const THELOTTER_INTL_GAMES = [
     payoutConfig: {
       bonusOnly: "", includedBonus: {}, withBonus: {},
       excludedBonus: { "1": "6/1", "2": "70/1", "3": "700/1", "4": "7000/1", "5": "70000/1" },
+    },
+  },
+  // ── Canada ────────────────────────────────────────────────────────────────
+  {
+    slug: "canada-ontario-49", name: "Ontario 49", country: "Canada",
+    mainNumbersCount: 6, mainNumbersMax: 49, bonusNumbersCount: 1, bonusNumbersMax: 49,
+    ticketPrice: "2.00", color: "#f59e0b", emoji: "🍁",
+    description: "Ontario's daily lottery. Pick 1–5 numbers from 1–49 plus optional bonus ball.",
+    scraperClass: "TheLotterCanadaOntario49Scraper",
+    drawDays: [], drawTime: "22:30", timezone: "America/Toronto",
+    logoUrl: "https://flagcdn.com/80x60/ca.png",
+    enabledPlayTypes: ["1", "2", "3", "4", "5"],
+    payoutConfig: {
+      bonusOnly: "",
+      excludedBonus: { "1": "13/2", "2": "55/1", "3": "575/1", "4": "7300/1", "5": "99500/1" },
+      includedBonus: { "1": "11/2", "2": "52/1", "3": "400/1", "4": "4275/1", "5": "5000/1" },
+      withBonus:     { "1": "359/1", "2": "2687/1", "3": "27647/1", "4": "350447/1" },
     },
   },
   // ── Hungary ──────────────────────────────────────────────────────────────
