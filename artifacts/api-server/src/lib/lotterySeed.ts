@@ -649,10 +649,10 @@ export async function ensureUK49sLotteryLogos(): Promise<void> {
 }
 
 const UK_49S_DRAW_CONFIGS = [
-  { slug: "uk-49s-brunchtime", drawTime: "12:49" },
-  { slug: "uk-49s-lunchtime",  drawTime: "13:49" },
-  { slug: "uk-49s-drivetime",  drawTime: "17:49" },
-  { slug: "uk-49s-teatime",    drawTime: "18:49" },
+  { slug: "uk-49s-brunchtime", drawTime: "11:49" },
+  { slug: "uk-49s-lunchtime",  drawTime: "12:49" },
+  { slug: "uk-49s-drivetime",  drawTime: "16:49" },
+  { slug: "uk-49s-teatime",    drawTime: "17:49" },
 ] as const;
 
 /**
@@ -674,40 +674,39 @@ export async function ensureUK49sDrawTimes(): Promise<void> {
       .limit(1);
     if (!game) continue;
 
-    // Fix timezone, next_draw_at, and withBonus payout odds on the game row
+    // Fix timezone, draw_time, next_draw_at, and withBonus payout odds on the game row
     await db
       .update(lotteryGamesTable)
       .set({
         timezone: "Europe/London",
+        drawTime: cfg.drawTime,
         nextDrawAt,
         payoutConfig: sql`jsonb_set(payout_config, '{withBonus}', '{"1":"350/1","2":"3000/1","3":"32000/1","4":"250000/1"}')`,
       })
       .where(eq(lotteryGamesTable.id, game.id));
 
-    // Fix the nearest pending draw: update its draw_date to the correct time,
-    // or create it if none exists.
-    const [pendingDraw] = await db
-      .select({ id: lotteryDrawsTable.id })
-      .from(lotteryDrawsTable)
-      .where(and(eq(lotteryDrawsTable.gameId, game.id), eq(lotteryDrawsTable.status, "pending")))
-      .orderBy(lotteryDrawsTable.drawDate)
-      .limit(1);
+    // Delete ALL future pending draws so the scheduler regenerates them with the
+    // corrected draw_time.  This handles both duplicates (from btk.sql imports)
+    // and any draws that had the old (wrong) time baked in.
+    await db
+      .delete(lotteryDrawsTable)
+      .where(
+        and(
+          eq(lotteryDrawsTable.gameId, game.id),
+          eq(lotteryDrawsTable.status, "pending"),
+          gt(lotteryDrawsTable.drawDate, new Date()),
+        ),
+      );
 
-    if (pendingDraw) {
-      await db
-        .update(lotteryDrawsTable)
-        .set({ drawDate: nextDrawAt })
-        .where(eq(lotteryDrawsTable.id, pendingDraw.id));
-    } else {
-      await db.insert(lotteryDrawsTable).values({
-        gameId: game.id,
-        drawDate: nextDrawAt,
-        jackpot: "0.00",
-        winningNumbers: [],
-        bonusNumbers: [],
-        status: "pending",
-      });
-    }
+    // Insert the first correct pending draw; generateScheduledDraws fills the rest.
+    await db.insert(lotteryDrawsTable).values({
+      gameId: game.id,
+      drawDate: nextDrawAt,
+      jackpot: "0.00",
+      winningNumbers: [],
+      bonusNumbers: [],
+      status: "pending",
+    });
   }
 }
 
