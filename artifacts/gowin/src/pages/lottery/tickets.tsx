@@ -39,6 +39,7 @@ interface LotteryTicket {
     jackpot: number;
     status: string;
   } | null;
+  branchName?: string | null;
 }
 
 interface TicketsResponse {
@@ -182,12 +183,10 @@ function TicketCard({ ticket }: { ticket: LotteryTicket }) {
                 numbers: ticket.numbers,
                 bonusNumbers: ticket.bonusNumbers,
                 drawDate: draw?.drawDate ?? null,
-                winningNumbers: draw?.winningNumbers,
-                winningBonusNumbers: draw?.bonusNumbers,
-                drawSettled: draw?.status === "settled",
                 stake: ticket.stake,
                 potentialWin: null,
                 prizeAmount: ticket.prizeAmount ?? null,
+                branchName: ticket.branchName ?? null,
               }, currency, exchangeRate);
             }}
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border/50 rounded-md px-3 py-1.5 hover:bg-accent transition-colors w-full justify-center"

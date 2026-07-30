@@ -51,6 +51,7 @@ interface LotteryTicketItem {
     bonusNumbers: number[];
     status: string;
   } | null;
+  branchName?: string | null;
   _type: "lottery";
 }
 
@@ -250,13 +251,11 @@ function LotteryTicketCard({ ticket, isOpen, onToggle, formatCurrencyFn }: {
                       numbers: ticket.numbers,
                       bonusNumbers: ticket.bonusNumbers,
                       drawDate: ticket.draw?.drawDate ?? null,
-                      winningNumbers: ticket.draw?.winningNumbers,
-                      winningBonusNumbers: ticket.draw?.bonusNumbers,
-                      drawSettled: ticket.draw?.status === "settled",
                       stake: ticket.stake,
                       odds: ticket.odds,
                       potentialWin: potentialWin,
                       prizeAmount: ticket.prizeAmount,
+                      branchName: ticket.branchName ?? null,
                     }, currency, exchangeRate);
                   }}
                   className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border rounded-md px-3 py-2 hover:bg-accent transition-colors w-full justify-center"

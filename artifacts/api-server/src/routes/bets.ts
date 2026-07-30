@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, betsTable, betSelectionsTable, walletsTable, transactionsTable, fixturesTable, usersTable, teamsTable, leaguesTable, oddsTable, marketsTable, settingsTable, betBookingsTable, lotteryTicketsTable, lotteryGamesTable, lotteryDrawsTable } from "@workspace/db";
+import { db, betsTable, betSelectionsTable, walletsTable, transactionsTable, fixturesTable, usersTable, teamsTable, leaguesTable, oddsTable, marketsTable, settingsTable, betBookingsTable, lotteryTicketsTable, lotteryGamesTable, lotteryDrawsTable, branchesTable } from "@workspace/db";
 import { eq, desc, and, count, inArray, ne } from "drizzle-orm";
 import { requireAuth, requireAdmin, requireAdminOrManager, type AuthRequest } from "../middlewares/auth";
 import {
@@ -203,7 +203,7 @@ router.post("/bets", requireAuth, async (req: AuthRequest, res): Promise<void> =
 });
 
 // ── formatBet helper ──────────────────────────────────────────────────────────
-function formatBet(bet: any, user?: any) {
+function formatBet(bet: any, user?: any, branchName?: string | null) {
   return {
     id: bet.id,
     code: bet.code ?? null,
@@ -228,6 +228,9 @@ function formatBet(bet: any, user?: any) {
     cashOutMarginUsed: bet.cashOutMarginUsed !== undefined && bet.cashOutMarginUsed !== null ? parseFloat(bet.cashOutMarginUsed) : null,
     // Rate snapshot from the cash-out event itself (distinct from placement's exchangeRate)
     cashOutExchangeRate: bet.cashOutExchangeRate !== undefined && bet.cashOutExchangeRate !== null ? parseFloat(bet.cashOutExchangeRate) : null,
+    // Branch info — set when bet was placed by an agent at a branch
+    branchId: bet.branchId ?? null,
+    branchName: branchName ?? null,
   };
 }
 
@@ -288,8 +291,15 @@ router.get("/bets/my", requireAuth, async (req: AuthRequest, res): Promise<void>
     });
   }
 
+  // Fetch branch names for bets placed at a branch
+  const branchIds = [...new Set(bets.map((b) => b.branchId).filter((id): id is number => id != null))];
+  const branches = branchIds.length > 0
+    ? await db.select({ id: branchesTable.id, name: branchesTable.name }).from(branchesTable).where(inArray(branchesTable.id, branchIds))
+    : [];
+  const branchNameMap = Object.fromEntries(branches.map((br) => [br.id, br.name]));
+
   res.json({
-    bets: bets.map((b) => ({ ...formatBet(b, user), selections: selectionsByBet[b.id] || [] })),
+    bets: bets.map((b) => ({ ...formatBet(b, user, b.branchId ? (branchNameMap[b.branchId] ?? null) : null), selections: selectionsByBet[b.id] || [] })),
     total: totalResult.count,
     page,
     limit,

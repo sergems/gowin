@@ -1,3 +1,5 @@
+import logoUrl from "../assets/logo.png";
+
 export interface PrintSelection {
   fixtureName?: string;
   selection: string;
@@ -18,6 +20,7 @@ export interface PrintBetData {
   // USD→CDF rate snapshot from when the bet was placed; takes priority over the
   // live `exchangeRate` passed to printBetSlip so the receipt never drifts.
   exchangeRate?: number | string | null;
+  branchName?: string | null;
 }
 
 export function printBetSlip(bet: PrintBetData, currency = "USD", exchangeRate = 1) {
@@ -79,7 +82,6 @@ export function printBetSlip(bet: PrintBetData, currency = "USD", exchangeRate =
       padding: 8px 10px;
     }
     .center { text-align: center; }
-    .logo { font-size: 18px; font-weight: 900; letter-spacing: 3px; }
     .sub { font-size: 9px; color: #555; margin-top: 1px; }
     .divider { border: none; border-top: 1px dashed #999; margin: 6px 0; }
     .divider-solid { border: none; border-top: 1px solid #000; margin: 6px 0; }
@@ -102,7 +104,7 @@ export function printBetSlip(bet: PrintBetData, currency = "USD", exchangeRate =
 </head>
 <body>
   <div class="center">
-    <div class="logo">★ GoWin ★</div>
+    <img src="${logoUrl}" style="height:48px;max-width:180px;object-fit:contain;display:block;margin:0 auto 2px" alt="GoWin"/>
     <div class="sub">Sports Betting — Official Receipt</div>
   </div>
   <hr class="divider-solid" style="margin-top:8px"/>
@@ -114,6 +116,7 @@ export function printBetSlip(bet: PrintBetData, currency = "USD", exchangeRate =
 
   <div class="row"><span class="label">Date</span><span>${fmtDate(bet.placedAt)}</span></div>
   ${bet.status ? `<div class="row"><span class="label">Status</span><span style="font-weight:bold;text-transform:uppercase">${bet.status}</span></div>` : ""}
+  ${bet.branchName ? `<div class="row"><span class="label">Branch</span><span style="font-weight:bold">${bet.branchName}</span></div>` : ""}
 
   <hr class="divider"/>
 
@@ -160,13 +163,11 @@ export interface PrintLotteryTicketData {
   numbers: number[];
   bonusNumbers: number[];
   drawDate?: string | null;
-  winningNumbers?: number[];
-  winningBonusNumbers?: number[];
-  drawSettled?: boolean;
   stake: number;
   odds?: string | null;
   potentialWin?: number | null;
   prizeAmount?: number | null;
+  branchName?: string | null;
 }
 
 export function printLotteryTicket(ticket: PrintLotteryTicketData, currency = "USD", exchangeRate = 1) {
@@ -187,40 +188,17 @@ export function printLotteryTicket(ticket: PrintLotteryTicketData, currency = "U
   };
   const fmtDate = (s: string | Date) => { try { return new Date(s).toLocaleString(); } catch { return String(s); } };
 
-  const winSet = new Set(ticket.winningNumbers ?? []);
-  const bonusWinSet = new Set(ticket.winningBonusNumbers ?? []);
-
-  const renderBall = (n: number, matched: boolean, color: string, isBonus = false) => {
-    const bg = matched ? color : (isBonus ? "rgba(245,158,11,0.18)" : "#e5e5e5");
-    const fg = matched ? "#fff" : (isBonus ? "#f59e0b" : "#333");
-    const border = isBonus && !matched ? "2px solid rgba(245,158,11,0.55)" : "none";
+  const renderBall = (n: number, color: string, isBonus = false) => {
+    const bg = isBonus ? "rgba(245,158,11,0.18)" : "#e5e5e5";
+    const fg = isBonus ? "#f59e0b" : "#333";
+    const border = isBonus ? "2px solid rgba(245,158,11,0.55)" : "none";
     return `<span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:${bg};color:${fg};font-weight:bold;font-size:11px;margin:2px;border:${border}">${n}</span>`;
   };
 
-  const yourNumbers = ticket.numbers.map((n) =>
-    renderBall(n, ticket.drawSettled ? winSet.has(n) : false, ticket.gameColor ?? "#8b5cf6")
-  ).join("");
-  const yourBonus = ticket.bonusNumbers.map((n) =>
-    renderBall(n, ticket.drawSettled ? bonusWinSet.has(n) : false, "#f59e0b", true)
-  ).join("");
+  const yourNumbers = ticket.numbers.map((n) => renderBall(n, ticket.gameColor ?? "#8b5cf6")).join("");
+  const yourBonus = ticket.bonusNumbers.map((n) => renderBall(n, "#f59e0b", true)).join("");
   const bonusSep = ticket.bonusNumbers.length > 0
     ? `<span style="font-size:12px;color:#999;margin:0 2px;">+</span>${yourBonus}` : "";
-
-  const winningSection = ticket.drawSettled && (ticket.winningNumbers?.length ?? 0) > 0 ? (() => {
-    const wBalls = (ticket.winningNumbers ?? []).map((n) =>
-      renderBall(n, ticket.numbers.includes(n), ticket.gameColor ?? "#8b5cf6")
-    ).join("");
-    const wBonus = (ticket.winningBonusNumbers ?? []).map((n) =>
-      renderBall(n, ticket.bonusNumbers.includes(n), "#f59e0b", true)
-    ).join("");
-    const wBonusSep = (ticket.winningBonusNumbers?.length ?? 0) > 0
-      ? `<span style="font-size:12px;color:#999;margin:0 2px;">+</span>${wBonus}` : "";
-    return `
-      <hr style="border:none;border-top:1px dashed #999;margin:6px 0"/>
-      <div style="font-size:9px;color:#777;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Winning Numbers</div>
-      <div style="display:flex;flex-wrap:wrap;align-items:center">${wBalls}${wBonusSep}</div>
-    `;
-  })() : "";
 
   const payoutLine = ticket.status === "won" && ticket.prizeAmount != null
     ? `<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:bold;border-top:1px solid #000;padding-top:4px;margin-top:4px"><span>Prize Won</span><span>${fmtMoney(ticket.prizeAmount)}</span></div>`
@@ -244,7 +222,7 @@ export function printLotteryTicket(ticket: PrintLotteryTicketData, currency = "U
 </head>
 <body>
   <div class="center">
-    <div style="font-size:18px;font-weight:900;letter-spacing:3px">★ GoWin ★</div>
+    <img src="${logoUrl}" style="height:48px;max-width:180px;object-fit:contain;display:block;margin:0 auto 2px" alt="GoWin"/>
     <div style="font-size:9px;color:#555;margin-top:1px">Lottery — Official Receipt</div>
   </div>
   <hr style="border:none;border-top:1px solid #000;margin:8px 0"/>
@@ -258,6 +236,7 @@ export function printLotteryTicket(ticket: PrintLotteryTicketData, currency = "U
 
   <div class="row"><span style="font-size:9px;color:#777;text-transform:uppercase">Date</span><span>${fmtDate(ticket.placedAt)}</span></div>
   <div class="row"><span style="font-size:9px;color:#777;text-transform:uppercase">Status</span><span style="font-weight:bold;text-transform:uppercase">${ticket.status}</span></div>
+  ${ticket.branchName ? `<div class="row"><span style="font-size:9px;color:#777;text-transform:uppercase">Branch</span><span style="font-weight:bold">${ticket.branchName}</span></div>` : ""}
 
   <hr style="border:none;border-top:1px dashed #999;margin:6px 0"/>
 
@@ -268,8 +247,6 @@ export function printLotteryTicket(ticket: PrintLotteryTicketData, currency = "U
 
   <div style="font-size:9px;color:#777;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Your Numbers</div>
   <div style="display:flex;flex-wrap:wrap;align-items:center">${yourNumbers}${bonusSep}</div>
-
-  ${winningSection}
 
   ${ticket.drawDate ? `<div style="font-size:9px;color:#777;margin-top:4px">Draw: ${fmtDate(ticket.drawDate)}</div>` : ""}
 
@@ -299,6 +276,7 @@ export function historyBetToPrintData(bet: any): PrintBetData {
     stake: bet.stake,
     potentialWin: bet.potentialWin,
     exchangeRate: bet.exchangeRate ?? null,
+    branchName: bet.branchName ?? null,
     selections: (bet.selections || []).map((sel: any) => ({
       fixtureName: sel.fixture
         ? `${sel.fixture.homeTeam?.name ?? "?"} vs ${sel.fixture.awayTeam?.name ?? "?"}`

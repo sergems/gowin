@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, lotteryGamesTable, lotteryDrawsTable, lotteryTicketsTable, walletsTable, transactionsTable, usersTable } from "@workspace/db";
+import { db, lotteryGamesTable, lotteryDrawsTable, lotteryTicketsTable, walletsTable, transactionsTable, usersTable, branchesTable } from "@workspace/db";
 import { DEFAULT_PAYOUT_CONFIG, DEFAULT_ENABLED_PLAY_TYPES } from "@workspace/db";
 import { eq, desc, and, count, sql, gt } from "drizzle-orm";
 import { requireAuth, requireAdmin, type AuthRequest } from "../middlewares/auth";
@@ -434,6 +434,22 @@ router.get("/lottery/tickets/my", requireAuth, async (req: AuthRequest, res): Pr
     .limit(limit)
     .offset(offset);
 
+  // Look up the requesting user's branch (agent-placed tickets)
+  const [userRow] = await db
+    .select({ branchId: usersTable.branchId })
+    .from(usersTable)
+    .where(eq(usersTable.id, req.userId!))
+    .limit(1);
+  let branchName: string | null = null;
+  if (userRow?.branchId) {
+    const [br] = await db
+      .select({ name: branchesTable.name })
+      .from(branchesTable)
+      .where(eq(branchesTable.id, userRow.branchId))
+      .limit(1);
+    branchName = br?.name ?? null;
+  }
+
   res.json({
     tickets: tickets.map(({ ticket, game, draw }) => ({
       ...ticket,
@@ -441,6 +457,7 @@ router.get("/lottery/tickets/my", requireAuth, async (req: AuthRequest, res): Pr
       prizeAmount: ticket.prizeAmount ? parseFloat(ticket.prizeAmount) : null,
       game: game ? { ...game, ticketPrice: parseFloat(game.ticketPrice), jackpot: parseFloat(game.jackpot) } : null,
       draw: draw ? { ...draw, jackpot: parseFloat(draw.jackpot) } : null,
+      branchName,
     })),
     total: totalResult.count,
     page,
