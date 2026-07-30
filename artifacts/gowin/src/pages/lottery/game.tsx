@@ -279,7 +279,7 @@ function PlayTypeSelector({
 
 // ── Bonus Mode Selector ───────────────────────────────────────────────────────
 
-const USA_SLUGS_NO_INCLUDING_BONUS = ["powerball", "mega-millions"];
+const USA_SLUGS_NO_INCLUDING_BONUS = ["powerball", "mega-millions", "french-5-49"];
 
 function BonusModeSelector({
   value, onChange, hasBonus, slug,
