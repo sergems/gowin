@@ -314,14 +314,14 @@ const SEED_GAMES = [
     country: "Germany",
     mainNumbersCount: 6,
     mainNumbersMax: 49,
-    bonusNumbersCount: 1,
-    bonusNumbersMax: 9,
+    bonusNumbersCount: 0,
+    bonusNumbersMax: 0,
     ticketPrice: "2.00",
     jackpot: "0.00",
     drawOffsetDays: 3,
     color: "#fbbf24",
     emoji: "🇩🇪",
-    description: "Germany's 6aus49 drawn on Wednesdays and Saturdays. Pick 6 from 1–49.",
+    description: "Germany's 6aus49 — pick 1–5 numbers from 1 to 49. No bonus ball. Draws Wednesdays and Saturdays at 18:25 CET.",
     scraperClass: "TheLotterGermanyLottoScraper",
     website: "https://www.thelotter.com",
     logoUrl: "https://flagcdn.com/80x60/de.png",
@@ -1361,6 +1361,21 @@ export async function ensureRussianGoslotoGames(): Promise<void> {
 // ── New TheLotter-backed international games (added on every startup) ─────────
 
 const THELOTTER_INTL_GAMES = [
+  // ── Germany ───────────────────────────────────────────────────────────────
+  {
+    slug: "germany-lotto", name: "Germany Lotto", country: "Germany",
+    mainNumbersCount: 6, mainNumbersMax: 49, bonusNumbersCount: 0, bonusNumbersMax: 0,
+    ticketPrice: "2.00", color: "#fbbf24", emoji: "🇩🇪",
+    description: "Germany's 6aus49 — pick 1–5 numbers from 1 to 49. No bonus ball. Draws Wednesdays and Saturdays at 18:25 CET.",
+    scraperClass: "TheLotterGermanyLottoScraper",
+    drawDays: [3, 6], drawTime: "18:25", timezone: "Europe/Berlin",
+    logoUrl: "https://flagcdn.com/80x60/de.png",
+    enabledPlayTypes: ["1", "2", "3", "4", "5"],
+    payoutConfig: {
+      bonusOnly: "", includedBonus: {}, withBonus: {},
+      excludedBonus: { "1": "6/1", "2": "70/1", "3": "700/1", "4": "7000/1", "5": "70000/1" },
+    },
+  },
   // ── Hungary ──────────────────────────────────────────────────────────────
   {
     slug: "hungary-hatoslotto", name: "Hatoslottó", country: "Hungary",
@@ -1556,7 +1571,11 @@ export async function ensureTheLotterInternationalGames(): Promise<void> {
     const enabledPlayTypes = (cfg as any).enabledPlayTypes ?? ["1", "2", "3", "4", "5", "6", "bonus_only"];
 
     if (existing) {
-      // Keep scraper_class and number config current on every boot.
+      // Keep scraper_class, number config, draw schedule, and odds current on every boot.
+      const extraUpdates: Record<string, unknown> = {};
+      if ((cfg as any).payoutConfig !== undefined) extraUpdates.payoutConfig = (cfg as any).payoutConfig;
+      if (cfg.bonusNumbersCount !== undefined) extraUpdates.bonusNumbersCount = cfg.bonusNumbersCount;
+      if (cfg.bonusNumbersMax !== undefined) extraUpdates.bonusNumbersMax = cfg.bonusNumbersMax;
       await db.update(lotteryGamesTable).set({
         scraperClass: cfg.scraperClass,
         website: "https://www.thelotter.com",
@@ -1565,6 +1584,7 @@ export async function ensureTheLotterInternationalGames(): Promise<void> {
         drawTime: cfg.drawTime,
         timezone: cfg.timezone,
         enabledPlayTypes,
+        ...extraUpdates,
       }).where(eq(lotteryGamesTable.id, existing.id));
       continue;
     }
