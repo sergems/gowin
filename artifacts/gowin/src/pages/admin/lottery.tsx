@@ -1268,66 +1268,105 @@ export default function AdminLottery() {
       {tab === "settlement-logs" && (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">{settlementLogsData?.total ?? 0} settlement operations recorded</p>
-          <div className="rounded-xl border border-border/50 overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date / Time</TableHead>
-                  <TableHead>Lottery</TableHead>
-                  <TableHead>Winning Numbers</TableHead>
-                  <TableHead>Tickets Checked</TableHead>
-                  <TableHead>Winners</TableHead>
-                  <TableHead>Total Paid</TableHead>
-                  <TableHead>Time (ms)</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {settlementLogsLoading ? (
-                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
-                ) : (settlementLogsData?.logs ?? []).length === 0 ? (
-                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No settlements yet. Settlement logs appear after the scraper finds and settles a draw.</TableCell></TableRow>
-                ) : (
-                  (settlementLogsData?.logs ?? []).map((log) => (
-                    <TableRow key={log.id}>
-                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                        <div>{format(new Date(log.createdAt), "PP")}</div>
-                        <div>{format(new Date(log.createdAt), "p")}</div>
-                      </TableCell>
-                      <TableCell>
-                        {log.game ? (
-                          <span className="text-sm font-medium">{log.game.emoji} {log.game.name}</span>
-                        ) : <span className="text-xs text-muted-foreground">Unknown</span>}
-                      </TableCell>
-                      <TableCell>
-                        {log.draw && log.draw.winningNumbers.length > 0 ? (
-                          <div className="flex gap-1 flex-wrap">
-                            {log.draw.winningNumbers.map((n) => (
-                              <span key={n} className="w-6 h-6 rounded-full bg-primary/20 text-primary text-[10px] font-bold flex items-center justify-center">{n}</span>
-                            ))}
-                            {log.draw.bonusNumbers.map((n) => (
-                              <span key={`b${n}`} className="w-6 h-6 rounded-full bg-yellow-500/20 text-yellow-500 text-[10px] font-bold flex items-center justify-center">{n}</span>
-                            ))}
-                          </div>
-                        ) : <span className="text-xs text-muted-foreground">—</span>}
-                      </TableCell>
-                      <TableCell className="text-sm text-center">{log.ticketsChecked}</TableCell>
-                      <TableCell>
-                        <span className={`text-sm font-semibold ${log.winningTickets > 0 ? "text-primary" : "text-muted-foreground"}`}>
-                          {log.winningTickets}
+          {settlementLogsLoading ? (
+            <div className="rounded-xl border border-border/50 overflow-hidden">
+              <Table><TableBody>
+                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
+              </TableBody></Table>
+            </div>
+          ) : (settlementLogsData?.logs ?? []).length === 0 ? (
+            <div className="rounded-xl border border-border/50 overflow-hidden">
+              <Table><TableBody>
+                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No settlements yet. Settlement logs appear after the scraper finds and settles a draw.</TableCell></TableRow>
+              </TableBody></Table>
+            </div>
+          ) : (() => {
+            // Group logs by calendar date (YYYY-MM-DD in local time)
+            const grouped: Record<string, SettlementLog[]> = {};
+            for (const log of (settlementLogsData?.logs ?? [])) {
+              const key = format(new Date(log.createdAt), "yyyy-MM-dd");
+              if (!grouped[key]) grouped[key] = [];
+              grouped[key].push(log);
+            }
+            const dateKeys = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+            return (
+              <div className="space-y-6">
+                {dateKeys.map((dateKey) => {
+                  const dayLogs = grouped[dateKey]!;
+                  const dayTotal = dayLogs.reduce((s, l) => s + l.totalPaid, 0);
+                  const dayWinners = dayLogs.reduce((s, l) => s + l.winningTickets, 0);
+                  return (
+                    <div key={dateKey} className="space-y-1">
+                      {/* Date header */}
+                      <div className="flex items-center justify-between px-1 pb-1 border-b border-border/40">
+                        <span className="text-sm font-semibold text-foreground">
+                          📅 {format(new Date(dateKey + "T12:00:00"), "EEEE, MMMM d, yyyy")}
                         </span>
-                      </TableCell>
-                      <TableCell className={`text-sm font-semibold ${log.totalPaid > 0 ? "text-primary" : "text-muted-foreground"}`}>
-                        ${log.totalPaid.toFixed(2)}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground font-mono">
-                        {log.executionTime != null ? `${log.executionTime}ms` : "—"}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                        <div className="flex gap-4 text-xs text-muted-foreground">
+                          <span>{dayLogs.length} settlement{dayLogs.length !== 1 ? "s" : ""}</span>
+                          {dayWinners > 0 && <span className="text-primary font-semibold">{dayWinners} winner{dayWinners !== 1 ? "s" : ""}</span>}
+                          {dayTotal > 0 && <span className="text-primary font-semibold">${dayTotal.toFixed(2)} paid</span>}
+                        </div>
+                      </div>
+                      <div className="rounded-xl border border-border/50 overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Time</TableHead>
+                              <TableHead>Lottery</TableHead>
+                              <TableHead>Winning Numbers</TableHead>
+                              <TableHead>Tickets Checked</TableHead>
+                              <TableHead>Winners</TableHead>
+                              <TableHead>Total Paid</TableHead>
+                              <TableHead>Time (ms)</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {dayLogs.map((log) => (
+                              <TableRow key={log.id}>
+                                <TableCell className="text-xs text-muted-foreground whitespace-nowrap font-mono">
+                                  {format(new Date(log.createdAt), "p")}
+                                </TableCell>
+                                <TableCell>
+                                  {log.game ? (
+                                    <span className="text-sm font-medium">{log.game.emoji} {log.game.name}</span>
+                                  ) : <span className="text-xs text-muted-foreground">Unknown</span>}
+                                </TableCell>
+                                <TableCell>
+                                  {log.draw && log.draw.winningNumbers.length > 0 ? (
+                                    <div className="flex gap-1 flex-wrap">
+                                      {log.draw.winningNumbers.map((n) => (
+                                        <span key={n} className="w-6 h-6 rounded-full bg-primary/20 text-primary text-[10px] font-bold flex items-center justify-center">{n}</span>
+                                      ))}
+                                      {log.draw.bonusNumbers.map((n) => (
+                                        <span key={`b${n}`} className="w-6 h-6 rounded-full bg-yellow-500/20 text-yellow-500 text-[10px] font-bold flex items-center justify-center">{n}</span>
+                                      ))}
+                                    </div>
+                                  ) : <span className="text-xs text-muted-foreground">—</span>}
+                                </TableCell>
+                                <TableCell className="text-sm text-center">{log.ticketsChecked}</TableCell>
+                                <TableCell>
+                                  <span className={`text-sm font-semibold ${log.winningTickets > 0 ? "text-primary" : "text-muted-foreground"}`}>
+                                    {log.winningTickets}
+                                  </span>
+                                </TableCell>
+                                <TableCell className={`text-sm font-semibold ${log.totalPaid > 0 ? "text-primary" : "text-muted-foreground"}`}>
+                                  ${log.totalPaid.toFixed(2)}
+                                </TableCell>
+                                <TableCell className="text-xs text-muted-foreground font-mono">
+                                  {log.executionTime != null ? `${log.executionTime}ms` : "—"}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       )}
 

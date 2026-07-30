@@ -171,7 +171,7 @@ export class FrenchLotoScraper extends BaseScraper {
   // ── Strategy 3: lotto.net fallback ───────────────────────────────────────────
 
   private async tryLottoNet(): Promise<DrawResult | null> {
-    const url = "https://lotto.net/france-loto/results";
+    const url = "https://www.lotto.net/french-loto/results";
     const html = await this.fetchPage(url, { retries: 1 });
     if (!html) return null;
 
